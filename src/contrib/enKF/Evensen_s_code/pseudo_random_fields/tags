@@ -1,0 +1,107 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+900	m_tecfld.F90	/^ 900 format(10(1x,e12.5))$/;"	l	subroutine:tecfld	file:
+Amat	sample.F90	/^   real, allocatable :: Amat(/;"	v	program:sample
+B	sample.F90	/^   real, allocatable :: Amat(:,:,:),B(/;"	v	program:sample
+B	sample_one.F90	/^   real, allocatable :: B(/;"	v	program:sample
+BINDIR	makefile	/^BINDIR = $(HOME)\/bin$/;"	m
+CF77	makefile	/^CF77 = ifort$/;"	m
+CF90	makefile	/^CF90 = ifort$/;"	m
+CPP	makefile	/^CPP = \/usr\/bin\/cpp$/;"	m
+CPPARCH	makefile	/^CPPARCH = $/;"	m
+CPPFLAGS	makefile	/^CPPFLAGS = -traditional -P $(CPPARCH) $(CPPMODEL)$/;"	m
+CPPMODEL	makefile	/^CPPMODEL  =  $/;"	m
+DEBUG_FFLAGS	makefile	/^DEBUG_FFLAGS = -fpe0 -traceback -warn unused -CB -u -g -c -real_size 64 -assume byterecl -assume nobuffered_io -convert big_endian$/;"	m
+F77FLG	makefile	/^F77FLG =  $/;"	m
+F90FLG	makefile	/^F90FLG =  $/;"	m
+FFILES	makefile	/^FFILES =$(F90FILES:.F90=.f90) $(F77FILES:.F=.f) $(MODULES:.F90=.f90)$/;"	m
+FFLAGS	makefile	/^FFLAGS =  $(DEBUG_FFLAGS)$/;"	m
+FFLAGS	makefile	/^FFLAGS =  $(OPT_FFLAGS)$/;"	m
+FFTW_BACKWARD	mod_fftw3.F90	/^   integer, parameter :: FFTW_BACKWARD=/;"	v	module:mod_fftw3
+FFTW_DHT	mod_fftw3.F90	/^   integer, parameter :: FFTW_DHT=/;"	v	module:mod_fftw3
+FFTW_FORWARD	mod_fftw3.F90	/^   integer, parameter :: FFTW_FORWARD=/;"	v	module:mod_fftw3
+FFTW_HC2R	mod_fftw3.F90	/^   integer, parameter :: FFTW_HC2R=/;"	v	module:mod_fftw3
+FFTW_R2HC	mod_fftw3.F90	/^   integer, parameter :: FFTW_R2HC=/;"	v	module:mod_fftw3
+FFTW_REDFT00	mod_fftw3.F90	/^   integer, parameter :: FFTW_REDFT00=/;"	v	module:mod_fftw3
+FFTW_REDFT01	mod_fftw3.F90	/^   integer, parameter :: FFTW_REDFT01=/;"	v	module:mod_fftw3
+FFTW_REDFT10	mod_fftw3.F90	/^   integer, parameter :: FFTW_REDFT10=/;"	v	module:mod_fftw3
+FFTW_REDFT11	mod_fftw3.F90	/^   integer, parameter :: FFTW_REDFT11=/;"	v	module:mod_fftw3
+FFTW_RODFT00	mod_fftw3.F90	/^   integer, parameter :: FFTW_RODFT00=/;"	v	module:mod_fftw3
+FFTW_RODFT01	mod_fftw3.F90	/^   integer, parameter :: FFTW_RODFT01=/;"	v	module:mod_fftw3
+FFTW_RODFT10	mod_fftw3.F90	/^   integer, parameter :: FFTW_RODFT10=/;"	v	module:mod_fftw3
+FFTW_RODFT11	mod_fftw3.F90	/^   integer, parameter :: FFTW_RODFT11=/;"	v	module:mod_fftw3
+FILES	makefile	/^FILES =$(F90FILES) $(F77FILES) $(MODULES)$/;"	m
+INC2	makefile	/^INC2 =$(INC1:.H=.h)$/;"	m
+LD	makefile	/^LD = ifort$/;"	m
+LIBDIR	makefile	/^LIBDIR = -L \/h\/a684814\/lib\/linux  -L \/usr\/lib\/gcc\/x86_64-redhat-linux\/3.4.3\/32 -L\/h\/a152128\/lib\/linux $/;"	m
+LIBS	makefile	/^LIBS =  -lblas -llapack -lfftw3 -lpthread$/;"	m
+LINKFLAGS	makefile	/^LINKFLAGS =$/;"	m
+OBJECTS	makefile	/^OBJECTS = $(F90FILES:.F90=.o) $(F77FILES:.F=.o) $/;"	m
+OMOD	makefile	/^OMOD = $(MODULES:.F90=.o) $(MODULES77:.F=.o)$/;"	m
+OPT_FFLAGS	makefile	/^OPT_FFLAGS = -implicitnone -nozero -warn unused -c -O3 -real_size 64 -assume byterecl -assume nobuffered_io -convert big_endian$/;"	m
+PAR	makefile	/^PAR = $/;"	m
+TARGET	target.mk	/^TARGET = sample.lin$/;"	m
+VPATH	makefile	/^VPATH = .:RCS:TMP$/;"	m
+aux1	m_pseudo2D.F90	/^   double precision, dimension(:), allocatable,save :: aux1,/;"	v	module:m_pseudo2D
+aux2	m_pseudo2D.F90	/^   double precision, dimension(:), allocatable,save :: aux1,aux2,/;"	v	module:m_pseudo2D
+aux3	m_pseudo2D.F90	/^   double precision, dimension(:), allocatable,save :: aux1,aux2,aux3$/;"	v	module:m_pseudo2D
+cor1	sample.F90	/^   real :: cor1=/;"	v	program:sample
+cor1	sample_one.F90	/^   real :: cor1=/;"	v	program:sample
+cor2	sample.F90	/^   real :: cor2=/;"	v	program:sample
+dir	sample.F90	/^   real dir$/;"	v	program:sample
+dx	sample.F90	/^   real dx,/;"	v	program:sample
+dx	sample_one.F90	/^   real dx$/;"	v	program:sample
+dy	sample.F90	/^   real dx,dy$/;"	v	program:sample
+fixsample1D	m_fixsample1D.F90	/^subroutine fixsample1D(/;"	s	module:m_fixsample1D
+fixsample2D	m_fixsample2D.F90	/^subroutine fixsample2D(/;"	s	module:m_fixsample2D
+i	sample.F90	/^   in/;"	v	program:sample
+i	sample_one.F90	/^   in/;"	v	program:sample
+m_fixsample1D	m_fixsample1D.F90	/^module m_fixsample1D$/;"	m
+m_fixsample2D	m_fixsample2D.F90	/^module m_fixsample2D$/;"	m
+m_newton1D	m_newton1D.F90	/^module m_newton1D$/;"	m
+m_newton2D	m_newton2D.F90	/^module m_newton2D$/;"	m
+m_newtonfunc1D	m_newtonfunc1D.F90	/^module m_newtonfunc1D$/;"	m
+m_newtonfunc2D	m_newtonfunc2D.F90	/^module m_newtonfunc2D$/;"	m
+m_pseudo1D	m_pseudo1D.F90	/^module m_pseudo1D$/;"	m
+m_pseudo2D	m_pseudo2D.F90	/^module m_pseudo2D$/;"	m
+m_random	m_random.F90	/^module m_random$/;"	m
+m_randrot	m_randrot.F90	/^module m_randrot$/;"	m
+m_sample1D	m_sample1D.F90	/^module m_sample1D$/;"	m
+m_sample2D	m_sample2D.F90	/^module m_sample2D$/;"	m
+m_set_random_seed2	m_set_random_seed2.F90	/^module m_set_random_seed2$/;"	m
+m_tecfld	m_tecfld.F90	/^module m_tecfld$/;"	m
+mod_fftw3	mod_fftw3.F90	/^module mod_fftw3$/;"	m
+naux1	m_pseudo2D.F90	/^   integer :: naux1,/;"	v	module:m_pseudo2D
+naux2	m_pseudo2D.F90	/^   integer :: naux1,naux2,/;"	v	module:m_pseudo2D
+naux3	m_pseudo2D.F90	/^   integer :: naux1,naux2,naux3,/;"	v	module:m_pseudo2D
+newton1D	m_newton1D.F90	/^subroutine newton1D(/;"	s	module:m_newton1D
+newton2D	m_newton2D.F90	/^subroutine newton2D(/;"	s	module:m_newton2D
+newtonfunc1D	m_newtonfunc1D.F90	/^subroutine newtonfunc1D(/;"	s	module:m_newtonfunc1D
+newtonfunc2D	m_newtonfunc2D.F90	/^subroutine newtonfunc2D(/;"	s	module:m_newtonfunc2D
+nn	m_pseudo2D.F90	/^   integer :: naux1,naux2,naux3,nn,/;"	v	module:m_pseudo2D
+nre	sample.F90	/^   integer, parameter :: nre=/;"	v	program:sample
+nre	sample_one.F90	/^   integer, parameter :: nre=/;"	v	program:sample
+nrens	sample.F90	/^   integer, parameter :: nrens=/;"	v	program:sample
+nrens	sample_one.F90	/^   integer, parameter :: nrens=/;"	v	program:sample
+nx	sample.F90	/^   integer, parameter :: nx=/;"	v	program:sample
+nx	sample_one.F90	/^   integer, parameter :: nx=/;"	v	program:sample
+ny	sample.F90	/^   integer, parameter :: ny=/;"	v	program:sample
+pi	sample.F90	/^   real, parameter :: pi=/;"	v	program:sample
+pi	sample_one.F90	/^   real, parameter :: pi=/;"	v	program:sample
+pseudo1D	m_pseudo1D.F90	/^subroutine pseudo1D(/;"	s	module:m_pseudo1D
+pseudo2D	m_pseudo2D.F90	/^subroutine pseudo2D(/;"	s	module:m_pseudo2D
+random	m_random.F90	/^subroutine random(/;"	s	module:m_random
+randrot	m_randrot.F90	/^subroutine randrot(/;"	s	module:m_randrot
+s1	m_pseudo2D.F90	/^   integer :: naux1,naux2,naux3,nn,s1$/;"	v	module:m_pseudo2D
+sample	sample.F90	/^program sample$/;"	p
+sample	sample_one.F90	/^program sample$/;"	p
+sample1D	m_sample1D.F90	/^subroutine sample1D(/;"	s	module:m_sample1D
+sample2D	m_sample2D.F90	/^subroutine sample2D(/;"	s	module:m_sample2D
+set_random_seed2	m_set_random_seed2.F90	/^subroutine set_random_seed2$/;"	s	module:m_set_random_seed2
+tecfld	m_tecfld.F90	/^subroutine tecfld(/;"	s	module:m_tecfld
+xlength	sample.F90	/^   real :: xlength=/;"	v	program:sample
+ylength	sample.F90	/^   real :: ylength=/;"	v	program:sample

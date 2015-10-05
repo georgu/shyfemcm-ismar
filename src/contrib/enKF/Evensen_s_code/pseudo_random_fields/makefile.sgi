@@ -1,0 +1,93 @@
+VPATH = .:RCS:TMP
+
+.SUFFIXES:
+.SUFFIXES: .o .F90 .f90 .F .f .H .h  
+
+
+LD = f90
+CF90 = f90
+CF77 = f90
+
+
+FFLAGS =  -64  -mips4 -r8 -r10000 -avoid_gp_overflow -woff 1391
+
+PAR = -chunk=4 -mp_schedtype=GSS  
+DEBUG_FLAGS = -DEBUG:div_check=3 -DEBUG:subscript_check=ON -DEBUG:conform_check=ON \
+ -DEBUG:trap_uninitialized=ON -DEBUG:varargs_interface_check=ON -DEBUG:verbose_runtime=ON -g
+
+F77FLG =  $(DEBUG_FLAGS)
+F77FLG =  -Ofast -OPT:roundoff=0 -mp
+F77FLG =  -O2 -OPT:roundoff=0 -mp
+
+
+F90FLG =  $(DEBUG_FLAGS)
+F90FLG =  -Ofast -OPT:roundoff=0 -mp 
+F90FLG =  -O2 -OPT:roundoff=0 -mp 
+
+LINKFLAGS =  -64 -mips4 -r10000 -mp
+
+
+CPPARCH = 
+CPPMODEL  =  
+
+
+CPPFLAGS =  -P $(CPPARCH) $(CPPMODEL)
+
+LIBS =  -lcomplib.sgimath
+
+
+CPP = /usr/lib/cpp
+
+
+# Rules for running cpp and updating files in TMP directory
+.H.h:
+	rm -f ./TMP/$*.h
+	cat MODEL.CPP $*.H | $(CPP) $(CPPFLAGS) > ./TMP/$*.h
+
+
+.F90.o:
+	rm -f ./TMP/$*.f90
+	cat MODEL.CPP $*.F90 | $(CPP) $(CPPFLAGS) > ./TMP/$*.f90
+	cd ./TMP ; $(CF90) -c -freeform $(FFLAGS) $(F90FLG) -o $*.o $*.f90  
+
+.F.o:
+	rm -f ./TMP/$*.f
+	cat MODEL.CPP $*.F | $(CPP) $(CPPFLAGS) > ./TMP/$*.f
+	cd ./TMP ; $(CF77) -c -col72 $(FFLAGS) $(F77FLG) -o $*.o $*.f  
+
+
+TARGET =  sample.sgi
+
+include source.files
+
+INC2 =$(INC1:.H=.h)
+FILES =$(F90FILES) $(F77FILES) $(MODULES)
+FFILES =$(F90FILES:.F90=.f90) $(F77FILES:.F=.f) $(MODULES:.F90=.f90)
+OBJECTS = $(F90FILES:.F90=.o) $(F77FILES:.F=.o) 
+OMOD = $(MODULES:.F90=.o) $(MODULES77:.F=.o)
+
+
+
+
+all: $(TARGET)
+
+
+$(TARGET): $(INC2) $(OMOD) $(OBJECTS) 
+	cd ./TMP ; $(LD) $(LINKFLAGS) -o ../$(TARGET) $(OMOD) $(OBJECTS) $(LIBS) 
+
+install:
+	cp $(TARGET) $(HOME)/bin
+
+
+clean:
+	cd ./TMP ; rm -f *.f  *.o *.f90 *.h *.mod
+
+new: source depend
+
+source:
+	mksource.sh > source.files
+
+depend:
+	mkdepend.pl | sort -u > depends.file
+
+include depends.file

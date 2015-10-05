@@ -1,0 +1,20 @@
+MODULES = \
+	m_fixsample1D.F90\
+	m_fixsample2D.F90\
+	m_newton1D.F90\
+	m_newton2D.F90\
+	m_newtonfunc1D.F90\
+	m_newtonfunc2D.F90\
+	m_pseudo1D.F90\
+	m_pseudo2D.F90\
+	m_random.F90\
+	m_randrot.F90\
+	m_sample1D.F90\
+	m_sample2D.F90\
+	m_set_random_seed2.F90\
+	m_tecfld.F90\
+	mod_fftw3.F90
+
+F90FILES = \
+	sample.F90
+

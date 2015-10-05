@@ -1,0 +1,2 @@
+TARGET = sample.lin
+

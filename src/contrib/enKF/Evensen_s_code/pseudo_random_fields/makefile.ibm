@@ -1,0 +1,131 @@
+VPATH = .:RCS:TMP
+
+.SUFFIXES:
+.SUFFIXES: .o .F90 .f90 .F .f .H .h  
+
+
+#Compiler -- F90
+CF90 = /usr/bin/xlf90_r 
+
+#Compiler -- F77
+CF77 = /usr/bin/xlf90_r 
+
+#Linker 
+LD = /usr/bin/xlf90_r 
+
+#Paralellization opts
+PARO = -qsmp=omp
+PARO =
+PARO_OE = 
+
+#Size defaults
+SIZEO = -q64 -qrealsize=8
+
+#Arch opts
+ARCHO=  # -qarch=auto -qtune=auto -qcache=auto
+
+#Optimalization opts
+OPTO= -O2 
+OPTO= -O3 -qstrict
+
+#Inlining opts
+#INLO= -Q -qipa
+INLO=
+
+# Diverse options
+DIVO= -qmaxmem=-1    # -qnosave -I/usr/local/NetCDF/include
+
+
+
+
+# Flags for debugging -- slow, gives location of SIGTRAP
+# -g        -- turns on debugging ...
+# -qfloat   -- options for floating point operations
+# -qflttrap -- Floating point operation traps
+# -qextchk  -- Checks if subroutine args are consistent + common block checks
+# -C        -- Checks array bounds 
+# qinitauto=FF initializes all vars to NaN -- So that uninitialized vars can be detected
+#
+#DEBUG_FLAGS = -C -qflttrap=underflow:overflow:zerodivide:invalid:enable  \
+#              -qextchk -qinitauto=FF -qfloat=nofold:nohssngl:nans  -g
+
+
+# version without qfloat shoul allow for stmt_func
+#         without qextchk which allows for inconsistent interfaces 
+#         qextchk notes the different declarations of a in analysis(A,...)
+#DEBUG_FLAGS = -C -qflttrap=overflow:zerodivide:invalid:enable -qinitauto=FF -g
+#DEBUG_FLAGS = -qflttrap=underflow:overflow:zerodivide:invalid:enable 
+DEBUG_FLAGS = 
+
+
+F77FLG = -qextname -qfixed                   
+F90FLG = -qextname -qsuffix=f=f90 -qfree=f90 
+
+
+FFLAGS    = $(SIZEO) $(OPTO) $(ARCHO) $(PARO)    $(INLO) $(DIVO) $(DEBUG_FLAGS) 
+FFLAGS_OE = $(SIZEO) $(OPTO) $(ARCHO) $(PARO_OE) $(INLO) $(DIVO) $(DEBUG_FLAGS) 
+LINKFLAGS = $(SIZEO) $(OPTO) $(PARO) $(INLO) $(DIVO) $(DEBUG_FLAGS)  -bloadmap:load.out
+
+
+CPPARCH = -DPWR4
+CPPMODEL  =  
+CPPFLAGS =  -P $(CPPARCH) $(CPPMODEL)
+
+#LIBS = -lessl /home/parallab/nersc/knutali/lib/liblapack64.a
+#LIBS = -lessl -lmass -L /usr/local/lib/ -llapack -L /usr/local/NetCDF/lib/ -lnetcdf
+LIBS = -L /h/a684814/lib/ -lessl  -llapack64
+
+
+CPP = /usr/lib/cpp
+
+
+# Rules for running cpp and updating files in TMP directory
+.H.h:
+	rm -f ./TMP/$*.h
+	cat MODEL.CPP $*.H | $(CPP) $(CPPFLAGS) > ./TMP/$*.h
+
+
+.F90.o:
+	rm -f ./TMP/$*.f90
+	cat MODEL.CPP $*.F90 | $(CPP) $(CPPFLAGS) > ./TMP/$*.f90
+	cd ./TMP ; $(CF90) -c $(FFLAGS) $(F90FLG) -o $*.o $*.f90  
+
+.F.o:
+	rm -f ./TMP/$*.f
+	cat MODEL.CPP $*.F | $(CPP) $(CPPFLAGS) > ./TMP/$*.f
+	cd ./TMP ; $(CF77) -c $(FFLAGS) $(F77FLG) -o $*.o $*.f  
+
+
+
+TARGET =  sample.ibm
+
+include source.files
+
+INC2 =$(INC1:.H=.h)
+FILES =$(F90FILES) $(F77FILES) $(MODULES)
+FFILES =$(F90FILES:.F90=.f90) $(F77FILES:.F=.f) $(MODULES:.F90=.f90)
+OBJECTS = $(F90FILES:.F90=.o) $(F77FILES:.F=.o) 
+OMOD = $(MODULES:.F90=.o) $(MODULES77:.F=.o)
+
+
+all: $(TARGET) install
+
+$(TARGET): $(INC2) $(OMOD) $(OBJECTS)
+	cd ./TMP ; $(LD) $(LINKFLAGS) -o ../$(TARGET) $(OMOD) $(OBJECTS) $(LIBS) -brename:.dgesvd_,.dgesvd 
+
+install:
+	cp $(TARGET) $(HOME)/bin
+
+clean:
+	cd ./TMP ; rm -f *.f  *.o *.f90 *.h *.mod 2> /dev/null 
+
+new: source depend
+
+source:
+	mksource.sh > source.files
+
+depend:
+	mkdepend.pl | sort -u > depends.file
+
+include depends.file
+

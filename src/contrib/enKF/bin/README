@@ -1,0 +1,27 @@
+To run it:
+- Have an initial simulation
+
+- Prepare the file asspar.txt with:
+assdir     ! working dir
+nrens            ! nr ens member
+tt_anf           ! initial time
+tt_end           ! final time
+tt_eanf          ! time first ens creation
+tt_eend          ! last time with ensemble
+tt_oanf          ! time first observation
+tt_oend          ! time last observation
+
+- Prepare a list of obs files, in bin/ named 
+	obs_list.txt
+  with the following lines:
+  obs_type  obs_file
+  
+
+- run ./run_enKF.sh
+
+
+Format timeseries:
+n_rows x y z st_dev_measurements
+time1 value1
+time2 value2
+...

@@ -1,0 +1,15 @@
+The square root algorithms in Evensen (2004) does
+not in their standard form support the EnKS analysis
+written as
+   A=A prod(X_i)
+as discussed in Evensen (2003)
+
+A minor rewrite allows for the same smoother analysis
+(see appendix B of Evensen, 2004).
+
+Routines analysis4c.F90, analysis5c.F90 and analysis6c.F90,
+includes this rewrite.
+
+Geir.Evensen@hydro.com
+
+

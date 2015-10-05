@@ -1,0 +1,90 @@
+VPATH = .:RCS:TMP
+
+.SUFFIXES:
+.SUFFIXES: .o .F90 .f90 .F .f .H .h  
+
+
+LD = pgf90
+CF90 = pgf90
+CF77 = pgf90
+
+
+FFLAGS =  -c -r8
+
+PAR = 
+DEBUG_FLAGS =
+
+F77FLG =  $(DEBUG_FLAGS)
+F77FLG =  
+
+
+F90FLG =  $(DEBUG_FLAGS)
+F90FLG = 
+
+LINKFLAGS =  -r8
+
+
+CPPARCH = -DLINUX
+CPPMODEL  =  
+
+
+CPPFLAGS =  -P $(CPPARCH) $(CPPMODEL)
+
+LIBS =  -llapack -lblas /home/parallab/nersc/geirev/linux/lib/libfftw3.a
+
+
+CPP = /usr/bin/cpp
+
+
+# Rules for running cpp and updating files in TMP directory
+.H.h:
+	rm -f ./TMP/$*.h
+	cat MODEL.CPP $*.H | $(CPP) $(CPPFLAGS) > ./TMP/$*.h
+
+
+.F90.o:
+	rm -f ./TMP/$*.f90
+	cat MODEL.CPP $*.F90 | $(CPP) $(CPPFLAGS) > ./TMP/$*.f90
+	cd ./TMP ; $(CF90) $(FFLAGS) $(F90FLG) -o $*.o $*.f90  
+
+.F.o:
+	rm -f ./TMP/$*.f
+	cat MODEL.CPP $*.F | $(CPP) $(CPPFLAGS) > ./TMP/$*.f
+	cd ./TMP ; $(CF77) $(FFLAGS) $(F77FLG) -o $*.o $*.f  
+
+
+TARGET =  sample.lin
+
+include source.files
+
+INC2 =$(INC1:.H=.h)
+FILES =$(F90FILES) $(F77FILES) $(MODULES)
+FFILES =$(F90FILES:.F90=.f90) $(F77FILES:.F=.f) $(MODULES:.F90=.f90)
+OBJECTS = $(F90FILES:.F90=.o) $(F77FILES:.F=.o) 
+OMOD = $(MODULES:.F90=.o) $(MODULES77:.F=.o)
+
+
+
+
+all: $(TARGET)
+
+
+$(TARGET): $(INC2) $(OMOD) $(OBJECTS) 
+	cd ./TMP ; $(LD) $(LINKFLAGS) -o ../$(TARGET) $(OMOD) $(OBJECTS) $(LIBS) 
+
+install:
+	cp $(TARGET) $(HOME)/bin
+
+
+clean:
+	cd ./TMP ; rm -f *.f  *.o *.f90 *.h *.mod
+
+new: source depend
+
+source:
+	mksource.sh > source.files
+
+depend:
+	mkdepend_linux.pl | sort -u > depends.file
+
+include depends.file

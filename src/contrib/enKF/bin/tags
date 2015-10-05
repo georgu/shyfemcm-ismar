@@ -1,0 +1,79 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+900	subio.f90	/^900 read(20,'(a10,1x,a60)',end = 901) otype(n), filin(n)$/;"	l	subroutine:read_obs_list	file:
+900	subio.f90	/^900 read(iunit,*,end = 901) timets(k), valts(k)$/;"	l	subroutine:read_times_lev	file:
+901	subio.f90	/^901 close(20)$/;"	l	subroutine:read_obs_list	file:
+901	subio.f90	/^901 close(iunit)$/;"	l	subroutine:read_times_lev	file:
+A	enKF_analysis.f90	/^   real, allocatable :: A(/;"	v	program:enKF_analysis
+Am	enKF_analysis.f90	/^   real, allocatable :: Am(/;"	v	program:enKF_analysis
+D	enKF_analysis.f90	/^   real, allocatable :: D(/;"	v	program:enKF_analysis
+E	enKF_analysis.f90	/^   real, allocatable :: E(/;"	v	program:enKF_analysis
+R	enKF_analysis.f90	/^   real, allocatable :: R(/;"	v	program:enKF_analysis
+S	enKF_analysis.f90	/^   real, allocatable :: S(/;"	v	program:enKF_analysis
+assdir	enKF_analysis.f90	/^   character assdir*/;"	v	program:enKF_analysis
+assdir	make_obs_file.f90	/^ character assdir*/;"	v	program:make_obs_files
+atime	enKF_analysis.f90	/^   double precision atime$/;"	v	program:enKF_analysis
+average_mat	enKF_analysis.f90	/^   subroutine average_mat(/;"	s
+date	enKF_analysis.f90	/^   integer date,/;"	v	program:enKF_analysis
+date	make_obs_file.f90	/^ integer date,/;"	v	program:make_obs_files
+enKF_analysis	enKF_analysis.f90	/^   program enKF_analysis$/;"	p
+filin	make_obs_file.f90	/^ character (len = 60), dimension (1:100) :: filin$/;"	v	program:make_obs_files
+innov	enKF_analysis.f90	/^   real, allocatable :: innov(/;"	v	program:enKF_analysis
+itrst	enKF_analysis.f90	/^   integer itrst$/;"	v	program:enKF_analysis
+k	make_obs_file.f90	/^ integer k,/;"	v	program:make_obs_files
+kend	make_obs_file.f90	/^ integer k, kend$/;"	v	program:make_obs_files
+make_obs_files	make_obs_file.f90	/^ program make_obs_files$/;"	p
+mode	enKF_analysis.f90	/^   integer mode /;"	v	program:enKF_analysis
+n	make_obs_file.f90	/^ int/;"	v	program:make_obs_files
+n_obs	enKF_analysis.f90	/^   character (len = 3) n_obs$/;"	v	program:enKF_analysis
+ndim	enKF_analysis.f90	/^   integer ndim /;"	v	program:enKF_analysis
+nend	make_obs_file.f90	/^ integer n, nend$/;"	v	program:make_obs_files
+nf	enKF_analysis.f90	/^   integer nf$/;"	v	program:enKF_analysis
+nrens	enKF_analysis.f90	/^   integer nrens$/;"	v	program:enKF_analysis
+nrens	make_obs_file.f90	/^ integer nrens$/;"	v	program:make_obs_files
+nrobs	enKF_analysis.f90	/^   integer nrobs /;"	v	program:enKF_analysis
+open_obs	subio.f90	/^ subroutine open_obs(/;"	s
+open_times_lev	subio.f90	/^ subroutine open_times_lev(/;"	s
+otype	make_obs_file.f90	/^ character (len = 10), dimension (1:100) :: otype$/;"	v	program:make_obs_files
+read_asspar	subio.f90	/^ subroutine read_asspar(/;"	s
+read_obs	subio.f90	/^ subroutine read_obs(/;"	s
+read_obs_list	subio.f90	/^ subroutine read_obs_list(/;"	s
+read_times_lev	subio.f90	/^ subroutine read_times_lev(/;"	s
+rst_read	enKF_analysis.f90	/^   subroutine rst_read(/;"	s
+rstname	enKF_analysis.f90	/^   character rstname*/;"	v	program:enKF_analysis
+std_obs	enKF_analysis.f90	/^   double precision, allocatable :: val_obs(:), std_obs(/;"	v	program:enKF_analysis
+std_ts	make_obs_file.f90	/^ double precision x_ts, y_ts, z_ts, std_ts$/;"	v	program:make_obs_files
+t_obs	enKF_analysis.f90	/^   double precision t_obs$/;"	v	program:enKF_analysis
+t_ts	make_obs_file.f90	/^ double precision, allocatable :: t_ts(/;"	v	program:make_obs_files
+time	enKF_analysis.f90	/^   integer date, time$/;"	v	program:enKF_analysis
+time	make_obs_file.f90	/^ integer date, time$/;"	v	program:make_obs_files
+truncation	enKF_analysis.f90	/^   real truncation /;"	v	program:enKF_analysis
+tt	enKF_analysis.f90	/^   double precision tt$/;"	v	program:enKF_analysis
+tt	make_obs_file.f90	/^ double precision tt$/;"	v	program:make_obs_files
+tt_anf	enKF_analysis.f90	/^   double precision tt_anf,/;"	v	program:enKF_analysis
+tt_anf	make_obs_file.f90	/^ double precision tt_anf,/;"	v	program:make_obs_files
+tt_eanf	enKF_analysis.f90	/^   double precision tt_anf,tt_eanf,/;"	v	program:enKF_analysis
+tt_eanf	make_obs_file.f90	/^ double precision tt_anf,tt_eanf,/;"	v	program:make_obs_files
+tt_eend	enKF_analysis.f90	/^   double precision tt_anf,tt_eanf,tt_oanf,tt_oend,tt_eend,/;"	v	program:enKF_analysis
+tt_eend	make_obs_file.f90	/^ double precision tt_anf,tt_eanf,tt_oanf,tt_oend,tt_eend,/;"	v	program:make_obs_files
+tt_end	enKF_analysis.f90	/^   double precision tt_anf,tt_eanf,tt_oanf,tt_oend,tt_eend,tt_end$/;"	v	program:enKF_analysis
+tt_end	make_obs_file.f90	/^ double precision tt_anf,tt_eanf,tt_oanf,tt_oend,tt_eend,tt_end$/;"	v	program:make_obs_files
+tt_oanf	enKF_analysis.f90	/^   double precision tt_anf,tt_eanf,tt_oanf,/;"	v	program:enKF_analysis
+tt_oanf	make_obs_file.f90	/^ double precision tt_anf,tt_eanf,tt_oanf,/;"	v	program:make_obs_files
+tt_oend	enKF_analysis.f90	/^   double precision tt_anf,tt_eanf,tt_oanf,tt_oend,/;"	v	program:enKF_analysis
+tt_oend	make_obs_file.f90	/^ double precision tt_anf,tt_eanf,tt_oanf,tt_oend,/;"	v	program:make_obs_files
+type_obs	enKF_analysis.f90	/^   character (len = 10), allocatable :: type_obs(/;"	v	program:enKF_analysis
+update_randrot	enKF_analysis.f90	/^   logical update_randrot /;"	v	program:enKF_analysis
+val_obs	enKF_analysis.f90	/^   double precision, allocatable :: val_obs(/;"	v	program:enKF_analysis
+val_ts	make_obs_file.f90	/^ double precision, allocatable :: t_ts(:), val_ts(/;"	v	program:make_obs_files
+verbose	enKF_analysis.f90	/^   logical verbose /;"	v	program:enKF_analysis
+x_obs	enKF_analysis.f90	/^   double precision, allocatable :: x_obs(/;"	v	program:enKF_analysis
+x_ts	make_obs_file.f90	/^ double precision x_ts,/;"	v	program:make_obs_files
+y_obs	enKF_analysis.f90	/^   double precision, allocatable :: x_obs(:), y_obs(/;"	v	program:enKF_analysis
+y_ts	make_obs_file.f90	/^ double precision x_ts, y_ts,/;"	v	program:make_obs_files
+z_obs	enKF_analysis.f90	/^   double precision, allocatable :: x_obs(:), y_obs(:), z_obs(/;"	v	program:enKF_analysis
+z_ts	make_obs_file.f90	/^ double precision x_ts, y_ts, z_ts,/;"	v	program:make_obs_files

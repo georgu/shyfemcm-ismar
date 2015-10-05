@@ -1,0 +1,18 @@
+MODULES = \
+	m_empty.F90\
+	mod_dimensions.F90\
+	mod_states.F90\
+	m_sub1.F90\
+	m_sub2.F90
+
+MODULES77 = \
+	m_empty.F\
+	m_sub5.F
+
+F90FILES = \
+	main.F90\
+	sub3.F90
+
+F77FILES = \
+	sub4.F
+
