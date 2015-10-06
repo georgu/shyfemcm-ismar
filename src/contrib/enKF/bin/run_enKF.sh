@@ -1,7 +1,20 @@
 #!/bin/bash
 # This script runs the EnOI or the EnKF or the EnKS
 
-#####
+########## INIT PARS #############
+# Definition of paths
+FEMDIR="`pwd`/../.."
+bindir=$FEMDIR/enKF/bin
+
+# Number of processes to run in parallel
+nprocesses=8
+
+# Name of the initial str file
+strname_orig='nador.str'
+
+
+#######################################################################
+#######################################################################
 # Reads a file with the input parameters
 read_asspar(){
 assdir=$(sed -n "1p" "asspar.txt")	# working dir
@@ -123,9 +136,11 @@ for ((ne = 1; ne <= $nrens; ne++)); do
     echo "$assdir/$rstname" >> $assdir/rstfile_list.txt
 done
 
+cd $bindir
 echo "$tt" > $assdir/asstime.txt
 make enKF_analysis
 ./enKF_analysis < $assdir/asstime.txt
+exit
 }
 
 ######################################################################################
@@ -151,24 +166,17 @@ make enKF_analysis
 #
 ######################################################################################
 
-########## INIT PARS #############
-# Definition of paths
-FEMDIR=$HOME/marcob/enKF/shyfem-7_1_12
-bindir=$FEMDIR/enKF/bin
-
-# Number of processes to run in parallel
-nprocesses=8
-
-# Name of the initial str file
-strname_orig='nador.str'
-
 # read a file with the assimilation parameters
 read_asspar
-########## INIT PARS #############
-
 
 ########## PREPARE OBS #############
-# Collect and sort observations (if T-S profiles or timeseries or very near measurements..)
+# Make something to have the initial observation files with a right
+# format and the obs_list.txt file with [ obs_type name_file ]
+# TODO : something more general
+cd $assdir
+echo "times_lev  obs_nador.dat" > obs_list.txt	#TMP
+
+# Create just one binary file with all the observations
 cd $bindir
 make make_obs_file
 ./make_obs_file
@@ -176,7 +184,6 @@ cd -
 
 # Read the times of observations
 read_obs_times
-########## PREPARE OBS #############
 
 
 
@@ -193,7 +200,6 @@ read_obs_times
 #cd $assdir
 #time $FEMDIR/fem3d/ht < ensstr_sim0.str
 #cd -
-########## SIM BEFORE THE ENSEMBLE CREATION #############
 
 
 
@@ -216,7 +222,6 @@ read_obs_times
 # Create a bigger initial ensemble and then find the
 # main orthogonal direction with a SVD (Evensen, 2004).
 # TODO: see m_sample1D.F90
-########## CREATION OF THE INITIAL ENS #############
 
 
 
@@ -250,12 +255,10 @@ exit
 
 done
 exit
-########## ASSIMILATION #############
 
+########## LAST SIM #############
 # load all the restart files and average
 
 # run the last simulation after the assimilation
 
 ### END ###
-
-

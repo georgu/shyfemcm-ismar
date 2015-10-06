@@ -59,7 +59,6 @@
                                            !  1=eigen value pseudo inversion of SS'+(N-1)R
                                            !  2=SVD subspace pseudo inversion of SS'+(N-1)R
                                            !  3=SVD subspace pseudo inversion of SS'+EE'
-! Use mode = 23
 
    logical update_randrot   ! Normally true; false for all but first grid point
                                            ! updates when using local analysis since all grid
@@ -77,6 +76,12 @@
     read(5,*) tt
     call read_asspar(23,assdir,nrens,date,time,tt_anf,tt_end,tt_eanf,tt_eend,tt_oanf,tt_oend)
     nlv = 8 !restart read needs it
+
+    ! Analysis parameters
+    mode = 23
+    verbose = .true.
+    truncation = 0.99
+    update_randrot = .true.
 
 !--------------------------------
 ! Read basin
@@ -127,24 +132,27 @@
    call make_random_D(nrobs,nrens,val_obs,std_obs,D)
 
 !--------------------------------
-! Make S(nrobs,nrens)  matrix holding HA`	TODO: add more model vars
-! and innov(nrobs)    vector holding d-H*mean(A)
+! Make S(nrobs,nrens), matrix holding HA`, and innov(nrobs), vector holding d-H*mean(A)
+! TODO: add more model vars
 !--------------------------------
-   allocate(S(nrobs,nrens))
-   call make_S_innov(nrens,nrobs,ndim,A,Am,x_obs,y_obs,z_obs,type_obs,S,innov)
+   allocate(S(nrobs,nrens),innov(nrobs))
+   call make_S_innov(nrens,nrobs,ndim,A,Am,val_obs,x_obs,y_obs,z_obs,type_obs,S,innov)
 
 !--------------------------------
 ! Make R(nrobs,nrobs)  matrix holding R (only used if mode=?1 or ?2) (no for low-rank sq root)
 !--------------------------------
+   allocate(R(nrobs,nrobs))
 
 !--------------------------------
 ! Make E(nrobs,nrens)  matrix holding perturbations (only used if mode=?3) (no for low-rank sq root)
 !--------------------------------
+   allocate(E(nrobs,nrens))
 
 !--------------------------------
 ! Call the analysis routine
 !--------------------------------
-!    call analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncation,mode,update_randrot)
+   call analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncation,mode,update_randrot)
+   write(*,*) 'Analysis done'
 
 
 !--------------------------------
@@ -226,7 +234,7 @@ end
 
 
 !------------------------------------------------------
-   subroutine make_S_innov(nrens,nrobs,ndim,A,Am,x,y,z,otype,S,innov)
+   subroutine make_S_innov(nrens,nrobs,ndim,A,Am,vobs,x,y,z,otype,S,innov)
 !------------------------------------------------------
 ! Finds S = HA` : the model perturbations interpolated in the observation
 ! locations
@@ -248,6 +256,7 @@ end
    integer, intent(in) :: nrens,nrobs,ndim
    real, intent(in) :: A(ndim,nrens)
    real, intent(in) :: Am(ndim)
+   real, intent(in) :: vobs(nrobs)
    real, intent(in) :: x(nrobs),y(nrobs),z(nrobs)    !position of the observations
    character (len=*), intent(in) :: otype(nrobs)     !Obs type
    real, intent(out) :: S(nrobs,nrens)
@@ -256,30 +265,33 @@ end
    real xe(3),ye(3) 
    integer kn(3)
 
-   integer intri
+   integer intri,inval
    logical istri	! Model variable corresponding to obs is defined in element (vel)
    logical isvert	! Model variable corresponding to obs has a vertical dimension
 
    integer no,ne
+   integer ie,ii
    real val
    real kw(3)	! spatial weights for linear interpolation
 
    ! Obs in the timestep
    do no = 1,nrobs 
 
-      intri = 0
+      inval = 0
       do ie = 1,nel
          do ii = 1,3
                 kn(ii) = nen3v(ii,ie)
                 xe(ii) = xgv(kn(ii))
                 ye(ii) = ygv(kn(ii))
          end do
-         if( intri(xe,ye,x(no),y(no)).eq.1 ) exit
+         !write(*,*) xe,ye,x(no),y(no) 	!obs coords are wrong TODO
+         inval = intri(xe,ye,x(no),y(no))
+         if( inval.eq.1 ) exit
       end do
-      if( intri.eq.0 ) stop 'Observation outside the domain' 
+      if( inval.eq.0 ) stop 'Observation outside the domain' 
       
 
-      if( otype(7:9).eq.'vel' ) then 
+      if( otype(no)(7:9).eq.'vel' ) then 
           istri = .true. !value on the elements
 	  write(*,*) 'TODO, not yet implemented'
           stop
@@ -289,12 +301,14 @@ end
       end if
       
       ! Assign value depending on model var
-      if( otype.eq.'times_lev' ) then
+      if( otype(no).eq.'times_lev' ) then
           isvert = .false.
           do ne = 1,nrens
              val = kw(1)*A(kn(1),ne) + kw(2)*A(kn(2),ne) + kw(3)*A(kn(3),ne)
              S(no,ne) = val
           end do
+          val = kw(1)*Am(kn(1)) + kw(2)*Am(kn(2)) + kw(3)*Am(kn(3))
+          innov(no) = vobs(no) - val
       else
           isvert = .true.
 	  write(*,*) 'TODO, not yet implemented'

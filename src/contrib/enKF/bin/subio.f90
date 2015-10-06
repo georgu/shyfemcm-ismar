@@ -65,7 +65,8 @@
  implicit none
  integer, intent(in) :: iunit
  integer, intent(in) :: kend
- double precision timets(*), valts(*)
+ double precision, intent(out) :: timets(*)
+ real, intent(out) :: valts(*)
  integer k, kend_real
 
  k = 1

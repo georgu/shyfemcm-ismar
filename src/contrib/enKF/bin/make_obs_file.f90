@@ -3,7 +3,7 @@
 !---------------------------------
 !---------------------------------
 !---------------------------------
-!! TODO a generic progam working with different observations!!
+!! TODO a generic progam working with different observations
 !---------------------------------
 !---------------------------------
 ! Reads a text file with the names of the obs files and
