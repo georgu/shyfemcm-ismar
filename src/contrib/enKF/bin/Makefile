@@ -36,7 +36,7 @@ ENSOBJ = $(ENKDIR)/analysis.o $(ENKDIR)/m_randrot.o $(ENKDIR)/mod_anafunc.o \
 	 $(ENKDIR)/m_multa.o $(ENKDIR)/m_mean_preserving_rotation.o
 
 #--------------------
-enKF_analysis: enKF_analysis.o subio.o
+enKF_analysis: enKF_analysis.o subio.o 
 	cd $(ENKDIR); make clean; make all; cd -
 	$(LINKER) $(LFLAGS) -llapack -lblas $@.o \
 	subio.o $(OUTOBJS) $(RSTOBJS) $(ENSOBJ) -o $@

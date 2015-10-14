@@ -142,11 +142,13 @@
 ! Make R(nrobs,nrobs)  matrix holding R (only used if mode=?1 or ?2) (no for low-rank sq root)
 !--------------------------------
    allocate(R(nrobs,nrobs))
+   R = 0
 
 !--------------------------------
 ! Make E(nrobs,nrens)  matrix holding perturbations (only used if mode=?3) (no for low-rank sq root)
 !--------------------------------
    allocate(E(nrobs,nrens))
+   E = 0
 
 !--------------------------------
 ! Call the analysis routine

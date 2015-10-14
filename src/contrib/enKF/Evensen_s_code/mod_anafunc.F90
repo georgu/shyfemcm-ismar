@@ -288,7 +288,10 @@ subroutine X5sqrt(X2,nrobs,nrens,nrmin,X5,update_randrot,mode)
    print *,'      analysis (X5sqrt): update_randrot= ',update_randrot
    if (update_randrot) then
       if (allocated(ROT)) deallocate(ROT)
+print*, 'ok4',nrens
       allocate(ROT(nrens,nrens))
+print*, 'ok5'
+stop
 !!      ROT=0.0
 !!      do i=1,nrens
 !!         ROT(i,i)=1.0
