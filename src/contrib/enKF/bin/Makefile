@@ -1,20 +1,13 @@
+
+#--------------------
+# Include shyfem rules
+include ../../Rules.make
+
+# Reset some env vars
 FEMDIR    = ../..
 DIRLIB    = $(FEMDIR)/femlib
 DIRFEM    = $(FEMDIR)/fem3d
 ENKDIR    = ../Evensen_s_code
-
-#---------------------
-#F95 = gfortran
-F95 = ifort
-F77 = $(F95)
-FFLAGS = -O -Wall -pedantic $(FGNU_GENERAL)
-FFLAGS = -O
-
-LINKER = $(F95)
-
-CC = gcc
-CFLAGS = 
-#---------------------
 
 #--------------------
 # ht objects
@@ -31,15 +24,15 @@ OUTOBJS = $(PARMOD) $(DIRFEM)/subnls.o $(DIRFEM)/subsss.o $(DIRFEM)/subscn.o \
 RSTOBJS = $(DIRFEM)/subrst.o $(DIRFEM)/ecological_dummy.o $(DIRFEM)/newlevels.o
 
 #--------------------
-# Ensemble analysis objects
-ENSOBJ = $(ENKDIR)/analysis.o $(ENKDIR)/m_randrot.o $(ENKDIR)/mod_anafunc.o \
-	 $(ENKDIR)/m_multa.o $(ENKDIR)/m_mean_preserving_rotation.o
+# Ensemble analysis modules
+ENSOBJ = m_randrot.o m_multa.o mod_anafunc.o m_mean_preserving_rotation.o
+mod_anafunc.o: m_mean_preserving_rotation.o
+analysis_ev.o: $(ENSOBJ)
 
 #--------------------
-enKF_analysis: enKF_analysis.o subio.o 
-	cd $(ENKDIR); make clean; make all; cd -
+enKF_analysis: enKF_analysis.o analysis_ev.o $(ENSOBJ) subio.o
 	$(LINKER) $(LFLAGS) -llapack -lblas $@.o \
-	subio.o $(OUTOBJS) $(RSTOBJS) $(ENSOBJ) -o $@
+	analysis_ev.o $(ENSOBJ) subio.o $(OUTOBJS) $(RSTOBJS) -o $@
 
 #--------------------
 make_obs_file: make_obs_file.o subio.o
@@ -75,7 +68,3 @@ cleanall:
 	$(CC) -c $(CFLAGS) $<
 
 %.o : %.mod
-#---------------------
-
-
-
