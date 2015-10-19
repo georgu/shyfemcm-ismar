@@ -1,13 +1,17 @@
 
 #--------------------
 # Include shyfem rules
-include ../../Rules.make
+include ../Rules.make
+
+#F77=ifort -r8
+#F95=ifort -r8
+#LINKER=ifort -r8
 
 # Reset some env vars
-FEMDIR    = ../..
+FEMDIR    = ..
 DIRLIB    = $(FEMDIR)/femlib
 DIRFEM    = $(FEMDIR)/fem3d
-ENKDIR    = ../Evensen_s_code
+ENKDIR    = Evensen_s_code
 
 #--------------------
 # ht objects
@@ -42,6 +46,16 @@ make_obs_file: make_obs_file.o subio.o
 #--------------------
 #--------------------
 EXES = enKF_analysis make_obs_file
+
+links:
+	ln -s ../fem3d/basin.h
+	ln -s ../fem3d/conz.h
+	ln -s ../fem3d/geom_dynamic.h
+	ln -s ../fem3d/hydro.h
+	ln -s ../fem3d/hydro_vel.h
+	ln -s ../fem3d/nlevel.h
+	ln -s ../fem3d/param.h
+	ln -s ../fem3d/ts.h
 
 all:
 	make $(EXES)

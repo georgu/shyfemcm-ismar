@@ -3,8 +3,8 @@
 
 ########## INIT PARS #############
 # Definition of paths
-FEMDIR="`pwd`/../.."
-bindir=$FEMDIR/enKF/bin
+FEMDIR="`pwd`/.."
+bindir=$FEMDIR/enKF
 
 # Number of processes to run in parallel
 nprocesses=8

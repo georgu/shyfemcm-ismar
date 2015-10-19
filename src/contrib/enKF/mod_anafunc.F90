@@ -29,7 +29,7 @@ subroutine lowrankE(S,E,nrobs,nrens,nrmin,W,eig,truncation)
 ! Compute X0=sig0^{*T} U0^T E 
 
 ! X0= U0^T R
-   call dgemm('t','n',nrmin,nrens,nrobs, 1.0,U0,nrobs, E,nrobs, 0.0,X0,nrmin)
+   call sgemm('t','n',nrmin,nrens,nrobs, 1.0,U0,nrobs, E,nrobs, 0.0,X0,nrmin)
 
 
    do j=1,nrens
@@ -45,10 +45,10 @@ subroutine lowrankE(S,E,nrobs,nrens,nrmin,W,eig,truncation)
    allocate(work(lwork))
    eig=0.0
 
-   call dgesvd('S', 'N', nrmin, nrens, X0, nrmin, eig, U1, nrmin, VT1, 1, work, lwork, ierr)
+   call sgesvd('S', 'N', nrmin, nrens, X0, nrmin, eig, U1, nrmin, VT1, 1, work, lwork, ierr)
    deallocate(work)
    if (ierr /= 0) then
-      print *,'mod_anafunc (lowrankE): ierr from call dgesvd 1= ',ierr; stop
+      print *,'mod_anafunc (lowrankE): ierr from call sgesvd 1= ',ierr; stop
    endif
 
    do i=1,nrmin
@@ -63,7 +63,7 @@ subroutine lowrankE(S,E,nrobs,nrens,nrmin,W,eig,truncation)
    enddo
    enddo
 
-   call dgemm('n','n',nrobs,nrmin,nrmin, 1.0,U0,nrobs, U1,nrmin, 0.0,W,nrobs)
+   call sgemm('n','n',nrobs,nrmin,nrmin, 1.0,U0,nrobs, U1,nrmin, 0.0,W,nrobs)
 
 
 end subroutine
@@ -180,7 +180,7 @@ subroutine genX2(nrens,nrobs,idim,S,W,eig,X2)
    real, intent(out)   :: X2(idim,nrens)
    integer i,j
 
-   call dgemm('t','n',idim,nrens,nrobs,1.0,W,nrobs, S,nrobs, 0.0,X2,idim)
+   call sgemm('t','n',idim,nrens,nrobs,1.0,W,nrobs, S,nrobs, 0.0,X2,idim)
 
    do j=1,nrens
    do i=1,idim
@@ -213,10 +213,10 @@ subroutine genX3(nrens,nrobs,nrmin,eig,W,D,X3)
    enddo
 
 !     X2=matmul(X1,D)
-      call dgemm('n','n',nrmin,nrens,nrobs,1.0,X1,nrmin,D ,nrobs,0.0,X2,nrmin)
+      call sgemm('n','n',nrmin,nrens,nrobs,1.0,X1,nrmin,D ,nrobs,0.0,X2,nrmin)
 
 !     X3=matmul(W,X2)
-      call dgemm('n','n',nrobs,nrens,nrmin,1.0,W ,nrobs,X2,nrmin,0.0,X3,nrobs)
+      call sgemm('n','n',nrobs,nrens,nrmin,1.0,W ,nrobs,X2,nrmin,0.0,X3,nrobs)
 
 end subroutine
 
@@ -245,10 +245,10 @@ subroutine meanX5(nrens,nrobs,nrmin,S,W,eig,innov,X5)
       y3(1)=W(1,1)*y2(1)
       y4(:)=y3(1)*S(1,:)
    else
-      call dgemv('t',nrobs,nrmin,1.0,W,nrobs,innov,1,0.0,y1 ,1)
+      call sgemv('t',nrobs,nrmin,1.0,W,nrobs,innov,1,0.0,y1 ,1)
       y2=eig*y1  
-      call dgemv('n',nrobs,nrmin,1.0,W ,nrobs,y2,1,0.0,y3 ,1)
-      call dgemv('t',nrobs,nrens,1.0,S ,nrobs,y3,1,0.0,y4 ,1)
+      call sgemv('n',nrobs,nrmin,1.0,W ,nrobs,y2,1,0.0,y3 ,1)
+      call sgemv('t',nrobs,nrens,1.0,S ,nrobs,y3,1,0.0,y4 ,1)
    endif
 
    do i=1,nrens
@@ -288,9 +288,7 @@ subroutine X5sqrt(X2,nrobs,nrens,nrmin,X5,update_randrot,mode)
    print *,'      analysis (X5sqrt): update_randrot= ',update_randrot
    if (update_randrot) then
       if (allocated(ROT)) deallocate(ROT)
-print*, 'ok4',nrens
       allocate(ROT(nrens,nrens))
-print*, 'ok5'
 !!      ROT=0.0
 !!      do i=1,nrens
 !!         ROT(i,i)=1.0
@@ -302,10 +300,10 @@ print*, 'ok5'
 ! SVD of X2
    lwork=2*max(3*nrens+nrens,5*nrens); allocate(work(lwork))
    sig=0.0
-   call dgesvd('N', 'A', nrmin, nrens, X2, nrmin, sig, U, nrmin, VT, nrens, work, lwork, ierr)
+   call sgesvd('N', 'A', nrmin, nrens, X2, nrmin, sig, U, nrmin, VT, nrens, work, lwork, ierr)
    deallocate(work)
    if (ierr /= 0) then
-      print *,'X5sqrt: ierr from call dgesvd = ',ierr
+      print *,'X5sqrt: ierr from call sgesvd = ',ierr
       stop
    endif
 
@@ -330,7 +328,7 @@ print*, 'ok5'
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! Multiply  X3* V' = (V*sqrt(I-sigma*sigma) * V' to ensure symmetric sqrt and 
 ! mean preserving rotation.   Sakov paper eq 13
-   call dgemm('n','n',nrens,nrens,nrens,1.0,X3,nrens,VT,nrens,0.0,X33,nrens)
+   call sgemm('n','n',nrens,nrens,nrens,1.0,X3,nrens,VT,nrens,0.0,X33,nrens)
 ! Check mean preservation X33*1_N = a* 1_N (Sakov paper eq 15)
 !   do i=1,nrens
 !      print *,'sum(X33)= ',i,sum(X33(i,:))
@@ -343,14 +341,14 @@ print*, 'ok5'
 !   print '(a)','X5sqrt: sig: '
 !   print '(5g11.3)',sig(1:min(nrmin,nrens))
 
-   call dgemm('n','n',nrens,nrens,nrens,1.0,X33,nrens,ROT,nrens,0.0,X4,nrens)
+   call sgemm('n','n',nrens,nrens,nrens,1.0,X33,nrens,ROT,nrens,0.0,X4,nrens)
 
    IenN=-1.0/real(nrens)
    do i=1,nrens
       IenN(i,i)=  IenN(i,i) + 1.0
    enddo
 
-   call dgemm('n','n',nrens,nrens,nrens,1.0,IenN,nrens,X4,nrens,1.0,X5,nrens)
+   call sgemm('n','n',nrens,nrens,nrens,1.0,IenN,nrens,X4,nrens,1.0,X5,nrens)
 
    deallocate(isigma)
 
@@ -443,7 +441,7 @@ subroutine lowrankCinv(S,R,nrobs,nrens,nrmin,W,eig,truncation)
    enddo
    enddo
 
-   call dgemm('n','n',nrobs,nrmin,nrmin, 1.0,U0,nrobs, Z,nrmin, 0.0,W,nrobs)
+   call sgemm('n','n',nrobs,nrmin,nrmin, 1.0,U0,nrobs, Z,nrmin, 0.0,W,nrobs)
 
 end subroutine
 
@@ -466,10 +464,10 @@ integer  i,j
 ! Compute B=sig0^{-1} U0^T R U0 sig0^{-1}
 
 ! X0= U0^T R
-   call dgemm('t','n',nrmin,nrobs,nrobs, 1.0,U0,nrobs, R,nrobs, 0.0,X0,nrmin)
+   call sgemm('t','n',nrmin,nrobs,nrobs, 1.0,U0,nrobs, R,nrobs, 0.0,X0,nrmin)
 
 ! B= X0 U0
-   call dgemm('n','n',nrmin,nrmin,nrobs, 1.0,X0,nrmin, U0,nrobs, 0.0,B,nrmin)
+   call sgemm('n','n',nrmin,nrmin,nrobs, 1.0,X0,nrmin, U0,nrobs, 0.0,B,nrmin)
 
    do j=1,nrmin
    do i=1,nrmin
@@ -512,10 +510,10 @@ subroutine svdS(S,nrobs,nrens,nrmin,U0,sig0,truncation)
 
    S0=S
    sig0=0.0
-   call dgesvd('S', 'N', nrobs, nrens, S0, nrobs, sig0, U0, nrobs, VT0, nrens, work, lwork, ierr)
+   call sgesvd('S', 'N', nrobs, nrens, S0, nrobs, sig0, U0, nrobs, VT0, nrens, work, lwork, ierr)
    deallocate(work)
    if (ierr /= 0) then
-      print *,'svdS: ierr from call dgesvd 0= ',ierr; stop
+      print *,'svdS: ierr from call sgesvd 0= ',ierr; stop
    endif
 
    sigsum=0.0
