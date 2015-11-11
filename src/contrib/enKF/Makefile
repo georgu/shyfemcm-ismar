@@ -64,7 +64,7 @@ clean:
 	rm -fr $(EXES) *.o *.mod
 
 cleanall:
-	rm -fr $(EXES) *.o *.mod; cd $(ENKDIR); rm -fr *.o *.mod
+	rm -fr $(EXES) *.o *.mod *.dat *.uf fort.*; cd $(ENKDIR); rm -fr *.o *.mod
 
 
 #---------------------

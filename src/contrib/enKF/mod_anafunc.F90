@@ -174,13 +174,15 @@ subroutine genX2(nrens,nrobs,idim,S,W,eig,X2)
    integer, intent(in) :: nrens
    integer, intent(in) :: nrobs
    integer, intent(in) :: idim ! idim=nrobs for A4 and nrmin for A5
-   real, intent(in)    :: W(idim,nrens)
+   !real, intent(in)    :: W(idim,nrens)	! bug? - mbj
+   real, intent(in)    :: W(nrobs,idim)
    real, intent(in)    :: S(nrobs,nrens)
    real, intent(in)    :: eig(idim)
    real, intent(out)   :: X2(idim,nrens)
    integer i,j
 
-   call sgemm('t','n',idim,nrens,nrobs,1.0,W,nrobs, S,nrobs, 0.0,X2,idim)
+   !call sgemm('t','n',idim,nrens,nrobs,1.0,W,nrobs, S,nrobs, 0.0,X2,idim)	! bug? - mbj
+   call sgemm('t','n',nrobs,nrens,idim,1.0,W,nrobs, S,nrobs, 0.0,X2,idim)
 
    do j=1,nrens
    do i=1,idim

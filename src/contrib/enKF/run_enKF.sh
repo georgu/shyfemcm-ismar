@@ -133,14 +133,13 @@ for ((ne = 1; ne <= $nrens; ne++)); do
        echo "Bad rst file: $assdir/$rstname" 
        exit 1
     fi
-    echo "$assdir/$rstname" >> $assdir/rstfile_list.txt
+    echo "$rstname" >> $assdir/rstfile_list.txt
 done
 
 cd $bindir
 echo "$tt" > $assdir/asstime.txt
 make enKF_analysis
 ./enKF_analysis < $assdir/asstime.txt
-exit
 }
 
 ######################################################################################
