@@ -48,9 +48,11 @@ make_str(){
 itanf=$1
 itend=$2
 strname=$3
+rstname=$4
+forc_type=$5
+forcfile=$6
 
 if [ $strname = 'ensstr_sim0.str' ]; then
-   echo "Initial run"
    itanf0=$($FEMDIR/fembin/strparse.pl -value=itanf $assdir/$strname_orig | tail -1)
    itend0=$($FEMDIR/fembin/strparse.pl -value=itend $assdir/$strname_orig | tail -1)
    itanf=$itanf0
@@ -68,7 +70,30 @@ if [ $strname = 'ensstr_sim0.str' ]; then
    #### TMP
    mv replace1.str $assdir/$strname
    rm replace.str
-   
+
+else
+   it_check=$(echo "($itend <= $itanf)" | bc)
+   if [[ $it_check != 0 ]]; then
+      echo "Bad time values: $itanf $itend"
+      exit 1
+   fi
+
+   itrst=$itanf
+   $FEMDIR/fembin/strparse.pl -value=idtrst -replace=-1 $assdir/$strname_orig
+   $FEMDIR/fembin/strparse.pl -value=itrst -replace=$itrst replace.str
+   #$FEMDIR/fembin/strparse.pl -value=restrt -replace=\'$rstname\' replace.str #Put in para
+   $FEMDIR/fembin/strparse.pl -value=itanf -replace=$itanf replace.str
+   $FEMDIR/fembin/strparse.pl -value=itend -replace=$itend replace.str
+   #$FEMDIR/fembin/strparse.pl -value=$forc_type -replace=$forcfile replace.str #Put in para
+   #### TMP
+   namesim=$(basename $strname .str)
+   cat replace.str | sed -e "s/Nador_sim1/$namesim/" | \
+   sed -e "/^\$name/a restrt='$rstname'" | \
+   sed -e "s/$forc_type.\+/$forc_type = \'input\/$forcfile\'/" > replace1.str
+   #### TMP
+   mv replace1.str $assdir/$strname
+   rm replace.str
+
 fi
 }
 
@@ -77,40 +102,27 @@ fi
 make_init_ens_forcing(){
 itanf=$1
 itend=$2
-itrst=$itanf
-strfile=$3
-nrens=$4
-forc_type=$5
-forc_basename=$6
+rstname=$3
+forc_type=$4
+forc_basename=$5
 
-namerst=$(basename $strfile .str); namerst=${namerst}.rst
+itrst=$itanf
+
 for ((ne = 1; ne <= $nrens; ne++)); do
    echo "Initial ensemble run n. $ne of $nrens"
    nelab=$(printf "%04d" $ne)
 
-   forcfile=${forc_basename}${nelab}.dat
+   forcfile="${forc_basename}${nelab}.dat"
+   strname="ensstr_ob0001_ens${nelab}.str"
 
-   $FEMDIR/fembin/strparse.pl -value=idtrst -replace=-1 $assdir/$strname_orig
-   $FEMDIR/fembin/strparse.pl -value=itrst -replace=$itrst replace.str
-   #$FEMDIR/fembin/strparse.pl -value=restrt -replace=\'$namerst\' replace.str #Put in para
-   $FEMDIR/fembin/strparse.pl -value=itanf -replace=$itanf replace.str
-   $FEMDIR/fembin/strparse.pl -value=itend -replace=$itend replace.str
-   #$FEMDIR/fembin/strparse.pl -value=$forc_type -replace=$forcfile replace.str #Put in para
-   filename="ensstr_ob0000_ens${nelab}.str"
-   title=$(basename $filename .str)
-   #### TMP
-   cat replace.str | sed -e "s/Nador_sim1/$title/" | \
-   sed -e "/^\$name/a restrt='$namerst'" | \
-   sed -e "s/$forc_type.\+/$forc_type = \'input\/$forcfile\'/" > replace1.str 
-   #### TMP
-   mv replace1.str $assdir/$filename
+   make_str $itanf $itend $strname $rstname "boundn" "$forcfile"
 
    cd $assdir
-   $FEMDIR/fem3d/ht < $filename > ${ne}.log &
+   ./ht < $strname > ${ne}.log &
    cd -
 
    # set in parallel
-   nemod=$((ne%$nprocesses)); echo "************ Number of run: $ne ****************"
+   nemod=$((ne%$nprocesses))
    [[ $nemod = 0 ]] && wait
 done
 wait
@@ -126,7 +138,7 @@ nrens=$3
 
 # Make a list of rst files and check their size
 rm -f $assdir/rstfile_list.txt
-for ((ne = 1; ne <= $nrens; ne++)); do
+for (( ne = 1; ne <= $nrens; ne++ )); do
     nelab=$(printf "%04d" $ne)
     rstname="ensstr_ob${nolab}_ens${nelab}.rst"
     if [ ! -s $assdir/$rstname ]; then
@@ -168,11 +180,15 @@ make enKF_analysis
 # read a file with the assimilation parameters
 read_asspar
 
+cd $assdir
+rm -f ht; ln -s $FEMDIR/fem3d/ht
+
+
 ########## PREPARE OBS #############
 # Make something to have the initial observation files with a right
 # format and the obs_list.txt file with [ obs_type name_file ]
 # TODO : something more general
-cd $assdir
+# Creates a obs list file
 echo "times_lev  obs_nador.dat" > obs_list.txt	#TMP
 
 # Create just one binary file with all the observations
@@ -184,21 +200,24 @@ cd -
 # Read the times of observations
 read_obs_times
 
+isass=0
 
+if [ $isass != 1 ]; then # begin isass ****
 
 ########## SIM BEFORE THE ENSEMBLE CREATION #############
 #
 # First normal spin-up simulation
 
-#itanf=-999
-#itend=$(echo "${otime[1]} - $it_ens_spinup" | bc -l)
-#strfile="ensstr_sim0.str"
+itanf=-999
+it_ens_spinup=86400
+itend=$(echo "${otime[1]} - $it_ens_spinup" | bc -l)
+strfile="ensstr_sim0.str"
 #
-#make_str $itanf $itend $strfile
+make_str $itanf $itend $strfile
 #
-#cd $assdir
-#time $FEMDIR/fem3d/ht < ensstr_sim0.str
-#cd -
+cd $assdir
+./ht < ensstr_sim0.str
+cd -
 
 
 
@@ -208,13 +227,13 @@ read_obs_times
 # save the final ensemble at the first obs, as
 # initial ensemble.
 
-#itanf=$itend			#start
-#itend=${otime[1]}		#end
-#strfile="ensstr_sim0.str"	#base str file
-#forc_type="boundn"		#perturbed forcing type
-#forc_basename="astro_nador2005_last"	#perturbed forcing basename
-#
-#make_init_ens_forcing $itanf $itend $strfile $nrens $forc_type $forc_basename
+itanf=$itend			#start
+itend=${otime[1]}		#end
+rstname="ensstr_sim0.rst"
+forc_type="boundn"		#perturbed forcing type
+forc_basename="astro_nador2005_last"	#perturbed forcing basename
+
+make_init_ens_forcing $itanf $itend $rstname $forc_type $forc_basename
 
 
 ## Improved sampling (optional but recommended)
@@ -223,36 +242,50 @@ read_obs_times
 # TODO: see m_sample1D.F90
 
 
+fi # end isass ****
 
 ########## ASSIMILATION #############
-echo "***************************************************"
-echo "	Starting the assimilation runs"
-echo "***************************************************"
-no=0	# num of obs times
-# obs loop
-for ot in ${otime[@]}; do
+echo "*** Begin of Ensemble Kalman Filter analysis ***"
+
+nobs=${#otime[@]}	# Array length
+for (( no = 1; no <= $nobs; no++ )); do
 
     nolab=$(printf "%04d" $no)
-    echo "*** Observation time $no"
+    nolab_new=$(printf "%04d" $((no + 1)))
+    ot=${otime[$no]}
+
+    echo "*** Analysis step: $no of $nobs"
     
-    ######
     # make analisis and create new restart files
     make_analysis $nolab $ot $nrens
-    ######
-exit
 
-    no=$((no+1));
+    # Ensemble simulations
+    itanf=$ot
+    if [ $no = $nobs ]; then	# last step
+       itend=$tt_end
+    else
+       itend=${otime[$(($no + 1))]}
+    fi
+    echo "Initial time: $itanf"
+    echo "Final time: $itend"
 
-    # Ensemble loop
-    itanf=$ot; itend=${otime[$((no+1))]}
-    for ((ne = 1; ne <= $nrens; ne++)); do
+    for (( ne = 1; ne <= $nrens; ne++ )); do
         nelab=$(printf "%04d" $ne)
-        filename="ensstr_ob${nolab}_ens${nelab}.str"
-        #make_str $itanf $ot $filename
-	# simulations &
+        rstname="an_ensstr_ob${nolab}_ens${nelab}.rst"
+        strname="ensstr_ob${nolab_new}_ens${nelab}.str"
+        make_str $itanf $itend $strname $rstname "boundn" "astro_nador2005_last.dat"
+
+        cd $assdir
+        ./ht < $strname > ${ne}.log &
+        cd -
+        # set in parallel
+        nemod=$((ne%$nprocesses))
+        [[ $nemod = 0 ]] && wait
     done
+    wait
 
 done
+echo "*** End of Ensemble Kalman Filter analysis ***"
 exit
 
 ########## LAST SIM #############

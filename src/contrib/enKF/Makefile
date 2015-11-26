@@ -61,10 +61,10 @@ all:
 	make $(EXES)
 
 clean:
-	rm -fr $(EXES) *.o *.mod
+	rm -fr $(EXES) *.o *.mod tags
 
 cleanall:
-	rm -fr $(EXES) *.o *.mod *.dat *.uf fort.*; cd $(ENKDIR); rm -fr *.o *.mod
+	rm -fr $(EXES) *.o *.mod tags *.dat *.uf fort.*; cd $(ENKDIR); rm -fr *.o *.mod 
 
 
 #---------------------
