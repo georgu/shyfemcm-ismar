@@ -15,17 +15,12 @@ ENKDIR    = Evensen_s_code
 
 #--------------------
 # ht objects
-PARMOD = $(DIRFEM)/subpar3.o
-OUTOBJS = $(PARMOD) $(DIRFEM)/subnls.o $(DIRFEM)/subsss.o $(DIRFEM)/subscn.o \
-          $(DIRFEM)/subfil.o $(DIRFEM)/subdef.o $(DIRFEM)/subnsu.o $(DIRFEM)/subssv.o \
-          $(DIRFEM)/subbas.o $(DIRFEM)/subsys.o $(DIRFEM)/subdim.o \
-          $(DIRFEM)/subapn.o $(DIRFEM)/subnsa.o $(DIRFEM)/subdum.o \
-          $(DIRFEM)/subbnd.o $(DIRFEM)/subdts.o $(DIRFEM)/subdep.o \
-          $(DIRFEM)/debug.o $(DIRFEM)/subreg.o $(DIRFEM)/subnev.o \
-          $(DIRFEM)/subfemfile.o $(DIRFEM)/subtsfile.o \
-          $(DIRFEM)/subvintp.o $(DIRFEM)/subver.o $(DIRFEM)/sigmautil.o $(DIRFEM)/suboutput.o \
-          $(DIRFEM)/subclo.o
-RSTOBJS = $(DIRFEM)/subrst.o $(DIRFEM)/ecological_dummy.o $(DIRFEM)/newlevels.o
+HTOBJS = $(DIRFEM)/subrst.o $(DIRFEM)/subbas.o $(DIRFEM)/subdts.o $(DIRFEM)/mod_bnd.o \
+	$(DIRFEM)/subreg.o $(DIRFEM)/subpar3.o $(DIRFEM)/suboutput.o $(DIRFEM)/subfil.o \
+	$(DIRFEM)/mod_hydro.o $(DIRFEM)/debug.o $(DIRFEM)/subsss.o $(DIRFEM)/subbit10.o \
+ 	$(DIRFEM)/mod_geom_dynamic.o $(DIRFEM)/mod_ts.o $(DIRFEM)/newlevels.o \
+	$(DIRFEM)/mod_conz.o $(DIRFEM)/mod_hydro_vel.o $(DIRFEM)/ecological_dummy.o \
+	$(DIRFEM)/subdef.o $(DIRFEM)/subnev.o $(DIRFEM)/mod_geom.o $(DIRFEM)/subscn.o
 
 #--------------------
 # Ensemble analysis modules
@@ -34,9 +29,9 @@ mod_anafunc.o: m_mean_preserving_rotation.o
 analysis_ev.o: $(ENSOBJ)
 
 #--------------------
-enKF_analysis: enKF_analysis.o analysis_ev.o $(ENSOBJ) subio.o
+enKF_analysis: enKF_analysis.o analysis_ev.o $(ENSOBJ) subio.o $(HTOBJS)
 	$(LINKER) $(LFLAGS) -llapack -lblas $@.o \
-	analysis_ev.o $(ENSOBJ) subio.o $(OUTOBJS) $(RSTOBJS) -o $@
+	analysis_ev.o $(ENSOBJ) subio.o $(HTOBJS) -o $@
 
 #--------------------
 make_obs_file: make_obs_file.o subio.o

@@ -118,7 +118,7 @@ for ((ne = 1; ne <= $nrens; ne++)); do
    make_str $itanf $itend $strname $rstname "boundn" "$forcfile"
 
    cd $assdir
-   ./ht < $strname > ${ne}.log &
+   ./shyfem $strname > ${ne}.log &
    cd -
 
    # set in parallel
@@ -181,7 +181,7 @@ make enKF_analysis
 read_asspar
 
 cd $assdir
-rm -f ht; ln -s $FEMDIR/fem3d/ht
+rm -f shyfem; ln -s $FEMDIR/fem3d/shyfem
 
 
 ########## PREPARE OBS #############
@@ -216,7 +216,7 @@ strfile="ensstr_sim0.str"
 make_str $itanf $itend $strfile
 #
 cd $assdir
-./ht < ensstr_sim0.str
+./shyfem ensstr_sim0.str
 cd -
 
 
@@ -276,7 +276,7 @@ for (( no = 1; no <= $nobs; no++ )); do
         make_str $itanf $itend $strname $rstname "boundn" "astro_nador2005_last.dat"
 
         cd $assdir
-        ./ht < $strname > ${ne}.log &
+        ./shyfem $strname > ${ne}.log &
         cd -
         # set in parallel
         nemod=$((ne%$nprocesses))

@@ -182,7 +182,8 @@
    call daddpar('date',ddate)
    call daddpar('time',dtime)
    itrst = nint(tt)
-   call wrrst(itrst,30)
+   !call wrrst(itrst,30)
+   call rst_write_record(itrst,30)
    close(30)
  end do
 
@@ -380,7 +381,8 @@
  open(iunit,file=filin,status='old',form='unformatted')
  call dts_to_abs_time(date,time,atime)
  !write(*,*) 'Reading restart file: ',filin
- call rdrst(atime+tt,iunit,ierr)
+ !call rdrst(atime+tt,iunit,ierr)
+ call rst_read_restart_file(atime+tt,iunit,ierr)
  close(iunit)
 
  end subroutine rst_read
