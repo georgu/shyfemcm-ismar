@@ -12,13 +12,15 @@
 # and nranl observation files. Each observation file must include all the observations
 # to be used in that analysis step. Each row of the file must contain:
 # time x y z obs_id value error value_1 ... value_nrens
+# Example of str filename: basename_an000_en001.str
+# Initial rst names: an000_en001.rst
 #
 #----------------------------------------------------------
 
-FEMDIR=$HOME/shyfem
+FEMDIR=$HOME/git_shyfem/shyfem
 
 # min/max number of ensemble members
-ensmin=10
+ensmin=2
 ensmax=50
 # min/max number of analysis steps
 anmin=1
@@ -28,7 +30,7 @@ anmax=100
 
 Usage()
 {
-  echo "Usage: enKF.sh [opt-file]"
+  echo "Usage: enKF.sh [conf-file]"
   exit 0
 }
 
@@ -62,6 +64,7 @@ Check_num()
   fi
   if [[ $(echo "$4 < $1" | bc) = 1 ]] || [[ $(echo "$4 > $2" | bc) = 1 ]]; then
      echo "Number $4 out of range"
+     exit 1
   fi 
 }
 
@@ -103,6 +106,44 @@ Read_conf()
 
 #----------------------------------------------------------
 
+Make_str()
+{
+  nens=$1; nan=$2; atime=$3; basestr=$4
+
+  nensl=$(printf "%03d" $nens)
+  nanl=$(printf "%03d" $nan)
+
+  nanold=$((nan - 1))
+  nanoldl=$(printf "%03d" $nanold)
+
+  strold=${basestr}_an${nanoldl}_en${nensl}.str
+  Check_file $strold
+  strnew=${basestr}_an${nanl}_en${nensl}.str
+
+  namesim="an${nanl}_en${nensl}"
+  namesimold="an${nanoldl}_en${nensl}"
+  itanf=$($FEMDIR/fembin/strparse.pl -value=itend $strold)
+  itend=$atime
+  itrst=$itanf
+  idtrst=$(echo "$itend - $itanf" | bc)
+  rstname="${namesimold}.rst"
+  Check_file $rstname
+
+  $FEMDIR/fembin/strparse.pl -value=itanf -replace=$itanf $strold
+  $FEMDIR/fembin/strparse.pl -value=itend -replace=$itend replace.str
+  $FEMDIR/fembin/strparse.pl -value=itrst -replace=$itrst replace.str
+  $FEMDIR/fembin/strparse.pl -value=idtrst -replace=$idtrst replace.str
+  # TMP
+  # namesim
+  # rstname
+  cat replace.str | \
+      sed -e "s/$namesimold/$namesim/" | \
+      sed -e "s/restrt.\+/restrt = \'$rstname\'/" > replace1.str
+  mv -f replace1.str $strnew; rm -f replace.str
+}
+
+#----------------------------------------------------------
+
 if [ $1 ]; then
    Read_conf $1
 else
@@ -112,7 +153,12 @@ fi
 # Assimilation sims
 for (( na = 1; na <= $nranl; na++ )); do
    # run nrens sims before the obs
-   # make the analysis 
+   for (( ne = 1; ne <= $nrens; ne++ )); do
+      Make_str $ne $na ${timeo[$na]} $basestr
+      #Make_sim $ne $na #TODO
+   done
+   # make the analysis
+   #Make_analysis $na ${timeo[$na]} #TODO
 done
-# run last sims from the last analysis and save restarts
 
+exit 0
