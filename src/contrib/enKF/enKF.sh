@@ -4,16 +4,28 @@
 # these inputs:
 # - number of ensemble members (nrens);
 # - basename of nrens str-files from which to start the simulations;
-# - number of analysis steps (nranl);
-# - basename of nranl obs-files;
-# - nranl obs-times.
+# - number of analysis steps (nran);
+# - basename of nran obs-files;
+# - nran obs-times.
 #
 # You must prepare also nrens restart files to be read in the initial str-files
-# and nranl observation files. Each observation file must include all the observations
-# to be used in that analysis step. Each row of the file must contain:
-# time x y z obs_id value error value_1 ... value_nrens
+# and nran observation files.
+#
 # Example of str filename: basename_an000_en001.str
+#
 # Initial rst names: an000_en001.rst
+#
+# Observations (see read_obs):
+# The file of observations must be written in ascii format, separated by spaces.
+# One file for each analysis step must be used, which includes all the observations 
+# for that specific time.
+# observation filenames: myobs_an000.obs
+# format:
+# time n_of_records
+# ...
+# obs_type(5 chars) x y z value stand_dev
+# obs_type(5 chars) x y z value stand_dev
+# ...
 #
 #----------------------------------------------------------
 
@@ -88,12 +100,12 @@ Read_conf()
      # nr of analysis steps
      elif [ $nrows = 2 ]; then
         Check_num $anmin $anmax 'int' $line
-        nranl=$line
+        nran=$line
      # basename for the obs-files
      elif [ $nrows = 3 ]; then
         baseobs=$line
      # times of observations
-     elif [ $nrows -gt 3 ] & [ $nrows -le $((nranl+3)) ]; then
+     elif [ $nrows -gt 3 ] & [ $nrows -le $((nran+3)) ]; then
         Check_num -100000000 100000000 'real' $line
         timeo[$((nrows - 4))]=$line
      else
@@ -126,7 +138,12 @@ Make_str()
   itend=$atime
   itrst=$itanf
   idtrst=$(echo "$itend - $itanf" | bc)
-  rstname="${namesimold}.rst"
+
+  if [ $nanold = 0} ]; then
+     rstname="${namesimold}.rst"
+  else
+     rstname="an_${namesimold}.rst"
+  fi
   Check_file $rstname
 
   $FEMDIR/fembin/strparse.pl -value=itanf -replace=$itanf $strold
@@ -144,6 +161,47 @@ Make_str()
 
 #----------------------------------------------------------
 
+Make_sim()
+{
+  basen=$(basename $1 .str)
+  $FEMDIR/fem3d/shyfem $1 > $basen.log
+}
+
+#----------------------------------------------------------
+
+Make_analysis()
+{
+  echo; echo "*** Assimilation step $na of $nran ***"
+
+  #basname=$($FEMDIR/fembin/strparse.pl -value=basin  $4) TODO
+  basname=$(sed -n '8p' < $4) #TMP
+  Check_file $basname.bas
+
+  sdate=$($FEMDIR/fembin/strparse.pl -value=date $4)
+  stime=$($FEMDIR/fembin/strparse.pl -value=time $4)
+  [[ $stime = '(unknown)' ]] && stime=0
+    
+  rm -f analysis.info
+  echo $basname > analysis.info	# name of the basin
+  echo $date >> analysis.info	# sim date0
+  echo $time >> analysis.info	# sim time0
+  echo $3 >> analysis.info		# obs time
+  echo $1 >> analysis.info		# nr of ens members
+  echo $na >> analysis.info		# n of analysis step
+  echo $baseobs >> analysis.info	# basename of obs files
+  for (( ne = 1; ne <= $1; ne++ )); do
+      nanl=$(printf "%03d" $2); nensl=$(printf "%03d" $ne)
+      rstname="an${nanl}_en${nensl}.rst"
+      Check_file $rstname
+      $rstname >> analysis.info	# names of the rst files
+  done
+  $FEMDIR/enKF/enKF_analysis
+}
+
+#----------------------------------------------------------
+#----------------------------------------------------------
+#----------------------------------------------------------
+
 if [ $1 ]; then
    Read_conf $1
 else
@@ -151,14 +209,18 @@ else
 fi
 
 # Assimilation sims
-for (( na = 1; na <= $nranl; na++ )); do
+for (( na = 1; na <= $nran; na++ )); do
+
    # run nrens sims before the obs
+   echo; echo "*** Running $nrens ensemble runs. Step $na of $nran ***"
    for (( ne = 1; ne <= $nrens; ne++ )); do
       Make_str $ne $na ${timeo[$na]} $basestr
-      #Make_sim $ne $na #TODO
+      Make_sim $strnew 
    done
+
    # make the analysis
-   #Make_analysis $na ${timeo[$na]} #TODO
+   Make_analysis $nrens $na ${timeo[$na]} $basestr
+
 done
 
 exit 0

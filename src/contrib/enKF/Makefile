@@ -29,18 +29,14 @@ mod_anafunc.o: m_mean_preserving_rotation.o
 analysis_ev.o: $(ENSOBJ)
 
 #--------------------
-enKF_analysis: enKF_analysis.o analysis_ev.o $(ENSOBJ) subio.o $(HTOBJS)
-	$(LINKER) $(LFLAGS) -llapack -lblas $@.o \
-	analysis_ev.o $(ENSOBJ) subio.o $(HTOBJS) -o $@
-
-#--------------------
-make_obs_file: make_obs_file.o subio.o
-	$(LINKER) $(LFLAGS) $@.o subio.o -o $@
-
+enKF_analysis.o: mod_enKF.o
+enKF_analysis: enKF_analysis.o mod_enKF.o analysis_ev.o $(ENSOBJ) $(HTOBJS)
+	$(LINKER) $(LFLAGS) -llapack -lblas $@.o mod_enKF.o \
+	analysis_ev.o $(ENSOBJ) $(HTOBJS) -o $@
 
 #--------------------
 #--------------------
-EXES = enKF_analysis make_obs_file
+EXES = enKF_analysis 
 
 links:
 	ln -s ../fem3d/basin.h
@@ -70,7 +66,7 @@ cleanall:
 .for.obj:
 	$(FLC) $< , $(<,B).OBJ $(FLFLAGS)
 .f90.o:
-	$(F95) -c $(FFLAGS) $<
+	$(F95) -c $(FFLAGS) $< 
 .F90.o:
 	$(F95) -c $(FFLAGS) $<
 .c.o:
