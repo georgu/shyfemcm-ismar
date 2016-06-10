@@ -20,16 +20,6 @@
 
   integer ne
 
-  !tmp to subtitute with modules
-  !include 'param.h'
-  !include 'nlevel.h'
-  !include 'hydro.h'
-  !include 'geom_dynamic.h'
-  !include 'basin.h'
-  !include 'ts.h'
-  !include 'hydro_vel.h'
-  !include 'conz.h'
-
 !----------------------------------------------------
 ! Opens info file
 !----------------------------------------------------
@@ -41,23 +31,51 @@
   call read_basin
 
 !----------------------------------------------------
-! Load the initial ensemble state A
+! Load the ensemble state A
 !----------------------------------------------------
-  do ne = 1,nrens
-     call rst_read(23,trim(rstfile(ne)))
-     call store_state(ne)
+! TODO: the init state should contain all the variables of the restart file
+  do ne = 1,nens
+     call rst_read(ne)
+     call push_state(ne)
   end do
 
 !----------------------------------------------------
-! Make the mean state of A
+! Makes the mean of A
 !----------------------------------------------------
-  call average_mat(A,Am,xdim,nrens)
+  call average_mat(A,Am,sdim,nens)
 
 !----------------------------------------------------
 ! Read observations and store in D
 !----------------------------------------------------
-  call read_obs(tobs,nanl,baseobs)
+! Better to read D directly and to make it outside.
+  call read_obs
+  call make_D_E
 
+!--------------------------------
+! Make S(nobs,nens), matrix holding HA`, and innov(nobs), innovation vector holding 
+! d-H*mean(A) 
+  call make_S_innov
+!--------------------------------
 
+!--------------------------------
+! Make R(nobs,nobs) matrix holding R (only used if mode=?1 or ?2) (no for low-rank sq root)
+!--------------------------------
+  allocate(R(nobs,nobs))
+  R = 0.02	! R seems used also in the case nobs==1
+
+!--------------------------------
+! Call the analysis routine
+!--------------------------------
+  call analysis(A,R,E,S,D,innov,ndim,nens,nobs,verbose,truncation,mode,update_randrot)
+  write(*,*) 'Analysis done'
+
+!--------------------------------
+! Save the output in different restart files
+!--------------------------------
+  do ne = 1,nens
+     call rst_read(ne)
+     call pull_state(ne)
+     call rst_write(ne)
+  end do
 
   end program enKF_analysis

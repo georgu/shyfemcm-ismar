@@ -1,9 +1,5 @@
-.SUFFIXES: .o .F90 .f90 .F .f .H .h
-
-# make thinks that .mod files are Modula2 source code:
-#%.o : %.mod
-
-#---------------------
+# This Makefile is not necessary. Compile from the upstram directory.
+##---------------------
 #F95 = gfortran
 F95 = ifort
 F77 = $(F95)

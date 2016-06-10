@@ -169,10 +169,8 @@ Make_sim()
 
 #----------------------------------------------------------
 
-Make_analysis()
+Write_info_file()
 {
-  echo; echo "*** Assimilation step $na of $nran ***"
-
   #basname=$($FEMDIR/fembin/strparse.pl -value=basin  $4) TODO
   basname=$(sed -n '8p' < $4) #TMP
   Check_file $basname.bas
@@ -181,21 +179,16 @@ Make_analysis()
   stime=$($FEMDIR/fembin/strparse.pl -value=time $4)
   [[ $stime = '(unknown)' ]] && stime=0
     
+  # Write analysis.info, file for the fortran program
   rm -f analysis.info
-  echo $basname > analysis.info	# name of the basin
-  echo $date >> analysis.info	# sim date0
-  echo $time >> analysis.info	# sim time0
-  echo $3 >> analysis.info		# obs time
+  echo $date > analysis.info		# sim date0
+  echo $time >> analysis.info		# sim time0
+  echo $2 >> analysis.info		# obs time
   echo $1 >> analysis.info		# nr of ens members
-  echo $na >> analysis.info		# n of analysis step
-  echo $baseobs >> analysis.info	# basename of obs files
-  for (( ne = 1; ne <= $1; ne++ )); do
-      nanl=$(printf "%03d" $2); nensl=$(printf "%03d" $ne)
-      rstname="an${nanl}_en${nensl}.rst"
-      Check_file $rstname
-      $rstname >> analysis.info	# names of the rst files
-  done
-  $FEMDIR/enKF/enKF_analysis
+  echo $basname >> analysis.info	# name of the basin
+  echo $rstfile >> analysis.info	# basname of the restart files
+  echo $baseobs >> analysis.info	# obs file
+  #echo $na >> analysis.info		# n of analysis step
 }
 
 #----------------------------------------------------------
@@ -208,7 +201,7 @@ else
    Usage
 fi
 
-# Assimilation sims
+# Assimilation cycle for every analysis time step
 for (( na = 1; na <= $nran; na++ )); do
 
    # run nrens sims before the obs
@@ -219,7 +212,7 @@ for (( na = 1; na <= $nran; na++ )); do
    done
 
    # make the analysis
-   Make_analysis $nrens $na ${timeo[$na]} $basestr
+   Write_info_file $nrens ${timeo[$na]} $basestr
 
 done
 

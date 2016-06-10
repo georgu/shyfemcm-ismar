@@ -3,15 +3,9 @@
 # Include shyfem rules
 include ../Rules.make
 
-#F77=ifort -r8
-#F95=ifort -r8
-#LINKER=ifort -r8
-
 # Reset some env vars
-FEMDIR    = ..
-DIRLIB    = $(FEMDIR)/femlib
 DIRFEM    = $(FEMDIR)/fem3d
-ENKDIR    = Evensen_s_code
+ENKDIR    = EvKF
 
 #--------------------
 # ht objects
@@ -24,29 +18,26 @@ HTOBJS = $(DIRFEM)/subrst.o $(DIRFEM)/subbas.o $(DIRFEM)/subdts.o $(DIRFEM)/mod_
 
 #--------------------
 # Ensemble analysis modules
-ENSOBJ = m_randrot.o m_multa.o mod_anafunc.o m_mean_preserving_rotation.o
-mod_anafunc.o: m_mean_preserving_rotation.o
-analysis_ev.o: $(ENSOBJ)
+ENSOBJ = m_randrot.o m_multa.o mod_anafunc.o m_mean_preserving_rotation.o m_random2.o
+#mod_anafunc.o: m_mean_preserving_rotation.o
+#analysis.o: $(ENSOBJ)
 
 #--------------------
-enKF_analysis.o: mod_enKF.o
-enKF_analysis: enKF_analysis.o mod_enKF.o analysis_ev.o $(ENSOBJ) $(HTOBJS)
-	$(LINKER) $(LFLAGS) -llapack -lblas $@.o mod_enKF.o \
-	analysis_ev.o $(ENSOBJ) $(HTOBJS) -o $@
+#mod_enKF.o: mod_enKF.mod
+#mod_enKF.mod: mod_enKF.o
+#enKF_analysis.o: mod_enKF.mod m_randrot.mod m_multa.mod mod_anafunc.mod \
+	m_mean_preserving_rotation.mod m_random2.mod
+
+enKF_analysis: enKF_analysis.o mod_enKF.o analysis.o $(ENSOBJ) $(HTOBJS)
+	$(LINKER) $(LFLAGS) $@.o mod_enKF.o analysis.o $(ENSOBJ) $(HTOBJS) \ 
+	-o $@
 
 #--------------------
 #--------------------
 EXES = enKF_analysis 
 
-links:
-	ln -s ../fem3d/basin.h
-	ln -s ../fem3d/conz.h
-	ln -s ../fem3d/geom_dynamic.h
-	ln -s ../fem3d/hydro.h
-	ln -s ../fem3d/hydro_vel.h
-	ln -s ../fem3d/nlevel.h
-	ln -s ../fem3d/param.h
-	ln -s ../fem3d/ts.h
+default:
+	all
 
 all:
 	make $(EXES)
@@ -60,16 +51,13 @@ cleanall:
 
 #---------------------
 # Compilation rules
-.SUFFIXES: .F90 .f90 .for
+.SUFFIXES: .F90 .f90
+
 .f.o:
 	$(F77) -c $(FFLAGS) $<
-.for.obj:
-	$(FLC) $< , $(<,B).OBJ $(FLFLAGS)
-.f90.o:
-	$(F95) -c $(FFLAGS) $< 
-.F90.o:
-	$(F95) -c $(FFLAGS) $<
-.c.o:
-	$(CC) -c $(CFLAGS) $<
 
-%.o : %.mod
+.f90.o:
+	$(F77) -c $(FFLAGS) $< 
+
+.F90.o:
+	$(F77) -c $(FFLAGS) $<

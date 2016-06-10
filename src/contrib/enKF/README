@@ -1,21 +1,33 @@
-To run it:
-- Have an initial simulation
+#################
+Files:
+enKF.sh : Script to run enKF
+enKF_analysis : Fortran executable called from enKF.sh
 
-- Prepare the file asspar.txt with:
-assdir     ! working dir
-nrens            ! nr ens member
-tt_anf           ! initial time
-tt_end           ! final time
-tt_eanf          ! time first ens creation
-tt_eend          ! last time with ensemble
-tt_oanf          ! time first observation
-tt_oend          ! time last observation
+#################
+HOW TO:
 
-- Prepare a list of obs files, in bin/ named 
-	obs_list.txt
-  with the following lines:
-  obs_type  obs_file
-  
+In order to run the EnKf you need:
+
+- N restart files containing N sea background states;
+
+- a set of observations (e.g., sea level, current, temperature, salinity);
+
+- To compile a configuration file "analysis.info".
+
+
+###
+analysis.info
+
+  read(20,*) sdate      ! date at time 0
+  read(20,*) stime      ! time at time 0
+  read(20,*) tobs       ! time in sec from time 0
+  read(20,*) nens       ! number of ens members
+  read(20,*) basfile    ! name of bas file (no extension)
+  read(20,*) rstfile    ! name of restart files. No extension, just basename,
+                        ! then the file must finish with "_enDDD.rst" with DDD 
+                        ! three digits denoting the n of ens member.
+  read(20,*) obsfile    ! name of obs file
+
 
 - run ./run_enKF.sh
 
@@ -27,8 +39,11 @@ time2 value2
 ...
 
 
+Notes:
+analysis_ev.F90 is a modification of the original analysis.F90 in the Evensen_s_code/
+folder.
 
-*************************************************
-The code files taken from Evenseen's code have the label "_ev".
-The original files can be found in the folder Evensen_s_code/
-*************************************************
+
+###
+see dir ~/marcob/enKF/nador_sim for test-case
+###
