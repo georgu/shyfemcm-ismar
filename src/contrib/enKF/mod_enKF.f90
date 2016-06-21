@@ -16,10 +16,12 @@
 
   real, save, allocatable :: A(:,:)		! Matrix holding the states
   real, save, allocatable :: Am(:)		! Array with the mean state
+  real, save, allocatable :: Am2d(:,:)		! Like Am with one dummy dim for the save routines
 
   real, save, allocatable :: D(:,:)		! matrix holding perturbed measurments
   real, save, allocatable :: E(:,:)		! matrix holding perturbations (mode=?3)
 
+  real, save, allocatable :: R(:,:)		! Obs error cov matrix
   real, save, allocatable :: S(:,:)		! matrix holding HA`
   real, save, allocatable :: innov(:)		! innovation vector holding d-H*mean(A)
 
@@ -90,16 +92,58 @@
     stop 'rst_read: ne out of range'
   end if
 
-  open(24,file=rstfile//'_'//nel//'.rst',status='old',form='unformatted',iostat='io')
+  open(24,file=rstfile//'_'//nel//'.rst',status='old',form='unformatted',iostat=io)
 
   if( io.ne.0 ) stop 'rst_read: Error opening file'
 
   call dts_to_abs_time(sdate, stime, atime)
-  call rst_read_restart_file(atime + tobs, iunit, ierr)
+  call rst_read_restart_file(atime + tobs, 24, ierr)
 
   close(24)
 
   end subroutine rst_read
+
+!********************************************************
+
+  subroutine rst_write(ne)
+
+  implicit none
+
+  integer, intent(in) :: ne	! number of ens member
+
+  character(len=3) :: nel
+  character(len=2) :: stype	! state type: bk (background), an (analysis)
+  integer io
+  integer it
+
+  stype = 'an'
+  if( (ne.ge.0).and.(ne.lt.10) ) then
+    write(nel,*) '00',ne
+  elseif( (ne.ge.10).and.(ne.lt.100) ) then
+    write(nel,*) '0',ne
+  elseif( (ne.ge.100).and.(ne.lt.1000) ) then
+    write(nel,*) ne
+  elseif( ne.eq.-1 ) then
+    write(*,*) 'Writing average background state...'
+    nel='avr'
+    stype='bk'
+  elseif( ne.eq.-2 ) then
+    write(*,*) 'Writing average background state...'
+    nel='avr'
+  else
+    stop 'rst_write: ne out of range'
+  end if
+
+  open(34,file=rstfile//'_'//nel//'_'//stype//'.rst',form='unformatted',iostat=io)
+
+  if( io.ne.0 ) stop 'rst_read: Error opening file'
+
+  it = nint(tobs)
+  call rst_write_record(it,34)
+
+  close(34)
+
+  end subroutine rst_write
 
 !********************************************************
 
@@ -136,7 +180,7 @@
   sdim = dimbr + dimcon
   if( ibarcl_rst.gt.0 ) sdim = sdim + dimbc
 
-  if(.not.(allocated(A))) allocate(A(sdim,nens))
+  if( .not. allocated(A) ) allocate(A(sdim,nens))
  
   ! Fill with znv
   call pushA(1,nkn,sdim,nens,ne,znv,kend,A)
@@ -167,6 +211,98 @@
   end if
 
   end subroutine push_state
+
+!********************************************************
+
+  subroutine pull_state(ne)
+
+  use basin
+
+  use mod_conz
+  use mod_geom_dynamic
+  use mod_ts
+  use mod_hydro_vel
+  use mod_hydro
+  use levels, only : nlvdi,nlv
+  use mod_restart
+
+  implicit none
+  integer ne
+
+  integer kinit,kend
+  integer nl
+
+  call pullA(1,nkn,sdim,nens,ne,znv,kend,A)
+  do nl = 1,nlv
+     kinit = kend + 1
+     call pullA(kinit,nel,sdim,nens,ne,utlnv(nl,:),kend,A)
+     kinit = kend + 1
+     call pullA(kinit,nel,sdim,nens,ne,vtlnv(nl,:),kend,A)
+  end do
+
+  ! Fill with temperature and salinity
+  if( ibarcl_rst.gt.0 ) then
+    do nl = 1,nlv
+       kinit = kend + 1
+       call pullA(kinit,nkn,sdim,nens,ne,saltv(nl,:),kend,A)
+       kinit = kend + 1
+       call pullA(kinit,nkn,sdim,nens,ne,tempv(nl,:),kend,A)
+    end do
+  end if
+ 
+  !if( iconz.eq. 1 ) TODO
+
+  if( kend.ne.sdim ) then
+    write(*,*) 'Wrong dimensions: ',kend,sdim
+    stop 'pull_state: Error'
+  end if
+
+  end subroutine pull_state
+
+!********************************************************
+
+  subroutine pull_av_state
+  use basin
+
+  use mod_conz
+  use mod_geom_dynamic
+  use mod_ts
+  use mod_hydro_vel
+  use mod_hydro
+  use levels, only : nlvdi,nlv
+  use mod_restart
+  implicit none
+  integer nl
+  integer kinit,kend
+
+  if( .not. allocated(Am2d)) allocate(Am2d(sdim,1))
+
+  call pullA(1,nkn,sdim,1,1,znv,kend,Am2d)
+  do nl = 1,nlv
+     kinit = kend + 1
+     call pullA(kinit,nel,sdim,1,1,utlnv(nl,:),kend,Am2d)
+     kinit = kend + 1
+     call pullA(kinit,nel,sdim,1,1,vtlnv(nl,:),kend,Am2d)
+  end do
+
+  ! Fill with temperature and salinity
+  if( ibarcl_rst.gt.0 ) then
+    do nl = 1,nlv
+       kinit = kend + 1
+       call pullA(kinit,nkn,sdim,1,1,saltv(nl,:),kend,Am2d)
+       kinit = kend + 1
+       call pullA(kinit,nkn,sdim,1,1,tempv(nl,:),kend,Am2d)
+    end do
+  end if
+ 
+  !if( iconz.eq. 1 ) TODO
+
+  if( kend.ne.sdim ) then
+    write(*,*) 'Wrong dimensions: ',kend,sdim
+    stop 'pull_state: Error'
+  end if
+
+  end subroutine pull_av_state
 
 !********************************************************
 
@@ -203,7 +339,6 @@
   v = A(kinit:kend,ne)
 
   end subroutine pullA
-
 
 !********************************************************
 
@@ -254,7 +389,6 @@
 
   subroutine make_D_E
 
-  use m_random2
   implicit none
   real rand_v(nens)
   integer n
@@ -275,12 +409,33 @@
 
 !********************************************************
 
+  subroutine random2(work1,n)
+! Returns a vector of random values N(variance=1,mean=0)
+! From Evensen's code 
+   implicit none
+   integer, intent(in) :: n
+   real,   intent(out) :: work1(n)
+   real,   allocatable :: work2(:)
+   real, parameter :: pi=3.14159253589
+
+   allocate (work2(n))
+
+   call random_number(work1)
+   call random_number(work2)
+   work1= sqrt(-2.0*log(work1))*cos(2.0*pi*work2)
+
+   deallocate(work2)
+
+  end subroutine random2
+
+!********************************************************
+
   subroutine make_S_innov
 
   use regular
   implicit none
 
-  integer iel
+  integer iel, ikn
   integer n
 
   allocate (S(nobs,nens),innov(nobs))
@@ -305,89 +460,27 @@
 
   subroutine find_node(x,y,ie,ik)
   use shyfile
+  use basin
   implicit none
 
-  real x,y
-  integer ie,ik
-  real k,d(3)
+  real, intent(in) :: x,y
+  integer, intent(in) :: ie
+  integer, intent(out) :: ik
+  
+  integer i,ikmin
+  real d,dmin
 
+  dmin=10e10
   do i = 1,3
-     k = nen3v(i,iel)
-     d(i) = ( x - xgv(k) )**2 + ( y - ygv(k) )**2
+     ik = nen3v(i,ie)
+     d = ( x - xgv(ik) )**2 + ( y - ygv(ik) )**2
+     if( d.le.dmin ) then
+       dmin = d
+       ikmin = ik
+     end if
   end do
-
-  i = minloc(d)
-  ik = nen3v(i,iel)
+  ik = ikmin
 
   end subroutine find_node
-
-!********************************************************
-
-  subroutine pull_state(ne)
-
-  use basin
-
-  use mod_conz
-  use mod_geom_dynamic
-  use mod_ts
-  use mod_hydro_vel
-  use mod_hydro
-  use levels, only : nlvdi,nlv
-  use mod_restart
-
-  implicit none
-  integer ne
-
-  integer kinit,kend
-  integer nl
-
-  call pullA(1,nkn,sdim,nens,ne,znv,kend,A)
-  do nl = 1,nlv
-     kinit = kend + 1
-     call pullA(kinit,nel,sdim,nens,ne,utlnv(nl,:),kend,A)
-     kinit = kend + 1
-     call pullA(kinit,nel,sdim,nens,ne,vtlnv(nl,:),kend,A)
-  end do
-
-  ! Fill with temperature and salinity
-  if( ibarcl_rst.gt.0 ) then
-    do nl = 1,nlv
-       kinit = kend + 1
-       call pullA(kinit,nkn,sdim,nens,ne,saltv(nl,:),kend,A)
-       kinit = kend + 1
-       call pushA(kinit,nkn,sdim,nens,ne,tempv(nl,:),kend,A)
-    end do
-  end if
- 
-  !if( iconz.eq. 1 ) TODO
-
-  if( kend.ne.sdim ) then
-    write(*,*) 'Wrong dimensions: ',kend,sdim
-    stop 'pull_state: Error'
-  end if
-
-  end subroutine pull_state
-
-!********************************************************
-
-  subroutine rst_write(ne)
-
-  use basin
-
-  use mod_conz
-  use mod_geom_dynamic
-  use mod_ts
-  use mod_hydro_vel
-  use mod_hydro
-  use levels, only : nlvdi,nlv
-  use mod_restart
-
-  implicit none
-  integer ne
-
-  TODO
-
-
-  end subroutine rst_write
 
   end module mod_enKF

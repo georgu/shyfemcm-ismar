@@ -8,42 +8,14 @@ HOW TO:
 
 In order to run the EnKf you need:
 
-- N restart files containing N sea background states;
+- Write a conf file with four rows:
+	- nr of ens members;
+	- name of the str-file of the base simulation;
+	- basename of the rst-files;
+	- name of a file with a observation list.
+- Have n rst-file at the time of the first observation
+- Make a str file, like those used to make the rst-files, from that time
+- Make the obs list file with, in each row: time(sec) filename
+- Make the obs-files listed in the list
 
-- a set of observations (e.g., sea level, current, temperature, salinity);
-
-- To compile a configuration file "analysis.info".
-
-
-###
-analysis.info
-
-  read(20,*) sdate      ! date at time 0
-  read(20,*) stime      ! time at time 0
-  read(20,*) tobs       ! time in sec from time 0
-  read(20,*) nens       ! number of ens members
-  read(20,*) basfile    ! name of bas file (no extension)
-  read(20,*) rstfile    ! name of restart files. No extension, just basename,
-                        ! then the file must finish with "_enDDD.rst" with DDD 
-                        ! three digits denoting the n of ens member.
-  read(20,*) obsfile    ! name of obs file
-
-
-- run ./run_enKF.sh
-
-
-Format timeseries:
-n_rows x y z st_dev_measurements
-time1 value1
-time2 value2
-...
-
-
-Notes:
-analysis_ev.F90 is a modification of the original analysis.F90 in the Evensen_s_code/
-folder.
-
-
-###
-see dir ~/marcob/enKF/nador_sim for test-case
-###
+- run ./enKF.sh

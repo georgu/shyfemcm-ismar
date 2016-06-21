@@ -33,16 +33,18 @@
 !----------------------------------------------------
 ! Load the ensemble state A
 !----------------------------------------------------
-! TODO: the init state should contain all the variables of the restart file
   do ne = 1,nens
      call rst_read(ne)
      call push_state(ne)
   end do
 
 !----------------------------------------------------
-! Makes the mean of A
+! Makes the mean of A ans saves a restart file with it
+! before the analysis
 !----------------------------------------------------
   call average_mat(A,Am,sdim,nens)
+  call pull_av_state
+  call rst_write(-1)	! -1 to write with average backgr label
 
 !----------------------------------------------------
 ! Read observations and store in D
@@ -66,7 +68,8 @@
 !--------------------------------
 ! Call the analysis routine
 !--------------------------------
-  call analysis(A,R,E,S,D,innov,ndim,nens,nobs,verbose,truncation,mode,update_randrot)
+! See the file analysis.F90 for an explanation
+  call analysis(A,R,E,S,D,innov,sdim,nens,nobs,.true.,0.99,23,.true.)
   write(*,*) 'Analysis done'
 
 !--------------------------------
@@ -77,5 +80,14 @@
      call pull_state(ne)
      call rst_write(ne)
   end do
+
+!--------------------------------
+! Save the average state
+!--------------------------------
+! Warning! The variables not used in the analysis are the last stored,
+! i.e., of the last ens state. This must be corrected.
+  call average_mat(A,Am,sdim,nens)
+  call pull_av_state
+  call rst_write(-2)	! -2 to write with average analysis label
 
   end program enKF_analysis
