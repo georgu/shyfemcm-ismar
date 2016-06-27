@@ -125,7 +125,7 @@ Read_obs_list()
     obsfile[$nrows]=$(echo $line | cut -d " " -f 2)
     Check_file $obsfile[$nrows]
     nrows=$((nrows + 1))
-  done
+  done < $obslist
   nran=$nrows
 }
 
