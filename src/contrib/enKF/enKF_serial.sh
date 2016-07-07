@@ -27,14 +27,11 @@ SCRIPTPATH=$(dirname $SCRIPT)
 FEMDIR=$SCRIPTPATH/..	# fem directory
 SIMDIR=$(pwd)		# current dir
 
-cores=4			# n of available cores
-
-
 #----------------------------------------------------------
 
 Usage()
 {
-  echo "Usage: enKF.sh [conf-file]"
+  echo "Usage: enKF_serial.sh [conf-file]"
   exit 0
 }
 
@@ -180,7 +177,7 @@ cat $iskelname | sed -e "s/NAMESIM/$inamesim/g" |  sed -e "s/ITRST/$iitrst/g" | 
 Make_sim()
 {
   basen=$(basename $1 .str)
-  $2/shyfem $1 > $basen.log 
+  $FEMDIR/fem3d/shyfem $1 > $basen.log 
 }
 
 #----------------------------------------------------------
@@ -226,23 +223,6 @@ Check_file $filename
 }
 
 #----------------------------------------------------------
-
-Make_ens_str(){
-strfiles=""
-for (( ne = 0; ne < $nrens; ne++ )); do
-
-   nel=$(printf "%03d" $ne); nal=$(printf "%03d" $na)
-   naa=$((na + 1)); naal=$(printf "%03d" $naa)
-   name_sim="an${naal}_en${nel}b"; itrst=${timeo[$na]}; itanf=${timeo[$na]}
-   itend=${timeo[$naa]}; idtout=300; wdrag=0.0025; nomp=1
-   rstfile="an${nal}_en${nel}a.rst"; strnew="${name_sim}.str"
-   SkelStr $name_sim $itrst $itanf $itend $idtout $wdrag $nomp $rstfile $bas_file $skel_file $strnew
-   strfiles="$strfiles $strnew"
-done
-}
-
-
-#----------------------------------------------------------
 #----------------------------------------------------------
 #----------------------------------------------------------
 
@@ -268,15 +248,20 @@ for (( na = 1; na <= $nran; na++ )); do
 
    if [ $na != $nran ]; then # not the last one
 
-      # Makes nrens str files for the simulations
-      Make_ens_str
+    # run nrens sims before the obs
+    echo; echo "       Running $nrens ensemble runs..."
+    for (( ne = 0; ne < $nrens; ne++ )); do
 
-      # run nrens sims before the obs
-      echo; echo "       Running $nrens ensemble runs..."
-      export -f Make_sim
-      #parallel --no-notice -j $cores Make_sim ::: $strfiles ::: $FEMDIR/fem3d
-      parallel --no-notice -P 0 Make_sim ::: $strfiles ::: $FEMDIR/fem3d
-      echo "       Done"; echo
+      nel=$(printf "%03d" $ne); nal=$(printf "%03d" $na)
+      naa=$((na + 1)); naal=$(printf "%03d" $naa)
+      name_sim="an${naal}_en${nel}b"; itrst=${timeo[$na]}; itanf=${timeo[$na]}
+      itend=${timeo[$naa]}; idtout=300; wdrag=0.0025; nomp=1
+      rstfile="an${nal}_en${nel}a.rst"; strnew="${name_sim}.str"
+      SkelStr $name_sim $itrst $itanf $itend $idtout $wdrag $nomp $rstfile $bas_file $skel_file $strnew
+      Make_sim $strnew
+
+    done
+    echo "       Done"; echo
 
    fi
 

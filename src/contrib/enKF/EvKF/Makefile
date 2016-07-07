@@ -2,8 +2,6 @@
 # Include shyfem rules and redefines moddir
 include ../../Rules.make
 MODDIR = .
-FGNU_GENERAL = -J$(MODDIR)
-FFLAGS        = $(LFLAGS) $(FGNU_NOOPT) $(FGNU_WARNING) $(FGNU_GENERAL)
 
 OBJS = m_mean_preserving_rotation.o analysis.o
 

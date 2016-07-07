@@ -1,21 +1,39 @@
 #################
 Files:
-enKF.sh : Script to run enKF
-enKF_analysis : Fortran executable called from enKF.sh
+enKF.sh : Script to run enKF in parallel mode.
+enKF_serial.sh : Script to run enKF in serial mode (Not parallel!).
+enKF_analysis : Fortran executable called from enKF.sh. Do not execute it
+alone.
 
 #################
 HOW TO:
 
-In order to run the EnKf you need:
+# Runs the Ensemble Kalman Filter analysis with enKF.sh. It needs a configuration file with 
+# these inputs:
+# - name of the bas file with extension;
+# - skel-file for the str; 
+# - name of the list of the restart files. This determines the n of ens
+# members;
+# - name of the list of the observation files, containing rows like: time
+# obs_file.
+#
+# You must prepare the restart files to be read at the initial time
+# and the observation files, one at each time.
+#
+# Observations (see read_obs):
+# The file of observations must be written in ascii format, separated by
+# spaces.
+# format:
+# n_of_rows
+# time obs_type(5 chars) x y z value stand_dev
+# time obs_type(5 chars) x y z value stand_dev
+# ...
+#
 
-- Write a conf file with four rows:
-	- nr of ens members;
-	- name of the str-file of the base simulation;
-	- basename of the rst-files;
-	- name of a file with a observation list.
-- Have n rst-file at the time of the first observation
-- Make a str file, like those used to make the rst-files, from that time
-- Make the obs list file with, in each row: time(sec) filename
-- Make the obs-files listed in the list
-
-- run ./enKF.sh
+#################
+# NOTES
+In order to run the enKF.sh script you need a small GNU program, named "parallel".
+Installation with Debian from root:
+apt-get update && apt-get install parallel
+Installation with Ubuntu:
+sudo apt-get update && apt-get install parallel

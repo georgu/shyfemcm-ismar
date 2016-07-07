@@ -22,15 +22,15 @@ ENSOBJ = analysis.o m_randrot.o m_multa.o mod_anafunc.o m_mean_preserving_rotati
 
 #--------------------
 make_EvKF:
-	cd $(ENKDIR); make; mv -f *.o ..; mv -f *.mod ../$(MODDIR)
+	cd $(ENKDIR); make; cd -; mv -f $(ENKDIR)/*.o .
 
-enKF_analysis: make_EvKF
-	make enKF_analysis.o mod_enKF.o $(ENSOBJ) $(HTOBJS)
-	$(LINKER) $(LFLAGS) -llapack -lblas $@.o mod_enKF.o $(ENSOBJ) $(HTOBJS) -o $@
+enkf_analysis: make_EvKF
+	make enkf_analysis.o subenkf.o $(ENSOBJ) $(HTOBJS)
+	$(LINKER) $(LFLAGS) -llapack -lblas $@.o subenkf.o $(ENSOBJ) $(HTOBJS) -o $@
 
 #--------------------
 #--------------------
-EXES = enKF_analysis 
+EXES = enkf_analysis 
 
 all:
 	make $(EXES)
@@ -46,11 +46,12 @@ clean:
 	rm -fr $(EXES) *.o *.mod tags
 
 cleanall:
-	rm -fr $(EXES) *.o *.mod tags *.dat *.uf fort.*; cd $(ENKDIR); rm -fr *.o *.mod 
+	rm -fr $(EXES) *.o *.mod tags *.dat *.uf fort.*; cd $(ENKDIR); rm -fr *.o *.mod; rm -f *.bak
 
 
 #---------------------
 # Compilation rules
+
 .SUFFIXES: .f90 .f
 
 .f.o:
@@ -61,3 +62,22 @@ cleanall:
 
 
 # DO NOT DELETE THIS LINE -- make depend depends on it.
+
+../femlib/mod/subenkf.mod: subenkf.o
+enkf_analysis.o: ../femlib/mod/basin.mod ../femlib/mod/levels.mod \
+		../femlib/mod/mod_conz.mod \
+		../femlib/mod/subenkf.mod \
+		../femlib/mod/mod_geom_dynamic.mod \
+		../femlib/mod/mod_hydro.mod \
+		../femlib/mod/mod_hydro_vel.mod \
+		../femlib/mod/mod_restart.mod \
+		../femlib/mod/mod_ts.mod 
+subenkf.o: ../femlib/mod/basin.mod ../femlib/mod/levels.mod \
+		../femlib/mod/mod_conz.mod \
+		../femlib/mod/mod_geom_dynamic.mod \
+		../femlib/mod/mod_hydro.mod \
+		../femlib/mod/mod_hydro_vel.mod \
+		../femlib/mod/mod_restart.mod \
+		../femlib/mod/mod_ts.mod ../femlib/mod/regular.mod \
+		../femlib/mod/shyfile.mod 
+

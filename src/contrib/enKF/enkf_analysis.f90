@@ -3,17 +3,6 @@
 !------------------------------------------------------------------------------
   program enKF_analysis
 
-  use basin
-
-! to store the restart vars
-  use mod_conz
-  use mod_geom_dynamic
-  use mod_ts
-  use mod_hydro_vel
-  use mod_hydro
-  use levels, only : nlvdi,nlv
-  use mod_restart
-
   use mod_enKF
 
   implicit none
@@ -28,14 +17,15 @@
 !----------------------------------------------------
 ! Read basin
 !----------------------------------------------------
-  call read_basin
+  call read_basin(basfile)
 
 !----------------------------------------------------
 ! Load the ensemble state A
 !----------------------------------------------------
-  do ne = 1,nens
-     call rst_read(ne)
-     call push_state(ne)
+  write(*,*) 'Reading the restart files with the background states...'
+  do ne = 0,nens-1
+     call rst_read(ne,na,tobs)
+     call push_state(ne+1)	!matrix columns start from 1
   end do
 
 !----------------------------------------------------
@@ -44,7 +34,7 @@
 !----------------------------------------------------
   call average_mat(A,Am,sdim,nens)
   call pull_av_state
-  call rst_write(-1)	! -1 to write with average backgr label
+  call rst_write(-1,na,tobs)	! -1 to write with average backgr label
 
 !----------------------------------------------------
 ! Read observations and store in D
@@ -75,10 +65,11 @@
 !--------------------------------
 ! Save the output in different restart files
 !--------------------------------
-  do ne = 1,nens
-     call rst_read(ne)
-     call pull_state(ne)
-     call rst_write(ne)
+  write(*,*) 'Writing the restart files with the analysis states...'
+  do ne = 0,nens-1
+     call rst_read(ne,na,tobs)
+     call pull_state(ne+1)
+     call rst_write(ne,na,tobs)
   end do
 
 !--------------------------------
@@ -88,6 +79,6 @@
 ! i.e., of the last ens state. This must be corrected.
   call average_mat(A,Am,sdim,nens)
   call pull_av_state
-  call rst_write(-2)	! -2 to write with average analysis label
+  call rst_write(-2,na,tobs)	! -2 to write with average analysis label
 
   end program enKF_analysis
