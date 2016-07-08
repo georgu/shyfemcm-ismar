@@ -27,14 +27,13 @@ SCRIPTPATH=$(dirname $SCRIPT)
 FEMDIR=$SCRIPTPATH/..	# fem directory
 SIMDIR=$(pwd)		# current dir
 
-cores=4			# n of available cores
 
 
 #----------------------------------------------------------
 
 Usage()
 {
-  echo "Usage: enKF.sh [conf-file]"
+  echo "Usage: enKF.sh [n. of threads] [conf-file]"
   exit 0
 }
 
@@ -246,8 +245,9 @@ done
 #----------------------------------------------------------
 #----------------------------------------------------------
 
-if [ $1 ]; then
-   Read_conf $1
+if [ $2 ]; then
+   nthreads=$1
+   Read_conf $2
 else
    Usage
 fi
@@ -274,8 +274,8 @@ for (( na = 1; na <= $nran; na++ )); do
       # run nrens sims before the obs
       echo; echo "       Running $nrens ensemble runs..."
       export -f Make_sim
-      #parallel --no-notice -j $cores Make_sim ::: $strfiles ::: $FEMDIR/fem3d
-      parallel --no-notice -P 0 Make_sim ::: $strfiles ::: $FEMDIR/fem3d
+      #parallel --no-notice -j -k $nthreads Make_sim ::: $strfiles ::: $FEMDIR/fem3d
+      parallel --no-notice -P $nthreads Make_sim ::: $strfiles ::: $FEMDIR/fem3d
       echo "       Done"; echo
 
    fi

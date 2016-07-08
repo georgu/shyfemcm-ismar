@@ -27,6 +27,8 @@
      call rst_read(ne,na,tobs)
      call push_state(ne+1)	!matrix columns start from 1
   end do
+  write(*,*) 'Dimension of the model state: ',sdim
+  write(*,*) 'Number of ensemble members: ',nens
 
 !----------------------------------------------------
 ! Makes the mean of A ans saves a restart file with it
@@ -37,23 +39,17 @@
   call rst_write(-1,na,tobs)	! -1 to write with average backgr label
 
 !----------------------------------------------------
-! Read observations and store in D
+! Read observations and makes D, E and R
 !----------------------------------------------------
 ! Better to read D directly and to make it outside.
   call read_obs
-  call make_D_E
+  call make_D_E_R
 
 !--------------------------------
 ! Make S(nobs,nens), matrix holding HA`, and innov(nobs), innovation vector holding 
 ! d-H*mean(A) 
   call make_S_innov
 !--------------------------------
-
-!--------------------------------
-! Make R(nobs,nobs) matrix holding R (only used if mode=?1 or ?2) (no for low-rank sq root)
-!--------------------------------
-  allocate(R(nobs,nobs))
-  R = 0.02	! R seems used also in the case nobs==1
 
 !--------------------------------
 ! Call the analysis routine

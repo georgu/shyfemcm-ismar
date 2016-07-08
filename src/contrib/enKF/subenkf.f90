@@ -59,10 +59,8 @@
 
   subroutine push_state(ncol)
 
-! The state is given by znv, utlnv, vtlnv, saltv, tempv, conzv
-! I think that after the analysis step the variables: iwegv, zenv, 
-! hm3v, rhov must be updated before saving the restarts
-
+! Push a model state into the matrix A in the column ncol.
+! TODO: add wet and dry and conz.
   use basin
 
   use mod_conz
@@ -80,13 +78,12 @@
   integer dimbr,dimbc,dimcon
   integer kend,kinit
 
-  integer nl
+  integer nl,ie
 
   ! Compute dimensions
-  dimbr = nkn + ( 2 * nel ) * nlv 	! barotropic
-  dimbc = 2 * nkn * nlv			! temp and salt
+  dimbr = nkn + 2 * ( nel * nlv )	! barotropic
+  dimbc = 2 * ( nkn * nlv )		! temp and salt
   dimcon = iconz * ( nkn * nlv )	! tracers
-  
 
   sdim = dimbr + dimcon
   if( ibarcl_rst.gt.0 ) sdim = sdim + dimbc
@@ -97,6 +94,12 @@
   ! Fill with znv
   kinit = 1
   call pushA(kinit,nkn,sdim,nens,ncol,znv,kend,A)
+
+!  ! Fill with zenv
+!  do ie = 1,nel
+!     kinit = kend + 1
+!     call pushA(kinit,3,sdim,nens,ncol,zenv(:,ie),kend,A)
+!  end do
 
   ! Fill with transports
   do nl = 1,nlv
@@ -116,7 +119,8 @@
     end do
   end if
  
-  !if( iconz.eq. 1 ) TODO
+  if( iconz.ne.0 ) stop 'Concentration not still implemented.'
+  !if( iconz.ne.0 ) TODO
 
   if( kend.ne.sdim ) then
     write(*,*) 'Wrong dimensions: ',kend,sdim
@@ -128,6 +132,10 @@
 !********************************************************
 
   subroutine pull_state(ncol)
+
+! Pulls a model state stored in the column ncol of the matrix A and
+! writes it in the standard shyfem variables, ready to be written in
+! a restart file.
 
   use basin
 
@@ -143,10 +151,25 @@
   integer, intent(in) :: ncol
 
   integer kinit,kend
-  integer nl
+  integer k
+  integer nl,ie,ii
 
   kinit = 1
   call pullA(kinit,nkn,sdim,nens,ncol,znv,kend,A)
+
+  ! Compute zenv (only without dry elements) TODO
+  do ie = 1,nel
+     do ii = 1,3
+        k = nen3v(ii,ie)
+        zenv(ii,ie) = znv(k)
+     end do
+  end do
+
+!  do ie = 1,nel
+!     kinit = kend + 1
+!     call pullA(kinit,3,sdim,nens,ncol,zenv(:,ie),kend,A)
+!  end do
+
   do nl = 1,nlv
      kinit = kend + 1
      call pullA(kinit,nel,sdim,nens,ncol,utlnv(nl,:),kend,A)
@@ -186,8 +209,9 @@
   use levels, only : nlvdi,nlv
   use mod_restart
   implicit none
-  integer nl
   integer kinit,kend
+  integer k
+  integer nl,ie,ii
   integer :: ncol = 1
 
   if( .not. allocated(Am2d)) allocate(Am2d(sdim,1))
@@ -196,6 +220,20 @@
 
   kinit = 1
   call pullA(kinit,nkn,sdim,1,ncol,znv,kend,Am2d)
+
+  ! Compute zenv (only without dry elements) TODO
+  do ie = 1,nel
+     do ii = 1,3
+        k = nen3v(ii,ie)
+        zenv(ii,ie) = znv(k)
+     end do
+  end do
+
+!  do ie = 1,nel
+!     kinit = kend + 1
+!     call pullA(kinit,3,sdim,1,ncol,zenv(:,ie),kend,Am2d)
+!  end do
+
   do nl = 1,nlv
      kinit = kend + 1
      call pullA(kinit,nel,sdim,1,ncol,utlnv(nl,:),kend,Am2d)
@@ -234,7 +272,7 @@
   double precision tt
   integer n
 
-  write(*,*) 'Observation file: ',obsfile
+  write(*,*) 'Observation file: ',trim(obsfile)
 
   open(25,file = obsfile, status = 'old', form = 'formatted', iostat = ios)
   if( ios.ne.0 ) stop 'read_obs: error opening file'
@@ -256,26 +294,34 @@
 
 !********************************************************
 
-  subroutine make_D_E
+  subroutine make_D_E_R
+
+! R (only used if mode=?1 or ?2) (no for low-rank sq root)
 
   implicit none
   real rand_v(nens)
-  integer n
+  integer n,ne
 
-  allocate(D(nobs,nens),E(nobs,nens))
+  allocate(D(nobs,nens),E(nobs,nens),R(nobs,nobs))
 
+  R = 0.	!Observations are indipendent
   do n = 1,nobs
      if( trim(tyobs(n)).ne.'level' ) stop 'Observation type not still implemented.'
      ! Makes a random vector
      call random2(rand_v,nens)
-     rand_v = (stdvobs(n) * rand_v) + vobs(n)
+     do ne = 1,nens
+        rand_v(ne) = (stdvobs(n) * rand_v(ne)) + vobs(n)
+     end do
      ! TODO: add more observation types and different perturbation methods
 
      D(n,:) = rand_v
-     E(n,:) = rand_v - vobs(n)
+     !E(n,:) = rand_v - vobs(n)
+     E(n,:) = rand_v - sum(rand_v)/nens		! E must have mean 0
+
+     R(n,n) = stdvobs(n)**2
   end do
 
-  end subroutine make_D_E
+  end subroutine make_D_E_R
 
 !********************************************************
 
@@ -285,24 +331,28 @@
   implicit none
 
   integer iel, ikn
+  integer iA
   integer n
 
   allocate (S(nobs,nens),innov(nobs))
   
   do n = 1,nobs
 
-     if( trim(tyobs(n)).ne.'level' ) stop 'Observation type not still implemented.'
      ! Finds the nearest element
      call find_element(xobs(n),yobs(n),iel)
-     ! Finds the nearest node
-     call find_node(xobs(n),yobs(n),iel,ikn)
 
-     ! This is true only because levels are the first stored
-     ! TODO: modify this routine for different observation type
-     S(n,:) = A(ikn,:)
-     innov(n) = vobs(n) - Am(ikn)
+     if( trim(tyobs(n)).eq.'level' ) then
+        ! Finds the nearest node
+        call find_node(xobs(n),yobs(n),iel,ikn)
+        iA = ikn
+     else
+        stop 'Observation type not still implemented.'
+     end if
 
-     write(*,*) 'Observation: ',n,trim(tyobs(n)),vobs(n),Am(ikn),innov(n)
+     S(n,:) = A(iA,:) - Am(iA)
+     innov(n) = vobs(n) - Am(iA)
+
+     write(*,*) 'Observation: ',n,trim(tyobs(n)),vobs(n),Am(iA),innov(n)
      
   end do
 
