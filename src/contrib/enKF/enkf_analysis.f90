@@ -7,6 +7,12 @@
 
   implicit none
 
+  ! Analysis parameters
+  integer :: rmode = 23 ! mode to run the program (see analysis.F90)
+  real :: truncation = 0.995 ! truncation of the SVD eigenvalues
+  logical :: update_randrot = .true. ! False for local analysis
+  logical :: verbose = .true. ! Prints diagnostic output
+
   integer ne
 
 !----------------------------------------------------
@@ -54,8 +60,7 @@
 !--------------------------------
 ! Call the analysis routine
 !--------------------------------
-! See the file analysis.F90 for an explanation
-  call analysis(A,R,E,S,D,innov,sdim,nens,nobs,.true.,0.99,23,.true.)
+  call analysis(A,R,E,S,D,innov,sdim,nens,nobs,verbose,truncation,rmode,update_randrot)
   write(*,*) 'Analysis done'
 
 !--------------------------------

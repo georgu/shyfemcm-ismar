@@ -156,7 +156,7 @@ inamesim=$1; iitrst=$2; iitanf=$3; iitend=$4; iidtout=$5; idragco=$6
 inomp=$7; irestrt=$8; ibasin=$9; iskelname=${10}; istrname=${11}        #needs brackets!
 
 [ $iitrst = 'none' ] && iitrst="''"
-[ $irestrt = 'none' ] && irestrt="''" 
+[ $irestrt = 'none' ] && irestrt="" 
 
 if [ ! -s $iskelname ]; then
         echo "File $iskelname does not exist"

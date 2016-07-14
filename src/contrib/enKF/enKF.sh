@@ -113,7 +113,7 @@ Read_rst_list(){
 # the size of the ensemble problem (nrens)
   echo "Reading list of restart files for the initial ensemble"
   
-  rm -f an*_en*b.rst
+  rm -f an001_en*b.rst
 
   nrow=0
   while read line
@@ -158,7 +158,7 @@ inamesim=$1; iitrst=$2; iitanf=$3; iitend=$4; iidtout=$5; idragco=$6
 inomp=$7; irestrt=$8; ibasin=$9; iskelname=${10}; istrname=${11}        #needs brackets!
 
 [ $iitrst = 'none' ] && iitrst="''"
-[ $irestrt = 'none' ] && irestrt="''" 
+[ $irestrt = 'none' ] && irestrt="" 
 
 if [ ! -s $iskelname ]; then
         echo "File $iskelname does not exist"
@@ -273,9 +273,12 @@ for (( na = 1; na <= $nran; na++ )); do
 
       # run nrens sims before the obs
       echo; echo "       Running $nrens ensemble runs..."
+
+      # with nthreads=0 uses the maximum number
       export -f Make_sim
       #parallel --no-notice -j -k $nthreads Make_sim ::: $strfiles ::: $FEMDIR/fem3d
       parallel --no-notice -P $nthreads Make_sim ::: $strfiles ::: $FEMDIR/fem3d
+
       echo "       Done"; echo
 
    fi
