@@ -3,7 +3,7 @@
 # Runs the Ensemble Kalman Filter analysis. It needs a configuration file with 
 # these inputs:
 # - name of the bas file with the extension;
-# - skel-file for the str; 
+# - skel-file for the str (it is possible to give a list of nens skel-files, using a standard name "skel_list.txt");
 # - name of the list of the restart files. This determines the n of ens members;
 # - name of the list of the observation files, containing rows like: time obs_file.
 #
@@ -85,8 +85,8 @@ Read_conf()
         Check_file $bas_file
      # Name of the skel file to make the str files
      elif [ $nrows = 1 ]; then
-        skel_file=$line
-	Check_file $skel_file
+        sk_file=$line
+	Check_file $sk_file
      # List of the initial restart files
      elif [ $nrows = 2 ]; then
         rst_file_list=$line
@@ -101,6 +101,19 @@ Read_conf()
      fi
      nrows=$((nrows + 1))
   done < $1
+
+  if [ $sk_file = 'skel_list.txt' ]; then
+     many_skels=1
+     nrows=0
+     while read line
+     do
+        Check_file $line
+        skel_file[$n]=$line
+        nrows=$((nrows + 1))
+     done < $sk_file
+  else
+     many_skels=0
+  fi
 }
 
 #----------------------------------------------------------
@@ -111,7 +124,7 @@ Read_rst_list(){
 # the size of the ensemble problem (nrens)
   echo "Reading list of restart files for the initial ensemble"
   
-  rm -f an*_en*b.rst
+  rm -f an001_en*b.rst
 
   nrow=0
   while read line
@@ -177,7 +190,7 @@ cat $iskelname | sed -e "s/NAMESIM/$inamesim/g" |  sed -e "s/ITRST/$iitrst/g" | 
 Make_sim()
 {
   basen=$(basename $1 .str)
-  $FEMDIR/fem3d/shyfem $1 > $basen.log 
+  $2/shyfem $1 > $basen.log 
 }
 
 #----------------------------------------------------------
@@ -252,13 +265,21 @@ for (( na = 1; na <= $nran; na++ )); do
     echo; echo "       Running $nrens ensemble runs..."
     for (( ne = 0; ne < $nrens; ne++ )); do
 
+      # Use different skel files if a list is provided
+      if [ $many_skels = 1 ]; then
+         ens_skel_file=${skel_file[$ne]}
+      else
+         ens_skel_file=$sk_file
+      fi
+      Check_file $ens_skel_file
+
       nel=$(printf "%03d" $ne); nal=$(printf "%03d" $na)
       naa=$((na + 1)); naal=$(printf "%03d" $naa)
       name_sim="an${naal}_en${nel}b"; itrst=${timeo[$na]}; itanf=${timeo[$na]}
       itend=${timeo[$naa]}; idtout=300; wdrag=0.0025; nomp=1
       rstfile="an${nal}_en${nel}a.rst"; strnew="${name_sim}.str"
-      SkelStr $name_sim $itrst $itanf $itend $idtout $wdrag $nomp $rstfile $bas_file $skel_file $strnew
-      Make_sim $strnew
+      SkelStr $name_sim $itrst $itanf $itend $idtout $wdrag $nomp $rstfile $bas_file $ens_skel_file $strnew
+      Make_sim $strnew $FEMDIR/fem3d
 
     done
     echo "       Done"; echo

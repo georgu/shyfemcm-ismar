@@ -11,11 +11,9 @@ HOW TO:
 # Runs the Ensemble Kalman Filter analysis with enKF.sh. It needs a configuration file with 
 # these inputs:
 # - name of the bas file with extension;
-# - skel-file for the str; 
-# - name of the list of the restart files. This determines the n of ens
-# members;
-# - name of the list of the observation files, containing rows like: time
-# obs_file.
+# - skel-file for the str (it is possible to give a list of nens skel-files, using a standard name "skel_list.txt"); 
+# - name of the list of the restart files. This determines the n of ens members;
+# - name of the list of the observation files, containing rows like: time obs_file.
 #
 # You must prepare the restart files to be read at the initial time
 # and the observation files, one at each time.
