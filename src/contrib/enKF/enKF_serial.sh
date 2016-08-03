@@ -108,9 +108,10 @@ Read_conf()
      while read line
      do
         Check_file $line
-        skel_file[$n]=$line
+        skel_file[$nrows]=$line
         nrows=$((nrows + 1))
      done < $sk_file
+     echo "Using different ensemble skel-files for the ens simulations"
   else
      many_skels=0
   fi
