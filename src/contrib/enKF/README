@@ -1,37 +1,69 @@
-#################
-Files:
-enKF.sh : Script to run enKF in parallel mode.
-enKF_serial.sh : Script to run enKF in serial mode (Not parallel!).
-enKF_analysis : Fortran executable called from enKF.sh. Do not execute it
-alone.
 
-#################
-HOW TO:
+Compile the code with:
+make cleanall
+make enkf_analysis
 
-# Runs the Ensemble Kalman Filter analysis with enKF.sh. It needs a configuration file with 
-# these inputs:
-# - name of the bas file with extension;
-# - skel-file for the str (it is possible to give a list of nens skel-files, using a standard name "skel_list.txt"); 
-# - name of the list of the restart files. This determines the n of ens members;
-# - name of the list of the observation files, containing rows like: time obs_file.
-#
-# You must prepare the restart files to be read at the initial time
-# and the observation files, one at each time.
-#
-# Observations (see read_obs):
-# The file of observations must be written in ascii format, separated by
-# spaces.
-# format:
-# n_of_rows
-# time obs_type(5 chars) x y z value stand_dev
-# time obs_type(5 chars) x y z value stand_dev
-# ...
-#
+Then run enKF.sh to start the data assimilation. In order to run the Ensemble Kalman Filter you need the following files:
 
-#################
-# NOTES
-In order to run the enKF.sh script you need a small GNU program, named "parallel".
+----------
+SETTING FILE
+----------
+Must contain these lines:
+- name of the bas-file with the bas extension;
+- List of skel-files used to make the str files for the ensemble simulations. One for each ens member; 
+- List of restart files used as background initial states, saved at the time of the first observation. One for each ens member;
+- List of observation files. Every file must contain all the observations recorded in a single time. They must be in ascending order.
+
+----------
+SKEL-FILES
+----------
+It is advisable to make the skel files using the str files used to produce the initial
+background restart files. skel files must have these lines:
+- in the "title" section put:
+  Whatever title of sim
+  NAMESIM
+  BASIN
+- in the "para" section put: 
+  itrst = ITRST
+  itanf = ITANF
+  itend = ITEND
+  nomp = NOMP 
+- in the "name" section put:
+  restrt = RESTRT
+
+----------
+RESTART FILES
+----------
+They must contain just one state, saved at the time of the first observation. The
+first restart file specified in the list is considered the control forecast, the
+0 ensemble member. The list of restart files must be sorted as that of the skel files 
+A possible way to make them is to run initial simulations ending at the first observation
+time, varying the most uncertain forcings. Then save the final states in restart files
+and list them.
+
+----------
+OBSERVATION FILES
+----------
+They must have this format (see read_obs):
+n_of_rows
+time obs_type(5 chars) x y z value stand_dev
+time obs_type(5 chars) x y z value stand_dev
+...
+
+n_of_rows = number of observations contained
+time = time in seconds, coherent with that of the restart files. All the times in the file must be identical
+obs_type = specify only "level" at the moment
+x, y, z = Coordinate of the observation, in the same reference system of the bas file. For level z = 0
+value = value of the observation
+stand_dev = standard deviation (estimated error) of the observation
+
+
+-----------
+NOTES
+-----------
+In order to run the enKF.sh script you need a small GNU program, named
+"parallel" and liblapack-dev.
 Installation with Debian from root:
-apt-get update && apt-get install parallel
+apt-get update && apt-get install parallel liblapack-dev
 Installation with Ubuntu:
-sudo apt-get update && apt-get install parallel
+sudo apt-get update && apt-get install parallel liblapack-dev
