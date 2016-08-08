@@ -43,15 +43,10 @@
   read(20,*) nens	! number of ens members
   read(20,*) na		! analysis step
   read(20,*) basfile	! name of bas file (no extension)
-  read(20,*) obsfile	! name of obs file
+  read(20,*) tobs	! current time of the observations
+  read(20,*) obsfile	! name of obs file list
 
   close(20)
-
-  ! retieves just the time tobs of the observations
-  open(21, file=obsfile, status='old')
-  read(21,*) nobs
-  read(21,*) tobs
-  close(21)
 
   end subroutine read_info
 
@@ -268,27 +263,90 @@
   implicit none
 
   integer ios
+  character(len=80) :: line
+  character(len=80), allocatable :: ofile(:)
+  integer, allocatable :: nrec(:)
 
+  integer :: nmax = 10000
+  character(len=6), allocatable :: tyobs_a(:)
+  real, allocatable :: xobs_a(:), yobs_a(:), zobs_a(:)
+  real, allocatable :: vobs_a(:), stdvobs_a(:)
+  character(len=6) :: ty
+  real x, y, z, v, stdv
+
+  double precision :: eps = 300.	! 300 seconds
   double precision tt
-  integer n
+  integer n,nfile,k
 
-  write(*,*) 'Observation file: ',trim(obsfile)
+     write(*,*) 'Observation file list: ',trim(obsfile)
 
-  open(25,file = obsfile, status = 'old', form = 'formatted', iostat = ios)
-  if( ios.ne.0 ) stop 'read_obs: error opening file'
+!    Reads the obs list
+     n = 1
+     open(25,file = obsfile, status = 'old', form = 'formatted', iostat = ios)
+     if( ios.ne.0 ) stop 'read_obs: error opening file'
+ 88   read(25,*,end=98) line
+      n = n + 1
+     goto 88
+ 98  continue
+     nfile = n - 1
+     rewind(unit=25)
 
-  read(25,*) nobs
+     allocate(ofile(nfile),nrec(nfile))
 
-  allocate(tyobs(nobs), xobs(nobs), yobs(nobs), zobs(nobs), vobs(nobs), stdvobs(nobs))
+     do n = 1,nfile
+        read(25,*,err=95) ofile(n)
+     end do
+     close(25)
 
-  do n = 1,nobs
-     read(25,*) tt, tyobs(n), xobs(n), yobs(n), zobs(n), vobs(n), stdvobs(n)
-     if( tt.ne.tobs ) stop 'read_obs: error in times'
-     if( trim(tyobs(n)).ne.'level' ) stop 'Observation type not still implemented.'
-     ! TODO: add more observation types
+! Reads every file
+  allocate(tyobs_a(nmax), xobs_a(nmax), yobs_a(nmax), zobs_a(nmax),  &
+           vobs_a(nmax), stdvobs_a(nmax))
+
+  k = 0
+  do n = 1,nfile
+
+     open(26,file=ofile(n), status = 'old', form = 'formatted', iostat = ios)
+     if( ios.ne.0 ) stop 'read_obs: error opening file'
+
+ 89   read(26,*,end=99) tt, ty, x, y, z, v, stdv
+
+      ! Takes only records with times near tobs
+      if( abs(tt - tobs) .lt. eps ) then
+        if( trim(ty).ne.'level' ) stop 'Observation type not still implemented.'
+        !write(*,*) 'Observation found: ',tt,trim(ty),x,y,z,v,stdv
+        k = k + 1
+        tyobs_a(k) = ty
+        xobs_a(k) = x
+        yobs_a(k) = y
+        zobs_a(k) = z
+        vobs_a(k) = v
+        stdvobs_a(k) = stdv
+      end if
+
+     goto 89
+
+ 99  close(26)
+
   end do
+  ! total numer of records
+  nobs = k
 
-  close(25)
+
+  ! allocates the global vars and deallocate local ones
+  allocate(tyobs(nobs), xobs(nobs), yobs(nobs), zobs(nobs),  &
+           vobs(nobs), stdvobs(nobs))
+  tyobs = tyobs_a(1:nobs)
+  xobs = xobs_a(1:nobs)
+  yobs = yobs_a(1:nobs)
+  zobs = zobs_a(1:nobs)
+  vobs = vobs_a(1:nobs)
+  stdvobs = stdvobs_a(1:nobs)
+  deallocate(tyobs_a, xobs_a, yobs_a, zobs_a, vobs_a, stdvobs_a)
+
+  return
+
+ 95 write(*,*) 'read_obs error reading file: ',trim(ofile(n))
+    stop
 
   end subroutine read_obs
 

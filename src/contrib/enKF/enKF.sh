@@ -7,10 +7,11 @@
 # ----------
 # Must contain these lines:
 # - name of the bas-file with the bas extension;
-# - List of skel-files used to make the str files for the ensemble simulations. One for each ens member; 
+# - List of skel-files used to make the str files for the ensemble simulations. One for each ens member;
 # - List of restart files used as background initial states, saved at the time of the first observation. One for each ens member;
-# - List of observation files. Every file must contain all the observations recorded in a single time. They must be in ascending order.
-#
+# - List of observation files;
+# - List of observation times in seconds in the same reference as the rst files.
+# 
 # ----------
 # SKEL-FILES
 # ----------
@@ -20,42 +21,63 @@
 #   Whatever title of sim
 #   NAMESIM
 #   BASIN
-# - in the "para" section put: 
+# - in the "para" section put:
 #   itrst = ITRST
 #   itanf = ITANF
 #   itend = ITEND
-#   nomp = NOMP 
+#   nomp = NOMP
 # - in the "name" section put:
 #   restrt = RESTRT
-#
+# 
 # ----------
 # RESTART FILES
 # ----------
 # They must contain just one state, saved at the time of the first observation. The
 # first restart file specified in the list is considered the control forecast, the
-# 0 ensemble member. The list of restart files must be sorted as that of the skel files 
+# 0 ensemble member. The list of restart files must be sorted as that of the skel files
 # A possible way to make them is to run initial simulations ending at the first observation
 # time, varying the most uncertain forcings. Then save the final states in restart files
 # and list them.
-#
+# 
+# ----------
+# OBSERVATIO LIST FILE
+# ----------
+# A file with the list of the observation files
+# 
+# ----------
+# TIME LIST FILE
+# ----------
+# A file with the list of the observation times, in seconds
+# 
 # ----------
 # OBSERVATION FILES
 # ----------
-# They must have this format (see read_obs):
-# n_of_rows
+# These can be timeseries or transects/satellite tracks. Only the
+# records with times near the times in the list will be assimilated
+# (default delta t = 300 sec, see read_obs). The format is:
+# ...
 # time obs_type(5 chars) x y z value stand_dev
 # time obs_type(5 chars) x y z value stand_dev
 # ...
 # 
-# n_of_rows = number of observations contained
-# time = time in seconds, coherent with that of the restart files. All the times in the file must be identical
+# time = time in seconds
 # obs_type = specify only "level" at the moment
 # x, y, z = Coordinate of the observation, in the same reference system of the bas file. For level z = 0
 # value = value of the observation
 # stand_dev = standard deviation (estimated error) of the observation
+# 
+# -----------
+# NOTES
+# -----------
+# In order to run the enKF.sh script you need a small GNU program, named
+# "parallel" and liblapack-dev.
+# Installation with Debian from root:
+# apt-get update && apt-get install parallel liblapack-dev
+# Installation with Ubuntu:
+# sudo apt-get update && apt-get install parallel liblapack-dev
+# 
 #
-#
-
+# 
 #----------------------------------------------------------
 
 # This finds the path of the current script
@@ -139,6 +161,11 @@ Read_conf()
         obs_file_list=$line
         Check_file $obs_file_list
 
+     # List of times with observations
+     elif [ $nrows = 4 ]; then
+        obs_time_list=$line
+        Check_file $obs_time_list
+
      else
         echo "Too many rows"
         exit 1
@@ -200,28 +227,25 @@ Read_rst_list(){
   fi
 }
 
-
 #----------------------------------------------------------
 
-Read_obs_list(){
-# Reads the list of the observation files and determines
+Read_obs_time_list(){
+# Reads the list of the observation times and determines
 # the number of analysis steps (nran)
-  echo "Reading list of observation files"
-  Check_file $obs_file_list
+  echo "Read the list of observation times"
   
-  # timeo nad obsfile starts from 1 as the analysis steps
+  # timeo starts from 1 as the analysis steps
   nrow=1
   while read line
   do
-    timeo[$nrow]=$(echo $line | cut -d " " -f 1)
+    timeo[$nrow]=$line
     Check_num -100000000 100000000 'real' ${timeo[$nrow]}
-    obsfile[$nrow]=$(echo $line | cut -d " " -f 2)
-    Check_file ${obsfile[$nrow]}
     nrow=$((nrow + 1))
-  done < $obs_file_list
+  done < $obs_time_list
   nran=$((nrow - 1))
   echo ""; echo "Number of analysis steps: $nran"
 }
+
 
 #----------------------------------------------------------
 
@@ -266,7 +290,8 @@ Write_info_file(){
   echo $nrens > analysis.info		# nr of ens members
   echo $na >> analysis.info		# analysis step
   echo $bas_file >> analysis.info	# name of the basin
-  echo ${obsfile[$na]} >> analysis.info	# obs file
+  echo ${timeo[$na]} >> analysis.info	# current time
+  echo $obs_file_list >> analysis.info	# obs file list
 }
 
 #----------------------------------------------------------
@@ -339,7 +364,7 @@ Read_skel_list
 Read_rst_list
 
 # Reading obs file list
-Read_obs_list
+Read_obs_time_list
 
 # Assimilation cycle for every analysis time step
 for (( na = 1; na <= $nran; na++ )); do

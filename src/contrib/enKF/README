@@ -12,7 +12,8 @@ Must contain these lines:
 - name of the bas-file with the bas extension;
 - List of skel-files used to make the str files for the ensemble simulations. One for each ens member; 
 - List of restart files used as background initial states, saved at the time of the first observation. One for each ens member;
-- List of observation files. Every file must contain all the observations recorded in a single time. They must be in ascending order.
+- List of observation files;
+- List of observation times in seconds in the same reference as the rst files.
 
 ----------
 SKEL-FILES
@@ -42,16 +43,27 @@ time, varying the most uncertain forcings. Then save the final states in restart
 and list them.
 
 ----------
+OBSERVATIO LIST FILE
+----------
+A file with the list of the observation files
+
+----------
+TIME LIST FILE
+----------
+A file with the list of the observation times, in seconds
+
+----------
 OBSERVATION FILES
 ----------
-They must have this format (see read_obs):
-n_of_rows
+These can be timeseries or transects/satellite tracks. Only the
+records with times near the times in the list will be assimilated
+(default delta t = 300 sec, see read_obs). The format is:
+...
 time obs_type(5 chars) x y z value stand_dev
 time obs_type(5 chars) x y z value stand_dev
 ...
 
-n_of_rows = number of observations contained
-time = time in seconds, coherent with that of the restart files. All the times in the file must be identical
+time = time in seconds
 obs_type = specify only "level" at the moment
 x, y, z = Coordinate of the observation, in the same reference system of the bas file. For level z = 0
 value = value of the observation
@@ -67,3 +79,13 @@ Installation with Debian from root:
 apt-get update && apt-get install parallel liblapack-dev
 Installation with Ubuntu:
 sudo apt-get update && apt-get install parallel liblapack-dev
+
+
+-----------
+UTILITY
+-----------
+ispra2enkf_level.pl : makes an observation file in the right format starting
+from an ispra sea level file and and astronomic file in Tappy format.
+
+merge_ens_output.sh : merges the text files extractet from the ext files in
+the assimilation window. Makes the same for the shy files.
