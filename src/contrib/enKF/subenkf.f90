@@ -499,7 +499,8 @@
   open(24,file=trim(rstname),status='old',form='unformatted',iostat=io)
   if( io.ne.0 ) stop 'rst_read: Error opening file'
 
-  call rst_read_record(atime,it,24,ierr)
+ 89  call rst_read_record(atime,it,24,ierr)
+     if( it.ne.nint(tt) ) goto 89
 
   close(24)
 

@@ -1,82 +1,10 @@
 #!/bin/bash
 #
-# In order to run the Ensemble Kalman Filter you need the following files:
+# Ensemble Kalman Filter for SHYFEM. 
+# 
+# Marco Bajo, ISMAR-CNR Venice - 2016
 #
-# ----------
-# SETTING FILE
-# ----------
-# Must contain these lines:
-# - name of the bas-file with the bas extension;
-# - List of skel-files used to make the str files for the ensemble simulations. One for each ens member;
-# - List of restart files used as background initial states, saved at the time of the first observation. One for each ens member;
-# - List of observation files;
-# - List of observation times in seconds in the same reference as the rst files.
-# 
-# ----------
-# SKEL-FILES
-# ----------
-# It is advisable to make the skel files using the str files used to produce the initial
-# background restart files. skel files must have these lines:
-# - in the "title" section put:
-#   Whatever title of sim
-#   NAMESIM
-#   BASIN
-# - in the "para" section put:
-#   itrst = ITRST
-#   itanf = ITANF
-#   itend = ITEND
-#   nomp = NOMP
-# - in the "name" section put:
-#   restrt = RESTRT
-# 
-# ----------
-# RESTART FILES
-# ----------
-# They must contain just one state, saved at the time of the first observation. The
-# first restart file specified in the list is considered the control forecast, the
-# 0 ensemble member. The list of restart files must be sorted as that of the skel files
-# A possible way to make them is to run initial simulations ending at the first observation
-# time, varying the most uncertain forcings. Then save the final states in restart files
-# and list them.
-# 
-# ----------
-# OBSERVATIO LIST FILE
-# ----------
-# A file with the list of the observation files
-# 
-# ----------
-# TIME LIST FILE
-# ----------
-# A file with the list of the observation times, in seconds
-# 
-# ----------
-# OBSERVATION FILES
-# ----------
-# These can be timeseries or transects/satellite tracks. Only the
-# records with times near the times in the list will be assimilated
-# (default delta t = 300 sec, see read_obs). The format is:
-# ...
-# time obs_type(5 chars) x y z value stand_dev
-# time obs_type(5 chars) x y z value stand_dev
-# ...
-# 
-# time = time in seconds
-# obs_type = specify only "level" at the moment
-# x, y, z = Coordinate of the observation, in the same reference system of the bas file. For level z = 0
-# value = value of the observation
-# stand_dev = standard deviation (estimated error) of the observation
-# 
-# -----------
-# NOTES
-# -----------
-# In order to run the enKF.sh script you need a small GNU program, named
-# "parallel" and liblapack-dev.
-# Installation with Debian from root:
-# apt-get update && apt-get install parallel liblapack-dev
-# Installation with Ubuntu:
-# sudo apt-get update && apt-get install parallel liblapack-dev
-# 
-#
+# See the README file to set-up
 # 
 #----------------------------------------------------------
 
@@ -268,7 +196,7 @@ cat $iskelname | sed -e "s/NAMESIM/$inamesim/g" |  sed -e "s/ITRST/$iitrst/g" | 
         sed -e "s/ITANF/$iitanf/g" | sed -e "s/ITEND/$iitend/g" | \
         sed -e "s/IDTOUT/$iidtout/g" |  sed -e "s/DRAGCO/$idragco/g" | \
         sed -e "s/NOMP/$inomp/g" |  sed -e "s/RESTRT/$irestrt/g" | \
-        sed -e "s/BASIN/$ibasin/g" >  $istrname
+        sed -e "s/BASIN/$ibasin/g" | sed -e "s/IDTRST/-1/" >  $istrname
 }
 
 #----------------------------------------------------------
