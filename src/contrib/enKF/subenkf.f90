@@ -391,6 +391,7 @@
   integer iel, ikn
   integer iA
   integer n
+  double precision inn
 
   allocate (S(nobs,nens),innov(nobs))
   
@@ -408,7 +409,11 @@
      end if
 
      S(n,:) = A(iA,:) - Am(iA)
-     innov(n) = vobs(n) - Am(iA)
+     inn = vobs(n) - Am(iA)
+     
+     call check_innov_val(inn,tyobs(n))
+
+     innov(n) = inn
 
      write(*,*) 'Observation: ',n,trim(tyobs(n)),vobs(n),Am(iA),innov(n)
      
@@ -664,6 +669,25 @@
   ik = ikmin
 
   end subroutine find_node
+
+!********************************************************
+
+  subroutine check_innov_val(inn,typeo)
+  implicit none
+  double precision, intent(inout) :: inn
+  character(len=*), intent(in) :: typeo
+
+  if( trim(typeo).eq.'level' ) then
+    if ( abs(inn) .gt. 1. ) then
+       write(*,*) 'Warning: level innovation too large: ',inn
+       write(*,*) '         Setting it to zero...'
+       inn = 0.
+    end if
+  else
+    write(*,*) 'check_innov_val: warning observation not implemented'
+  end if
+
+  end subroutine check_innov_val
 
 !********************************************************
 
