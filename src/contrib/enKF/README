@@ -1,9 +1,4 @@
-
-Compile the code with:
-make cleanall
-make enkf_analysis
-
-Then run enKF.sh to start the data assimilation. In order to run the Ensemble Kalman Filter you need the following files:
+Run enKF.sh to start the data assimilation. You need the following files:
 
 ----------
 SETTING FILE
@@ -55,7 +50,7 @@ time, varying the most uncertain forcings. Then save the final states in restart
 and list them.
 
 ----------
-OBSERVATIO LIST FILE
+OBSERVATION LIST FILE
 ----------
 A file with the list of the observation files
 
@@ -83,21 +78,34 @@ stand_dev = standard deviation (estimated error) of the observation
 
 
 -----------
-NOTES
+UTILITY
 -----------
-In order to run the enKF.sh script you need a small GNU program, named
-"parallel" and liblapack-dev.
+merge_ens_output.sh:
+extracts the ets or ext files, produced during the assimilation run, and merges 
+them, creating one file for each ens member and each variable. The shy files 
+are merged but, since they have two records at the same time in the analysis 
+steps, they cannot be plotted with the current shyplot version.
+
+randomize_var.sh:
+creates n skel files from one, with a random value of a parameter. The right
+and left limits for the values must be specified.
+
+
+-----------
+INSTALLATION NOTES
+-----------
+Compile the code with:
+
+- cd enKF
+- make cleanall
+- make enkf_analysis
+
+In order to run the enKF.sh script you need a small GNU program, named "parallel" and liblapack-dev.
+
 Installation with Debian from root:
 apt-get update && apt-get install parallel liblapack-dev
+
 Installation with Ubuntu:
 sudo apt-get update && apt-get install parallel liblapack-dev
 
 
------------
-UTILITY
------------
-ispra2enkf_level.pl : makes an observation file in the right format starting
-from an ispra sea level file and and astronomic file in Tappy format.
-
-merge_ens_output.sh : merges the text files extractet from the ext files in
-the assimilation window. Makes the same for the shy files.
