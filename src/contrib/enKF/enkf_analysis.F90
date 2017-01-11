@@ -3,8 +3,10 @@
 !------------------------------------------------------------------------------
   program enKF_analysis
 
-  use mod_enKF
-
+  use mod_states
+  use mod_enkf
+  use m_read_ensemble
+  use m_write_ensemble
   implicit none
 
   ! Analysis parameters
@@ -12,8 +14,6 @@
   real :: truncation = 0.995 ! truncation of the SVD eigenvalues
   logical :: update_randrot = .true. ! False for local analysis
   logical :: verbose = .true. ! Prints diagnostic output
-
-  integer ne
 
 !----------------------------------------------------
 ! Opens info file
@@ -23,26 +23,18 @@
 !----------------------------------------------------
 ! Read basin
 !----------------------------------------------------
-  call read_basin(basfile)
+  call read_basin
 
 !----------------------------------------------------
-! Load the ensemble state A
+! Read the ensemble
 !----------------------------------------------------
-  write(*,*) 'Reading the restart files with the background states...'
-  do ne = 0,nens-1
-     call rst_read(ne,na,tobs)
-     call push_state(ne+1)	!matrix columns start from 1
-  end do
-  write(*,*) 'Dimension of the model state: ',sdim
-  write(*,*) 'Number of ensemble members: ',nens
+  call read_ensemble
 
 !----------------------------------------------------
 ! Makes the mean of A ans saves a restart file with it
 ! before the analysis
 !----------------------------------------------------
-  call average_mat(A,Am,sdim,nens)
-  call pull_av_state
-  call rst_write(-1,na,tobs)	! -1 to write with average backgr label
+  call average_mat(-1)
 
 !----------------------------------------------------
 ! Read observations and makes D, E and R
@@ -52,7 +44,7 @@
   call make_D_E_R
 
 !--------------------------------
-! Make S(nobs,nens), matrix holding HA`, and innov(nobs), innovation vector holding 
+! Make S(nobs,nrens), matrix holding HA`, and innov(nobs), innovation vector holding 
 ! d-H*mean(A) 
   call make_S_innov
 !--------------------------------
@@ -60,26 +52,18 @@
 !--------------------------------
 ! Call the analysis routine
 !--------------------------------
-  call analysis(A,R,E,S,D,innov,sdim,nens,nobs,verbose,truncation,rmode,update_randrot)
+  call analysis(A,R,E,S,D,innov,global_ndim,nrens,nobs,verbose,truncation,rmode,update_randrot)
   write(*,*) 'Analysis done'
 
 !--------------------------------
 ! Save the output in different restart files
 !--------------------------------
   write(*,*) 'Writing the restart files with the analysis states...'
-  do ne = 0,nens-1
-     call rst_read(ne,na,tobs)
-     call pull_state(ne+1)
-     call rst_write(ne,na,tobs)
-  end do
+  call write_ensemble
 
 !--------------------------------
 ! Save the average state
 !--------------------------------
-! Warning! The variables not used in the analysis are the last stored,
-! i.e., of the last ens state. This must be corrected.
-  call average_mat(A,Am,sdim,nens)
-  call pull_av_state
-  call rst_write(-2,na,tobs)	! -2 to write with average analysis label
+  call average_mat(-2)
 
   end program enKF_analysis

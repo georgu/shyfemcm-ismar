@@ -61,7 +61,7 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
       case(11,21)
          nrmin=nrobs
 !        Evaluate R= S*S` + (nrens-1)*R
-         call dgemm('n','t',nrobs,nrobs,nrens, &
+         call sgemm('n','t',nrobs,nrobs,nrens, &
                        1.0, S, nrobs, &
                             S, nrobs, &
              real(nrens-1), R, nrobs)
@@ -115,11 +115,11 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
          lreps=.true.
          allocate (Reps(ndim,nrobs))
 !        Reps=matmul(A,transpose(S))
-         call dgemm('n','t',ndim,nrobs,nrens,1.0,A,ndim,S,nrobs,0.0,Reps,ndim)
+         call sgemm('n','t',ndim,nrobs,nrens,1.0,A,ndim,S,nrobs,0.0,Reps,ndim)
       else
          if (verbose) print * ,'analysis: X5 approach is used'
 !        X5=matmul(transpose(S),X3)
-         call dgemm('t','n',nrens,nrens,nrobs,1.0,S,nrobs,X3,nrobs,0.0,X5,nrens)
+         call sgemm('t','n',nrens,nrens,nrobs,1.0,S,nrobs,X3,nrobs,0.0,X5,nrens)
          do i=1,nrens
             X5(i,i)=X5(i,i)+1.0
          enddo
@@ -152,7 +152,7 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
    print *,'      analysis: Final ensemble update:'
    if (lreps) then
 !     A=A+matmul(Reps,X3)
-      call dgemm('n','n',ndim,nrens,nrobs,1.0,Reps,ndim,X3,nrobs,1.0,A,ndim)
+      call sgemm('n','n',ndim,nrens,nrobs,1.0,Reps,ndim,X3,nrobs,1.0,A,ndim)
       call dumpX3(X3,S,nrobs,nrens)
    else
       iblkmax=min(ndim,200)

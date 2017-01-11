@@ -12,10 +12,10 @@ CF90 = ifort
 CF77 = ifort
 
 #pgg FFLAGS =  -c -r8 -byteswapio
-OPT_FFLAGS = -implicitnone -nozero -warn unused -c -O3 -real_size 64 -assume byterecl -assume nobuffered_io -convert big_endian
+OPT_FFLAGS = -implicitnone -nozero -warn unused -c -O3 -real-size 64 -assume byterecl -assume nobuffered_io -convert big_endian
 
 PAR = 
-DEBUG_FFLAGS = -fpe0 -traceback -warn unused -CB -u -g -c -real_size 64 -assume byterecl -assume nobuffered_io -convert big_endian
+DEBUG_FFLAGS = -fpe0 -traceback -warn unused -CB -u -g -c -real-size 64 -assume byterecl -assume nobuffered_io -convert big_endian
 FFLAGS =  $(DEBUG_FFLAGS)
 FFLAGS =  $(OPT_FFLAGS)
 

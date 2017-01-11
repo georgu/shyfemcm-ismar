@@ -1,9 +1,21 @@
-#--------------------
 # Include shyfem rules and redefines moddir
 include ../../Rules.make
+
 MODDIR = .
 
-OBJS = m_mean_preserving_rotation.o analysis.o
+# Switch to double precision for real
+ifeq ($(FORTRAN_COMPILER),GNU_GFORTRAN)
+  R8FL = -fdefault-real-8
+endif
+
+ifeq ($(FORTRAN_COMPILER),INTEL)
+  R8FL = -real-size 64
+endif
+override FFLAGS += $(R8FL)
+override LFLAGS += $(R8FL)
+
+
+OBJS = analysis.o
 
 # Rules
 analysis.o: analysis.F90 m_multa.o m_mean_preserving_rotation.o mod_anafunc.o m_randrot.o
@@ -15,8 +27,7 @@ default:
 clean:
 	rm -fr *.o *.mod
 
-all:
-	$(OBJS)
+all: 	$(OBJS)
 
 #---------------------
 # Compilation rules

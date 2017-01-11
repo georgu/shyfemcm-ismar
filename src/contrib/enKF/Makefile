@@ -3,9 +3,22 @@
 # Include shyfem rules
 include ../Rules.make
 
-DIRFEM    = $(FEMDIR)/fem3d
-ENKDIR    = EvKF
-MODDIR    = $(FEMDIR)/femlib/mod
+# Switch to double precision for real
+ifeq ($(FORTRAN_COMPILER),GNU_GFORTRAN)
+  R8FL = -fdefault-real-8
+endif
+
+ifeq ($(FORTRAN_COMPILER),INTEL)
+  R8FL = -real-size 64
+endif
+override FFLAGS += $(R8FL)
+override LFLAGS += $(R8FL)
+
+
+LIBDIR = ../femlib
+DIRFEM = ../fem3d
+MODDIR = $(LIBDIR)/mod
+ENKDIR = EvKF
 
 #--------------------
 # ht objects
@@ -17,30 +30,33 @@ HTOBJS = $(DIRFEM)/subrst.o $(DIRFEM)/subbas.o $(DIRFEM)/subdts.o $(DIRFEM)/mod_
 	$(DIRFEM)/subdef.o $(DIRFEM)/subnev.o $(DIRFEM)/mod_geom.o $(DIRFEM)/subscn.o
 
 #--------------------
-# Ensemble analysis modules
-ENSOBJ = analysis.o m_randrot.o m_multa.o mod_anafunc.o m_mean_preserving_rotation.o
+# Ensemble analysis objects
+ENSOBJ1 = analysis.o m_randrot.o m_multa.o mod_anafunc.o m_mean_preserving_rotation.o
+ENSOBJ2 = subenkf.o mod_enkf.o mod_dimensions.o mod_states.o \
+	  m_read_ensemble.o m_write_ensemble.o
 
 #--------------------
 make_EvKF:
-	cd $(ENKDIR); make; cd -; mv -f $(ENKDIR)/*.o .
+	cd $(ENKDIR); make clean; make; cd -; mv -f $(ENKDIR)/*.o .
 
 enkf_analysis: make_EvKF
-	make enkf_analysis.o subenkf.o $(ENSOBJ) $(HTOBJS)
-	$(LINKER) $(LFLAGS) -llapack -lblas $@.o subenkf.o $(ENSOBJ) $(HTOBJS) -o $@
+	make enkf_analysis.o $(ENSOBJ1) $(ENSOBJ2)
+	$(LINKER) $(LFLAGS) -llapack -lblas $(HTOBJS) $@.o \
+        $(ENSOBJ1) $(ENSOBJ2) -o $@
+
 
 #--------------------
 #--------------------
 EXES = enkf_analysis 
 
-all:
-	make $(EXES)
+all: 	$(EXES)
 
-default:
-	all
+default: 
+	make all
 
 # I don't know why but this is not necessary:
 depend:
-	$(FEMDIR)/fembin/mkdp.pl -moddir=$(MODDIR) *.f90
+	$(FEMDIR)/fembin/mkdp.pl -moddir=$(MODDIR) *.F90
 
 clean:
 	rm -fr $(EXES) *.o *.mod tags
@@ -52,32 +68,23 @@ cleanall:
 #---------------------
 # Compilation rules
 
-.SUFFIXES: .f90 .f
+.SUFFIXES: .f .F90
 
 .f.o:
 	$(F77) -c $(FFLAGS) $<
 
-.f90.o:
+.F90.o:
 	$(F77) -c $(FFLAGS) $< 
+
+
 
 
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
-../femlib/mod/subenkf.mod: subenkf.o
-enkf_analysis.o: ../femlib/mod/basin.mod ../femlib/mod/levels.mod \
-		../femlib/mod/mod_conz.mod \
-		../femlib/mod/subenkf.mod \
-		../femlib/mod/mod_geom_dynamic.mod \
-		../femlib/mod/mod_hydro.mod \
-		../femlib/mod/mod_hydro_vel.mod \
-		../femlib/mod/mod_restart.mod \
-		../femlib/mod/mod_ts.mod 
-subenkf.o: ../femlib/mod/basin.mod ../femlib/mod/levels.mod \
-		../femlib/mod/mod_conz.mod \
-		../femlib/mod/mod_geom_dynamic.mod \
-		../femlib/mod/mod_hydro.mod \
-		../femlib/mod/mod_hydro_vel.mod \
-		../femlib/mod/mod_restart.mod \
-		../femlib/mod/mod_ts.mod ../femlib/mod/regular.mod \
-		../femlib/mod/shyfile.mod 
+../femlib/mod/mod_enkf.mod: mod_enkf.o 
+../femlib/mod/mod_states.mod: mod_states.o 
+../femlib/mod/mod_dimensions.mod: mod_dimensions.o
 
+mod_enkf.o: ../femlib/mod/basin.mod ../femlib/mod/mod_states.mod \
+	../femlib/mod/regular.mod ../femlib/mod/shyfile.mod
+mod_states.o: ../femlib/mod/mod_dimensions.mod
