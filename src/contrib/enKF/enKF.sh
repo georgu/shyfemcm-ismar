@@ -94,6 +94,10 @@ Read_conf()
         obs_time_list=$line
         Check_file $obs_time_list
 
+     # Dimension of the state vector: nkn nel nlv
+     elif [ $nrows = 5 ]; then
+        sdim=$line
+        
      else
         echo "Too many rows"
         exit 1
@@ -105,10 +109,31 @@ Read_conf()
 
 #----------------------------------------------------------
 
+Compile_enkf(){
+
+  nkn=$1
+  nel=$2
+  nlv=$3
+
+  cd $FEMDIR/enKF
+
+  cat mod_dimensions.skel | sed -e "s/NKN/$nkn/" | sed -e "s/NEL/$nel/" | \
+	sed -e "s/NLV/$nlv/" > mod_dimensions.F90
+
+  make cleanall > $SIMDIR/make.log
+  make enkf_analysis >> $SIMDIR/make.log
+  cd $SIMDIR
+}
+
+
+#----------------------------------------------------------
+
 Check_exec(){
   echo "Check the exec programs"
-  command -v parallel > /dev/null 2>&1 || { echo "I require parallel but it's not installed.  Aborting." >&2; exit 1; }
+  command -v parallel > /dev/null 2>&1 || { echo "parallel it's not installed.  Aborting." >&2; exit 1; }
   [ ! -s $FEMDIR/fem3d/shyfem ] && echo "shyfem exec does not exist. Compile the model first." && exit 1
+  # Make here the mod_dimensions and compile enkf_analysis
+  
   [ ! -s $FEMDIR/enKF/enkf_analysis ] && echo "enkf_analysis exec does not exist. Compile the enKF first." && exit 1
 }
 
@@ -214,7 +239,6 @@ Write_info_file(){
 
   na=$1
 
-  rm -f analysis.info
   echo $nrens > analysis.info		# nr of ens members
   echo $na >> analysis.info		# analysis step
   echo $bas_file >> analysis.info	# name of the basin
@@ -281,6 +305,9 @@ if [ $2 ]; then
 else
    Usage
 fi
+
+# Compiles the enKF code with the right total dimensions
+Compile_enkf $sdim
 
 # Checking the executable programs
 Check_exec

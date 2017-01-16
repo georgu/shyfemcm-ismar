@@ -32,15 +32,15 @@ HTOBJS = $(DIRFEM)/subrst.o $(DIRFEM)/subbas.o $(DIRFEM)/subdts.o $(DIRFEM)/mod_
 #--------------------
 # Ensemble analysis objects
 ENSOBJ1 = analysis.o m_randrot.o m_multa.o mod_anafunc.o m_mean_preserving_rotation.o
-ENSOBJ2 = subenkf.o mod_enkf.o mod_dimensions.o mod_states.o \
-	  m_read_ensemble.o m_write_ensemble.o
+ENSOBJ2 = subenkf.o mod_enkf.o mod_dimensions.o mod_states.o
 
 #--------------------
 make_EvKF:
-	cd $(ENKDIR); make clean; make; cd -; mv -f $(ENKDIR)/*.o .
+	cd $(ENKDIR); make clean; make; cd -; mv -f $(ENKDIR)/*.o .; \
+	 mv -f $(ENKDIR)/*.mod $(MODDIR)
 
 enkf_analysis: make_EvKF
-	make enkf_analysis.o $(ENSOBJ1) $(ENSOBJ2)
+	make enkf_analysis.o $(ENSOBJ2)
 	$(LINKER) $(LFLAGS) -llapack -lblas $(HTOBJS) $@.o \
         $(ENSOBJ1) $(ENSOBJ2) -o $@
 
@@ -48,6 +48,9 @@ enkf_analysis: make_EvKF
 #--------------------
 #--------------------
 EXES = enkf_analysis 
+
+ENSMOD = mod_states.mod mod_enkf.mod m_multa.mod m_randrot.mod m_mean_preserving_rotation.mod \
+	mod_anafunc.mod mod_dimensions.mod
 
 all: 	$(EXES)
 
@@ -62,7 +65,8 @@ clean:
 	rm -fr $(EXES) *.o *.mod tags
 
 cleanall:
-	rm -fr $(EXES) *.o *.mod tags *.dat *.uf fort.*; cd $(ENKDIR); rm -fr *.o *.mod; rm -f *.bak
+	rm -fr $(EXES) *.o *.mod tags *.dat *.uf fort.*; cd $(ENKDIR); rm -fr *.o *.mod; rm -f *.bak; \
+	cd -; cd $(MODDIR); rm -f $(ENSMOD)
 
 
 #---------------------
@@ -81,10 +85,19 @@ cleanall:
 
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
-../femlib/mod/mod_enkf.mod: mod_enkf.o 
-../femlib/mod/mod_states.mod: mod_states.o 
+../femlib/mod/mod_enkf.mod: mod_enkf.o
+../femlib/mod/mod_states.mod: mod_states.o
 ../femlib/mod/mod_dimensions.mod: mod_dimensions.o
-
-mod_enkf.o: ../femlib/mod/basin.mod ../femlib/mod/mod_states.mod \
-	../femlib/mod/regular.mod ../femlib/mod/shyfile.mod
+enkf_analysis.o: ../femlib/mod/mod_enkf.mod \
+		../femlib/mod/mod_states.mod 
+mod_enkf.o: ../femlib/mod/basin.mod ../femlib/mod/levels.mod \
+		../femlib/mod/mod_conz.mod \
+		../femlib/mod/mod_dimensions.mod \
+		../femlib/mod/mod_geom_dynamic.mod \
+		../femlib/mod/mod_hydro.mod \
+		../femlib/mod/mod_hydro_vel.mod \
+		../femlib/mod/mod_restart.mod \
+		../femlib/mod/mod_states.mod \
+		../femlib/mod/mod_ts.mod \
+		../femlib/mod/shyfile.mod 
 mod_states.o: ../femlib/mod/mod_dimensions.mod

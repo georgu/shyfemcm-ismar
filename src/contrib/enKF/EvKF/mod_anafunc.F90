@@ -174,13 +174,15 @@ subroutine genX2(nrens,nrobs,idim,S,W,eig,X2)
    integer, intent(in) :: nrens
    integer, intent(in) :: nrobs
    integer, intent(in) :: idim ! idim=nrobs for A4 and nrmin for A5
-   real, intent(in)    :: W(idim,nrens)
+   !real, intent(in)    :: W(idim,nrens)	!bug - mbj
+   real, intent(in)    :: W(nrobs,idim)
    real, intent(in)    :: S(nrobs,nrens)
    real, intent(in)    :: eig(idim)
    real, intent(out)   :: X2(idim,nrens)
    integer i,j
 
-   call dgemm('t','n',idim,nrens,nrobs,1.0,W,nrobs, S,nrobs, 0.0,X2,idim)
+   !call dgemm('t','n',idim,nrens,nrobs,1.0,W,nrobs, S,nrobs, 0.0,X2,idim)	!bug - mbj
+   call dgemm('t','n',nrobs,nrens,idim,1.0,W,nrobs, S,nrobs, 0.0,X2,idim)
 
    do j=1,nrens
    do i=1,idim
@@ -288,10 +290,7 @@ subroutine X5sqrt(X2,nrobs,nrens,nrmin,X5,update_randrot,mode)
    print *,'      analysis (X5sqrt): update_randrot= ',update_randrot
    if (update_randrot) then
       if (allocated(ROT)) deallocate(ROT)
-print*, 'ok4',nrens
       allocate(ROT(nrens,nrens))
-print*, 'ok5'
-stop
 !!      ROT=0.0
 !!      do i=1,nrens
 !!         ROT(i,i)=1.0

@@ -10,6 +10,7 @@ Must contain these lines:
 - Name of a list-file containing the names of the restart files used as background initial states, saved at the time of the first observation. One for each ens member;
 - Name of a list-file containing the names of the observation files;
 - Name of a list-file containing the observation times in seconds in the same reference as the rst files.
+- Dimension of the model state: nkn nel nlv
 
 ----------
 SKEL-FILE LIST

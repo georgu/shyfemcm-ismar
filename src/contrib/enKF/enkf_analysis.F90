@@ -5,8 +5,6 @@
 
   use mod_states
   use mod_enkf
-  use m_read_ensemble
-  use m_write_ensemble
   implicit none
 
   ! Analysis parameters
@@ -14,6 +12,7 @@
   real :: truncation = 0.995 ! truncation of the SVD eigenvalues
   logical :: update_randrot = .true. ! False for local analysis
   logical :: verbose = .true. ! Prints diagnostic output
+  real, allocatable :: Amat(:,:)
 
 !----------------------------------------------------
 ! Opens info file
