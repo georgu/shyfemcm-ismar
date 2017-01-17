@@ -32,7 +32,7 @@ HTOBJS = $(DIRFEM)/subrst.o $(DIRFEM)/subbas.o $(DIRFEM)/subdts.o $(DIRFEM)/mod_
 #--------------------
 # Ensemble analysis objects
 ENSOBJ1 = analysis.o m_randrot.o m_multa.o mod_anafunc.o m_mean_preserving_rotation.o
-ENSOBJ2 = subenkf.o mod_enkf.o mod_dimensions.o mod_states.o
+ENSOBJ2 = subenkf.o mod_enkf.o mod_dimensions.o mod_states.o mod_observations.o
 
 #--------------------
 make_EvKF:
@@ -88,6 +88,7 @@ cleanall:
 ../femlib/mod/mod_enkf.mod: mod_enkf.o
 ../femlib/mod/mod_states.mod: mod_states.o
 ../femlib/mod/mod_dimensions.mod: mod_dimensions.o
+../femlib/mod/mod_observations.mod: mod_observations.o
 enkf_analysis.o: ../femlib/mod/mod_enkf.mod \
 		../femlib/mod/mod_states.mod 
 mod_enkf.o: ../femlib/mod/basin.mod ../femlib/mod/levels.mod \
@@ -98,6 +99,7 @@ mod_enkf.o: ../femlib/mod/basin.mod ../femlib/mod/levels.mod \
 		../femlib/mod/mod_hydro_vel.mod \
 		../femlib/mod/mod_restart.mod \
 		../femlib/mod/mod_states.mod \
+		../femlib/mod/mod_observations.mod \
 		../femlib/mod/mod_ts.mod \
 		../femlib/mod/shyfile.mod 
 mod_states.o: ../femlib/mod/mod_dimensions.mod

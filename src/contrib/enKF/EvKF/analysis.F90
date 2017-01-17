@@ -41,8 +41,6 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
    real, allocatable :: X3(:,:)
    real, allocatable :: Reps(:,:)
 
-
-
    lreps=.FALSE.
    if (verbose) print * ,'analysis: verbose is on'
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -168,4 +166,5 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
    if (allocated(eig))   deallocate(eig)
    if (allocated(W))     deallocate(W)
    if (allocated(Reps))  deallocate(Reps)
+
 end subroutine

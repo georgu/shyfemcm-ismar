@@ -1,6 +1,7 @@
   module mod_enkf
 
   use mod_states
+  use mod_observations
 
   implicit none
 
@@ -10,10 +11,8 @@
 
   ! Observations
   double precision, save :: tobs
-  integer, save :: nobs
-  character(len=6), save, allocatable :: tyobs(:)
-  real, save, allocatable :: xobs(:), yobs(:), zobs(:)
-  real, save, allocatable :: vobs(:), stdvobs(:)	!Values and standard deviations
+  integer, save :: nobs_lev,nobs_tot
+  type(obs_level), allocatable, save :: olev(:)
 
   type(states), allocatable, save  :: A(:) 		! ens states
   type(states), save  :: Am		! mean state
@@ -80,16 +79,11 @@
   character(len=80), allocatable :: ofile(:)
   integer, allocatable :: nrec(:)
 
-  integer :: nmax = 10000
-  character(len=6), allocatable :: tyobs_a(:)
-  real, allocatable :: xobs_a(:), yobs_a(:), zobs_a(:)
-  real, allocatable :: vobs_a(:), stdvobs_a(:)
-  character(len=6) :: ty
-  real x, y, z, v, stdv
-
   double precision :: eps = 300.	! 300 seconds
   double precision tt
-  integer n,nfile,k
+  character(len=6) :: ty
+  real x, y, z, v, stdv
+  integer n,nfile,klev
 
      write(*,*) 'Observation file list: ',trim(obsfile)
 
@@ -111,51 +105,67 @@
      end do
      close(25)
 
-! Reads every file
-  allocate(tyobs_a(nmax), xobs_a(nmax), yobs_a(nmax), zobs_a(nmax),  &
-           vobs_a(nmax), stdvobs_a(nmax))
-
-  k = 0
+!-------------------------------
+! Reads every file one time to find the number and the type of each obs
+!-------------------------------
+  klev = 0
   do n = 1,nfile
 
      open(26,file=ofile(n), status = 'old', form = 'formatted', iostat = ios)
      if( ios.ne.0 ) stop 'read_obs: error opening file'
 
- 89   read(26,*,end=99) tt, ty, x, y, z, v, stdv
+ 89  read(26,*,end=99) tt, ty
 
-      ! Takes only records with times near tobs
-      if( abs(tt - tobs) .lt. eps ) then
-        if( trim(ty).ne.'level' ) stop 'Observation type not still implemented.'
-        !write(*,*) 'Observation found: ',tt,trim(ty),x,y,z,v,stdv
-        k = k + 1
-        tyobs_a(k) = ty
-        xobs_a(k) = x
-        yobs_a(k) = y
-        zobs_a(k) = z
-        vobs_a(k) = v
-        stdvobs_a(k) = stdv
-      end if
+     ! Takes only records with times near tobs
+     if( abs(tt - tobs) .lt. eps ) then
+        if( trim(ty).eq.'level' ) then
+          klev = klev + 1
+        else
+          stop 'Observation type not still implemented.'
+        end if
+     end if
 
      goto 89
 
  99  close(26)
-
   end do
-  ! total numer of records
-  nobs = k
+  nobs_lev = klev
+
+  ! allocate
+  if( nobs_lev.gt.0 ) allocate(olev(nobs_lev))
+
+!-------------------------------
+! reads the second time and store
+!-------------------------------
+  klev = 0
+  do n = 1,nfile
+
+     open(26,file=ofile(n), status = 'old', form = 'formatted', iostat = ios)
+     if( ios.ne.0 ) stop 'read_obs: error opening file'
+
+ 90  read(26,*,end=100) tt, ty, x, y, z, v, stdv
+
+     ! Takes only records with times near tobs
+     if( abs(tt - tobs) .lt. eps ) then
+        if( trim(ty).eq.'level' ) then
+          klev = klev + 1
+          olev(klev)%t = tt
+          olev(klev)%x = x
+          olev(klev)%y = y
+          olev(klev)%val = v
+          olev(klev)%std = stdv
+        else
+          stop 'Observation type not still implemented.'
+        end if
+     end if
+
+     goto 90
+
+ 100  close(26)
+  end do
 
 
-  ! allocates the global vars and deallocate local ones
-  allocate(tyobs(nobs), xobs(nobs), yobs(nobs), zobs(nobs),  &
-           vobs(nobs), stdvobs(nobs))
-  tyobs = tyobs_a(1:nobs)
-  xobs = xobs_a(1:nobs)
-  yobs = yobs_a(1:nobs)
-  zobs = zobs_a(1:nobs)
-  vobs = vobs_a(1:nobs)
-  stdvobs = stdvobs_a(1:nobs)
-  deallocate(tyobs_a, xobs_a, yobs_a, zobs_a, vobs_a, stdvobs_a)
-
+  nobs_tot = nobs_lev
   return
 
  95 write(*,*) 'read_obs error reading file: ',trim(ofile(n))
@@ -193,23 +203,21 @@
   real rand_v(nrens)
   integer n,ne
 
-  allocate(D(nobs,nrens),E(nobs,nrens),R(nobs,nobs))
+  allocate(D(nobs_tot,nrens),E(nobs_tot,nrens),R(nobs_tot,nobs_tot))
 
   R = 0.	!Observations are indipendent
-  do n = 1,nobs
-     if( trim(tyobs(n)).ne.'level' ) stop 'Observation type not still implemented.'
+  do n = 1,nobs_lev
      ! Makes a random vector
      call random2(rand_v,nrens)
      do ne = 1,nrens
-        rand_v(ne) = (stdvobs(n) * rand_v(ne)) + vobs(n)
+        rand_v(ne) = ( olev(n)%std * rand_v(ne) ) + olev(n)%val
      end do
-     ! TODO: add more observation types and different perturbation methods
 
      D(n,:) = rand_v
      !E(n,:) = rand_v - vobs(n)
      E(n,:) = rand_v - sum(rand_v)/nrens		! E must have mean 0
 
-     R(n,n) = stdvobs(n)**2
+     R(n,n) = olev(n)%std**2
   end do
 
   end subroutine make_D_E_R
@@ -227,41 +235,34 @@
   double precision sk
   integer ne, i
 
-  allocate (S(nobs,nrens),innov(nobs))
+  allocate (S(nobs_tot,nrens),innov(nobs_tot))
   
-  do n = 1,nobs
+  if( nobs_lev.gt.0 ) then
+    do n = 1,nobs_lev
 
-     ! Finds the nearest element
-     x4 = xobs(n)
-     y4 = yobs(n)
-     call find_element(x4,y4,iel)
+       ! Finds the nearest element
+       x4 = olev(n)%x
+       y4 = olev(n)%y
+       call find_element(x4,y4,iel)
 
-     if( trim(tyobs(n)).eq.'level' ) then
- 
-       do ne = 1,nrens
-        sk = 0.
-        do i = 1,3
-           sk = sk + ( A(ne)%ze(i,iel) - Am%ze(i,iel) )
-        end do
-        S(n,ne) = sk/3.
-       end do
+         do ne = 1,nrens
+          sk = 0.
+          do i = 1,3
+             sk = sk + ( A(ne)%ze(i,iel) - Am%ze(i,iel) )
+          end do
+          S(n,ne) = sk/3.
+         end do
 
-       av_mod = sum(Am%ze(:,iel))/3.
-       inn = vobs(n) - av_mod
+         av_mod = sum(Am%ze(:,iel))/3.
+         inn = olev(n)%val - av_mod
      
-       call check_innov_val(inn,tyobs(n))
+         call check_innov_val(inn,'level')
 
-       innov(n) = inn
+         innov(n) = inn
+         write(*,*) 'Observation: ',n,olev(n)%val,av_mod,inn
 
-     else
-
-        stop 'Observation type not still implemented.'
-
-     end if
-
-     write(*,*) 'Observation: ',n,trim(tyobs(n)),vobs(n),av_mod,innov(n)
-     
-  end do
+    end do
+  end if
 
   end subroutine make_S_innov
 

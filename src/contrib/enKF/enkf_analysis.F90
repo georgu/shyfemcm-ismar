@@ -43,7 +43,7 @@
   call make_D_E_R
 
 !--------------------------------
-! Make S(nobs,nrens), matrix holding HA`, and innov(nobs), innovation vector holding 
+! Make S(nobs_tot,nrens), matrix holding HA`, and innov(nobs_tot), innovation vector holding 
 ! d-H*mean(A) 
   call make_S_innov
 !--------------------------------
@@ -51,7 +51,7 @@
 !--------------------------------
 ! Call the analysis routine
 !--------------------------------
-  call analysis(A,R,E,S,D,innov,global_ndim,nrens,nobs,verbose,truncation,rmode,update_randrot)
+  call analysis(A,R,E,S,D,innov,global_ndim,nrens,nobs_tot,verbose,truncation,rmode,update_randrot)
   write(*,*) 'Analysis done'
 
 !--------------------------------
