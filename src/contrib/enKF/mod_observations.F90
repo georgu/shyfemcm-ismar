@@ -1,11 +1,10 @@
 module mod_observations
 ! sea level obs (not correlated)
-   type obs_level
-      double precision t          ! Time
-      real x                      ! x coord
-      real y                      ! y coord
-      real val                    ! value
-      real std                ! std value
-   end type obs_level
-
+   type levels
+      double precision, allocatable :: t(:)          ! time
+      real, allocatable :: x(:)                      ! x coord
+      real, allocatable :: y(:)                      ! y coord
+      real, allocatable :: val(:)                    ! value
+      real, allocatable :: std(:)                    ! std value
+   end type levels
 end module mod_observations

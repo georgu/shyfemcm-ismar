@@ -12,7 +12,7 @@
   ! Observations
   double precision, save :: tobs
   integer, save :: nobs_lev,nobs_tot
-  type(obs_level), allocatable, save :: olev(:)
+  type(levels), save :: olev
 
   type(states), allocatable, save  :: A(:) 		! ens states
   type(states), save  :: Am		! mean state
@@ -132,7 +132,13 @@
   nobs_lev = klev
 
   ! allocate
-  if( nobs_lev.gt.0 ) allocate(olev(nobs_lev))
+  if( nobs_lev.gt.0 ) then
+      allocate(olev%t(nobs_lev))
+      allocate(olev%x(nobs_lev))
+      allocate(olev%y(nobs_lev))
+      allocate(olev%val(nobs_lev))
+      allocate(olev%std(nobs_lev))
+  end if
 
 !-------------------------------
 ! reads the second time and store
@@ -149,11 +155,12 @@
      if( abs(tt - tobs) .lt. eps ) then
         if( trim(ty).eq.'level' ) then
           klev = klev + 1
-          olev(klev)%t = tt
-          olev(klev)%x = x
-          olev(klev)%y = y
-          olev(klev)%val = v
-          olev(klev)%std = stdv
+
+          olev%t(klev) = tt
+          olev%x(klev) = x
+          olev%y(klev) = y
+          olev%val(klev) = v
+          olev%std(klev) = stdv
         else
           stop 'Observation type not still implemented.'
         end if
@@ -163,7 +170,6 @@
 
  100  close(26)
   end do
-
 
   nobs_tot = nobs_lev
   return
@@ -207,17 +213,15 @@
 
   R = 0.	!Observations are indipendent
   do n = 1,nobs_lev
+
      ! Makes a random vector
      call random2(rand_v,nrens)
-     do ne = 1,nrens
-        rand_v(ne) = ( olev(n)%std * rand_v(ne) ) + olev(n)%val
-     end do
+     rand_v = rand_v - (sum(rand_v)/nrens)
 
-     D(n,:) = rand_v
-     !E(n,:) = rand_v - vobs(n)
-     E(n,:) = rand_v - sum(rand_v)/nrens		! E must have mean 0
+     E(n,:) = olev%std(n) * rand_v(:)
+     D(n,:) = E(n,:) + olev%val(n)
 
-     R(n,n) = olev(n)%std**2
+     R(n,n) = olev%std(n)**2
   end do
 
   end subroutine make_D_E_R
@@ -241,8 +245,8 @@
     do n = 1,nobs_lev
 
        ! Finds the nearest element
-       x4 = olev(n)%x
-       y4 = olev(n)%y
+       x4 = olev%x(n)
+       y4 = olev%y(n)
        call find_element(x4,y4,iel)
 
          do ne = 1,nrens
@@ -254,12 +258,12 @@
          end do
 
          av_mod = sum(Am%ze(:,iel))/3.
-         inn = olev(n)%val - av_mod
+         inn = olev%val(n) - av_mod
      
          call check_innov_val(inn,'level')
 
          innov(n) = inn
-         write(*,*) 'Observation: ',n,olev(n)%val,av_mod,inn
+         write(*,*) 'Observation: ',n,olev%val(n),av_mod,inn
 
     end do
   end if
