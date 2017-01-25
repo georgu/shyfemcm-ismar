@@ -39,7 +39,6 @@
 ! Read observations and makes D, E and R
 !----------------------------------------------------
 ! Better to read D directly and to make it outside.
-  call read_obs
   call make_D_E_R
 
 !--------------------------------
@@ -51,7 +50,23 @@
 !--------------------------------
 ! Call the analysis routine
 !--------------------------------
-  call analysis(A,R,E,S,D,innov,global_ndim,nrens,nobs_tot,verbose,truncation,rmode,update_randrot)
+  ! Decide if use an augmented state with the model error
+  if( is_mod_err.eq.0 ) then
+
+    call analysis(A,R,E,S,D,innov,global_ndim,nrens,nobs_tot,verbose,truncation,rmode,update_randrot)
+
+  else if( is_mod_err.eq.1 ) then
+
+    call make_aug(A,Aaug)	!TODO
+    call analysis(Aaug,R,E,S,D,innov,2*global_ndim,nrens,nobs_tot,verbose,truncation,rmode,update_randrot)
+    call save_mod_err(Aaug,na)  !TODO
+
+  else
+
+    stop 'enkf_analysis: invalid option for is_mod_err'
+
+  end if
+
   write(*,*) 'Analysis done'
 
 !--------------------------------

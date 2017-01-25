@@ -98,7 +98,18 @@ Read_conf()
      elif [ $nrows = 5 ]; then
         sdim=$line
         
+     # If 1 makes a new ens of initial states from 1
+     elif [ $nrows = 6 ]; then
+        is_new_ens=$line
+        Check_num 0 1 'int' $is_new_ens
+
+     # If 1 uses an augmented state with the model errors
+     elif [ $nrows = 7 ]; then
+        is_mod_err=$line
+        Check_num 0 1 'int' $is_mod_err
+
      else
+
         echo "Too many rows"
         exit 1
 
@@ -244,6 +255,8 @@ Write_info_file(){
   echo $bas_file >> analysis.info	# name of the basin
   echo ${timeo[$na]} >> analysis.info	# current time
   echo $obs_file_list >> analysis.info	# obs file list
+  echo $is_new_ens >> analysis.info	# if to make a new ens of states
+  echo $is_mod_err >> analysis.info	# if to use an augmented state with mod err
 }
 
 #----------------------------------------------------------

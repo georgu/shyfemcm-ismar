@@ -6,6 +6,7 @@
   implicit none
 
   character (len=80), save :: basfile, obsfile, rstfile
+  integer, save :: is_new_ens, is_mod_err
 
   integer, save :: nrens, na
 
@@ -45,7 +46,11 @@
   read(20,*) basfile	! name of bas file (no extension)
   read(20,*) tobs	! current time of the observations
   read(20,*) obsfile	! name of obs file list
+  read(20,*) is_new_ens	! 1 to create a new initial ens of states
+  read(20,*) is_mod_err	! 1 to use an augmented state with mod err
   
+  if( mod(nrens,2).eq.0 ) stop 'read_info: n of ens members must be odd, with the control as first.'
+
   ! Allocates the type A to store the ens states
   allocate(A(nrens))
 
@@ -183,18 +188,36 @@
 
   subroutine average_mat(rstw)
 
+  use mod_hydro
+  use mod_ts
   implicit none
   integer ne
   integer rstw
+  character(len=16) :: rstname
+  character(len=3) :: nal
 
+  type(states4) :: A4
+
+  ! makes the average
   Am = 0.
   do ne = 1,nrens
     Am = Am + A(ne)
   end do
   Am = states_real_mult(Am,1./nrens)
 
-  if(rstw == -1) call rst_write(-1,na,tobs)
-  if(rstw == -2) call rst_write(-2,na,tobs)
+  ! writes in a file
+  A4 = Am
+  call pull_state(A4)
+  call num2str(na,nal)
+  if( rstw.eq.-1 ) then
+        write(*,*) 'Writing average background state...'
+        rstname = 'an'//nal//'_enavrb.rst'
+        call rst_write(rstname,tobs)
+  elseif( rstw.eq.-2 ) then
+        write(*,*) 'Writing average analysis state...'
+        rstname = 'an'//nal//'_enavra.rst'
+        call rst_write(rstname,tobs)
+  end if
 
   end subroutine average_mat
 
@@ -210,6 +233,8 @@
   integer n,ne
 
   allocate(D(nobs_tot,nrens),E(nobs_tot,nrens),R(nobs_tot,nobs_tot))
+
+  call read_obs
 
   R = 0.	!Observations are indipendent
   do n = 1,nobs_lev
@@ -263,7 +288,7 @@
          call check_innov_val(inn,'level')
 
          innov(n) = inn
-         write(*,*) 'Observation: ',n,olev%val(n),av_mod,inn
+         write(*,'(a,i5,3f8.4)') ' nobs, vobs, vmod, innov: ',n,olev%val(n),av_mod,inn
 
     end do
   end if
@@ -272,218 +297,118 @@
 
 !********************************************************
 
-  subroutine find_node(x,y,ie,ik)
-  use shyfile
-  use basin
-  implicit none
-
-  real, intent(in) :: x,y
-  integer, intent(in) :: ie
-  integer, intent(out) :: ik
-  
-  integer i,ikmin
-  real d,dmin
-
-  dmin=10e10
-  do i = 1,3
-     ik = nen3v(i,ie)
-     d = ( x - xgv(ik) )**2 + ( y - ygv(ik) )**2
-     if( d.le.dmin ) then
-       dmin = d
-       ikmin = ik
-     end if
-  end do
-  ik = ikmin
-
-  end subroutine find_node
-
-
-!********************************************************
-! read write routines
-!********************************************************
-
   subroutine read_ensemble
 
-   use basin
-   use mod_restart
-   use mod_geom_dynamic
-   use levels, only : nlvdi,nlv
-   use mod_hydro
-   use mod_hydro_vel
-   use mod_ts
-   use mod_conz
    implicit none
 
    integer ne
 
    type(states4) :: A4
+   type(states) :: Ap(nrens-1)
 
-   nlv = nnlv
+   character(len=3) :: nrel,nal
+   character(len=16) rstname
 
-   ! reads ens
-   do ne = 1,nrens
-      call rst_read(ne,na,tobs)
-      A4%u = utlnv
-      A4%v = vtlnv
-      !A4%z = znv
-      A4%ze = zenv
-      if( ibarcl_rst.le.0 ) then
-        tempv = 0.
-        saltv = 0.
-      end if 
-      A4%t = tempv
-      A4%s = saltv
-      A(ne)=A4
-   end do
+   call num2str(na,nal)
+
+   ! reads the ensemble or makes a new one
+   if( (is_new_ens.eq.0).or.(na.ne.0) ) then
+
+     do ne = 1,nrens
+        call num2str(ne-1,nrel)
+        rstname='an'//nal//'_'//'en'//nrel//'b.rst'
+        call rst_read(nnkn,nnel,nnlv,rstname,tobs)
+        call push_state(A4)
+        A(ne)=A4
+     end do
+
+   else if( (is_new_ens.eq.1).and.(na.eq.0) ) then
+
+     ! reads just the control member
+     call num2str(0,nrel)
+     rstname='an'//nal//'_'//'en'//nrel//'b.rst'
+     call push_state(A4)
+     A(1)=A4
+
+     ! makes the perturbed members
+     call make_pert(Ap,nrens-1) !TODO
+     do ne = 2,nrens
+        A(ne) = A(1) + Ap(ne-1)
+     end do
+     
+   else
+
+       write(*,*) 'Not a valid option for is_new_ens'
+       stop
+
+   end if
 
    return
   end subroutine read_ensemble
 
-!********************************************************
-
-  subroutine rst_read(ne,nan,tt)
-
-  use mod_dimensions
-
-  use basin
-  use mod_restart
-  use mod_geom_dynamic
-  use levels, only : nlvdi,nlv
-  use mod_hydro
-  use mod_hydro_vel
-  use mod_ts
-  use mod_conz
-  implicit none
-
-  integer, intent(in) :: ne, nan
-  real, intent(in) :: tt
-
-  character(len=3) :: nrel,nal
-  integer io
-  integer it,nvers,nrec,iflag,ierr
-  real atime
-  integer date,time
-  character(len=16) rstname
-
-  integer, save :: nkn0,nel0,nlv0
-  integer, save :: icall = 0
-
-
-  call num2str(ne-1,nrel)
-  call num2str(nan,nal)
-
-  rstname='an'//nal//'_'//'en'//nrel//'b.rst'
-
-!---- first call
-  if( icall.eq.0 ) then
-
-    ! checks dimensions and time
-    open(25,file=rstname,status='old',form='unformatted',iostat=io)
-    if( io.ne.0 ) stop 'rst_read: Error opening file'
-    call rst_skip_record(25,atime,it,nvers,nrec,nkn0,nel0,nlv0,iflag,ierr)
-    close(25)
-
-    if( ( nkn0.ne.nkn ).or.( nel0.ne.nel ) ) stop "rst_read: dim bas error"
-    if( ( nkn0.ne.nnkn ).or.( nel0.ne.nnel ).or.( nlv0.ne.nnlv ) ) stop "rst_read: dim ens error"
-
-    ! init shyfem variables
-    call mod_geom_dynamic_init(nkn0,nel0)
-    call mod_hydro_init(nkn0,nel0,nlv0)
-    call mod_hydro_vel_init(nkn0,nel0,nlv0)
-    call mod_ts_init(nkn0,nlv0)  
-    if( iconz_rst.gt.0 ) call mod_conz_init(iconz_rst,nkn0,nlv0)
-
-    icall = icall + 1
-
-  end if
-!---- end first call
-
-  open(24,file=trim(rstname),status='old',form='unformatted',iostat=io)
-  if( io.ne.0 ) stop 'rst_read: Error opening file'
-
- 89  call rst_read_record(atime,it,24,ierr)
-     if( it.ne.nint(tt) ) goto 89
-
-  close(24)
-
-  if( it.ne.nint(tt) ) stop 'Error in rst file time'
-
-  end subroutine rst_read
 
 !********************************************************
 
-   subroutine write_ensemble
-   use mod_hydro
-   use mod_ts
+  subroutine write_ensemble
    implicit none
 
    integer ne
 
    type(states4) A4
 
+   character(len=3) :: nrel,nal
+   character(len=16) rstname
+
+   call num2str(na,nal)
    do ne = 1,nrens
-      call rst_read(ne,na,tobs) !This is to load var not present in the ens state. To be removed
+      call num2str(ne-1,nrel)
+      rstname='an'//nal//'_'//'en'//nrel//'b.rst'
+      call rst_read(nnkn,nnel,nnlv,rstname,tobs) !This is to load var not present 
+                                                 ! in the ens state. It must be removed.
       A4 = A(ne)
-      utlnv = A4%u
-      vtlnv = A4%v
-      !znv = A4%z
-      zenv = A4%ze
-      tempv = A4%t
-      saltv = A4%s
-      call rst_write(ne,na,tobs)
+      call pull_state(A4)
+      rstname='an'//nal//'_'//'en'//nrel//'a.rst'
+      call rst_write(rstname,tobs)
    end do
   end subroutine write_ensemble
 
+!********************************************************
+
+   subroutine push_state(AA)
+    use mod_hydro
+    use mod_hydro_vel
+    use mod_ts
+    use mod_conz
+    implicit none
+ 
+    type(states4) :: AA
+
+    AA%u = utlnv
+    AA%v = vtlnv
+    AA%ze = zenv
+    AA%t = tempv
+    AA%s = saltv
+   
+   end subroutine push_state
 
 !********************************************************
 
-  subroutine rst_write(ne,nan,tt)
+   subroutine pull_state(AA)
+    use mod_hydro
+    use mod_hydro_vel
+    use mod_ts
+    use mod_conz
+    implicit none
+ 
+    type(states4) :: AA
 
-  use mod_restart
+    utlnv = AA%u
+    vtlnv = AA%v
+    zenv = AA%ze
+    tempv = AA%t
+    saltv = AA%s
+   
+   end subroutine pull_state
 
-  implicit none
-
-  integer, intent(in) :: ne, nan
-  double precision, intent(in) :: tt
-
-  character(len=3) :: nrel,nal
-  character(len=1) :: stype
-  integer it
-  character(len=16) rstname
-  double precision ddate,dtime
-
-  stype = 'a'
-
-  if( ne.eq.-1 ) then
-    write(*,*) 'Writing average background state...'
-    nrel='avr'
-    stype='b'
-  elseif( ne.eq.-2 ) then
-    write(*,*) 'Writing average analysis state...'
-    nrel='avr'
-  else
-    call num2str(ne-1,nrel)
-  end if
-
-  call num2str(nan,nal)
-
-  rstname = 'an'//nal//'_'//'en'//nrel//stype//'.rst'
-
-  ! adds parameters
-  call addpar('ibarcl',float(ibarcl_rst))
-  call addpar('iconz',float(iconz_rst))
-  call addpar('ibfm',0.)
-  ddate = date_rst
-  dtime = time_rst
-  call daddpar('date',ddate)
-  call daddpar('time',dtime)
-
-  open(34,file=rstname,form='unformatted')
-  it = nint(tt)
-  call rst_write_record(it,34)
-  close(34)
-
-  end subroutine rst_write
 
   end module mod_enKF
-
