@@ -17,49 +17,30 @@
   double precision, intent(in) :: tt
 
   integer io
-  integer it,nvers,nrec,iflag,ierr
+  integer it,ierr
   double precision atime
-  integer date,time
 
-  integer, save :: nkn0,nel0,nlv0
-  integer, save :: icall = 0
-
-!---- first call
-  if( icall.eq.0 ) then
-
-    ! checks dimensions and time
-    open(25,file=rstname,status='old',form='unformatted',iostat=io)
-    if( io.ne.0 ) stop 'rst_read: Error opening file'
-    call rst_skip_record(25,atime,it,nvers,nrec,nkn0,nel0,nlv0,iflag,ierr)
-    close(25)
-
-    if( ( nkn0.ne.nkn ).or.( nel0.ne.nel ) ) stop "rst_read: dim bas error"
-    if( ( nkn0.ne.nnkn ).or.( nel0.ne.nnel ).or.( nlv0.ne.nnlv ) ) stop "rst_read: dim ens error"
-
-    ! setting the value of nlv
-    nlv = nlv0
-
-    ! init shyfem variables
-    call mod_geom_dynamic_init(nkn0,nel0)
-    call mod_hydro_init(nkn0,nel0,nlv0)
-    call mod_hydro_vel_init(nkn0,nel0,nlv0)
-    call mod_ts_init(nkn0,nlv0)  
-    if( iconz_rst.gt.0 ) call mod_conz_init(iconz_rst,nkn0,nlv0)
-
-    icall = icall + 1
-
-  end if
-!---- end first call
+  nlv = nnlv
+ 
+  ! init shyfem variables
+  call mod_geom_dynamic_init(nnkn,nnel)
+  call mod_hydro_init(nnkn,nnel,nnlv)
+  call mod_hydro_vel_init(nnkn,nnel,nnlv)
+  call mod_ts_init(nnkn,nnlv)  
+  !call mod_conz_init(iconz_rst,nnkn,nnlv)
 
   open(24,file=trim(rstname),status='old',form='unformatted',iostat=io)
   if( io.ne.0 ) stop 'rst_read: Error opening file'
 
  89  call rst_read_record(atime,it,24,ierr)
+     if( ierr.ne.0 ) goto 90
      if( it.ne.nint(tt) ) goto 89
 
   close(24)
 
-  if( it.ne.nint(tt) ) stop 'Error in rst file time'
+  return
+
+ 90 stop 'Error in the restart file'
 
   end subroutine rst_read
 
@@ -122,27 +103,6 @@
 
 !********************************************************
 
-  subroutine random2(work1,n)
-! Returns a vector of random values N(variance=1,mean=0)
-! From Evensen's code 
-   implicit none
-   integer, intent(in) :: n
-   real,   intent(out) :: work1(n)
-   real,   allocatable :: work2(:)
-   real, parameter :: pi=3.14159253589
-
-   allocate (work2(n))
-
-   call random_number(work1)
-   call random_number(work2)
-   work1= sqrt(-2.0*log(work1))*cos(2.0*pi*work2)
-
-   deallocate(work2)
-
-  end subroutine random2
-
-!********************************************************
-
   subroutine check_innov_val(inn,typeo)
   implicit none
   double precision, intent(inout) :: inn
@@ -181,13 +141,80 @@
 
 !********************************************************
 
-  subroutine make_pert(Ap,n)
-  use mod_dimensions
-  use mod_states
+  subroutine make_pert(vec,n,nens,fmult,theta,nx,ny)
+  use basin
+  use m_sample2D
   implicit none
 
-  integer, intent(in) :: n
-  type(states), intent(out) :: Ap(n)
+  integer, intent(in) :: n,nens
+  real, intent(out) :: vec(n,nens)
+  integer, intent(in) :: fmult	!Mult factor for the super-sampling
+  real, intent(in) :: theta	!Rotation of the random fields (theta=0 is east, rotation anticlocwise)
+  integer, intent(in) :: nx,ny	!number of grid points in x and y direction for the regular grid
 
-  
+  real x1,x2,y1,y2,x0,y0,xlength,ylength
+  real dx,dy,rx,ry
+  real*4 sdx,sdy,sx0,sy0
+  logical samp_fix,verbose
+
+  real, allocatable :: mat(:,:,:)
+  real*4, allocatable :: mat4(:,:),vec4fem(:)
+
+  integer ne
+
+  !----------------------------------------------------
+  ! Computes some geometric parameters from the grid
+  !----------------------------------------------------
+  x1 = minval(xgv)
+  x2 = maxval(xgv)
+  y1 = minval(ygv)
+  y2 = maxval(ygv)
+  x0 = floor(x1)
+  y0 = floor(y1)
+  xlength = ceiling(x2) - floor(x1)
+  ylength = ceiling(y2) - floor(y1)
+
+  dx = xlength / float(nx - 1)
+  dy = ylength / float(ny - 1)
+
+  rx = 100. * dx
+  ry = 100. * dy
+  rx = rx/sqrt(3.0) !?
+  ry = ry/sqrt(3.0)
+
+  verbose = .false.
+  samp_fix = .true.	!keep true
+
+  if( verbose ) then
+    write(*,'(a20,2f8.4,i5,f8.4)') 'x0,xlength,nx,dx: ',x0,xlength,nx,dx
+    write(*,'(a20,2f8.4,i5,f8.4)') 'y0,ylength,ny,dy: ',y0,ylength,ny,dy
+    write(*,'(a14,2f10.4,1x,f5.1)') 'rx,ry,theta: ',rx,ry,theta
+  end if
+
+  !----------------------------------------------------
+  ! creates the sample
+  !----------------------------------------------------
+  allocate(mat(nx,ny,nens))
+  call sample2D(mat,nx,ny,nens,fmult,dx,dy,rx,ry,theta,samp_fix,verbose)
+
+  !----------------------------------------------------
+  ! Interpolates over the FEM grid
+  !----------------------------------------------------
+  write(*,*) 'Interpolating 2D field over the FEM grid...'
+  sdx = dx
+  sdy = dy
+  sx0 = x0
+  sy0 = y0
+  call setgeo(sx0,sy0,sdx,sdy,-999.)
+
+  allocate(mat4(nx,ny),vec4fem(n))
+  do ne = 1,nens
+    mat4 = mat(:,:,ne)
+    call am2av(mat4,vec4fem,nx,ny)
+    vec(:,ne) = vec4fem
+  end do
+  deallocate(mat,mat4,vec4fem)
+
   end subroutine make_pert
+
+

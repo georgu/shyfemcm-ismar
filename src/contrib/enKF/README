@@ -12,7 +12,7 @@ Must contain these lines:
 - Name of a list-file containing the observation times in seconds in the same reference as the rst files.
 - Dimension of the model state: nkn nel nlv
 - 1 to create a new ens of initial states from 1 restart file (specify 1
-  restart file in the list and 1 skel-file). Otherwise 0.
+  restart file in the list and 1 skel-file). Use 0 to load nrens restart files.
 - 1 to use an augmented state with the model error. This option is advisable.
 
 ----------

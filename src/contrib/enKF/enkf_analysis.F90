@@ -36,16 +36,9 @@
   call average_mat(-1)
 
 !----------------------------------------------------
-! Read observations and makes D, E and R
+! Read observations and makes D, E and R, S and d-H*mean(A)
 !----------------------------------------------------
-! Better to read D directly and to make it outside.
-  call make_D_E_R
-
-!--------------------------------
-! Make S(nobs_tot,nrens), matrix holding HA`, and innov(nobs_tot), innovation vector holding 
-! d-H*mean(A) 
-  call make_S_innov
-!--------------------------------
+  call make_matrices
 
 !--------------------------------
 ! Call the analysis routine
@@ -57,9 +50,9 @@
 
   else if( is_mod_err.eq.1 ) then
 
-    call make_aug(A,Aaug)	!TODO
+    call push_aug
     call analysis(Aaug,R,E,S,D,innov,2*global_ndim,nrens,nobs_tot,verbose,truncation,rmode,update_randrot)
-    call save_mod_err(Aaug,na)  !TODO
+    call pull_aug
 
   else
 

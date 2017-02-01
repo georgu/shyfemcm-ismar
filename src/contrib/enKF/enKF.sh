@@ -348,7 +348,7 @@ for (( na = 1; na <= $nran; na++ )); do
       Make_ens_str
 
       # run nrens sims before the obs
-      echo; echo "       Running $nrens ensemble runs..."
+      echo; echo "       Running $nrens ensemble simulations..."
 
       # with nthreads=0 uses the maximum number
       export -f Make_sim

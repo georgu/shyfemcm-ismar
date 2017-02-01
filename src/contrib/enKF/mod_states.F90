@@ -31,16 +31,17 @@ module mod_states
 
 ! double state, with the model errors
      type dstates
-      real u(nnlv,nnel)                        ! 3-D u-velocity
       real qu(nnlv,nnel)                       ! 3-D u-velocity error
-      real v(nnlv,nnel)                        ! 3-D v-velocity
       real qv(nnlv,nnel)                       ! 3-D v-velocity error
-      real ze(3,nnel)                          ! 2-D water level at vertices
       real qze(3,nnel)                         ! 2-D water level at vertices error
-      real t(nnlv,nnkn)                        ! 3-D Temperature
       real qt(nnlv,nnkn)                       ! 3-D Temperature error
-      real s(nnlv,nnkn)                        ! 3-D Salinity 
       real qs(nnlv,nnkn)                       ! 3-D Salinity error
+
+      real u(nnlv,nnel)                        ! 3-D u-velocity
+      real v(nnlv,nnel)                        ! 3-D v-velocity
+      real ze(3,nnel)                          ! 2-D water level at vertices
+      real t(nnlv,nnkn)                        ! 3-D Temperature
+      real s(nnlv,nnkn)                        ! 3-D Salinity 
    end type dstates
  
 !-----------
@@ -184,37 +185,36 @@ contains
       A%s=real(B%s)
    end subroutine states8to4
 
-   subroutine put_dstate(A,B,dA)
+   subroutine push_dstate(A,B,C)
       implicit none
       type(states), intent(in)  :: A,B
-      type(dstates), intent(out) :: dA
-      dA%u=A%u
-      dA%qu=B%u
-      dA%v=A%v
-      dA%qv=B%v
-      dA%ze=A%ze
-      dA%qze=B%ze
-      dA%t=A%t
-      dA%qt=B%t
-      dA%s=A%s
-      dA%qs=B%s
-   end subroutine put_dstate
+      type(dstates), intent(out) :: C
+      C%qu=B%u
+      C%qv=B%v
+      C%qze=B%ze
+      C%qt=B%t
+      C%qs=B%s
+      C%u=A%u
+      C%v=A%v
+      C%ze=A%ze
+      C%t=A%t
+      C%s=A%s
+   end subroutine push_dstate
 
-   subroutine get_dstate(A,B,dA)
+   subroutine pull_dstate(A,B,C)
       implicit none
-      type(dstates), intent(in) :: dA
+      type(dstates), intent(in) :: C
       type(states), intent(out)  :: A,B
-      A%u=dA%u
-      B%u=dA%qu
-      A%v=dA%v
-      B%v=dA%qv
-      A%ze=dA%ze
-      B%ze=dA%qze
-      A%t=dA%t
-      B%t=dA%qt
-      A%s=dA%s
-      B%s=dA%qs
-   end subroutine get_dstate
+      B%u=C%qu
+      B%v=C%qv
+      B%ze=C%qze
+      B%t=C%qt
+      B%s=C%qs
+      A%u=C%u
+      A%v=C%v
+      A%ze=C%ze
+      A%t=C%t
+      A%s=C%s
+   end subroutine pull_dstate
 
 end module mod_states
-

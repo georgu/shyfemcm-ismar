@@ -15,13 +15,15 @@
   integer, save :: nobs_lev,nobs_tot
   type(levels), save :: olev
 
-  type(states), allocatable, save  :: A(:) 		! ens states
-  type(states), save  :: Am		! mean state
+  type(states), allocatable, save  :: A(:) 	! ensemble states
+  type(states), save  :: Am			! average state
+  type(states), allocatable :: qA(:)		! model error
+  type(dstates), allocatable, save  :: Aaug(:) 	! double state with model error
 
   real, save, allocatable :: D(:,:)		! matrix holding perturbed measurments
   real, save, allocatable :: E(:,:)		! matrix holding perturbations (mode=?3)
-
   real, save, allocatable :: R(:,:)		! Obs error cov matrix
+
   real, save, allocatable :: S(:,:)		! matrix holding HA`
   real, save, allocatable :: innov(:)		! innovation vector holding d-H*mean(A)
 
@@ -203,7 +205,7 @@
   do ne = 1,nrens
     Am = Am + A(ne)
   end do
-  Am = states_real_mult(Am,1./nrens)
+  Am = states_real_mult(Am,1./float(nrens))
 
   ! writes in a file
   A4 = Am
@@ -224,76 +226,65 @@
 
 !********************************************************
 
-  subroutine make_D_E_R
+  subroutine make_matrices
 
 ! R (only used if mode=?1 or ?2) (no for low-rank sq root)
 
-  implicit none
-  real rand_v(nrens)
-  integer n,ne
-
-  allocate(D(nobs_tot,nrens),E(nobs_tot,nrens),R(nobs_tot,nobs_tot))
-
-  call read_obs
-
-  R = 0.	!Observations are indipendent
-  do n = 1,nobs_lev
-
-     ! Makes a random vector
-     call random2(rand_v,nrens)
-     rand_v = rand_v - (sum(rand_v)/nrens)
-
-     E(n,:) = olev%std(n) * rand_v(:)
-     D(n,:) = E(n,:) + olev%val(n)
-
-     R(n,n) = olev%std(n)**2
-  end do
-
-  end subroutine make_D_E_R
-
-!********************************************************
-
-  subroutine make_S_innov
-
+  use m_random
   implicit none
 
   integer iel
-  integer n
-  double precision av_mod,inn
   real*4 x4,y4
-  double precision sk
+
+  real rand_v(nrens)
+  real inn,ave,var
   integer ne, i
 
+  integer n
+
+  ! Reads observations and defines nobs_tot
+  call read_obs
+
+  allocate(D(nobs_tot,nrens),E(nobs_tot,nrens),R(nobs_tot,nobs_tot))
   allocate (S(nobs_tot,nrens),innov(nobs_tot))
+
+  R(:,:) = 0.
+
+  do n = 1,nobs_tot
+
+     if( nobs_tot.ne.nobs_lev ) stop 'Other obs not implemented'
+
+     ! create ensemble of observation perturbations
+     call random(rand_v,nrens)
+     ave = sum(rand_v)/float(nrens)
+     rand_v = rand_v - ave
+     var = dot_product(rand_v,rand_v)/float(nrens-1)
+     rand_v = sqrt(1.0/var)*rand_v
+     E(n,:) = olev%std(n) * rand_v(:)
+
+     ! Finds the finite element nearest to the obs
+     x4 = olev%x(n)
+     y4 = olev%y(n)
+     call find_element(x4,y4,iel)
+
+     ! compute S matrix (HA') and the ensemble of innovations D
+     do ne = 1,nrens
+        S(n,ne) = sum( A(ne)%ze(:,iel) - Am%ze(:,iel) )/3.
+        D(n,ne) = olev%val(n) + E(n,ne) - sum(A(ne)%ze(:,iel))/3.
+     end do
+
+     ! find innovation
+     ave = sum(Am%ze(:,iel))/3.
+     inn = olev%val(n) - ave
+     call check_innov_val(inn,'level')
+     innov(n) = inn
+     write(*,'(a,i5,3f8.4)') ' nobs, vobs, vmod, innov: ',n,olev%val(n),ave,inn
   
-  if( nobs_lev.gt.0 ) then
-    do n = 1,nobs_lev
+     ! optional R
+     !R(n,n) = olev%std(n)**2
+  end do
 
-       ! Finds the nearest element
-       x4 = olev%x(n)
-       y4 = olev%y(n)
-       call find_element(x4,y4,iel)
-
-         do ne = 1,nrens
-          sk = 0.
-          do i = 1,3
-             sk = sk + ( A(ne)%ze(i,iel) - Am%ze(i,iel) )
-          end do
-          S(n,ne) = sk/3.
-         end do
-
-         av_mod = sum(Am%ze(:,iel))/3.
-         inn = olev%val(n) - av_mod
-     
-         call check_innov_val(inn,'level')
-
-         innov(n) = inn
-         write(*,'(a,i5,3f8.4)') ' nobs, vobs, vmod, innov: ',n,olev%val(n),av_mod,inn
-
-    end do
-  end if
-
-  end subroutine make_S_innov
+  end subroutine make_matrices
 
 !********************************************************
 
@@ -311,9 +302,9 @@
 
    call num2str(na,nal)
 
-   ! reads the ensemble or makes a new one
-   if( (is_new_ens.eq.0).or.(na.ne.0) ) then
+   if( (is_new_ens.eq.0).or.(na.gt.1) ) then
 
+     write(*,*) 'Loading an ensemble of initial states'
      do ne = 1,nrens
         call num2str(ne-1,nrel)
         rstname='an'//nal//'_'//'en'//nrel//'b.rst'
@@ -322,19 +313,17 @@
         A(ne)=A4
      end do
 
-   else if( (is_new_ens.eq.1).and.(na.eq.0) ) then
+   else if( (is_new_ens.eq.1).and.(na.eq.1) ) then
 
-     ! reads just the control member
+     write(*,*) '*****************************************'
+     write(*,*) 'Creating a new ensemble of initial states'
+     write(*,*) '*****************************************'
      call num2str(0,nrel)
      rstname='an'//nal//'_'//'en'//nrel//'b.rst'
+     call rst_read(nnkn,nnel,nnlv,rstname,tobs)
      call push_state(A4)
-     A(1)=A4
 
-     ! makes the perturbed members
-     call make_pert(Ap,nrens-1) !TODO
-     do ne = 2,nrens
-        A(ne) = A(1) + Ap(ne-1)
-     end do
+     call make_init_ens(A4)
      
    else
 
@@ -354,7 +343,7 @@
 
    integer ne
 
-   type(states4) A4
+   type(states4) :: A4
 
    character(len=3) :: nrel,nal
    character(len=16) rstname
@@ -411,4 +400,233 @@
    end subroutine pull_state
 
 
-  end module mod_enKF
+!********************************************************
+
+  subroutine make_init_ens(A4)
+   use basin
+   implicit none
+   type(states4),intent(in) :: A4
+
+   type(states), allocatable, save :: Apert(:)
+   type(states) :: Aaux
+   real kvec(nnkn,nrens-1),evec(nnel,nrens-1)
+
+   ! Parameters for the sample fields
+   integer nx,ny 	!grid dimension
+   integer fmult	!the start ensemble is fmult*nrens
+   real theta		!rotation of the fields (0 East, anticlockwise)
+
+   real sigmaz 	!standard deviation for water level
+
+   integer ne,n,ie,k
+
+   nx = 500
+   ny = 300
+   theta = 315 !Adriatic major axis
+   fmult = 6
+   sigmaz = 0.01
+
+   Aaux = A4
+
+   allocate(Apert(nrens-1))
+
+   ! perturbation for ze
+   call make_pert(kvec,nnkn,nrens-1,fmult,theta,nx,ny)
+
+   do ne = 1,nrens-1
+     call assign_states(Apert(ne),0.)
+
+     do ie = 1,nnel
+        do n = 1,3
+           k = nen3v(n,ie)
+           Apert(ne)%ze(n,ie) = kvec(k,ne) * sigmaz
+        end do
+     end do
+
+   end do
+
+   ! The first state is unperturbed
+   A(1) = Aaux
+   do ne = 2,nrens
+      A(ne) = add_states(Aaux,Apert(ne-1))
+   end do
+
+  end subroutine make_init_ens
+
+!********************************************************
+
+  subroutine push_aug
+   use basin
+   implicit none
+   real sigmaz		!std water level, model error
+   double precision tau	!time decorrelation (>=dt) of the old error: dq/dt = -(1/tau)*q
+   double precision dt	!time between 2 analysis steps
+   integer nst 		!= na-1	number of time steps from the begin of the assimilation
+   double precision alpha,rho
+
+   type(states) :: A1
+   real kvec(nnkn,nrens)
+
+   ! Parameters for the sample fields
+   integer nx,ny 	!grid dimension
+   integer fmult	!the start ensemble is fmult*nrens
+   real theta		!rotation of the fields (0 East, anticlockwise)
+
+   real mfact
+   integer ne,ie,n,k
+
+   write(*,*) '*********************************************'
+   write(*,*) 'Creating an augmented state with model errors'
+   write(*,*) '*********************************************'
+
+   !---------------------------------------
+   ! defines parameters for the model error
+   !---------------------------------------
+   sigmaz = 0.01
+   dt = 3600
+   tau = 6*dt
+   nst = na 
+ 
+   if( tau.lt.dt ) stop 'make_aug: parameter error'
+ 
+   alpha = 1. - (dt/tau)
+   rho=sqrt( (1.0-alpha)**2 / (dt*(float(nst) - 2.0*alpha - float(nst)*alpha**2 + 2.0*alpha**(nst+1))) )
+ 
+   !---------------------------------------
+   !makes the new white noise field
+   !---------------------------------------
+   nx = 500
+   ny = 300
+   theta = 315 !Adriatic major axis
+   fmult = 6
+   call make_pert(kvec,nnkn,nrens,fmult,theta,nx,ny)
+ 
+   allocate(qA(nrens))
+   do ne = 1,nrens
+      call assign_states(qA(ne),0.)
+ 
+      do ie = 1,nnel
+        do n = 1,3
+          k = nen3v(n,ie)
+          qA(ne)%ze(n,ie) = kvec(k,ne)
+        end do
+      end do
+
+   end do
+ 
+   !---------------------------------------
+   !if exist old error q0 load it and add to qA (q1 = alpha*q0 + sqrt(1-alpha**2)*w)
+   !---------------------------------------
+   call load_error(alpha,tobs-dt)
+ 
+   !---------------------------------------
+   !compute the new state qA = A + sqrt(dt)*sigma*rho*q1
+   !---------------------------------------
+   ! change this if you want errors not only in zeta
+   mfact = sqrt(dt) * sigmaz * rho
+   do ne = 1,nrens
+      A1 = states_real_mult(qA(ne),mfact)
+      A(ne) = A(ne) + A1
+   end do
+    
+   !---------------------------------------
+   !make the augmented state Aaug = (A,qA)
+   !---------------------------------------
+   allocate(Aaug(nrens))
+   do ne = 1,nrens
+      call push_dstate(A(ne),qA(ne),Aaug(ne))
+   end do
+   deallocate(A,qA)
+ 
+  end subroutine push_aug
+
+!********************************************************
+
+  subroutine load_error(alpha,tt)
+
+   implicit none
+   real, intent(in) :: alpha
+   double precision, intent(in) :: tt
+
+   logical :: file_exist
+   integer ne
+   character(len=3) :: nrel,nal
+   character(len=19) rstname
+   type(states4) :: A4
+   type(states) :: A1,A2
+
+   real mfact
+
+   ! Old analysis step
+   call num2str(na-1,nal)
+
+   ! Check if error files exist
+   do ne = 1,nrens
+      call num2str(ne-1,nrel)
+      rstname='an'//nal//'_'//'en'//nrel//'_err.rst'
+      inquire(file=rstname, exist=file_exist)
+      if(.not. file_exist) goto 777
+   end do
+
+   ! Add the old error to the new one
+   write(*,*) '********'
+   write(*,*) 'Loading model error from files'
+   do ne = 1,nrens
+      call num2str(ne-1,nrel)
+      rstname='an'//nal//'_'//'en'//nrel//'_err.rst'
+      call rst_read(nnkn,nnel,nnlv,rstname,tt)
+      call push_state(A4)
+
+      ! q1 = alpha*q0 + sqrt(1-alpha**2)*w
+      A1 = A4
+      A1 = states_real_mult(A1,alpha)
+
+      mfact = sqrt(1 - alpha**2)
+      A2 = states_real_mult(qA(ne),mfact)
+
+      qA(ne) = A1 + A2
+
+   end do
+
+   return
+
+ 777 continue
+
+   write(*,*) '********'
+   write(*,*) 'Model error files not found'
+
+  end subroutine load_error
+
+!********************************************************
+
+  subroutine pull_aug
+   implicit none
+
+   integer ne
+   character(len=3) :: nrel,nal
+   character(len=19) rstname
+   type(states4) :: A4
+
+   write(*,*) '********'
+   write(*,*) 'Saving model errors'
+
+   allocate(A(nrens),qA(nrens))
+   do ne = 1,nrens
+      call pull_dstate(A(ne),qA(ne),Aaug(ne))
+   end do
+   deallocate(Aaug)
+
+   call num2str(na,nal)
+
+   do ne = 1,nrens
+      A4 = qA(ne)
+      call pull_state(A4)
+
+      call num2str(ne-1,nrel)
+      rstname='an'//nal//'_'//'en'//nrel//'_err.rst'
+      call rst_write(rstname,tobs)
+   end do
+
+  end subroutine pull_aug
+
+  end module mod_enkf

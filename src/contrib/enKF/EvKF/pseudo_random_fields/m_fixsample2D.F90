@@ -5,7 +5,7 @@ subroutine fixsample2D(E,nx,ny,nrens)
    integer, intent(in)    :: nx,ny
    real   , intent(inout) :: E(nx,ny,nrens)
 
-   integer iens,i
+   integer iens,i,j
    real, allocatable :: average(:,:), variance(:,:)
    real var
 
