@@ -424,7 +424,7 @@
    ny = 300
    theta = 315 !Adriatic major axis
    fmult = 6
-   sigmaz = 0.01
+   sigmaz = 0.04
 
    Aaux = A4
 
@@ -482,7 +482,7 @@
    !---------------------------------------
    ! defines parameters for the model error
    !---------------------------------------
-   sigmaz = 0.01
+   sigmaz = 0.02
    dt = 3600
    tau = 6*dt
    nst = na 

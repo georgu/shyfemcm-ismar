@@ -15,19 +15,24 @@ override FFLAGS += $(R8FL)
 override LFLAGS += $(R8FL)
 
 
-OBJS = analysis.o
+#analysis_routine = analysis
+analysis_routine = analysis6c
+
+OBJS = $(analysis_routine).o
 
 # Rules
+analysis6c.o: analysis6c.F90 m_multa.o m_randrot.o
 analysis.o: analysis.F90 m_multa.o m_mean_preserving_rotation.o mod_anafunc.o m_randrot.o
 m_mean_preserving_rotation.o: m_mean_preserving_rotation.F90 m_randrot.o
 
-default:
-	all
+default:	all
+
+all: 	$(OBJS)
+
 
 clean:
 	rm -fr *.o *.mod
 
-all: 	$(OBJS)
 
 #---------------------
 # Compilation rules
