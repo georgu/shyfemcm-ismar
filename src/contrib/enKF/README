@@ -11,9 +11,32 @@ Must contain these lines:
 - Name of a list-file containing the names of the observation files;
 - Name of a list-file containing the observation times in seconds in the same reference as the rst files.
 - Dimension of the model state: nkn nel nlv
-- 1 to create a new ens of initial states from 1 restart file (specify 1
+- 1 to create a new ens of initial states from one restart file (specify 
   restart file in the list and 1 skel-file). Use 0 to load nrens restart files.
+  If it is set to 1 you must provide also a file named init_ens.info.
 - 1 to use an augmented state with the model error. This option is advisable.
+  If it is set to 1 you must provide also a file named mod_err.info.
+
+----------
+INIT_ENS.INFO, MOD_ERR.INFO
+----------
+The first file must contain a row with:
+  - nx ny fmult theta sigma
+The second file must contain a row with:
+  - nx ny fmult theta sigma dt tau
+
+  where:
+  - nx,ny are the dimension of the grid of the pseudo random fields
+  - fmult is the mult factor to create a supersample from the initial ensemble
+  - theta is the rotation of the pseudo random fields (0 East, anticlockwise)
+  - sigma is the standard deviation of the fields (level. Change the code to
+    set different)
+  - dt is the time between two observation steps (assumes regular intervals)
+  - tau is the e-folding time of the model error
+
+The values containted in the two files are indipendent. The first file is used
+to create the initial ensemble, the second to propagate the model error by
+using an augmented state.
 
 ----------
 SKEL-FILE LIST

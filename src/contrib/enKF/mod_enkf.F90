@@ -6,7 +6,22 @@
   implicit none
 
   character (len=80), save :: basfile, obsfile, rstfile
-  integer, save :: is_new_ens, is_mod_err
+
+  ! parameters for the initial ensemble of states
+  integer, save :: is_new_ens
+  integer nx_in,ny_in		!number of x and y grid points
+  integer fmult_in		!mult factor to determine the supersampling
+  real theta_in			!rotation of the random fields (0 East, anticlockwise)
+  real sigma_in			!standard deviation of the fields (level)
+
+  ! parameters for the computation of the model error
+  integer, save :: is_mod_err
+  integer nx_er,ny_er		!number of x and y grid points
+  integer fmult_er		!mult factor to determine the supersampling 
+  real theta_er			!rotation of the random fields (0 East, anticlockwise)
+  real sigma_er			!standard deviation of the fields (level)
+  double precision dt_er	!time between 2 analysis steps
+  double precision tau_er	!time decorrelation (>=dt) of the old error: dq/dt = -(1/tau)*q
 
   integer, save :: nrens, na
 
@@ -50,14 +65,22 @@
   read(20,*) obsfile	! name of obs file list
   read(20,*) is_new_ens	! 1 to create a new initial ens of states
   read(20,*) is_mod_err	! 1 to use an augmented state with mod err
-  
-  if( mod(nrens,2).eq.0 ) stop 'read_info: n of ens members must be odd, with the control as first.'
-
-  ! Allocates the type A to store the ens states
-  allocate(A(nrens))
 
   close(20)
 
+  if( mod(nrens,2).eq.0 ) stop 'read_info: n of ens members must be odd, with the control as first.'
+
+  if( is_new_ens.eq.1 ) then
+    open(21, file='init_ens.info', status='old')
+    read(21,*) nx_in,ny_in,fmult_in,theta_in,sigma_in	
+    close(21)
+  end if
+  if( is_mod_err.eq.1 ) then
+    open(22, file='mod_err.info', status='old')
+    read(22,*) nx_er,ny_er,fmult_er,theta_er,sigma_er,dt_er,tau_er
+    close(22)
+  end if
+  
   end subroutine read_info
 
 !********************************************************
@@ -300,6 +323,9 @@
    character(len=3) :: nrel,nal
    character(len=16) rstname
 
+   ! Allocates the state A to store the ens states
+   allocate(A(nrens))
+
    call num2str(na,nal)
 
    if( (is_new_ens.eq.0).or.(na.gt.1) ) then
@@ -411,27 +437,14 @@
    type(states) :: Aaux
    real kvec(nnkn,nrens-1),evec(nnel,nrens-1)
 
-   ! Parameters for the sample fields
-   integer nx,ny 	!grid dimension
-   integer fmult	!the start ensemble is fmult*nrens
-   real theta		!rotation of the fields (0 East, anticlockwise)
-
-   real sigmaz 	!standard deviation for water level
-
    integer ne,n,ie,k
-
-   nx = 500
-   ny = 300
-   theta = 315 !Adriatic major axis
-   fmult = 6
-   sigmaz = 0.04
 
    Aaux = A4
 
    allocate(Apert(nrens-1))
 
    ! perturbation for ze
-   call make_pert(kvec,nnkn,nrens-1,fmult,theta,nx,ny)
+   call make_pert(kvec,nnkn,nrens-1,fmult_in,theta_in,nx_in,ny_in)
 
    do ne = 1,nrens-1
      call assign_states(Apert(ne),0.)
@@ -439,7 +452,7 @@
      do ie = 1,nnel
         do n = 1,3
            k = nen3v(n,ie)
-           Apert(ne)%ze(n,ie) = kvec(k,ne) * sigmaz
+           Apert(ne)%ze(n,ie) = kvec(k,ne) * sigma_in
         end do
      end do
 
@@ -458,9 +471,6 @@
   subroutine push_aug
    use basin
    implicit none
-   real sigmaz		!std water level, model error
-   double precision tau	!time decorrelation (>=dt) of the old error: dq/dt = -(1/tau)*q
-   double precision dt	!time between 2 analysis steps
    integer nst 		!= na-1	number of time steps from the begin of the assimilation
    double precision alpha,rho
 
@@ -482,24 +492,17 @@
    !---------------------------------------
    ! defines parameters for the model error
    !---------------------------------------
-   sigmaz = 0.02
-   dt = 3600
-   tau = 6*dt
    nst = na 
  
-   if( tau.lt.dt ) stop 'make_aug: parameter error'
+   if( tau_er.lt.dt_er ) stop 'make_aug: parameter error'
  
-   alpha = 1. - (dt/tau)
-   rho=sqrt( (1.0-alpha)**2 / (dt*(float(nst) - 2.0*alpha - float(nst)*alpha**2 + 2.0*alpha**(nst+1))) )
+   alpha = 1. - (dt_er/tau_er)
+   rho=sqrt( (1.0-alpha)**2 / (dt_er*(float(nst) - 2.0*alpha - float(nst)*alpha**2 + 2.0*alpha**(nst+1))) )
  
    !---------------------------------------
    !makes the new white noise field
    !---------------------------------------
-   nx = 500
-   ny = 300
-   theta = 315 !Adriatic major axis
-   fmult = 6
-   call make_pert(kvec,nnkn,nrens,fmult,theta,nx,ny)
+   call make_pert(kvec,nnkn,nrens,fmult_er,theta_er,nx_er,ny_er)
  
    allocate(qA(nrens))
    do ne = 1,nrens
@@ -517,13 +520,13 @@
    !---------------------------------------
    !if exist old error q0 load it and add to qA (q1 = alpha*q0 + sqrt(1-alpha**2)*w)
    !---------------------------------------
-   call load_error(alpha,tobs-dt)
+   call load_error(alpha,tobs-dt_er)
  
    !---------------------------------------
    !compute the new state qA = A + sqrt(dt)*sigma*rho*q1
    !---------------------------------------
    ! change this if you want errors not only in zeta
-   mfact = sqrt(dt) * sigmaz * rho
+   mfact = sqrt(dt_er) * sigma_er * rho
    do ne = 1,nrens
       A1 = states_real_mult(qA(ne),mfact)
       A(ne) = A(ne) + A1

@@ -31,10 +31,8 @@ HTOBJS = $(DIRFEM)/subrst.o $(DIRFEM)/subbas.o $(DIRFEM)/subdts.o $(DIRFEM)/mod_
 
 #--------------------
 # Ensemble analysis objects
-#analysis_routine = analysis
-analysis_routine = analysis6c
-#ENSOBJ1 = $(analysis_routine).o m_randrot.o m_multa.o mod_anafunc.o m_mean_preserving_rotation.o
-ENSOBJ1 = $(analysis_routine).o m_randrot.o m_multa.o 
+#ENSOBJ1 = analysis.o m_randrot.o m_multa.o mod_anafunc.o m_mean_preserving_rotation.o
+ENSOBJ1 = analysis6c.o m_randrot.o m_multa.o 
 ENSOBJ2 = subenkf.o mod_enkf.o mod_dimensions.o mod_states.o mod_observations.o
 ENSOBJ3 = m_sample2D.o m_pseudo2D.o mod_fftw3.o m_newton2D.o \
 	m_newtonfunc2D.o m_fixsample2D.o m_random.o
