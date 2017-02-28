@@ -344,17 +344,29 @@
      write(*,*) '*****************************************'
      write(*,*) 'Creating a new ensemble of initial states'
      write(*,*) '*****************************************'
+     !read an input restart file
      call num2str(0,nrel)
-     rstname='an'//nal//'_'//'en'//nrel//'b.rst'
+     rstname = 'an'//nal//'_'//'en'//nrel//'b.rst'
      call rst_read(nnkn,nnel,nnlv,rstname,tobs)
-     call push_state(A4)
 
+     !push the vars into the state and makes the ens
+     call push_state(A4)
      call make_init_ens(A4)
      
+     !save the initial ens in new restart files
+     call num2str(na,nal)
+     do ne = 1,nrens
+        call num2str(ne-1,nrel)
+        A4 = A(ne)
+        call pull_state(A4)
+        rstname='an'//nal//'_'//'en'//nrel//'b.rst'
+        call rst_write(rstname,tobs)
+     end do
+
    else
 
-       write(*,*) 'Not a valid option for is_new_ens'
-       stop
+     write(*,*) 'Not a valid option for is_new_ens'
+     stop
 
    end if
 

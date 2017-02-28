@@ -8,6 +8,7 @@
   implicit none
 
   ! Analysis parameters for the routine analysis.F90
+  !integer :: rmode = 13 ! mode to run the program
   integer :: rmode = 23 ! mode to run the program
   real :: truncation = 0.995 ! truncation of the SVD eigenvalues
   logical :: update_randrot = .true. ! False for local analysis
@@ -46,14 +47,14 @@
   ! Decide if use an augmented state with the model error
   if( is_mod_err.eq.0 ) then
 
-    !call analysis(A,R,E,S,D,innov,global_ndim,nrens,nobs_tot,verbose,truncation,rmode,update_randrot)
-    call analysis6c(A,E,S,innov,global_ndim,nrens,nobs_tot,verbose)
+    call analysis(A,R,E,S,D,innov,global_ndim,nrens,nobs_tot,verbose,truncation,rmode,update_randrot)
+    !call analysis6c(A,E,S,innov,global_ndim,nrens,nobs_tot,verbose)
 
   else if( is_mod_err.eq.1 ) then
 
     call push_aug
-    !call analysis(Aaug,R,E,S,D,innov,2*global_ndim,nrens,nobs_tot,verbose,truncation,rmode,update_randrot)
-    call analysis6c(Aaug,E,S,innov,2*global_ndim,nrens,nobs_tot,verbose)
+    call analysis(Aaug,R,E,S,D,innov,2*global_ndim,nrens,nobs_tot,verbose,truncation,rmode,update_randrot)
+    !call analysis6c(Aaug,E,S,innov,2*global_ndim,nrens,nobs_tot,verbose)
     call pull_aug
 
   else

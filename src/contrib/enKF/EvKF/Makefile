@@ -15,10 +15,7 @@ override FFLAGS += $(R8FL)
 override LFLAGS += $(R8FL)
 
 
-#analysis_routine = analysis
-analysis_routine = analysis6c
-
-OBJS = $(analysis_routine).o
+OBJS = analysis.o analysis6c.o
 
 
 default:	all

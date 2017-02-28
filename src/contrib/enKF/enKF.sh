@@ -98,13 +98,17 @@ Read_conf()
      elif [ $nrows = 5 ]; then
         sdim=$line
         
-     # If 1 makes a new ens of initial states from 1
+     # number of ensemble members: nrens
      elif [ $nrows = 6 ]; then
+        nrens=$line
+        
+     # If 1 makes a new ens of initial states from 1
+     elif [ $nrows = 7 ]; then
         is_new_ens=$line
         Check_num 0 1 'int' $is_new_ens
 
      # If 1 uses an augmented state with the model errors
-     elif [ $nrows = 7 ]; then
+     elif [ $nrows = 8 ]; then
         is_mod_err=$line
         Check_num 0 1 'int' $is_mod_err
 
@@ -162,7 +166,13 @@ Read_skel_list(){
      skel_file[$nrow]=$line
      nrow=$((nrow + 1))
   done < $skel_file_list
-  nrens=$nrow
+  if [ $is_new_ens == 0 ] && [ $nrow != $nrens ]; then
+     echo "Error in the number of skel files: $nrow != $nrens"
+     exit 1
+  elif [ $is_new_ens == 1 ] && [ $nrow != 1 ]; then
+     echo "Error in the number of skel files: $nrow != $nrens"
+     exit 1
+  fi
   echo ""; echo "Number of ensemble members: $nrens"; echo ""
 }
 
@@ -184,7 +194,7 @@ Read_rst_list(){
     ln -s $line an001_en${nel}b.rst
     nrow=$((nrow + 1))
   done < $rst_file_list
-  if [ $nrow -ne $nrens ]; then
+  if [ $nrow -ne $nrens ] && [ $is_new_ens == 0 ]; then
      echo "The number of restart files differs from the number of skel files"
      echo "You must specify the same number, which is the dimension of the ensemble"
      exit 1
@@ -293,7 +303,11 @@ Make_ens_str(){
 strfiles=""
 for (( ne = 0; ne < $nrens; ne++ )); do
 
-   ens_skel_file=${skel_file[$ne]}
+   if [ $is_new_ens == 0 ]; then
+      ens_skel_file=${skel_file[$ne]}
+   else
+      ens_skel_file=${skel_file[0]}
+   fi
    Check_file $ens_skel_file
 
    nel=$(printf "%03d" $ne); nal=$(printf "%03d" $na)
@@ -309,6 +323,8 @@ done
 
 
 #----------------------------------------------------------
+#----------------------------------------------------------
+#	MAIN
 #----------------------------------------------------------
 #----------------------------------------------------------
 
