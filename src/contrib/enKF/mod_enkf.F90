@@ -290,10 +290,10 @@
      y4 = olev%y(n)
      call find_element(x4,y4,iel)
 
-     ! compute S matrix (HA') and the ensemble of innovations D
+     ! compute S matrix (HA') and the ensemble of perturbed measurements D
      do ne = 1,nrens
         S(n,ne) = sum( A(ne)%ze(:,iel) - Am%ze(:,iel) )/3.
-        D(n,ne) = olev%val(n) + E(n,ne) - sum(A(ne)%ze(:,iel))/3.
+        D(n,ne) = olev%val(n) + E(n,ne)
      end do
 
      ! find innovation
@@ -304,7 +304,7 @@
      write(*,'(a,i5,3f8.4)') ' nobs, vobs, vmod, innov: ',n,olev%val(n),ave,inn
   
      ! optional R
-     !R(n,n) = olev%std(n)**2
+     R(n,n) = olev%std(n)**2
   end do
 
   end subroutine make_matrices
