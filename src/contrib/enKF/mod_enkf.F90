@@ -275,35 +275,38 @@
 
   do n = 1,nobs_tot
 
-     if( nobs_tot.ne.nobs_lev ) stop 'Other obs not implemented'
+     if( nobs_tot.ne.nobs_lev ) stop 'Other types of observation not implemented'
 
-     ! create ensemble of observation perturbations
+     ! create a random vector with mean 0 and std 1
      call random(rand_v,nrens)
      ave = sum(rand_v)/float(nrens)
      rand_v = rand_v - ave
      var = dot_product(rand_v,rand_v)/float(nrens-1)
      rand_v = sqrt(1.0/var)*rand_v
-     E(n,:) = olev%std(n) * rand_v(:)
 
-     ! Finds the finite element nearest to the obs
+     ! compute the perturbations E and the perturbed observations D
+     E(n,:) = olev%std(n) * rand_v(:)
+     D(n,:) = olev%val(n) + (olev%std(n) * rand_v(:))
+
+
+     ! Finds the grid element nearest to the observation (the sub is in real4)
      x4 = olev%x(n)
      y4 = olev%y(n)
      call find_element(x4,y4,iel)
 
-     ! compute S matrix (HA') and the ensemble of perturbed measurements D
+     ! compute the model perturbed values, S (HA')
      do ne = 1,nrens
-        S(n,ne) = sum( A(ne)%ze(:,iel) - Am%ze(:,iel) )/3.
-        D(n,ne) = olev%val(n) + E(n,ne)
+        S(n,ne) = sum( A(ne)%ze(:,iel) - Am%ze(:,iel) )/3. !average of the three vertexes
      end do
 
-     ! find innovation
+     ! compute the innovation vector
      ave = sum(Am%ze(:,iel))/3.
      inn = olev%val(n) - ave
      call check_innov_val(inn,'level')
      innov(n) = inn
      write(*,'(a,i5,3f8.4)') ' nobs, vobs, vmod, innov: ',n,olev%val(n),ave,inn
   
-     ! optional R
+     ! compute the observation errors R
      R(n,n) = olev%std(n)**2
   end do
 
