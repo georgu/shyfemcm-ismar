@@ -259,7 +259,7 @@
   integer iel
   real*4 x4,y4
 
-  real rand_v(nrens)
+  real randv(nrens),aaux
   real inn,ave,var
   integer ne, i
 
@@ -277,38 +277,63 @@
 
      if( nobs_tot.ne.nobs_lev ) stop 'Other types of observation not implemented'
 
-     ! create a random vector with mean 0 and std 1
-     call random(rand_v,nrens)
-     ave = sum(rand_v)/float(nrens)
-     rand_v = rand_v - ave
-     var = dot_product(rand_v,rand_v)/float(nrens-1)
-     rand_v = sqrt(1.0/var)*rand_v
+     !-----------
+     ! compute the observation errors R
+     !-----------
+     R(n,n) = olev%std(n)**2
 
-     ! compute the perturbations E and the perturbed observations D
-     E(n,:) = olev%std(n) * rand_v(:)
-     D(n,:) = olev%val(n) + (olev%std(n) * rand_v(:))
-
-
+     !-----------
      ! Finds the grid element nearest to the observation (the sub is in real4)
+     !-----------
      x4 = olev%x(n)
      y4 = olev%y(n)
      call find_element(x4,y4,iel)
 
+     !-----------
      ! compute the model perturbed values, S (HA')
+     !-----------
      do ne = 1,nrens
         S(n,ne) = sum( A(ne)%ze(:,iel) - Am%ze(:,iel) )/3. !average of the three vertexes
      end do
 
+     !-----------
      ! compute the innovation vector
+     !-----------
      ave = sum(Am%ze(:,iel))/3.
      inn = olev%val(n) - ave
      call check_innov_val(inn,'level')
      innov(n) = inn
      write(*,'(a,i5,3f8.4)') ' nobs, vobs, vmod, innov: ',n,olev%val(n),ave,inn
-  
-     ! compute the observation errors R
-     R(n,n) = olev%std(n)**2
+ 
+     !-----------
+     ! create a random vector with mean 0 and std 1
+     !-----------
+     call random(randv,nrens)
+     ! remove outlayers
+     do ne = 1,nrens
+        aaux = randv(ne)
+        if( abs(aaux).ge.3 ) then
+          aaux = aaux/abs(aaux) * (abs(aaux)-floor(abs(aaux)) + 2.) 
+        end if
+        randv(ne) = aaux
+     end do
+     ! set mean eq to zero
+     ave = sum(randv)/float(nrens)
+     randv = randv - ave
+
+     !-----------
+     ! compute the perturbations E and the perturbed observations D
+     !-----------
+     E(n,:) = olev%std(n) * randv(:)
+     D(n,:) = olev%val(n) + (olev%std(n) * randv(:))
+ 
   end do
+
+  print*, 'val ',olev%val
+  print*, 'std ',olev%std
+  print*, 'D ',D
+  print*, 'R ',R
+  print*, 'S ',S
 
   end subroutine make_matrices
 
