@@ -261,6 +261,7 @@
 
   real randv(nrens),aaux
   real inn,ave,var
+  real, allocatable :: HA(:,:),D1(:,:)
   integer ne, i
 
   integer n
@@ -269,7 +270,8 @@
   call read_obs
 
   allocate(D(nobs_tot,nrens),E(nobs_tot,nrens),R(nobs_tot,nobs_tot))
-  allocate (S(nobs_tot,nrens),innov(nobs_tot))
+  allocate(S(nobs_tot,nrens),innov(nobs_tot))
+  allocate(HA(nobs_tot,nrens),D1(nobs_tot,nrens))
 
   R(:,:) = 0.
 
@@ -290,10 +292,11 @@
      call find_element(x4,y4,iel)
 
      !-----------
-     ! compute the model perturbed values, S (HA')
+     ! compute the model perturbed values, S = HA' and HA
      !-----------
      do ne = 1,nrens
         S(n,ne) = sum( A(ne)%ze(:,iel) - Am%ze(:,iel) )/3. !average of the three vertexes
+        HA(n,ne) = sum( A(ne)%ze(:,iel) )/3. !average of the three vertexes
      end do
 
      !-----------
@@ -322,18 +325,17 @@
      randv = randv - ave
 
      !-----------
-     ! compute the perturbations E and the perturbed observations D
+     ! compute the perturbations E, the perturbed observations D
+     ! and the innovation vectors D1
      !-----------
      E(n,:) = olev%std(n) * randv(:)
      D(n,:) = olev%val(n) + (olev%std(n) * randv(:))
+     D1(n,:) = D(n,:) - HA(n,:)
  
   end do
 
-  print*, 'val ',olev%val
-  print*, 'std ',olev%std
-  print*, 'D ',D
-  print*, 'R ',R
-  print*, 'S ',S
+  ! copy the innovation vectors D1 in D
+  D = D1
 
   end subroutine make_matrices
 

@@ -47,16 +47,16 @@
   ! Decide if use an augmented state with the model error
   if( is_mod_err.eq.0 ) then
 
-    !call analysis(A,R,E,S,D,innov,global_ndim,nrens,nobs_tot,verbose,truncation,rmode,update_randrot)
+    call analysis(A,R,E,S,D,innov,global_ndim,nrens,nobs_tot,verbose,truncation,rmode,update_randrot)
     !call analysis6c(A,E,S,innov,global_ndim,nrens,nobs_tot,verbose)
-    call analysis2(A,D,R,S,global_ndim,nrens,nobs_tot,verbose)
+    !call analysis2(A,D,R,S,global_ndim,nrens,nobs_tot,verbose)
 
   else if( is_mod_err.eq.1 ) then
 
     call push_aug
-    !call analysis(Aaug,R,E,S,D,innov,2*global_ndim,nrens,nobs_tot,verbose,truncation,rmode,update_randrot)
+    call analysis(Aaug,R,E,S,D,innov,2*global_ndim,nrens,nobs_tot,verbose,truncation,rmode,update_randrot)
     !call analysis6c(Aaug,E,S,innov,2*global_ndim,nrens,nobs_tot,verbose)
-    call analysis2(Aaug,D,R,S,2*global_ndim,nrens,nobs_tot,verbose)
+    !call analysis2(Aaug,D,R,S,2*global_ndim,nrens,nobs_tot,verbose)
     call pull_aug
 
   else
