@@ -58,10 +58,15 @@ enkf_analysis: make_EvKF
 	$(LINKER) $(LFLAGS) $(LIBS) $(HTOBJS) $@.o \
         $(ENSOBJ1) $(ENSOBJ2) $(ENSOBJ3) -o $@
 
+make_ens_meteo: make_EvKF
+	make make_sample
+	make make_ens_meteo.o 
+	$(LINKER) $(LFLAGS) $@.o $(LIBS) $(LIBDIR)/libfem.a \
+	$(ENSOBJ1) $(ENSOBJ3) -o $@
 
 #--------------------
 #--------------------
-EXES = enkf_analysis 
+EXES = enkf_analysis make_ens_meteo
 
 all: 	$(EXES)
 
@@ -128,4 +133,4 @@ subenkf.o: ../femlib/mod/basin.mod ../femlib/mod/levels.mod \
 		../femlib/mod/mod_restart.mod \
 		../femlib/mod/mod_ts.mod ../femlib/mod/shyfile.mod 
 
-
+make_ens_meteo.o: ../femlib/mod/m_sample2D.mod
