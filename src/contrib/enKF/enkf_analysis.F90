@@ -1,5 +1,12 @@
 !------------------------------------------------------------------------------
-! Run the ensemble Kalman filter analysis using the Evenseen's routines
+! Runs the Ensemble Kalman filter or the Square Root analysis by using the 
+! Evenseen's routines
+!------------------------------------------------------------------------------
+! Parameters for the routine analysis.F90
+! Depending on the type of analysis, different input
+! matrices are necessary for the observations. However 
+! the program computes all the matrices for both the
+! cases
 !------------------------------------------------------------------------------
   program enKF_analysis
 
@@ -7,9 +14,8 @@
   use mod_enkf
   implicit none
 
-  ! Analysis parameters for the routine analysis.F90
-  integer :: rmode = 13 ! mode to run the program
-  !integer :: rmode = 23 ! mode to run the program
+  integer :: rmode = 13 ! Ensemble Kalman Filter
+  !integer :: rmode = 23 ! Square root algorithm
   real :: truncation = 0.995 ! truncation of the SVD eigenvalues
   logical :: update_randrot = .true. ! False for local analysis
 
