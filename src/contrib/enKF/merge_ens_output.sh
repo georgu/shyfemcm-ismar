@@ -17,9 +17,8 @@ SIMDIR=$(pwd)           # current dir
 
 Usage()
 {
-  echo "Usage: merge_ens_output.sh [file_type] [ens_member]"
-  echo "file_type: ext ets shy"
-  echo "ens_member: number of ens member"
+  echo "Usage: merge_ens_output.sh [file_type]"
+  echo "file_type: ext ets"
   exit 0
 }
 
@@ -29,19 +28,19 @@ Merge_files()
 {
    type=$1
    files=$(ls an*_en${ens_member}b.${type})
-   rm -f z.* u.* v.* m.* total_${ens_member}_*
+   rm -f z.* u.* v.* m.* tot${ens_member}_*
    for fil in $files; do
       echo "Processing file: $fil"
       memory -s $fil > log
       $FEMDIR/fembin/split${type} >> log
       for flev in $(ls z.*); do
-          cat $flev >> total_${ens_member}_$flev
+          cat $flev >> tot${ens_member}_$flev
       done
       for flev in $(ls u.*); do
-          cat $flev >> total_${ens_member}_$flev
+          cat $flev >> tot${ens_member}_$flev
       done
       for flev in $(ls v.*); do
-          cat $flev >> total_${ens_member}_$flev
+          cat $flev >> tot${ens_member}_$flev
       done
    done
 }
@@ -49,25 +48,14 @@ Merge_files()
 #----------------------------------------------------------
 #----------------------------------------------------------
 
-if [ $2 ]; then
+if [ $1 ]; then
    file_type=$1
-   ens_member=$2
 else
    Usage
 fi
 
-if [ $file_type = 'ets' ]; then
-   Merge_files 'ets'
-elif [ $file_type = 'ext' ]; then
-   Merge_files 'ext'
-elif [ $file_type = 'shy' ]; then
-   files=$(ls an*_en${ens_member}b.hydro.shy)
-   for fil in $files; do
-      echo "Processing file: $fil"
-      cat $fil >> total_$fil
-   done
-else
-   echo "Unknown file type"
-   exit 1
-fi
-
+k=0
+for efile in $(ls an002_en*.${file_type}); do
+    ens_member=${efile:8:3}
+    Merge_files ${file_type}
+done

@@ -30,7 +30,7 @@
   !call mod_conz_init(iconz_rst,nnkn,nnlv)
 
   open(24,file=trim(rstname),status='old',form='unformatted',iostat=io)
-  if( io.ne.0 ) stop 'rst_read: Error opening file'
+  if( io.ne.0 ) error stop 'rst_read: Error opening file'
 
  89  call rst_read_record(atime,it,24,ierr)
      if( ierr.ne.0 ) goto 90
@@ -40,7 +40,10 @@
 
   return
 
- 90 stop 'Error in the restart file'
+ 90 write(*,*) 'Error in the restart file. Are you sure that the first observation'
+    write(*,*) 'has the same time of the restart files?'
+    error stop
+
 
   end subroutine rst_read
 
@@ -134,7 +137,7 @@
   elseif( (num.ge.100).and.(num.lt.1000) ) then
     write(str,'(i3)') num
   else
-    stop 'num2str: num out of range'
+    error stop 'num2str: num out of range'
   end if
 
   end subroutine num2str

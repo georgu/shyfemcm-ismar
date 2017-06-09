@@ -20,7 +20,8 @@ SIMDIR=$(pwd)		# current dir
 
 Usage()
 {
-  echo "Usage: enKF.sh [n. of threads] [conf-file]"
+  echo "Usage: enKF.sh [n. of threads] [conf-file] [iclean]"
+  echo "iclean = 1 to remove rst, inf, log, str intermediate files"
   exit 0
 }
 
@@ -213,7 +214,7 @@ Read_obs_time_list(){
   while read line
   do
     timeo[$nrow]=$line
-    Check_num -100000000 100000000 'real' ${timeo[$nrow]}
+    Check_num -300000000 300000000 'real' ${timeo[$nrow]}
     nrow=$((nrow + 1))
   done < $obs_time_list
   nran=$((nrow - 1))
@@ -283,6 +284,10 @@ nanl=$(printf "%03d" $1)
 
 cd $SIMDIR
 $FEMDIR/enKF/enkf_analysis
+if [ $? -ne 0 ]; then
+          echo "Errors while running enkf_analysis."
+          exit 1
+fi
 
 # Check restart files
 for (( ne = 0; ne < $nrens; ne++ )); do
@@ -312,8 +317,15 @@ for (( ne = 0; ne < $nrens; ne++ )); do
 
    nel=$(printf "%03d" $ne); nal=$(printf "%03d" $na)
    naa=$((na + 1)); naal=$(printf "%03d" $naa)
-   name_sim="an${naal}_en${nel}b"; itrst=${timeo[$na]}; itanf=${timeo[$na]}
-   itend=${timeo[$naa]}; idtout=300; wdrag=0.0025; nomp=1
+   itrst=${timeo[$na]}; itanf=${timeo[$na]}
+   if [ $na != $nran ]; then
+        name_sim="an${naal}_en${nel}b"
+	itend=${timeo[$naa]}
+   else
+        name_sim="forecast_en${nel}b"
+	itend=$((itanf + 4*86400))
+   fi
+   idtout=300; wdrag=0.0025; nomp=1
    rstfile="an${nal}_en${nel}a.rst"; strnew="${name_sim}.str"
    SkelStr $name_sim $itrst $itanf $itend $idtout $wdrag $nomp $rstfile $bas_file $ens_skel_file $strnew
    strfiles="$strfiles $strnew"
@@ -328,9 +340,10 @@ done
 #----------------------------------------------------------
 #----------------------------------------------------------
 
-if [ $2 ]; then
+if [ $3 ]; then
    nthreads=$1
    Read_conf $2
+   iclean=$3
 else
    Usage
 fi
@@ -358,10 +371,11 @@ for (( na = 1; na <= $nran; na++ )); do
    Write_info_file $na
    Run_ensemble_analysis $na
 
-   if [ $na != $nran ]; then # not the last one
 
-      # Makes nrens str files for the simulations
-      Make_ens_str
+   # Makes nrens str files for the simulations
+   Make_ens_str
+
+   if [ $na != $nran ]; then # not the last one
 
       # run nrens sims before the obs
       echo; echo "       Running $nrens ensemble simulations..."
@@ -371,7 +385,15 @@ for (( na = 1; na <= $nran; na++ )); do
       #parallel --no-notice -j -k $nthreads Make_sim ::: $strfiles ::: $FEMDIR/fem3d
       parallel --no-notice -P $nthreads Make_sim ::: $strfiles ::: $FEMDIR/fem3d
 
-      echo "       Done"; echo
+      # Remove old files
+      if [ $iclean = 1 ]; then
+	echo "Clean intermediate files."
+	nal=$(printf "%03d" $na)
+	rm -f an${nal}_en*.log
+	rm -f an${nal}_en*.inf
+	rm -f an${nal}_en*.rst
+	rm -f an${nal}_en*.str
+      fi
 
    fi
 

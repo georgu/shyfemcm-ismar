@@ -19,7 +19,7 @@
 	real*4,allocatable :: hd(:)
 	integer nlvddi
 	real*4,allocatable :: data(:,:),dataens(:,:)
-	real sigmau,sigmav
+	real rerr
 	integer nrens
 	integer irec
 	integer i,nr
@@ -28,9 +28,8 @@
 	real dx,dy
 	real,allocatable :: pmat1(:,:,:), pmat2(:,:,:)
 
-	nrens = 20
-	sigmau = 2.
-	sigmav = 2.
+	nrens = 30
+	rerr = .3	!30% of relative error
 
 	filein = 'wind.fem'
 	np = 0
@@ -105,9 +104,11 @@
                 !--------------------------------------------------
 		select case (i)
 		 case (1)
-		   dataens = data + sigmau * pmat1(:,:,nr)
+		   dataens = data + (rerr * data) * pmat1(:,:,nr)
+		   !dataens = pmat1(:,:,nr)	!check rand field
 		 case (2)
-		   dataens = data + sigmav * pmat2(:,:,nr)
+		   dataens = data + (rerr * data) * pmat2(:,:,nr)
+		   !dataens = pmat2(:,:,nr)	!check rand field
 		 case (3)
 		   dataens = data
 		end select
@@ -165,11 +166,11 @@
 	double precision tau_er       !time decorrelation (>=dt) of the old error: dq/dt = -(1/tau)*q
 	double precision alpha
 
-	tau_er = 24*86400	! 1 day
+	tau_er = 86400*3	! 3 days
 	theta = 0
 	fmult = 8
-	rx = 100. * dx
-	ry = 100. * dy
+	rx = 30. * dx
+	ry = 30. * dy
 	rx = rx/sqrt(3.0)
 	ry = ry/sqrt(3.0)
 	verbose = .true.

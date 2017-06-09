@@ -36,6 +36,7 @@
   type(dstates), allocatable, save  :: Aaug(:) 	! double state with model error
 
   real, save, allocatable :: D(:,:)		! matrix holding perturbed measurments
+  real, save, allocatable :: D1(:,:)		! Innovation vectors
   real, save, allocatable :: E(:,:)		! matrix holding perturbations (mode=?3)
   real, save, allocatable :: R(:,:)		! Obs error cov matrix
 
@@ -68,7 +69,7 @@
 
   close(20)
 
-  if( mod(nrens,2).eq.0 ) stop 'read_info: n of ens members must be odd, with the control as first.'
+  if( mod(nrens,2).eq.0 ) error stop 'read_info: n of ens members must be odd, with the control as first.'
 
   if( is_new_ens.eq.1 ) then
     open(21, file='init_ens.info', status='old')
@@ -80,6 +81,11 @@
     read(22,*) nx_er,ny_er,fmult_er,theta_er,sigma_er,dt_er,tau_er
     close(22)
   end if
+
+  write(*,*) 'time: ',tobs
+  write(*,*) 'n. of ens members: ',nrens
+  write(*,*) 'is_new_ens: ',is_new_ens
+  write(*,*) 'is_mod_err: ',is_mod_err
   
   end subroutine read_info
 
@@ -94,7 +100,7 @@
   call basin_read_by_unit(21)
   close(21)
 
-  if( ( nkn.ne.nnkn ).or.( nel.ne.nnel) ) stop "read_basin: dim error"
+  if( ( nkn.ne.nnkn ).or.( nel.ne.nnel) ) error stop "read_basin: dim error"
 
   end subroutine read_basin
 
@@ -120,7 +126,7 @@
 !    Reads the obs list
      n = 1
      open(25,file = obsfile, status = 'old', form = 'formatted', iostat = ios)
-     if( ios.ne.0 ) stop 'read_obs: error opening file'
+     if( ios.ne.0 ) error stop 'read_obs: error opening file'
  88   read(25,*,end=98) line
       n = n + 1
      goto 88
@@ -142,7 +148,7 @@
   do n = 1,nfile
 
      open(26,file=ofile(n), status = 'old', form = 'formatted', iostat = ios)
-     if( ios.ne.0 ) stop 'read_obs: error opening file'
+     if( ios.ne.0 ) error stop 'read_obs: error opening file'
 
  89  read(26,*,end=99) tt, ty
 
@@ -151,7 +157,7 @@
         if( trim(ty).eq.'level' ) then
           klev = klev + 1
         else
-          stop 'Observation type not still implemented.'
+          error stop 'Observation type not still implemented.'
         end if
      end if
 
@@ -177,7 +183,7 @@
   do n = 1,nfile
 
      open(26,file=ofile(n), status = 'old', form = 'formatted', iostat = ios)
-     if( ios.ne.0 ) stop 'read_obs: error opening file'
+     if( ios.ne.0 ) error stop 'read_obs: error opening file'
 
  90  read(26,*,end=100) tt, ty, x, y, z, v, stdv
 
@@ -192,7 +198,7 @@
           olev%val(klev) = v
           olev%std(klev) = stdv
         else
-          stop 'Observation type not still implemented.'
+          error stop 'Observation type not still implemented.'
         end if
      end if
 
@@ -259,9 +265,9 @@
   integer iel
   real*4 x4,y4
 
-  real randv(nrens),aaux
+  real pvec(nrens-1),aaux,pvec_tot(nrens)
   real inn,ave,var
-  real, allocatable :: HA(:,:),D1(:,:)
+  real, allocatable :: HA(:,:)
   integer ne, i
 
   integer n
@@ -285,11 +291,16 @@
      R(n,n) = olev%std(n)**2
 
      !-----------
-     ! Finds the grid element nearest to the observation (the sub is in real4)
+     ! Finds the grid element nearest to the observation (the subroutine is in real4)
      !-----------
      x4 = olev%x(n)
      y4 = olev%y(n)
      call find_element(x4,y4,iel)
+     if( iel.eq.0 ) then
+	write(*,*) 'make_matrices: observations must be inside the grid.'
+	write(*,*) 'x, y: ',x4,y4
+	error stop
+     end if
 
      !-----------
      ! compute the model perturbed values, S = HA' and HA
@@ -311,31 +322,31 @@
      !-----------
      ! create a random vector with mean 0 and std 1
      !-----------
-     call random(randv,nrens)
+     call random(pvec,nrens-1)
      ! remove outlayers
-     do ne = 1,nrens
-        aaux = randv(ne)
+     do ne = 1,nrens-1
+        aaux = pvec(ne)
         if( abs(aaux).ge.3 ) then
-          aaux = aaux/abs(aaux) * (abs(aaux)-floor(abs(aaux)) + 2.) 
+          aaux = aaux/abs(aaux) * (abs(aaux)-floor(abs(aaux)) + 1.) 
         end if
-        randv(ne) = aaux
+        pvec(ne) = aaux
      end do
      ! set mean eq to zero
-     ave = sum(randv)/float(nrens)
-     randv = randv - ave
+     ave = sum(pvec)/float(nrens-1)
+     pvec = pvec - ave
+
+     pvec_tot(1) = 0.
+     pvec_tot(2:nrens) = pvec
 
      !-----------
      ! compute the perturbations E, the perturbed observations D
      ! and the innovation vectors D1
      !-----------
-     E(n,:) = olev%std(n) * randv(:)
-     D(n,:) = olev%val(n) + (olev%std(n) * randv(:))
+     E(n,:) = olev%std(n) * pvec_tot(:)
+     D(n,:) = olev%val(n) + (olev%std(n) * pvec_tot(:))
      D1(n,:) = D(n,:) - HA(n,:)
  
   end do
-
-  ! copy the innovation vectors D1 in D
-  D = D1
 
   end subroutine make_matrices
 
@@ -396,13 +407,12 @@
    else
 
      write(*,*) 'Not a valid option for is_new_ens'
-     stop
+     error stop
 
    end if
 
    return
   end subroutine read_ensemble
-
 
 !********************************************************
 
@@ -436,6 +446,7 @@
     use mod_hydro_vel
     use mod_ts
     use mod_conz
+!    use basin
     implicit none
  
     type(states4) :: AA
@@ -443,6 +454,8 @@
     AA%u = utlnv
     AA%v = vtlnv
     AA%ze = zenv
+!    AA%z = znv
+!    AA%hm3v = hm3v
     AA%t = tempv
     AA%s = saltv
    
@@ -455,6 +468,7 @@
     use mod_hydro_vel
     use mod_ts
     use mod_conz
+!    use basin
     implicit none
  
     type(states4) :: AA
@@ -462,6 +476,8 @@
     utlnv = AA%u
     vtlnv = AA%v
     zenv = AA%ze
+!    znv = AA%z
+!    hm3v = AA%hm3v
     tempv = AA%t
     saltv = AA%s
    
@@ -536,7 +552,7 @@
    !---------------------------------------
    nst = na 
  
-   if( tau_er.lt.dt_er ) stop 'make_aug: parameter error'
+   if( tau_er.lt.dt_er ) error stop 'make_aug: parameter error'
  
    alpha = 1. - (dt_er/tau_er)
    rho=sqrt( (1.0-alpha)**2 / (dt_er*(float(nst) - 2.0*alpha - float(nst)*alpha**2 + 2.0*alpha**(nst+1))) )
