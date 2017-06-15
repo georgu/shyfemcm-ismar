@@ -1,4 +1,18 @@
 !********************************************************
+  subroutine init_rst_vars
+  use mod_restart
+  implicit none
+  
+  call addpar('ibarcl',0.)
+  call addpar('iconz',0.)
+  call addpar('ibfm',0.)
+  call daddpar('date',0.)
+  call daddpar('time',0.)
+
+  end subroutine init_rst_vars
+
+
+!********************************************************
 
   subroutine rst_read(nnkn,nnel,nnlv,rstname,tt)
 
@@ -62,13 +76,13 @@
   double precision ddate,dtime
 
   ! adds parameters
-  call addpar('ibarcl',float(ibarcl_rst))
-  call addpar('iconz',float(iconz_rst))
-  call addpar('ibfm',0.)
+  call putpar('ibarcl',float(ibarcl_rst))
+  call putpar('iconz',float(iconz_rst))
+  call putpar('ibfm',0.)
   ddate = date_rst
   dtime = time_rst
-  call daddpar('date',ddate)
-  call daddpar('time',dtime)
+  call dputpar('date',ddate)
+  call dputpar('time',dtime)
 
   open(34,file=rstname,form='unformatted')
   it = nint(tt)
