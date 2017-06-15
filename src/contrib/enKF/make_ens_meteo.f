@@ -15,6 +15,7 @@
 	integer lmax		!vertical values
 	real*4,allocatable :: hlv(:)          !vertical structure
 	character*50 string
+	real flag
 	integer,allocatable :: ilhkv(:)
 	real*4,allocatable :: hd(:)
 	integer nlvddi
@@ -27,11 +28,19 @@
 	integer nx,ny
 	real dx,dy
 	real,allocatable :: pmat1(:,:,:), pmat2(:,:,:)
+	real,allocatable :: pvec1(:), pvec2(:)
+	logical is2d
+	integer ix,iy
+	real dval
 
 	nrens = 30
-	rerr = .3	!30% of relative error
+	rerr = .1	!20% of relative error
 
-	filein = 'wind.fem'
+	! true to use 2D pseudo random fields.
+	is2d = .false.
+
+	!filein = 'wind.fem'
+	filein = 'hfr.fem'
 	np = 0
 	call fem_file_read_open(filein,np,iformat,iunit)
 
@@ -48,13 +57,14 @@
  	  call fem_file_read_params(iformat,iunit,dtime
      +                          ,nvers,np,lmax,nvar,ntype,datetime,ierr)
 	  if( ierr .lt. 0 ) exit
-	  write(*,*) 'Time: ',dtime
+	  write(*,*) 'time ',dtime
 	  allocate(hlv(lmax))
 	  nlvddi = lmax
 	  call fem_file_read_2header(iformat,iunit,ntype,lmax
      +                  ,hlv,regpar,ierr)
 	  nx = nint(regpar(1))
 	  ny = nint(regpar(2))
+	  flag = regpar(7)
 	  allocate(ilhkv(np),hd(np),data(nx,ny))
 	  allocate(dataens(nx,ny))
 
@@ -65,7 +75,22 @@
 	  dy = regpar(6)
 	  if(.not.allocated(pmat1)) allocate(pmat1(nx,ny,nrens))
 	  if(.not.allocated(pmat2)) allocate(pmat2(nx,ny,nrens))
-	  call make_pert(irec,dtime,nrens,nx,ny,dx,dy,pmat1,pmat2)
+
+          if( is2d ) then
+		
+		call make_pert_2D(irec,dtime,nrens,nx,ny,dx,dy,pmat1,pmat2)
+
+	  else
+          
+		if(.not.allocated(pvec1)) allocate(pvec1(nrens))
+		if(.not.allocated(pvec2)) allocate(pvec2(nrens))
+		call make_pert_0D(irec,dtime,nrens,pvec1,pvec2)
+	        do nr = 1,nrens
+        	     pmat1(:,:,nr) = pvec1(nr)
+	             pmat2(:,:,nr) = pvec2(nr)
+        	end do
+
+	  end if
           !--------------------------------------------------
 
           !--------------------------------------------------
@@ -104,11 +129,31 @@
                 !--------------------------------------------------
 		select case (i)
 		 case (1)
-		   dataens = data + (rerr * data) * pmat1(:,:,nr)
-		   !dataens = pmat1(:,:,nr)	!check rand field
+		   do ix = 1,nx
+		      do iy = 1,ny
+			dval = data(ix,iy)
+		        if( dval.gt.flag ) then
+		          dataens(ix,iy) = data(ix,iy) + 
+     +			    (rerr * data(ix,iy)) * pmat1(ix,iy,nr)
+!		          dataens(ix,iy) = pmat1(ix,iy,nr)	!check rand field
+		        else
+		          dataens(ix,iy) = flag
+		        end if
+		      end do
+		   end do
 		 case (2)
-		   dataens = data + (rerr * data) * pmat2(:,:,nr)
-		   !dataens = pmat2(:,:,nr)	!check rand field
+		   do ix = 1,nx
+		      do iy = 1,ny
+			dval = data(ix,iy)
+		        if( dval.gt.flag ) then
+		          dataens(ix,iy) = data(ix,iy) + 
+     +			    (rerr * data(ix,iy)) * pmat2(ix,iy,nr)
+!		          dataens(ix,iy) = pmat2(ix,iy,nr)	!check rand field
+		        else
+		          dataens(ix,iy) = flag
+		        end if
+		      end do
+		   end do
 		 case (3)
 		   dataens = data
 		end select
@@ -148,7 +193,7 @@
 !***********************************************************
 !***********************************************************
         !--------------------------------------------------
-	subroutine make_pert(irec,tt,nrens,nx,ny,dx,dy,pmat1,pmat2)
+	subroutine make_pert_2D(irec,tt,nrens,nx,ny,dx,dy,pmat1,pmat2)
         !--------------------------------------------------
 	use m_sample2D
 	implicit none
@@ -165,16 +210,37 @@
 	double precision dt_er        !time between 2 analysis steps
 	double precision tau_er       !time decorrelation (>=dt) of the old error: dq/dt = -(1/tau)*q
 	double precision alpha
+	real xlength,ylength
 
 	tau_er = 86400*3	! 3 days
+
+	!theta = 135
 	theta = 0
 	fmult = 8
-	rx = 30. * dx
-	ry = 30. * dy
-	rx = rx/sqrt(3.0)
-	ry = ry/sqrt(3.0)
+
+	! dx must resolve rx, but you need enough nx.
+	! The same for y.
+	xlength = (nx-1) * dx
+	ylength = (ny-1) * dy
+	rx = ((nx-1)/4) * dx
+	ry = ((ny-1)/4) * dy
+	!rx = 3.
+	!ry = 4.
+
 	verbose = .true.
 	samp_fix = .true.     !keep true
+
+	if( verbose ) then
+          write(*,*) 'theta ',theta
+          write(*,*) 'dx ',dx
+          write(*,*) 'dy ',dy
+          write(*,*) 'rx ',rx
+          write(*,*) 'ry ',ry
+          write(*,*) 'nx ',nx
+          write(*,*) 'ny ',ny
+          write(*,*) 'tau error ',tau_er
+          write(*,*) 'fmult ',fmult
+        end if
 
 	! Allocate old matrices
 	if(.not.allocated(pmat1_old)) allocate(pmat1_old(nx,ny,nrens))
@@ -202,4 +268,72 @@
         pmat2_old = pmat2
 	tt_old = tt
 
-	end subroutine make_pert
+	end subroutine make_pert_2D
+
+        !--------------------------------------------------
+	subroutine make_pert_0D(irec,tt,nrens,pvec1,pvec2)
+        !--------------------------------------------------
+        implicit none
+        integer, intent(in) :: irec,nrens
+        double precision, intent(in) :: tt
+        real, intent(out) :: pvec1(nrens), pvec2(nrens)
+        real, allocatable, save :: pvec1_old(:),pvec2_old(:)
+        double precision, save :: tt_old
+        double precision dt_er        !time between 2 analysis steps
+        double precision tau_er       !time decorrelation (>=dt) of the old error: dq/dt = -(1/tau)*q
+        double precision alpha
+
+	tau_er = 86400	! 1 days
+
+        call make_random_0D(pvec1,nrens)
+        call make_random_0D(pvec2,nrens)
+
+        ! Merge with the old fields in order to have time correlation
+        if( irec.ne.1 ) then
+
+          dt_er = tt - tt_old
+	  if( dt_er .le. 0. ) dt_er = 3600
+
+	  ! Allocate old matrices
+	  if(.not.allocated(pvec1_old)) allocate(pvec1_old(nrens))
+	  if(.not.allocated(pvec2_old)) allocate(pvec2_old(nrens))
+
+          alpha = 1. - (dt_er/tau_er)
+          pvec1 = alpha * pvec1_old + sqrt(1 - alpha**2) * pvec1
+          pvec2 = alpha * pvec2_old + sqrt(1 - alpha**2) * pvec2
+
+        endif
+
+        ! Update old fields
+        pvec1_old = pvec1
+        pvec2_old = pvec2
+        tt_old = tt
+
+	end subroutine make_pert_0D
+
+
+        !--------------------------------------------------
+	subroutine make_random_0D(vec,nvec)
+        !--------------------------------------------------
+        use m_random
+	implicit none
+	integer, intent(in) :: nvec
+	real, intent(out) :: vec(nvec)
+	integer n
+	real aaux,ave
+	
+        call random(vec,nvec)
+
+        ! remove outlayers
+        do n = 1,nvec
+           aaux = vec(n)
+           if( abs(aaux).ge.3. ) then
+             aaux = aaux/abs(aaux) * (abs(aaux)-floor(abs(aaux)) + 1.)
+           end if
+           vec(n) = aaux
+        end do
+        ! set mean eq to zero
+        ave = sum(vec)/float(nvec)
+        vec = vec - ave
+
+	end subroutine make_random_0D

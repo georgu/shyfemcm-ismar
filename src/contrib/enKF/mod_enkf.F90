@@ -257,7 +257,7 @@
 
   subroutine make_matrices
 
-! R (only used if mode=?1 or ?2) (no for low-rank sq root)
+! R (only used if mode=?1 or ?2) (not with low rank R: (N-1) R = EE')
 
   use m_random
   implicit none
@@ -288,7 +288,7 @@
      !-----------
      ! compute the observation errors R
      !-----------
-     R(n,n) = olev%std(n)**2
+     !R(n,n) = olev%std(n)**2
 
      !-----------
      ! Finds the grid element nearest to the observation (the subroutine is in real4)
@@ -446,16 +446,19 @@
     use mod_hydro_vel
     use mod_ts
     use mod_conz
-!    use basin
     implicit none
  
     type(states4) :: AA
 
+    !utlnv -> ulnv
+    !call make_new_depth
+    !ulnv = utlnv / hdenv
+    !vlnv = vtlnv / hdenv
+
     AA%u = utlnv
     AA%v = vtlnv
     AA%ze = zenv
-!    AA%z = znv
-!    AA%hm3v = hm3v
+    AA%z = znv
     AA%t = tempv
     AA%s = saltv
    
@@ -468,7 +471,6 @@
     use mod_hydro_vel
     use mod_ts
     use mod_conz
-!    use basin
     implicit none
  
     type(states4) :: AA
@@ -476,10 +478,14 @@
     utlnv = AA%u
     vtlnv = AA%v
     zenv = AA%ze
-!    znv = AA%z
-!    hm3v = AA%hm3v
+    znv = AA%z
     tempv = AA%t
     saltv = AA%s
+
+    !ulnv -> utlnv
+    !call make_new_depth
+    !utlnv = ulnv * hdenv
+    !vtlnv = vlnv * hdenv
    
    end subroutine pull_state
 

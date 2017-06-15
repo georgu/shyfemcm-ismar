@@ -388,7 +388,8 @@ for (( na = 1; na <= $nran; na++ )); do
       # Remove old files
       if [ $iclean = 1 ]; then
 	echo "Clean intermediate files."
-	nal=$(printf "%03d" $na)
+	naold=$((na - 1))
+	nal=$(printf "%03d" $naold)
 	rm -f an${nal}_en*.log
 	rm -f an${nal}_en*.inf
 	rm -f an${nal}_en*.rst

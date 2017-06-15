@@ -5,20 +5,22 @@ module mod_states
       real u(nnlv,nnel)                      ! 3-D u-velocity
       real v(nnlv,nnel)                      ! 3-D v-velocity
       real ze(3,nnel)                        ! 2-D water level at vertices
-!      real z(nnkn) 	                     ! 2-D water level 
-!      real hm3v(3,nnel)                      ! Depth ad vertices
+      real z(nnkn) 	                     ! 2-D water level 
       real t(nnlv,nnkn)                      ! 3-D Temperature
       real s(nnlv,nnkn)                      ! 3-D Salinity 
    end type states
-   integer, save ::  global_ndim = 2*nnlv*nnel + 3*nnel + 2*nnlv*nnkn  ! Dimension of states
+!   integer, save ::  global_ndim = 2*nnlv*nnel + 3*nnel + 2*nnlv*nnkn  ! Dimension of states
+   integer, save ::  global_ndim = 2*nnlv*nnel + 3*nnel + nnkn + 2*nnlv*nnkn
+                      
+
+ ! Dimension of states
 
 ! single precision model state (used for read and write to files)
    type states4
       real*4 u(nnlv,nnel)                      ! 3-D u-velocity
       real*4 v(nnlv,nnel)                      ! 3-D v-velocity
       real*4 ze(3,nnel)                        ! 2-D water level at vertices
-!      real*4 z(nnkn) 	                     ! 2-D water level 
-!      real*4 hm3v(3,nnel)                      ! Depth ad vertices
+      real*4 z(nnkn) 	                     ! 2-D water level 
       real*4 t(nnlv,nnkn)                      ! 3-D Temperature
       real*4 s(nnlv,nnkn)                      ! 3-D Salinity 
    end type states4
@@ -28,28 +30,26 @@ module mod_states
       real u(nnlv)                             ! 1-D u-velocity
       real v(nnlv)                             ! 1-D v-velocity
       real ze(3)                               ! 0-D water level
-!      real z 	                     	       ! 0-D water level 
-!      real hm3v(3)                             ! Depth ad vertices
+      real z 	                     	       ! 0-D water level 
       real t(nnlv)                             ! 1-D Temperature
       real s(nnlv)                             ! 1-D Salinity
    end type sub_states
-   integer, parameter ::  local_ndim=4*nnlv + 1    ! Dimension of sub_states
+!   integer, parameter ::  local_ndim = 4*nnlv + 3    ! Dimension of sub_states
+   integer, parameter ::  local_ndim = 4*nnlv + 3 + 1 ! Dimension of sub_states
 
 ! double state, with the model errors
      type dstates
       real qu(nnlv,nnel)                       ! 3-D u-velocity error
       real qv(nnlv,nnel)                       ! 3-D v-velocity error
       real qze(3,nnel)                         ! 2-D water level at vertices error
-!      real qz(nnkn) 	                     ! 2-D water level 
-!      real qhm3v(3,nnel)                      ! Depth ad vertices
+      real qz(nnkn) 	                     ! 2-D water level 
       real qt(nnlv,nnkn)                       ! 3-D Temperature error
       real qs(nnlv,nnkn)                       ! 3-D Salinity error
 
       real u(nnlv,nnel)                        ! 3-D u-velocity
       real v(nnlv,nnel)                        ! 3-D v-velocity
       real ze(3,nnel)                          ! 2-D water level at vertices
-!      real z(nnkn) 	                     ! 2-D water level 
-!      real hm3v(3,nnel)                      ! Depth ad vertices
+      real z(nnkn) 	                     ! 2-D water level 
       real t(nnlv,nnkn)                        ! 3-D Temperature
       real s(nnlv,nnkn)                        ! 3-D Salinity 
    end type dstates
@@ -92,7 +92,6 @@ contains
 !      getA%v(:)=A%v(:,ie)
 !      getA%ze=A%ze(:,ie)
 !!      getA%z=A%z(k)
-!!      getA%hm3v=A%hm3v(:,ie)
 !      getA%t(:)=A%t(:,k)
 !      getA%s(:)=A%s(:,k)
 !   end function getA
@@ -106,7 +105,6 @@ contains
 !      A%v(:,ie)=subA%v(:)
 !      A%ze(:,ie)=subA%ze
 !!      A%z(k)=subA%z
-!!      A%hm3v(:,ie)=subA%hm3v
 !      A%t(:,k)=subA%t(:)
 !      A%s(:,k)=subA%s(:)
 !   end subroutine putA
@@ -118,8 +116,7 @@ contains
        add_states%u = A%u + B%u
        add_states%v = A%v + B%v
        add_states%ze = A%ze + B%ze
-!       add_states%z = A%z + B%z
-!       add_states%hm3v = A%hm3v + B%hm3v
+       add_states%z = A%z + B%z
        add_states%t = A%t + B%t
        add_states%s = A%s + B%s
    end function add_states
@@ -131,8 +128,7 @@ contains
        subtract_states%u = A%u - B%u
        subtract_states%v = A%v - B%v
        subtract_states%ze = A%ze - B%ze
-!       subtract_states%z = A%z - B%z
-!       subtract_states%hm3v = A%hm3v - B%hm3v
+       subtract_states%z = A%z - B%z
        subtract_states%t = A%t - B%t
        subtract_states%s = A%s - B%s
    end function subtract_states
@@ -144,8 +140,7 @@ contains
        states_real_mult%u = B*A%u
        states_real_mult%v = B*A%v
        states_real_mult%ze = B*A%ze
-!       states_real_mult%z = B*A%z
-!       states_real_mult%hm3v = B*A%hm3v
+       states_real_mult%z = B*A%z
        states_real_mult%t = B*A%t
        states_real_mult%s = B*A%s
    end function states_real_mult
@@ -157,8 +152,7 @@ contains
        real_states_mult%u = B*A%u
        real_states_mult%v = B*A%v
        real_states_mult%ze = B*A%ze
-!       real_states_mult%z = B*A%z
-!       real_states_mult%hm3v = B*A%hm3v
+       real_states_mult%z = B*A%z
        real_states_mult%t = B*A%t
        real_states_mult%s = B*A%s
    end function real_states_mult
@@ -170,8 +164,7 @@ contains
        states_states_mult%u = A%u * B%u
        states_states_mult%v = A%v * B%v
        states_states_mult%ze = A%ze * B%ze
-!       states_states_mult%z = A%z * B%z
-!       states_states_mult%hm3v = A%hm3v * B%hm3v
+       states_states_mult%z = A%z * B%z
        states_states_mult%t = A%t * B%t
        states_states_mult%s = A%s * B%s
    end function states_states_mult
@@ -183,8 +176,7 @@ contains
        A%u = r
        A%v = r
        A%ze = r
-!       A%z = r
-!       A%hm3v = r
+       A%z = r
        A%t = r
        A%s = r
    end subroutine assign_states
@@ -195,8 +187,7 @@ contains
       A%u=DBLE(B%u)
       A%v=DBLE(B%v)
       A%ze=DBLE(B%ze)
-!      A%z=DBLE(B%z)
-!      A%hm3v=DBLE(B%hm3v)
+      A%z=DBLE(B%z)
       A%t=DBLE(B%t)
       A%s=DBLE(B%s)
    end subroutine states4to8
@@ -207,8 +198,7 @@ contains
       A%u=real(B%u)
       A%v=real(B%v)
       A%ze=real(B%ze)
-!      A%z=real(B%z)
-!      A%hm3v=real(B%hm3v)
+      A%z=real(B%z)
       A%t=real(B%t)
       A%s=real(B%s)
    end subroutine states8to4
@@ -220,15 +210,13 @@ contains
       C%qu=B%u
       C%qv=B%v
       C%qze=B%ze
-!      C%qz=B%z
-!      C%qhm3v=B%hm3v
+      C%qz=B%z
       C%qt=B%t
       C%qs=B%s
       C%u=A%u
       C%v=A%v
       C%ze=A%ze
-!      C%z=A%z
-!      C%hm3v=A%hm3v
+      C%z=A%z
       C%t=A%t
       C%s=A%s
    end subroutine push_dstate
@@ -240,15 +228,13 @@ contains
       B%u=C%qu
       B%v=C%qv
       B%ze=C%qze
-!      B%z=C%qz
-!      B%hm3v=C%qhm3v
+      B%z=C%qz
       B%t=C%qt
       B%s=C%qs
       A%u=C%u
       A%v=C%v
       A%ze=C%ze
-!      A%z=C%z
-!      A%hm3v=C%hm3v
+      A%z=C%z
       A%t=C%t
       A%s=C%s
    end subroutine pull_dstate
