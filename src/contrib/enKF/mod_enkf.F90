@@ -304,6 +304,7 @@
 
      !-----------
      ! compute the model perturbed values, S = HA' and HA
+     ! Remember for enKF: Aa = Af + A' [HA']^t [ U L^-1 U^t ] D' and D' = D-HA
      !-----------
      do ne = 1,nrens
         S(n,ne) = sum( A(ne)%ze(:,iel) - Am%ze(:,iel) )/3. !average of the three vertexes

@@ -1,10 +1,12 @@
 	program make_ens_meteo
+	use m_sample2D
 	implicit none
 
 	integer iunit, iformat
 	integer ounit
 	character(len=80) :: filein
-	double precision dtime  !time stamp
+	double precision tt  !time stamp
+	double precision tt_old
 	integer nvers           !version of file format
 	integer np              !size of data (horizontal, nodes or elements)
 	integer nvar            !number of variables to write
@@ -20,27 +22,59 @@
 	real*4,allocatable :: hd(:)
 	integer nlvddi
 	real*4,allocatable :: data(:,:),dataens(:,:)
-	real rerr
+	real rerruv,sigmaP	!u-v relative error, std of pressure
 	integer nrens
 	integer irec
 	integer i,nr
 
+	integer pert_type	! type of perturbation:	1 = 0D spatially constant
+				!			2 = 2D u and v indipendently
+				!			3 = Pressure pert and geostr wind pert
+	real tau_er	! e-folding time for the error memory
 	integer nx,ny
 	real dx,dy
-	real,allocatable :: pmat1(:,:,:), pmat2(:,:,:)
-	real,allocatable :: pvec1(:), pvec2(:)
-	logical is2d
+	integer fmult	!Mult factor for the super-sampling
+	real rx,ry	!x and y length scales for the perturbations
+	real theta	!Rotation of the random fields (theta=0 is east, rotation anticlocwise)
+	logical verbose,samp_fix
+	real,allocatable :: pmat(:,:,:,:)
+	real,allocatable :: pmat_old(:,:,:,:)
+	real,allocatable :: pvec(:,:)
+	real,allocatable :: pvec_old(:,:)
+	real,allocatable :: amat(:,:,:)
 	integer ix,iy
 	real dval
+	real flat	!Latitude for the Coriolis factor
 
-	nrens = 30
-	rerr = .1	!20% of relative error
+	!--------------------------
+	! n. of ens members
+	nrens = 5
+	! type of perturbed field
+	pert_type = 3
+	! relative error
+	rerruv = .3
+	! pressure standard deviation
+	sigmaP = 100. * 5.	!(5 mbar -> 500Pa) Used only for the pressure, see the routine
+	! decorrelation e-folding time
+	tau_er = 86400*3
+	! Average latitude for the Coriolis factor. Used only with pert_type = 3
+	flat = 40.
 
-	! true to use 2D pseudo random fields.
-	is2d = .false.
+	! 2d pseudo random fields params
+	fmult = 8
+	theta = 0
+	!theta = 135
+	rx = 4.
+	ry = 4.
+	verbose = .true.
+	samp_fix = .true.     !keep true
 
-	!filein = 'wind.fem'
-	filein = 'hfr.fem'
+	! input file
+	filein = 'wind.fem'
+	!filein = 'hfr.fem'
+	!--------------------------
+
+
 	np = 0
 	call fem_file_read_open(filein,np,iformat,iunit)
 
@@ -54,44 +88,89 @@
           !--------------------------------------------------
 	  ! Reads headers
           !--------------------------------------------------
- 	  call fem_file_read_params(iformat,iunit,dtime
+ 	  call fem_file_read_params(iformat,iunit,tt
      +                          ,nvers,np,lmax,nvar,ntype,datetime,ierr)
 	  if( ierr .lt. 0 ) exit
-	  write(*,*) 'time ',dtime
+	  write(*,*) 'time ',tt
 	  allocate(hlv(lmax))
 	  nlvddi = lmax
 	  call fem_file_read_2header(iformat,iunit,ntype,lmax
      +                  ,hlv,regpar,ierr)
+
 	  nx = nint(regpar(1))
 	  ny = nint(regpar(2))
 	  flag = regpar(7)
+	  dx = regpar(5)
+	  dy = regpar(6)
+
 	  allocate(ilhkv(np),hd(np),data(nx,ny))
 	  allocate(dataens(nx,ny))
 
           !--------------------------------------------------
 	  ! Makes 2D perturbed normalised fields and update them
           !--------------------------------------------------
-	  dx = regpar(5)
-	  dy = regpar(6)
-	  if(.not.allocated(pmat1)) allocate(pmat1(nx,ny,nrens))
-	  if(.not.allocated(pmat2)) allocate(pmat2(nx,ny,nrens))
 
-          if( is2d ) then
+	  select case(pert_type)
+
+	    case(1)		!constant field
+
+		write(*,*) 'Case 1: spatially constant perturbations'
+
+		if(.not.allocated(pvec)) allocate(pvec(2,nrens))
+		if(.not.allocated(pvec_old)) 
+     +			allocate(pvec_old(2,nrens))
+
+        	call make_random_0D(pvec(1,:),nrens)
+	        call make_random_0D(pvec(2,:),nrens)
+
+		call merge_old_vec(irec,tt,tt_old,tau_er,
+     +                  nrens,2,pvec,pvec_old)
+
+	    case(2)		! u and v indipendent
+
+		write(*,*) 'Case 2: indipendent wind perturbations'
+
+	        if(.not.allocated(pmat)) allocate(pmat(2,nx,ny,nrens))
+	        if(.not.allocated(pmat_old))
+     +			allocate(pmat_old(2,nx,ny,nrens))
+	        if(.not.allocated(amat)) allocate(amat(nx,ny,nrens))
+
+		! dx must resolve rx, but you need enough nx.
+		! The same for y.
+		!xlength = (nx-1) * dx
+		!ylength = (ny-1) * dy
+		!rx = ((nx-1)/4) * dx
+		!ry = ((ny-1)/4) * dy
+
+		! Make the random fields
+		call sample2D(amat,nx,ny,nrens,fmult,dx,dy,rx,ry,theta
+     +               ,samp_fix,verbose)
+		pmat(1,:,:,:) = amat
+		call sample2D(amat,nx,ny,nrens,fmult,dx,dy,rx,ry,theta
+     +               ,samp_fix,verbose)
+		pmat(2,:,:,:) = amat
+
+		! Merge with the old fields in order to have time correlation
+		call merge_old_field(irec,tt,tt_old,tau_er,nx,ny,
+     +			2,nrens,pmat,pmat_old)
+
+	    case(3)		! perturbed p, u and v with geostroph. pert.
 		
-		call make_pert_2D(irec,dtime,nrens,nx,ny,dx,dy,pmat1,pmat2)
+		write(*,*) 'Case 3: geostrophic wind perturbations'
 
-	  else
-          
-		if(.not.allocated(pvec1)) allocate(pvec1(nrens))
-		if(.not.allocated(pvec2)) allocate(pvec2(nrens))
-		call make_pert_0D(irec,dtime,nrens,pvec1,pvec2)
-	        do nr = 1,nrens
-        	     pmat1(:,:,nr) = pvec1(nr)
-	             pmat2(:,:,nr) = pvec2(nr)
-        	end do
+	        if(.not.allocated(pmat)) allocate(pmat(1,nx,ny,nrens))
+	        if(.not.allocated(pmat_old))
+     +			allocate(pmat_old(1,nx,ny,nrens))
+	        if(.not.allocated(amat)) allocate(amat(nx,ny,nrens))
 
-	  end if
-          !--------------------------------------------------
+		call sample2D(amat,nx,ny,nrens,fmult,dx,dy,rx,ry,theta
+     +               ,samp_fix,verbose)
+		pmat(1,:,:,:) = amat
+
+		call merge_old_field(irec,tt,tt_old,tau_er,nx,ny,
+     +                  1,nrens,pmat,pmat_old)
+
+	  end select 
 
           !--------------------------------------------------
 	  ! Writes headers
@@ -99,7 +178,7 @@
 	  do nr = 1,nrens
 
 	     ounit = iunit + 10 + nr
-	     call fem_file_write_header(iformat,ounit,dtime
+	     call fem_file_write_header(iformat,ounit,tt
      +                          ,nvers,np,lmax
      +                          ,nvar,ntype
      +                          ,nlvddi,hlv,datetime,regpar)
@@ -107,14 +186,12 @@
 	  end do
 
 
-          !--------------------------------------------------
+	  !--------------------------------------------------
 	  ! Loop on variables
-          !--------------------------------------------------
+	  !--------------------------------------------------
  	  do i = 1,nvar
 
-             !--------------------------------------------------
 	     ! Reads variable
-             !--------------------------------------------------
 	     call fem_file_read_data(iformat,iunit
      +                          ,nvers,np,lmax
      +                          ,string
@@ -124,61 +201,39 @@
 	     write(*,*) 'Reading: ',string
 	  
 	     do nr = 1,nrens
-                !--------------------------------------------------
-	        ! Makes 2D perturbed real wind fields
-                !--------------------------------------------------
-		select case (i)
-		 case (1)
-		   do ix = 1,nx
-		      do iy = 1,ny
-			dval = data(ix,iy)
-		        if( dval.gt.flag ) then
-		          dataens(ix,iy) = data(ix,iy) + 
-     +			    (rerr * data(ix,iy)) * pmat1(ix,iy,nr)
-!		          dataens(ix,iy) = pmat1(ix,iy,nr)	!check rand field
-		        else
-		          dataens(ix,iy) = flag
-		        end if
-		      end do
-		   end do
-		 case (2)
-		   do ix = 1,nx
-		      do iy = 1,ny
-			dval = data(ix,iy)
-		        if( dval.gt.flag ) then
-		          dataens(ix,iy) = data(ix,iy) + 
-     +			    (rerr * data(ix,iy)) * pmat2(ix,iy,nr)
-!		          dataens(ix,iy) = pmat2(ix,iy,nr)	!check rand field
-		        else
-		          dataens(ix,iy) = flag
-		        end if
-		      end do
-		   end do
-		 case (3)
-		   dataens = data
-		end select
-                !--------------------------------------------------
 
-                !--------------------------------------------------
+		! Select perturbation type
+                select case (pert_type)
+		   case (1)
+			call make_const_field(i,nr,2,nrens,nx,ny,pvec,
+     +					data,dataens,flag,rerruv)
+		   case (2)
+			call make_ind_field(i,nr,2,nrens,nx,ny,pmat,
+     +					data,dataens,flag,rerruv)
+		   case (3)
+			call make_geo_field(i,nr,1,nrens,nx,ny,dx,dy,
+     +			pmat,data,dataens,flag,rerruv,sigmaP,flat)
+		end select
+
 	        ! Writes record
-                !--------------------------------------------------
 	        ounit = iunit + 10 + nr
 	        call fem_file_write_data(iformat,ounit
      +                          ,nvers,np,lmax
      +                          ,string
      +                          ,ilhkv,hd
      +                          ,nlvddi,dataens)
-                !--------------------------------------------------
-	     end do
 
-	  end do	! loop on variables
-          !--------------------------------------------------
+	     end do !------loop on ens members----
 
-	  deallocate(ilhkv,hd,data,dataens)
+	  end do !------loop on variables----
+
+	  deallocate(ilhkv)
+	  deallocate(hd)
+	  deallocate(data)
+	  deallocate(dataens)
 	  deallocate(hlv)
 
-	end do		!loop on records
-        !--------------------------------------------------
+	end do 	!-------loop on records-----
 
 	! closes files
 	close(iunit)
@@ -192,129 +247,59 @@
 !***********************************************************
 !***********************************************************
 !***********************************************************
-        !--------------------------------------------------
-	subroutine make_pert_2D(irec,tt,nrens,nx,ny,dx,dy,pmat1,pmat2)
-        !--------------------------------------------------
-	use m_sample2D
+	
+!--------------------------------------------------
+	subroutine merge_old_field(irec,tt,tt_old,tau_er,nx,ny,
+     +                  nvar,nrens,pmat,pmat_old)
+!--------------------------------------------------
 	implicit none
-	integer, intent(in) :: irec,nrens,nx,ny
-	double precision, intent(in) :: tt
-	real, intent(in) :: dx,dy
-	real, intent(out) :: pmat1(nx,ny,nrens), pmat2(nx,ny,nrens)
-	real, allocatable, save :: pmat1_old(:,:,:),pmat2_old(:,:,:)
-	double precision, save :: tt_old
-	real rx,ry
-	integer fmult	!Mult factor for the super-sampling
-	real theta	!Rotation of the random fields (theta=0 is east, rotation anticlocwise)
-	logical verbose,samp_fix
-	double precision dt_er        !time between 2 analysis steps
-	double precision tau_er       !time decorrelation (>=dt) of the old error: dq/dt = -(1/tau)*q
-	double precision alpha
-	real xlength,ylength
+	integer irec
+	double precision tt,tt_old,tau_er
+	integer nx,ny,nrens,nvar
+	real pmat(nvar,nx,ny,nrens),pmat_old(nvar,nx,ny,nrens)
 
-	tau_er = 86400*3	! 3 days
+	double precision dt_er,alpha
 
-	!theta = 135
-	theta = 0
-	fmult = 8
-
-	! dx must resolve rx, but you need enough nx.
-	! The same for y.
-	xlength = (nx-1) * dx
-	ylength = (ny-1) * dy
-	rx = ((nx-1)/4) * dx
-	ry = ((ny-1)/4) * dy
-	!rx = 3.
-	!ry = 4.
-
-	verbose = .true.
-	samp_fix = .true.     !keep true
-
-	if( verbose ) then
-          write(*,*) 'theta ',theta
-          write(*,*) 'dx ',dx
-          write(*,*) 'dy ',dy
-          write(*,*) 'rx ',rx
-          write(*,*) 'ry ',ry
-          write(*,*) 'nx ',nx
-          write(*,*) 'ny ',ny
-          write(*,*) 'tau error ',tau_er
-          write(*,*) 'fmult ',fmult
-        end if
-
-	! Allocate old matrices
-	if(.not.allocated(pmat1_old)) allocate(pmat1_old(nx,ny,nrens))
-	if(.not.allocated(pmat2_old)) allocate(pmat2_old(nx,ny,nrens))
-
-	! Make the random fields
-	call sample2D(pmat1,nx,ny,nrens,fmult,dx,dy,rx,ry,theta
-     +               ,samp_fix,verbose)
-
-	call sample2D(pmat2,nx,ny,nrens,fmult,dx,dy,rx,ry,theta
-     +               ,samp_fix,verbose)
-
-	! Merge with the old fields in order to have time correlation
-        if( irec.ne.1 ) then
-	  
+        if ( irec.gt.1 ) then
 	  dt_er = tt - tt_old
 	  alpha = 1. - (dt_er/tau_er)
-	  pmat1 = alpha * pmat1_old + sqrt(1 - alpha**2) * pmat1
-	  pmat2 = alpha * pmat2_old + sqrt(1 - alpha**2) * pmat2
+	  pmat = alpha * pmat_old + sqrt(1 - alpha**2) * pmat
+        end if
 
-	endif
-         
 	! Update old fields
-        pmat1_old = pmat1
-        pmat2_old = pmat2
+	pmat_old = pmat
 	tt_old = tt
 
-	end subroutine make_pert_2D
+	end subroutine merge_old_field
 
-        !--------------------------------------------------
-	subroutine make_pert_0D(irec,tt,nrens,pvec1,pvec2)
-        !--------------------------------------------------
-        implicit none
-        integer, intent(in) :: irec,nrens
-        double precision, intent(in) :: tt
-        real, intent(out) :: pvec1(nrens), pvec2(nrens)
-        real, allocatable, save :: pvec1_old(:),pvec2_old(:)
-        double precision, save :: tt_old
-        double precision dt_er        !time between 2 analysis steps
-        double precision tau_er       !time decorrelation (>=dt) of the old error: dq/dt = -(1/tau)*q
-        double precision alpha
+!--------------------------------------------------
+	subroutine merge_old_vec(irec,tt,tt_old,tau_er,
+     +                  nrens,nvar,pvec,pvec_old)
+!--------------------------------------------------
+	implicit none
+	integer irec
+	double precision tt,tt_old,tau_er
+	integer nx,ny,nrens,nvar
+	real pvec(nvar,nrens),pvec_old(nvar,nrens)
 
-	tau_er = 86400	! 1 days
+	double precision dt_er,alpha
 
-        call make_random_0D(pvec1,nrens)
-        call make_random_0D(pvec2,nrens)
+        if ( irec.gt.1 ) then
+	  dt_er = tt - tt_old
+	  alpha = 1. - (dt_er/tau_er)
+	  pvec = alpha * pvec_old + sqrt(1 - alpha**2) * pvec
+        end if
 
-        ! Merge with the old fields in order to have time correlation
-        if( irec.ne.1 ) then
+	! Update old fields
+	pvec_old = pvec
+	tt_old = tt
 
-          dt_er = tt - tt_old
-	  if( dt_er .le. 0. ) dt_er = 3600
-
-	  ! Allocate old matrices
-	  if(.not.allocated(pvec1_old)) allocate(pvec1_old(nrens))
-	  if(.not.allocated(pvec2_old)) allocate(pvec2_old(nrens))
-
-          alpha = 1. - (dt_er/tau_er)
-          pvec1 = alpha * pvec1_old + sqrt(1 - alpha**2) * pvec1
-          pvec2 = alpha * pvec2_old + sqrt(1 - alpha**2) * pvec2
-
-        endif
-
-        ! Update old fields
-        pvec1_old = pvec1
-        pvec2_old = pvec2
-        tt_old = tt
-
-	end subroutine make_pert_0D
+	end subroutine merge_old_vec
 
 
-        !--------------------------------------------------
+!--------------------------------------------------
 	subroutine make_random_0D(vec,nvec)
-        !--------------------------------------------------
+!--------------------------------------------------
         use m_random
 	implicit none
 	integer, intent(in) :: nvec
@@ -337,3 +322,177 @@
         vec = vec - ave
 
 	end subroutine make_random_0D
+
+
+!--------------------------------------------------
+	subroutine make_const_field(ivar,iens,vardim,nrens,nx,ny,vec,
+     +					data,dataens,flag,rerr)
+!--------------------------------------------------
+	implicit none
+
+	integer,intent(in) :: ivar,iens
+	integer,intent(in) :: vardim,nrens,nx,ny
+	real,intent(in) :: rerr,flag
+	real,intent(in) :: vec(vardim,nrens)
+	real*4,intent(in) :: data(nx,ny)
+	real*4,intent(out) :: dataens(nx,ny)
+
+	integer ix,iy
+
+	select case (ivar)
+
+	  case default
+
+	    do iy = 1,ny
+	    do ix = 1,nx
+		dataens(ix,iy) = data(ix,iy) + (rerr * data(ix,iy)) 
+     +					* vec(ivar,iens)
+		if( data(ix,iy).eq.flag ) dataens(ix,iy) = flag
+	    end do
+	    end do
+
+	  case (3)
+
+	    dataens = data
+
+	end select
+
+	end subroutine make_const_field
+
+
+!--------------------------------------------------
+	subroutine make_ind_field(ivar,iens,vardim,nrens,nx,ny,mat,
+     +				data,dataens,flag,rerr)
+!--------------------------------------------------
+	implicit none
+
+	integer,intent(in) :: ivar,iens
+	integer,intent(in) :: vardim,nrens,nx,ny
+	real,intent(in) :: rerr,flag
+	real,intent(in) :: mat(vardim,nx,ny,nrens)
+	real*4,intent(in) :: data(nx,ny)
+	real*4,intent(out) :: dataens(nx,ny)
+
+	integer ix,iy
+
+	select case (ivar)
+
+	  case default
+
+	    do iy = 1,ny
+	    do ix = 1,nx
+		dataens(ix,iy) = data(ix,iy) + (rerr * data(ix,iy)) 
+     +					* mat(ivar,ix,iy,iens)
+		if( data(ix,iy).eq.flag ) dataens(ix,iy) = flag
+	    end do
+	    end do
+
+	  case (3)
+
+	    dataens = data
+
+	end select
+
+	end subroutine make_ind_field
+
+
+
+!--------------------------------------------------
+	subroutine make_geo_field(ivar,iens,vardim,nrens,nx,ny,dx,dy,
+     +			mat,data,dataens,flag,rerr,sigmaP,flat)
+!--------------------------------------------------
+	implicit none
+
+	integer,intent(in) :: ivar,iens
+	integer,intent(in) :: vardim,nrens,nx,ny
+	real,intent(in) :: dx,dy
+	real,intent(in) :: rerr,sigmaP,flag
+	real,intent(in) :: flat
+	real,intent(in) :: mat(vardim,nx,ny,nrens)
+	real*4,intent(in) :: data(nx,ny)
+	real*4,intent(out) :: dataens(nx,ny)
+
+	integer ix,iy
+	real Fp1,Fp2,Up,Vp
+	real sigmaU, sigmaV
+	real dxm,dym
+
+	real, parameter :: pi = acos(-1.)
+	real, parameter :: rhoa = 1.2041
+	real, parameter :: er1 = 63781370. !max earth radius
+	real, parameter :: er2 = 63567523. !min earth radius
+	real fcor,er,theta
+
+	theta = flat * pi/180.
+	fcor = 2. * sin(theta) * (2.* pi / 86400.)
+	! earth radius with latitude
+	er = sqrt( ( (er1**2 * cos(theta))**2 + 
+     +			(er2**2 * sin(theta))**2 ) /
+     +			( (er1 * cos(theta))**2 + 
+     +			(er2 * sin(theta))**2 ) ) 
+
+	dxm = dx * pi/180. * er
+	dym = dy * pi/180. * er
+
+        select case(ivar)
+	  case(1)	!u-wind
+
+		do ix = 1,nx
+		do iy = 2,ny
+
+		  Fp2 = mat(1,ix,iy,iens)
+		  Fp1 = mat(1,ix,iy-1,iens)
+		  sigmaU = rerr * abs(data(ix,iy))
+
+		  Up = - (((Fp2 - Fp1)/dym) * sigmaP) / fcor
+		  !Up = - (Fp2 - Fp1) * sigmaU
+
+		  dataens(ix,iy) = Up
+		  !dataens(ix,iy) = data(ix,iy) + Up
+
+		  if( data(ix,iy).eq.flag ) dataens(ix,iy) = flag
+
+		end do
+		end do
+
+		! First row unchanged
+		dataens(:,1) = data(:,1)
+		
+	  case(2)	!v-wind
+
+		do iy = 1,ny
+		do ix = 2,nx
+
+		  Fp2 = mat(1,ix,iy,iens)
+		  Fp1 = mat(1,ix-1,iy,iens)
+		  sigmaV = rerr * abs(data(ix,iy))
+
+		  Vp = (((Fp2 - Fp1)/dxm) * sigmaP) / fcor
+		  !Vp = (Fp2 - Fp1) * sigmaV
+
+		  dataens(ix,iy) =  Vp
+		  !dataens(ix,iy) = data(ix,iy) + Vp
+
+		  if( data(ix,iy).eq.flag ) dataens(ix,iy) = flag
+
+		end do
+		end do
+
+		! First row unchanged
+		dataens(1,:) = data(1,:)
+
+	  case(3)	!pressure
+
+		do iy = 1,ny
+		do ix = 1,nx
+		  dataens(ix,iy) = data(ix,iy) + sigmaP *
+     +					mat(1,ix,iy,iens)
+		  if( data(ix,iy).eq.flag ) dataens(ix,iy) = flag
+		end do
+		end do
+
+	end select
+	
+	end subroutine make_geo_field
+
+
