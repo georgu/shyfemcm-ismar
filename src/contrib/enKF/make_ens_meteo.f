@@ -22,7 +22,7 @@
 	real*4,allocatable :: hd(:)
 	integer nlvddi
 	real*4,allocatable :: data(:,:),dataens(:,:)
-	real rerruv,sigmaP	!u-v relative error, std of pressure
+	real sigmaUV,sigmaP	!u-v relative error, std of pressure
 	integer nrens
 	integer irec
 	integer i,nr
@@ -48,15 +48,17 @@
 
 	!--------------------------
 	! n. of ens members
-	nrens = 5
+	nrens = 30
 	! type of perturbed field
 	pert_type = 3
 	! relative error
-	rerruv = .3
+	!sigmaUV = .3
+	! absolute error
+	sigmaUV = 4. 	!m/s
 	! pressure standard deviation
-	sigmaP = 100. * 5.	!(5 mbar -> 500Pa) Used only for the pressure, see the routine
+	sigmaP = 100. * 2.	!(5 mbar -> 500Pa) Used only for the pressure, see the routine
 	! decorrelation e-folding time
-	tau_er = 86400*3
+	tau_er = 86400*2
 	! Average latitude for the Coriolis factor. Used only with pert_type = 3
 	flat = 40.
 
@@ -206,13 +208,13 @@
                 select case (pert_type)
 		   case (1)
 			call make_const_field(i,nr,2,nrens,nx,ny,pvec,
-     +					data,dataens,flag,rerruv)
+     +					data,dataens,flag,sigmaUV)
 		   case (2)
 			call make_ind_field(i,nr,2,nrens,nx,ny,pmat,
-     +					data,dataens,flag,rerruv)
+     +					data,dataens,flag,sigmaUV)
 		   case (3)
 			call make_geo_field(i,nr,1,nrens,nx,ny,dx,dy,
-     +			pmat,data,dataens,flag,rerruv,sigmaP,flat)
+     +			pmat,data,dataens,flag,sigmaUV,sigmaP,flat)
 		end select
 
 	        ! Writes record
@@ -326,13 +328,13 @@
 
 !--------------------------------------------------
 	subroutine make_const_field(ivar,iens,vardim,nrens,nx,ny,vec,
-     +					data,dataens,flag,rerr)
+     +					data,dataens,flag,err)
 !--------------------------------------------------
 	implicit none
 
 	integer,intent(in) :: ivar,iens
 	integer,intent(in) :: vardim,nrens,nx,ny
-	real,intent(in) :: rerr,flag
+	real,intent(in) :: err,flag
 	real,intent(in) :: vec(vardim,nrens)
 	real*4,intent(in) :: data(nx,ny)
 	real*4,intent(out) :: dataens(nx,ny)
@@ -345,8 +347,10 @@
 
 	    do iy = 1,ny
 	    do ix = 1,nx
-		dataens(ix,iy) = data(ix,iy) + (rerr * data(ix,iy)) 
-     +					* vec(ivar,iens)
+! if err is relative use this
+!		dataens(ix,iy) = data(ix,iy) + (err * abs(data(ix,iy))) 
+!     +					* vec(ivar,iens)
+		dataens(ix,iy) = data(ix,iy) + (err * vec(ivar,iens))
 		if( data(ix,iy).eq.flag ) dataens(ix,iy) = flag
 	    end do
 	    end do
@@ -362,13 +366,13 @@
 
 !--------------------------------------------------
 	subroutine make_ind_field(ivar,iens,vardim,nrens,nx,ny,mat,
-     +				data,dataens,flag,rerr)
+     +				data,dataens,flag,err)
 !--------------------------------------------------
 	implicit none
 
 	integer,intent(in) :: ivar,iens
 	integer,intent(in) :: vardim,nrens,nx,ny
-	real,intent(in) :: rerr,flag
+	real,intent(in) :: err,flag
 	real,intent(in) :: mat(vardim,nx,ny,nrens)
 	real*4,intent(in) :: data(nx,ny)
 	real*4,intent(out) :: dataens(nx,ny)
@@ -381,8 +385,11 @@
 
 	    do iy = 1,ny
 	    do ix = 1,nx
-		dataens(ix,iy) = data(ix,iy) + (rerr * data(ix,iy)) 
-     +					* mat(ivar,ix,iy,iens)
+! if err is relative use this
+!		dataens(ix,iy) = data(ix,iy) + (err*abs(data(ix,iy)))
+!     +					* mat(ivar,ix,iy,iens)
+		dataens(ix,iy) = data(ix,iy) + 
+     +				(err * mat(ivar,ix,iy,iens))
 		if( data(ix,iy).eq.flag ) dataens(ix,iy) = flag
 	    end do
 	    end do
@@ -399,14 +406,14 @@
 
 !--------------------------------------------------
 	subroutine make_geo_field(ivar,iens,vardim,nrens,nx,ny,dx,dy,
-     +			mat,data,dataens,flag,rerr,sigmaP,flat)
+     +			mat,data,dataens,flag,err,sigmaP,flat)
 !--------------------------------------------------
 	implicit none
 
 	integer,intent(in) :: ivar,iens
 	integer,intent(in) :: vardim,nrens,nx,ny
 	real,intent(in) :: dx,dy
-	real,intent(in) :: rerr,sigmaP,flag
+	real,intent(in) :: err,sigmaP,flag
 	real,intent(in) :: flat
 	real,intent(in) :: mat(vardim,nx,ny,nrens)
 	real*4,intent(in) :: data(nx,ny)
@@ -442,13 +449,15 @@
 
 		  Fp2 = mat(1,ix,iy,iens)
 		  Fp1 = mat(1,ix,iy-1,iens)
-		  sigmaU = rerr * abs(data(ix,iy))
+		  ! if err is relative use this
+		  !sigmaU = err * abs(data(ix,iy))
+		  sigmaU = err
 
-		  Up = - (((Fp2 - Fp1)/dym) * sigmaP) / fcor
-		  !Up = - (Fp2 - Fp1) * sigmaU
+		  !Up = - (((Fp2 - Fp1)/dym) * sigmaP) / fcor
+		  Up = - (Fp2 - Fp1) * sigmaU
 
-		  dataens(ix,iy) = Up
-		  !dataens(ix,iy) = data(ix,iy) + Up
+		  !dataens(ix,iy) = Up
+		  dataens(ix,iy) = data(ix,iy) + Up
 
 		  if( data(ix,iy).eq.flag ) dataens(ix,iy) = flag
 
@@ -465,13 +474,15 @@
 
 		  Fp2 = mat(1,ix,iy,iens)
 		  Fp1 = mat(1,ix-1,iy,iens)
-		  sigmaV = rerr * abs(data(ix,iy))
+		  ! if err is relative use this
+		  !sigmaV = err * abs(data(ix,iy))
+		  sigmaV = err
 
-		  Vp = (((Fp2 - Fp1)/dxm) * sigmaP) / fcor
-		  !Vp = (Fp2 - Fp1) * sigmaV
+		  !Vp = (((Fp2 - Fp1)/dxm) * sigmaP) / fcor
+		  Vp = (Fp2 - Fp1) * sigmaV
 
-		  dataens(ix,iy) =  Vp
-		  !dataens(ix,iy) = data(ix,iy) + Vp
+		  !dataens(ix,iy) =  Vp
+		  dataens(ix,iy) = data(ix,iy) + Vp
 
 		  if( data(ix,iy).eq.flag ) dataens(ix,iy) = flag
 
@@ -487,6 +498,7 @@
 		do ix = 1,nx
 		  dataens(ix,iy) = data(ix,iy) + sigmaP *
      +					mat(1,ix,iy,iens)
+		  !dataens(ix,iy) = sigmaP * mat(1,ix,iy,iens)
 		  if( data(ix,iy).eq.flag ) dataens(ix,iy) = flag
 		end do
 		end do
