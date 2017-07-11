@@ -52,11 +52,12 @@
 	! type of perturbed field
 	pert_type = 3
 	! relative error
-	!sigmaUV = .3
+	sigmaUV = 1.5	
+	!sigmaUV = 3.
 	! absolute error
-	sigmaUV = 4. 	!m/s
+	!sigmaUV = 4. 	!m/s
 	! pressure standard deviation
-	sigmaP = 100. * 2.	!(5 mbar -> 500Pa) Used only for the pressure, see the routine
+	sigmaP = 100. * 3.	!(5 mbar -> 500Pa) Used only for the pressure, see the routine
 	! decorrelation e-folding time
 	tau_er = 86400*2
 	! Average latitude for the Coriolis factor. Used only with pert_type = 3
@@ -65,10 +66,10 @@
 	! 2d pseudo random fields params
 	fmult = 8
 	theta = 0
-	!theta = 135
-	rx = 4.
-	ry = 4.
-	verbose = .true.
+	!theta = 135	!prevalent wind direction in the Med
+	rx = 4
+	ry = 4
+	verbose = .false.
 	samp_fix = .true.     !keep true
 
 	! input file
@@ -348,9 +349,9 @@
 	    do iy = 1,ny
 	    do ix = 1,nx
 ! if err is relative use this
-!		dataens(ix,iy) = data(ix,iy) + (err * abs(data(ix,iy))) 
-!     +					* vec(ivar,iens)
-		dataens(ix,iy) = data(ix,iy) + (err * vec(ivar,iens))
+		dataens(ix,iy) = data(ix,iy) + (err * abs(data(ix,iy))) 
+     +					* vec(ivar,iens)
+!		dataens(ix,iy) = data(ix,iy) + (err * vec(ivar,iens))
 		if( data(ix,iy).eq.flag ) dataens(ix,iy) = flag
 	    end do
 	    end do
@@ -386,10 +387,10 @@
 	    do iy = 1,ny
 	    do ix = 1,nx
 ! if err is relative use this
-!		dataens(ix,iy) = data(ix,iy) + (err*abs(data(ix,iy)))
-!     +					* mat(ivar,ix,iy,iens)
-		dataens(ix,iy) = data(ix,iy) + 
-     +				(err * mat(ivar,ix,iy,iens))
+		dataens(ix,iy) = data(ix,iy) + (err*abs(data(ix,iy)))
+     +					* mat(ivar,ix,iy,iens)
+!		dataens(ix,iy) = data(ix,iy) + 
+!     +				(err * mat(ivar,ix,iy,iens))
 		if( data(ix,iy).eq.flag ) dataens(ix,iy) = flag
 	    end do
 	    end do
@@ -450,10 +451,10 @@
 		  Fp2 = mat(1,ix,iy,iens)
 		  Fp1 = mat(1,ix,iy-1,iens)
 		  ! if err is relative use this
-		  !sigmaU = err * abs(data(ix,iy))
-		  sigmaU = err
+		  sigmaU = err * abs(data(ix,iy))
+		  !sigmaU = err
 
-		  !Up = - (((Fp2 - Fp1)/dym) * sigmaP) / fcor
+		  !Up = - (((Fp2 - Fp1)/dym) * sigmaP) / (rhoa * fcor)
 		  Up = - (Fp2 - Fp1) * sigmaU
 
 		  !dataens(ix,iy) = Up
@@ -475,10 +476,10 @@
 		  Fp2 = mat(1,ix,iy,iens)
 		  Fp1 = mat(1,ix-1,iy,iens)
 		  ! if err is relative use this
-		  !sigmaV = err * abs(data(ix,iy))
-		  sigmaV = err
+		  sigmaV = err * abs(data(ix,iy))
+		  !sigmaV = err
 
-		  !Vp = (((Fp2 - Fp1)/dxm) * sigmaP) / fcor
+		  !Vp = (((Fp2 - Fp1)/dxm) * sigmaP) / (rhoa * fcor)
 		  Vp = (Fp2 - Fp1) * sigmaV
 
 		  !dataens(ix,iy) =  Vp
@@ -498,7 +499,7 @@
 		do ix = 1,nx
 		  dataens(ix,iy) = data(ix,iy) + sigmaP *
      +					mat(1,ix,iy,iens)
-		  !dataens(ix,iy) = sigmaP * mat(1,ix,iy,iens)
+!		  dataens(ix,iy) = sigmaP * mat(1,ix,iy,iens)
 		  if( data(ix,iy).eq.flag ) dataens(ix,iy) = flag
 		end do
 		end do

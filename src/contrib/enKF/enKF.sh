@@ -75,41 +75,21 @@ Read_conf()
         bas_file=$line
         Check_file $bas_file
 
-     # List of the skel files
-     elif [ $nrows = 1 ]; then
-        skel_file_list=$line
-	Check_file $skel_file_list
-
-     # List of the initial restart files
-     elif [ $nrows = 2 ]; then
-        rst_file_list=$line
-	Check_file $rst_file_list
-
-     # List of the observation files
-     elif [ $nrows = 3 ]; then
-        obs_file_list=$line
-        Check_file $obs_file_list
-
-     # List of times with observations
-     elif [ $nrows = 4 ]; then
-        obs_time_list=$line
-        Check_file $obs_time_list
-
      # Dimension of the state vector: nkn nel nlv
-     elif [ $nrows = 5 ]; then
+     elif [ $nrows = 1 ]; then
         sdim=$line
         
      # number of ensemble members: nrens
-     elif [ $nrows = 6 ]; then
+     elif [ $nrows = 2 ]; then
         nrens=$line
         
      # If 1 makes a new ens of initial states from 1
-     elif [ $nrows = 7 ]; then
+     elif [ $nrows = 3 ]; then
         is_new_ens=$line
         Check_num 0 1 'int' $is_new_ens
 
      # If 1 uses an augmented state with the model errors
-     elif [ $nrows = 8 ]; then
+     elif [ $nrows = 4 ]; then
         is_mod_err=$line
         Check_num 0 1 'int' $is_mod_err
 
@@ -121,6 +101,15 @@ Read_conf()
      fi
      nrows=$((nrows + 1))
   done < $1
+
+  skel_file_list='skel_list.txt'
+  Check_file $skel_file_list  
+  rst_file_list='rst_list.txt'
+  Check_file $rst_file_list
+  obs_file_list='obs_list.txt'
+  Check_file $obs_file_list
+  obs_time_list='obstime_list.txt'
+  Check_file $obs_time_list
 }
 
 #----------------------------------------------------------

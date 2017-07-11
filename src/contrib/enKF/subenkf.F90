@@ -1,5 +1,30 @@
+  subroutine init_shyfem_vars(nk,ne,nl)
+  use basin
+  use mod_restart
+  use mod_geom_dynamic
+  use levels
+  use mod_hydro
+  use mod_hydro_vel
+  use mod_ts
+  use mod_conz
+
+  implicit none
+  integer, intent(in) :: nk,ne,nl
+
+  call mod_geom_dynamic_init(nk,ne)
+  call mod_hydro_init(nk,ne,nl)
+  call mod_hydro_vel_init(nk,ne,nl)
+  call mod_ts_init(nk,nl)  
+  !call mod_conz_init(iconz_rst,nk,nl)
+  call levels_init(nk,ne,nl)
+
+  nlvdi = nl
+  nlv = nl
+  end subroutine init_shyfem_vars
+
 !********************************************************
-  subroutine init_rst_vars
+
+  subroutine add_rst_pars
   use mod_restart
   implicit none
   
@@ -9,48 +34,33 @@
   call daddpar('date',0.)
   call daddpar('time',0.)
 
-  end subroutine init_rst_vars
-
+  end subroutine add_rst_pars
 
 !********************************************************
 
-  subroutine rst_read(nnkn,nnel,nnlv,rstname,tt)
+  subroutine rst_read(rstname,tt,date,time)
 
-  use basin
-  use mod_restart
-  use mod_geom_dynamic
-  use levels, only : nlvdi,nlv
-  use mod_hydro
-  use mod_hydro_vel
-  use mod_ts
-  use mod_conz
   implicit none
 
-  integer, intent(in) :: nnkn,nnel,nnlv
   character(len=*), intent(in) :: rstname
   double precision, intent(in) :: tt
+  integer,intent(out) :: date,time
 
   integer io
   integer it,ierr
   double precision atime
 
-  nlv = nnlv
- 
-  ! init shyfem variables
-  call mod_geom_dynamic_init(nnkn,nnel)
-  call mod_hydro_init(nnkn,nnel,nnlv)
-  call mod_hydro_vel_init(nnkn,nnel,nnlv)
-  call mod_ts_init(nnkn,nnlv)  
-  !call mod_conz_init(iconz_rst,nnkn,nnlv)
 
   open(24,file=trim(rstname),status='old',form='unformatted',iostat=io)
-  if( io.ne.0 ) error stop 'rst_read: Error opening file'
+  if (io /= 0) error stop 'rst_read: Error opening file'
 
  89  call rst_read_record(atime,it,24,ierr)
-     if( ierr.ne.0 ) goto 90
-     if( it.ne.nint(tt) ) goto 89
+     if (it /= nint(tt)) goto 89
+     if (ierr /= 0) goto 90
 
   close(24)
+
+  call dts_from_abs_time(date,time,atime-tt)
 
   return
 
@@ -63,26 +73,30 @@
 
 !********************************************************
 
-  subroutine rst_write(rstname,tt)
+  subroutine rst_write(rstname,tt,date,time)
 
   use mod_restart
+  use levels, only : hlv
 
   implicit none
 
   character(len=*), intent(in) :: rstname
   double precision, intent(in) :: tt
+  integer, intent(in) :: date,time
 
   integer it
-  double precision ddate,dtime
 
   ! adds parameters
+  !
   call putpar('ibarcl',float(ibarcl_rst))
   call putpar('iconz',float(iconz_rst))
   call putpar('ibfm',0.)
-  ddate = date_rst
-  dtime = time_rst
-  call dputpar('date',ddate)
-  call dputpar('time',dtime)
+  call dputpar('date',dfloat(date))
+  call dputpar('time',dfloat(time))
+
+  ! In 2D barotropic hlv is set to 10000.
+  !
+  if (size(hlv) == 1) hlv = 10000.
 
   open(34,file=rstname,form='unformatted')
   it = nint(tt)
@@ -117,25 +131,6 @@
   ik = ikmin
 
   end subroutine find_node
-
-!********************************************************
-
-  subroutine check_innov_val(inn,typeo)
-  implicit none
-  double precision, intent(inout) :: inn
-  character(len=*), intent(in) :: typeo
-
-  if( trim(typeo).eq.'level' ) then
-    if ( abs(inn) .gt. 1. ) then
-       write(*,*) 'Warning: level innovation too large: ',inn
-       write(*,*) '         Setting it to zero...'
-       inn = 0.
-    end if
-  else
-    write(*,*) 'check_innov_val: warning observation not implemented'
-  end if
-
-  end subroutine check_innov_val
 
 !********************************************************
 
@@ -234,4 +229,123 @@
 
   end subroutine make_pert
 
+!********************************************************
 
+  subroutine find_el_node(x,y,ie,ik)
+  use basin
+  implicit none
+
+  real, intent(in) :: x,y
+  integer, intent(out) :: ie,ik
+  real*4 x4,y4
+  real dst,dstmax
+  integer iik,ii
+
+  !-----------
+  ! Finds the grid element and the node 
+  ! nearest to the observation (the subroutine is in real4)
+  !-----------
+  x4 = x
+  y4 = y
+  call find_element(x4,y4,ie)
+  if( ie.eq.0 ) then
+     write(*,*) 'find_el_node: observations must be inside the grid.'
+     write(*,*) 'x, y: ',x4,y4
+     error stop
+  end if
+
+  dstmax = 1e15
+  do ii = 1,3
+     iik = nen3v(ii,ie)
+     dst = sqrt( (xgv(iik)-x4)**2 + (ygv(iik)-y4)**2 )
+     if( dst.lt.dstmax ) then
+       dstmax = dst
+       ik = iik
+     end if
+  end do
+
+  end subroutine find_el_node
+
+!********************************************************
+
+  subroutine make_0Dpert(vflag,n,na,id,vec,t,tau)
+  implicit none
+  character(len=1), intent(in) :: vflag
+  integer, intent(in) :: n,na,id
+  real, intent(out) :: vec(n)
+  double precision, intent(in) :: t,tau
+  character(len=3) :: nal,idl
+  character(len=17) :: pfile
+  logical bfile
+  integer nf
+  real, allocatable :: vec_old(:)
+  double precision t_old
+  double precision alpha,dt
+
+  ! make a new perturbation
+  !
+  call random_vec(vec,n)
+
+  ! if exist load an old perturbation and merge
+  !
+  call num2str(na-1,nal)
+  call num2str(id,idl)
+  pfile = vflag // 'pert_' // nal // '_' // idl // '.bin'
+  inquire(file=pfile,exist=bfile)
+  if (bfile) then
+     open(22,file=pfile,status='old',form='unformatted')
+     read(22) nf
+     if (nf /= n) error stop 'make_level_pert: dimension mismatch'
+     read(22) t_old
+     allocate(vec_old(nf))
+     read(22) vec_old
+     close(22)
+
+     dt = t - t_old
+     alpha = 1. - (dt/tau) 
+     vec = alpha * vec_old + sqrt(1 - alpha**2) * vec
+  else
+     !write(*,*) 'No old file with perturbations: ',pfile
+     continue
+  end if
+
+  ! save the last perturbation
+  !
+  call num2str(na,nal)
+  pfile = vflag // 'pert_' // nal // '_' // idl // '.bin'
+  open(32,file=pfile,form='unformatted')
+  write(32) n
+  write(32) t
+  write(32) vec
+  close(32)
+
+  end subroutine make_0Dpert
+
+!********************************************************
+
+  subroutine random_vec(v,vdim)
+  use m_random
+  implicit none
+  integer vdim
+  real v(vdim),vaux(vdim-1)
+  real aaux,ave
+  integer n
+
+  call random(vaux,vdim-1)
+  ! remove outlayers
+  do n = 1,vdim-1
+     aaux = vaux(n)
+     if( abs(aaux).ge.3. ) then
+       aaux = aaux/abs(aaux) * (abs(aaux)-floor(abs(aaux)) + 1.) 
+     end if
+     vaux(n) = aaux
+  end do
+
+  ! set mean eq to zero
+  ave = sum(vaux)/float(vdim-1)
+  vaux = vaux - ave
+
+  v(1) = 0.
+  v(2:vdim) = vaux
+
+  end subroutine random_vec

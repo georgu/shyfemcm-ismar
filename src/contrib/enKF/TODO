@@ -1,0 +1,4 @@
+- superobservation to be called in read_obs. Manage with %status
+- reorganise the structure of the code files
+- reorganise the Makefiles and the gfortran compatibility
+- t/s assimilation

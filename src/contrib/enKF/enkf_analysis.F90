@@ -21,34 +21,37 @@
 
   logical :: verbose = .true. ! Prints diagnostic output
 
+  integer :: date,time !date and time in the rst files
+
 !----------------------------------------------------
 ! Opens info file
 !----------------------------------------------------
   call read_info
   
 !----------------------------------------------------
-! Read basin
+! Set shyfem variables and init modules
 !----------------------------------------------------
-  call read_basin
-
-!----------------------------------------------------
-! Init restart variables
-!----------------------------------------------------
-  call init_rst_vars
+  call set_shyfem_vars
 
 !----------------------------------------------------
 ! Read the ensemble
 !----------------------------------------------------
-  call read_ensemble
+  call read_ensemble(date,time)
+
 
 !----------------------------------------------------
-! Makes the mean of A ans saves a restart file with it
+! Makes the mean of A and saves a restart file with it
 ! before the analysis
 !----------------------------------------------------
-  call average_mat(-1)
+  call average_mat(date,time,-1)
 
 !----------------------------------------------------
-! Read observations and makes D1, E and R, S and d-H*mean(A)
+! Read observations and pre-process them
+!----------------------------------------------------
+  call read_obs
+
+!----------------------------------------------------
+! makes D1, E and R, S and d-H*mean(A)
 !----------------------------------------------------
   call make_matrices
 
@@ -59,23 +62,23 @@
 ! perturbed measurements. See analysis2.F90, not analysis.F90, for a correct
 ! description.
   ! Decide if use an augmented state with the model error
-  if( is_mod_err.eq.0 ) then
+  if (bmod_err == 0) then
 
     call analysis(A,R,E,S,D1,innov,global_ndim,nrens,nobs_tot,verbose,truncation,rmode,update_randrot)
     !call analysis6c(A,E,S,innov,global_ndim,nrens,nobs_tot,verbose)	!SQRT alg
     !call analysis2(A,D1,R,S,global_ndim,nrens,nobs_tot,verbose)	!ENKF alg
 
-  else if( is_mod_err.eq.1 ) then
+  else if (bmod_err == 1) then
 
     call push_aug
     call analysis(Aaug,R,E,S,D1,innov,2*global_ndim,nrens,nobs_tot,verbose,truncation,rmode,update_randrot)
     !call analysis6c(Aaug,E,S,innov,2*global_ndim,nrens,nobs_tot,verbose)	!SQRT alg
     !call analysis2(Aaug,D1,R,S,2*global_ndim,nrens,nobs_tot,verbose)		!ENKF alg
-    call pull_aug
+    call pull_aug(date,time)
 
   else
 
-    error stop 'enkf_analysis: invalid option for is_mod_err'
+    error stop 'enkf_analysis: invalid option for bmod_err'
 
   end if
 
@@ -85,11 +88,11 @@
 ! Save the output in different restart files
 !--------------------------------
   write(*,*) 'Writing the restart files with the analysis states...'
-  call write_ensemble
+  call write_ensemble(date,time)
 
 !--------------------------------
 ! Save the average state
 !--------------------------------
-  call average_mat(-2)
+  call average_mat(date,time,-2)
 
   end program enKF_analysis

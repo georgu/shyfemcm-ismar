@@ -57,7 +57,8 @@ enkf_analysis: make_EvKF
 	make make_sample
 	make enkf_analysis.o $(ENSOBJ2) 
 	$(LINKER) $(LFLAGS) $(LIBS) $(HTOBJS) $@.o \
-        $(ENSOBJ1) $(ENSOBJ2) $(ENSOBJ3) -o $@
+        $(ENSOBJ1) $(ENSOBJ2) $(ENSOBJ3) $(LIBDIR)/libfem.a \
+	-o $@
 
 make_ens_meteo: make_EvKF
 	make make_sample

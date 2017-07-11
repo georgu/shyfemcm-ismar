@@ -1,29 +1,61 @@
-Run enKF.sh to start the data assimilation. You need the following files:
+Run ./enKF.sh without arguments to see the help.
+
+In order to run the program, the following files are needed.
 
 ----------
-SETTING FILE
+setting file
 ----------
-Must contain these lines:
+This file must contain the following information in different lines:
 - Name of the bas-file with the bas extension;
-- Name of a list-file containing the names of the skel-files used to make the
-  str-files for the ensemble simulations. One for each ens member; 
-- Name of a list-file containing the names of the restart files used as background initial states, saved at the time of the first observation. One for each ens member;
-- Name of a list-file containing the names of the observation files;
-- Name of a list-file containing the observation times in seconds in the same reference as the rst files.
-- Dimension of the model state: nkn nel nlv
-- Number of ensemble members: nrens
-- 1 to create a new ens of initial states from one restart file (specify 
-  restart file in the list and 1 skel-file). Use 0 to load nrens restart files.
-  If it is set to 1 you must provide also a file named init_ens.info.
-- 1 to use an augmented state with the model error. This option is advisable.
-  If it is set to 1 you must provide also a file named mod_err.info.
+- Dimension of the model state (nkn nel nlv);
+- Number of ensemble members;
+- A flag equal to 1 to create a new ensemble of initial states by perturbing
+  one state specified in a restart file (specify one restart file in
+  "rstlist.txt" and one file in "skellist.txt"). If it is set to 0 the program
+  loads an ensemble of restart files. If you use 1 you must provide also a file 
+  named "init_ens.info", described below;
+- A flag equal to 1 to use an augmented state with the model error, 0 to use a
+  normal state. If this option is 1 you must provide also a file named 
+  "mod_err.info", described below.
 
 ----------
-INIT_ENS.INFO, MOD_ERR.INFO
+skel_list.txt
 ----------
-The first file must contain a row with:
+This is a list of skeleton files to create the str file. The structure of the
+skel files is described below.
+
+----------
+rst_list.txt
+----------
+This is a list of initial restart files (background state). They must contain
+a record at the time of your first observation (first analysis step).
+
+----------
+obs_list.txt
+----------
+A list of files containing in each line:
+- an identification number of the file (e.g., 1,2,3);
+- a flag of the type of observation;
+- the name of the file.
+
+Possible flag for the observations are:
+- 0DLEV : sea level timeseries;
+- 2DVEL : FEM-file with 2D surface current fields (e.g., HFR radar).
+
+The structure of the observation files is described below.
+
+----------
+obstime_list.txt
+----------
+A list of the times of the analysis steps. It is advisable to have analysis steps
+at least of one hour.
+
+----------
+init_ens.info & mod_err.info
+----------
+init_ens.info must contain a row with:
   - nx ny fmult theta sigma
-The second file must contain a row with:
+mod_err.info must contain a row with:
   - nx ny fmult theta sigma dt tau
 
   where:
@@ -40,12 +72,7 @@ to create the initial ensemble, the second to propagate the model error by
 using an augmented state.
 
 ----------
-SKEL-FILE LIST
-----------
-A list of the skel-files. The first skel-file is the mean of the ensemble
-
-----------
-SKEL-FILES
+skel files
 ----------
 It is advisable to make the skel files using the str files used to produce the initial
 background restart files. skel files must have these lines:
@@ -63,12 +90,7 @@ background restart files. skel files must have these lines:
   restrt = RESTRT
 
 ----------
-RESTART LIST FILE
-----------
-A list of the initial restart files, sorted in the same way of the skel-files
-
-----------
-RESTART FILES
+Initial restart files
 ----------
 They must contain just one state, saved at the time of the first observation. The
 first restart file specified in the list is considered the control forecast, the
@@ -78,36 +100,31 @@ time, varying the most uncertain forcings. Then save the final states in restart
 and list them.
 
 ----------
-OBSERVATION LIST FILE
-----------
-A file with the list of the observation files
-
-----------
-TIME LIST FILE
-----------
-A file with the list of the observation times, in seconds
-
-----------
 OBSERVATION FILES
 ----------
-These can be timeseries or transects/satellite tracks. Only the
-records with times near the times in the list will be assimilated
-(default delta t = 300 sec, see read_obs). The format is:
-...
-time obs_type(5 chars) x y z value stand_dev
-time obs_type(5 chars) x y z value stand_dev
+1)
+Sea level timeseries with time and value:
+time1 value1
+time2 value2 
 ...
 
-time = time in seconds
-obs_type = specify only "level" at the moment
-x, y, z = Coordinate of the observation, in the same reference system of the bas file. For level z = 0
-value = value of the observation
-stand_dev = standard deviation (estimated error) of the observation
+For each timeseries file a info file is needed, with the same name added of an
+extension '.info'. This file must contain in 1 row: x y std
+x, y = Coordinate of the observation, in the same reference system of the bas file. 
+std = standard deviation (estimated error) of the observation
+
+2)
+Fem file with a surface current field. Flag values allowed with a -999.
+Like for the sea level timeseries an info file is needed, containing just the
+standard deviation.
 
 
 -----------
-UTILITY
+Utilities
 -----------
+make_ens_wind:
+makes an ens of perturbed fields from a 2D field. FEM file format
+
 merge_ens_output.sh:
 extracts the ets or ext files, produced during the assimilation run, and merges 
 them, creating one file for each ens member and each variable. The shy files 
@@ -116,11 +133,12 @@ steps, they cannot be plotted with the current shyplot version.
 
 randomize_var.sh:
 creates n skel files from one, with a random value of a parameter. The right
-and left limits for the values must be specified.
+and left limits for the values must be specified. Don't use it use better
+methods.
 
 
 -----------
-INSTALLATION NOTES
+Compilation notes
 -----------
 Compile the code with:
 
