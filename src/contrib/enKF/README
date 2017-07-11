@@ -100,7 +100,7 @@ time, varying the most uncertain forcings. Then save the final states in restart
 and list them.
 
 ----------
-OBSERVATION FILES
+Observation files
 ----------
 1)
 Sea level timeseries with time and value:
