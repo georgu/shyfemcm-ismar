@@ -1,7 +1,6 @@
 #/bin/bash
-# Merges all the ens output files extracted from ext or shy files in the analysis period.
-# Note: shyplot is still not able to plot shy files with some records with the same time,
-# as the merged one.
+# Merges all the ens files extracted from ext, ets or shy files in the 
+# analysis period.
 #----------------------------------------------------------
 
 # This finds the path of the current script
@@ -17,33 +16,46 @@ SIMDIR=$(pwd)           # current dir
 
 Usage()
 {
-  echo "Usage: merge_ens_output.sh [file_type]"
-  echo "file_type: ext ets"
+  echo "Usage: merge_ens.sh [file_type]"
+  echo "file_type: ext ets shy"
   exit 0
 }
 
 #----------------------------------------------------------
 
-Merge_files()
+Merge_timeseries()
 {
-   type=$1
-   files=$(ls an*_en${ens_member}b.${type})
-   rm -f z.* u.* v.* m.* tot${ens_member}_*
+   nen=$1
+   ftype=$2
+   files=$(ls an*_en${nen}b.${ftype})
+   rm -f z.* u.* v.* m.* tot${nen}_*
    for fil in $files; do
       echo "Processing file: $fil"
       memory -s $fil > log
-      $FEMDIR/fembin/split${type} >> log
+      $FEMDIR/fembin/split${ftype} >> log
       for flev in $(ls z.*); do
-          cat $flev >> tot${ens_member}_$flev
+          cat $flev >> tot${nen}_$flev
       done
       for flev in $(ls u.*); do
-          cat $flev >> tot${ens_member}_$flev
+          cat $flev >> tot${nen}_$flev
       done
       for flev in $(ls v.*); do
-          cat $flev >> tot${ens_member}_$flev
+          cat $flev >> tot${nen}_$flev
       done
    done
 }
+
+#----------------------------------------------------------
+
+Merge_shy()
+{
+   nen=$1
+   files=$(ls an*_en${nen}b.hydro.shy)
+   $FEMDIR/fembin/shyelab -out -catmode +1 $files
+   mv -f out.shy en${nen}.hydro.shy
+}
+
+
 #----------------------------------------------------------
 #----------------------------------------------------------
 #----------------------------------------------------------
@@ -54,8 +66,28 @@ else
    Usage
 fi
 
-k=0
+# loop on ens members
+#
 for efile in $(ls an002_en*.${file_type}); do
+
     ens_member=${efile:8:3}
-    Merge_files ${file_type}
+
+    if [ ${file_type} = 'ext' ] || [ ${file_type} = 'ets' ]; then
+
+       Merge_timeseries ${ens_member} ${file_type}
+
+    elif [ ${file_type} = 'shy' ]; then
+
+       Merge_shy ${ens_member}
+
+    else
+
+       echo "not a valid file"
+       exit 1
+
+    fi
+
 done
+
+
+exit 0

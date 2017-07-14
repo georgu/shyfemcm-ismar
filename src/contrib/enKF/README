@@ -18,6 +18,18 @@ This file must contain the following information in different lines:
   normal state. If this option is 1 you must provide also a file named 
   "mod_err.info", described below.
 
+Note:
+It is advisable to make a first ensemble run without data assimilation,
+using an ensemble of different forcing (e.g., wind). The ensemble spread of
+this run must have the same size of the error of the simulation. Then the
+rst files of this ens run can be used as initial background states for the
+assimilation run and the ensemble forcing should be used as well for the
+assimilation run.
+This method is better than creating an initial ensemble of states.
+Moreover, the use of the model error slows the assimilation and if you 
+use an ensemble of forcing fields it should not be neccessary.
+Therefore set the last two parameters to 0.
+
 ----------
 skel_list.txt
 ----------
@@ -55,6 +67,7 @@ init_ens.info & mod_err.info
 ----------
 init_ens.info must contain a row with:
   - nx ny fmult theta sigma
+
 mod_err.info must contain a row with:
   - nx ny fmult theta sigma dt tau
 
@@ -67,9 +80,11 @@ mod_err.info must contain a row with:
   - dt is the time between two observation steps (assumes regular intervals)
   - tau is the e-folding time of the model error
 
-The values containted in the two files are indipendent. The first file is used
-to create the initial ensemble, the second to propagate the model error by
-using an augmented state.
+The values containted in the two files are indipendent. 
+The first file is used to create white noise to make the initial ensemble. 
+Only the sea level is perturbed.
+The second file is used to make white noise to propagate the model error,
+by using an augmented state.
 
 ----------
 skel files
@@ -114,27 +129,29 @@ x, y = Coordinate of the observation, in the same reference system of the bas fi
 std = standard deviation (estimated error) of the observation
 
 2)
-Fem file with a surface current field. Flag values allowed with a -999.
-Like for the sea level timeseries an info file is needed, containing just the
-standard deviation.
+Fem file with a surface current field. Bad values should be flagged with a -999.
+As for the sea level timeseries, an info file is needed, containing a value
+for the standard deviation.
 
 
 -----------
 Utilities
 -----------
+shyfem_ens.sh:
+execute shyfem in parallel by using an ensemble of str files. Without data
+assimilation, just normal runs. For example you can use this for the final 
+forecast runs
+
+merge_ens.sh:
+merge ets, ext or shy files pruduced during the analysis period
+(i.e., anXXX_enYYY.ZZZ) in nrens files.
+Timeseries are extracted in text files, with both the background and
+the analysis values at the analysis times. shy files are merged keeping
+the analysis fields at the analysis times.
+
 make_ens_wind:
-makes an ens of perturbed fields from a 2D field. FEM file format
-
-merge_ens_output.sh:
-extracts the ets or ext files, produced during the assimilation run, and merges 
-them, creating one file for each ens member and each variable. The shy files 
-are merged but, since they have two records at the same time in the analysis 
-steps, they cannot be plotted with the current shyplot version.
-
-randomize_var.sh:
-creates n skel files from one, with a random value of a parameter. The right
-and left limits for the values must be specified. Don't use it use better
-methods.
+makes an ens of perturbed fields from a 2D field. FEM file format. Works also
+for HFR radar fem files.
 
 
 -----------

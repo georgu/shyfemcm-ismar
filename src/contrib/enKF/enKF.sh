@@ -2,7 +2,9 @@
 #
 # Ensemble Kalman Filter for SHYFEM. 
 # 
-# Marco Bajo, ISMAR-CNR Venice - 2016
+# Marco Bajo, ISMAR-CNR Venice
+#
+# First version on 2016
 #
 # See the README file to set-up
 # 
@@ -264,12 +266,6 @@ Write_info_file(){
 Run_ensemble_analysis()
 {
 nanl=$(printf "%03d" $1)
-
-# Run fortran program
-#cd $FEMDIR/enKF
-#make cleanall > make.log
-#make enkf_analysis > make.log
-#rm -f make.log
 
 cd $SIMDIR
 $FEMDIR/enKF/enkf_analysis

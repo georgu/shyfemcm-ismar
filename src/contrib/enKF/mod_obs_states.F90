@@ -1,4 +1,5 @@
-module mod_observations
+module mod_obs_states
+
 ! observation files
 !
    type files
@@ -6,6 +7,7 @@ module mod_observations
        character(len=5) :: ty	!type of file
        character(len=80) :: name	!name of the file
    end type files
+   
 ! sea level obs (not correlated)
 !
    type levels
@@ -37,4 +39,4 @@ module mod_observations
       integer           :: id			     ! id number of the file
    end type currentf
 
-end module mod_observations
+end module mod_obs_states

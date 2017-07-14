@@ -1,4 +1,5 @@
   subroutine init_shyfem_vars(nk,ne,nl)
+
   use basin
   use mod_restart
   use mod_geom_dynamic
@@ -9,6 +10,7 @@
   use mod_conz
 
   implicit none
+
   integer, intent(in) :: nk,ne,nl
 
   call mod_geom_dynamic_init(nk,ne)
@@ -20,12 +22,15 @@
 
   nlvdi = nl
   nlv = nl
+
   end subroutine init_shyfem_vars
 
 !********************************************************
 
-  subroutine add_rst_pars
+  subroutine add_rst_params
+
   use mod_restart
+
   implicit none
   
   call addpar('ibarcl',0.)
@@ -34,7 +39,7 @@
   call daddpar('date',0.)
   call daddpar('time',0.)
 
-  end subroutine add_rst_pars
+  end subroutine add_rst_params
 
 !********************************************************
 
@@ -108,8 +113,10 @@
 !********************************************************
 
   subroutine find_node(x,y,ie,ik)
+
   use shyfile
   use basin
+
   implicit none
 
   real, intent(in) :: x,y
@@ -123,7 +130,7 @@
   do i = 1,3
      ik = nen3v(i,ie)
      d = ( x - xgv(ik) )**2 + ( y - ygv(ik) )**2
-     if( d.le.dmin ) then
+     if (d <= dmin) then
        dmin = d
        ikmin = ik
      end if
@@ -135,15 +142,17 @@
 !********************************************************
 
   subroutine num2str(num,str)
+
   implicit none
+
   integer, intent(in) :: num
   character(len=3), intent(out) :: str
 
-  if( (num.ge.0).and.(num.lt.10) ) then
+  if ((num >= 0).and.(num < 10)) then
     write(str,'(a2,i1)') '00',num
-  elseif( (num.ge.10).and.(num.lt.100) ) then
+  elseif ((num >= 10).and.(num < 100)) then
     write(str,'(a1,i2)') '0',num
-  elseif( (num.ge.100).and.(num.lt.1000) ) then
+  elseif ((num >= 100).and.(num < 1000)) then
     write(str,'(i3)') num
   else
     error stop 'num2str: num out of range'
@@ -153,9 +162,103 @@
 
 !********************************************************
 
-  subroutine make_pert(vec,n,nens,fmult,theta,nx,ny)
+  subroutine random_vec(v,vdim)
+
+  use m_random
+
+  implicit none
+  integer vdim
+  real v(vdim),vaux(vdim-1)
+  real aaux,ave
+  integer n
+
+  call random(vaux,vdim-1)
+  ! remove outlayers
+  do n = 1,vdim-1
+     aaux = vaux(n)
+     if (abs(aaux) >= 3.) then
+       aaux = aaux/abs(aaux) * (abs(aaux)-floor(abs(aaux)) + 1.) 
+     end if
+     vaux(n) = aaux
+  end do
+
+  ! set mean eq to zero
+  ave = sum(vaux)/float(vdim-1)
+  vaux = vaux - ave
+
+  v(1) = 0.
+  v(2:vdim) = vaux
+
+  end subroutine random_vec
+
+!********************************************************
+
+  subroutine make_0Dpert(vflag,n,na,id,vec,t,tau)
+
+  implicit none
+
+  character(len=1), intent(in) :: vflag
+  integer, intent(in) :: n,na,id
+  real, intent(out) :: vec(n)
+  double precision, intent(in) :: t,tau
+  character(len=3) :: nal,idl
+  character(len=17) :: pfile
+  logical bfile
+  integer nf
+  real, allocatable :: vec_old(:)
+  double precision t_old
+  double precision alpha,dt
+
+  ! make a new perturbation
+  !
+  call random_vec(vec,n)
+
+  ! white noise if tau is lower than 0
+  !
+  if (tau <= 0.) return
+
+  ! if exist load an old perturbation and merge
+  !
+  call num2str(na-1,nal)
+  call num2str(id,idl)
+  pfile = vflag // 'pert_' // nal // '_' // idl // '.bin'
+  inquire(file=pfile,exist=bfile)
+  if (bfile) then
+     open(22,file=pfile,status='old',form='unformatted')
+     read(22) nf
+     if (nf /= n) error stop 'make_level_pert: dimension mismatch'
+     read(22) t_old
+     allocate(vec_old(nf))
+     read(22) vec_old
+     close(22)
+
+     dt = t - t_old
+     alpha = 1. - (dt/tau) 
+     vec = alpha * vec_old + sqrt(1 - alpha**2) * vec
+  else
+     !write(*,*) 'No old file with perturbations: ',pfile
+     continue
+  end if
+
+  ! save the last perturbation
+  !
+  call num2str(na,nal)
+  pfile = vflag // 'pert_' // nal // '_' // idl // '.bin'
+  open(32,file=pfile,form='unformatted')
+  write(32) n
+  write(32) t
+  write(32) vec
+  close(32)
+
+  end subroutine make_0Dpert
+
+!********************************************************
+
+  subroutine make_2Dpert(vec,n,nens,fmult,theta,nx,ny)
+
   use basin
   use m_sample2D
+
   implicit none
 
   integer, intent(in) :: n,nens
@@ -197,7 +300,7 @@
   verbose = .false.
   samp_fix = .true.	!keep true
 
-  if( verbose ) then
+  if (verbose) then
     write(*,'(a20,2f8.4,i5,f8.4)') 'x0,xlength,nx,dx: ',x0,xlength,nx,dx
     write(*,'(a20,2f8.4,i5,f8.4)') 'y0,ylength,ny,dy: ',y0,ylength,ny,dy
     write(*,'(a14,2f10.4,1x,f5.1)') 'rx,ry,theta: ',rx,ry,theta
@@ -227,12 +330,14 @@
   end do
   deallocate(mat,mat4,vec4fem)
 
-  end subroutine make_pert
+  end subroutine make_2Dpert
 
 !********************************************************
 
   subroutine find_el_node(x,y,ie,ik)
+
   use basin
+
   implicit none
 
   real, intent(in) :: x,y
@@ -248,7 +353,7 @@
   x4 = x
   y4 = y
   call find_element(x4,y4,ie)
-  if( ie.eq.0 ) then
+  if (ie == 0) then
      write(*,*) 'find_el_node: observations must be inside the grid.'
      write(*,*) 'x, y: ',x4,y4
      error stop
@@ -258,7 +363,7 @@
   do ii = 1,3
      iik = nen3v(ii,ie)
      dst = sqrt( (xgv(iik)-x4)**2 + (ygv(iik)-y4)**2 )
-     if( dst.lt.dstmax ) then
+     if (dst < dstmax) then
        dstmax = dst
        ik = iik
      end if
@@ -266,86 +371,4 @@
 
   end subroutine find_el_node
 
-!********************************************************
 
-  subroutine make_0Dpert(vflag,n,na,id,vec,t,tau)
-  implicit none
-  character(len=1), intent(in) :: vflag
-  integer, intent(in) :: n,na,id
-  real, intent(out) :: vec(n)
-  double precision, intent(in) :: t,tau
-  character(len=3) :: nal,idl
-  character(len=17) :: pfile
-  logical bfile
-  integer nf
-  real, allocatable :: vec_old(:)
-  double precision t_old
-  double precision alpha,dt
-
-  ! make a new perturbation
-  !
-  call random_vec(vec,n)
-
-  ! if exist load an old perturbation and merge
-  !
-  call num2str(na-1,nal)
-  call num2str(id,idl)
-  pfile = vflag // 'pert_' // nal // '_' // idl // '.bin'
-  inquire(file=pfile,exist=bfile)
-  if (bfile) then
-     open(22,file=pfile,status='old',form='unformatted')
-     read(22) nf
-     if (nf /= n) error stop 'make_level_pert: dimension mismatch'
-     read(22) t_old
-     allocate(vec_old(nf))
-     read(22) vec_old
-     close(22)
-
-     dt = t - t_old
-     alpha = 1. - (dt/tau) 
-     vec = alpha * vec_old + sqrt(1 - alpha**2) * vec
-  else
-     !write(*,*) 'No old file with perturbations: ',pfile
-     continue
-  end if
-
-  ! save the last perturbation
-  !
-  call num2str(na,nal)
-  pfile = vflag // 'pert_' // nal // '_' // idl // '.bin'
-  open(32,file=pfile,form='unformatted')
-  write(32) n
-  write(32) t
-  write(32) vec
-  close(32)
-
-  end subroutine make_0Dpert
-
-!********************************************************
-
-  subroutine random_vec(v,vdim)
-  use m_random
-  implicit none
-  integer vdim
-  real v(vdim),vaux(vdim-1)
-  real aaux,ave
-  integer n
-
-  call random(vaux,vdim-1)
-  ! remove outlayers
-  do n = 1,vdim-1
-     aaux = vaux(n)
-     if( abs(aaux).ge.3. ) then
-       aaux = aaux/abs(aaux) * (abs(aaux)-floor(abs(aaux)) + 1.) 
-     end if
-     vaux(n) = aaux
-  end do
-
-  ! set mean eq to zero
-  ave = sum(vaux)/float(vdim-1)
-  vaux = vaux - ave
-
-  v(1) = 0.
-  v(2:vdim) = vaux
-
-  end subroutine random_vec

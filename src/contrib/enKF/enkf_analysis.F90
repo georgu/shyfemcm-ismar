@@ -10,8 +10,10 @@
 !------------------------------------------------------------------------------
   program enKF_analysis
 
-  use mod_states
-  use mod_enkf
+  use mod_mod_err
+  use mod_prep_enkf
+  use mod_ens_state
+
   implicit none
 
   integer :: rmode = 13 ! Ensemble Kalman Filter
@@ -31,13 +33,12 @@
 !----------------------------------------------------
 ! Set shyfem variables and init modules
 !----------------------------------------------------
-  call set_shyfem_vars
+  call set_model_params
 
 !----------------------------------------------------
 ! Read the ensemble
 !----------------------------------------------------
   call read_ensemble(date,time)
-
 
 !----------------------------------------------------
 ! Makes the mean of A and saves a restart file with it
@@ -62,25 +63,27 @@
 ! perturbed measurements. See analysis2.F90, not analysis.F90, for a correct
 ! description.
   ! Decide if use an augmented state with the model error
-  if (bmod_err == 0) then
+  !
+  select case(bmod_err)
 
+   case(0)
+   
     call analysis(A,R,E,S,D1,innov,global_ndim,nrens,nobs_tot,verbose,truncation,rmode,update_randrot)
     !call analysis6c(A,E,S,innov,global_ndim,nrens,nobs_tot,verbose)	!SQRT alg
     !call analysis2(A,D1,R,S,global_ndim,nrens,nobs_tot,verbose)	!ENKF alg
 
-  else if (bmod_err == 1) then
+   case(1)
 
-    call push_aug
-    call analysis(Aaug,R,E,S,D1,innov,2*global_ndim,nrens,nobs_tot,verbose,truncation,rmode,update_randrot)
-    !call analysis6c(Aaug,E,S,innov,2*global_ndim,nrens,nobs_tot,verbose)	!SQRT alg
-    !call analysis2(Aaug,D1,R,S,2*global_ndim,nrens,nobs_tot,verbose)		!ENKF alg
-    call pull_aug(date,time)
+    call init_moderr
+    call push_aug(A)
+    deallocate(A)
+    call analysis(Aaug,R,E,S,D1,innov,2*global_ndim,nrens,nobs_tot,&
+                  verbose,truncation,rmode,update_randrot)
+    allocate(A(nrens))
+    call pull_aug(date,time,A)
+    deallocate(Aaug)
 
-  else
-
-    error stop 'enkf_analysis: invalid option for bmod_err'
-
-  end if
+  end select
 
   write(*,*) 'Analysis done'
 

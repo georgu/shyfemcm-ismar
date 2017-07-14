@@ -22,6 +22,7 @@
 	real*4,allocatable :: hd(:)
 	integer nlvddi
 	real*4,allocatable :: data(:,:),dataens(:,:)
+        real,allocatable :: windaux(:,:,:,:)
 	real sigmaUV,sigmaP	!u-v relative error, std of pressure
 	integer nrens
 	integer irec
@@ -30,6 +31,7 @@
 	integer pert_type	! type of perturbation:	1 = 0D spatially constant
 				!			2 = 2D u and v indipendently
 				!			3 = Pressure pert and geostr wind pert
+	logical bpress
 	real tau_er	! e-folding time for the error memory
 	integer nx,ny
 	real dx,dy
@@ -46,36 +48,45 @@
 	real dval
 	real flat	!Latitude for the Coriolis factor
 
-	!--------------------------
 	! n. of ens members
+	!
 	nrens = 30
 	! type of perturbed field
+	!
 	pert_type = 3
 	! relative error
-	sigmaUV = 1.5	
+	!
+	sigmaUV = 3.	
 	!sigmaUV = 3.
 	! absolute error
+	!
 	!sigmaUV = 4. 	!m/s
 	! pressure standard deviation
-	sigmaP = 100. * 3.	!(5 mbar -> 500Pa) Used only for the pressure, see the routine
+	!(1mbar->100Pa) Used only for the pressure, see the routine
+	!
+	sigmaP = 100. * 1.
+	! false to remove pressure perturbation if pert_type = 3
+	!
+	bpress = .false.
 	! decorrelation e-folding time
+	!
 	tau_er = 86400*2
 	! Average latitude for the Coriolis factor. Used only with pert_type = 3
+	!
 	flat = 40.
-
 	! 2d pseudo random fields params
+	!
 	fmult = 8
-	theta = 0
+	theta = 0.
 	!theta = 135	!prevalent wind direction in the Med
-	rx = 4
-	ry = 4
+	rx = 4.
+	ry = 4.
 	verbose = .false.
 	samp_fix = .true.     !keep true
-
 	! input file
+	!
 	filein = 'wind.fem'
 	!filein = 'hfr.fem'
-	!--------------------------
 
 
 	np = 0
@@ -192,6 +203,7 @@
 	  !--------------------------------------------------
 	  ! Loop on variables
 	  !--------------------------------------------------
+          allocate(windaux(2,nx,ny,nrens))
  	  do i = 1,nvar
 
 	     ! Reads variable
@@ -215,7 +227,8 @@
      +					data,dataens,flag,sigmaUV)
 		   case (3)
 			call make_geo_field(i,nr,1,nrens,nx,ny,dx,dy,
-     +			pmat,data,dataens,flag,sigmaUV,sigmaP,flat)
+     +			pmat,data,dataens,flag,sigmaUV,sigmaP,flat,
+     +                  bpress)
 		end select
 
 	        ! Writes record
@@ -226,15 +239,23 @@
      +                          ,ilhkv,hd
      +                          ,nlvddi,dataens)
 
+                ! store wind for check
+                !
+                if (i < 3) windaux(i,:,:,nr) = dataens
+
 	     end do !------loop on ens members----
 
 	  end do !------loop on variables----
+
+          call check_wind(nx,ny,nrens,windaux,ierr)
+          if (ierr /= 0) error stop 'wind too high'
 
 	  deallocate(ilhkv)
 	  deallocate(hd)
 	  deallocate(data)
 	  deallocate(dataens)
 	  deallocate(hlv)
+          deallocate(windaux)
 
 	end do 	!-------loop on records-----
 
@@ -407,7 +428,7 @@
 
 !--------------------------------------------------
 	subroutine make_geo_field(ivar,iens,vardim,nrens,nx,ny,dx,dy,
-     +			mat,data,dataens,flag,err,sigmaP,flat)
+     +			mat,data,dataens,flag,err,sigmaP,flat,bpress)
 !--------------------------------------------------
 	implicit none
 
@@ -416,6 +437,7 @@
 	real,intent(in) :: dx,dy
 	real,intent(in) :: err,sigmaP,flag
 	real,intent(in) :: flat
+        logical,intent(in) :: bpress
 	real,intent(in) :: mat(vardim,nx,ny,nrens)
 	real*4,intent(in) :: data(nx,ny)
 	real*4,intent(out) :: dataens(nx,ny)
@@ -495,17 +517,47 @@
 
 	  case(3)	!pressure
 
+	      if (bpress) then
 		do iy = 1,ny
 		do ix = 1,nx
-		  dataens(ix,iy) = data(ix,iy) + sigmaP *
+		     dataens(ix,iy) = data(ix,iy) + sigmaP *
      +					mat(1,ix,iy,iens)
 !		  dataens(ix,iy) = sigmaP * mat(1,ix,iy,iens)
-		  if( data(ix,iy).eq.flag ) dataens(ix,iy) = flag
+		  if (data(ix,iy) == flag) dataens(ix,iy) = flag
 		end do
 		end do
+              else
+		write(*,*) 'pressure not perturbed'
+		dataens = data ! no perturbation
+              end if
 
 	end select
 	
 	end subroutine make_geo_field
 
 
+!--------------------------------------------------
+	subroutine check_wind(nx,ny,nrens,wind,ierr)
+!--------------------------------------------------
+        implicit none
+        integer,intent(in) :: nx,ny,nrens
+        real,intent(in) :: wind(2,nx,ny,nrens)
+        integer,intent(out) :: ierr
+        real,parameter :: wsmax = 40.
+        real ws
+        integer ix,iy,nr
+
+        ierr = 0
+        do nr = 1,nrens
+          do ix = 1,nx
+          do iy = 1,ny
+             ws = sqrt(wind(1,ix,iy,nr)**2 + wind(2,ix,iy,nr)**2)
+             if (ws > wsmax) then
+                write(*,*) 'wind too high (nr,ix,iy,ws): ',nr,ix,iy,ws
+                ierr = 1
+             end if
+          end do
+          end do
+        end do
+              
+	end subroutine check_wind

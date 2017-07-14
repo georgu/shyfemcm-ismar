@@ -4,16 +4,15 @@ VPATH = .:RCS:TMP
 # Include shyfem rules
 include ../../../Rules.make
 
-
 ## Switch to double precision for real
 ifeq ($(FORTRAN_COMPILER),GNU_GFORTRAN)
   R8FL = -fdefault-real-8
-  OPT_FFLAGS = 
+  OPT_FFLAGS = -finit-local-zero -c -O3 
 endif
 
 ifeq ($(FORTRAN_COMPILER),INTEL)
   R8FL = -real-size 64
-  OPT_FFLAGS = -implicitnone -nozero -warn unused -c -O3 -assume byterecl -assume nobuffered_io -convert big_endian
+  OPT_FFLAGS = -implicitnone -init=nozero -warn unused -c -O3 -assume byterecl -assume nobuffered_io -convert big_endian
 endif
 
 
@@ -89,9 +88,12 @@ OMOD = $(MODULES:.F90=.o) $(MODULES77:.F=.o)
 all: $(TARGET)
 
 
+#$(TARGET): $(INC2) $(OMOD) $(OBJECTS) 
+#	cd ./TMP ; $(LINKER) $(LINKFLAGS) -o $(TARGET) $(OMOD) $(OBJECTS) $(LIBDIR) $(LIBS) 
+#	mv TMP/$(TARGET) .
+
 $(TARGET): $(INC2) $(OMOD) $(OBJECTS) 
-	cd ./TMP ; $(LINKER) $(LINKFLAGS) -o $(TARGET) $(OMOD) $(OBJECTS) $(LIBDIR) $(LIBS) 
-	#mv TMP/$(TARGET) .
+	cd ./TMP ; $(LINKER) $(LINKFLAGS) -o $(TARGET) $(OMOD) $(OBJECTS) $(LIBS) 
 
 install:
 	cp $(TARGET) $(BINDIR)

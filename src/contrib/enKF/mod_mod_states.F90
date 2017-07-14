@@ -1,5 +1,7 @@
-module mod_states
+module mod_mod_states
+
    use mod_dimensions
+   
 ! standard model state
    type states
       real u(nnlv,nnel)                      ! 3-D u-velocity
@@ -38,7 +40,7 @@ module mod_states
    integer, parameter ::  local_ndim = 4*nnlv + 3 + 1 ! Dimension of sub_states
 
 ! double state, with the model errors
-     type dstates
+     type qstate
       real qu(nnlv,nnel)                       ! 3-D u-velocity error
       real qv(nnlv,nnel)                       ! 3-D v-velocity error
       real qze(3,nnel)                         ! 2-D water level at vertices error
@@ -52,7 +54,7 @@ module mod_states
       real z(nnkn) 	                     ! 2-D water level 
       real t(nnlv,nnkn)                        ! 3-D Temperature
       real s(nnlv,nnkn)                        ! 3-D Salinity 
-   end type dstates
+   end type qstate
  
 !-----------
 ! Overloaded and generic operators
@@ -81,33 +83,8 @@ module mod_states
    end interface
 
 
-!-----------
-!-----------
 contains
-!   type (sub_states) function getA(A,k,ie)
-!      implicit none
-!      type(states), intent(in)     :: A
-!      integer, intent(in) :: k,ie
-!      getA%u(:)=A%u(:,ie)
-!      getA%v(:)=A%v(:,ie)
-!      getA%ze=A%ze(:,ie)
-!!      getA%z=A%z(k)
-!      getA%t(:)=A%t(:,k)
-!      getA%s(:)=A%s(:,k)
-!   end function getA
-!
-!   subroutine putA(subA,A,k,ie)
-!      implicit none
-!      type(sub_states), intent(in) :: subA
-!      type(states), intent(inout)  :: A
-!      integer, intent(in) :: k,ie
-!      A%u(:,ie)=subA%u(:)
-!      A%v(:,ie)=subA%v(:)
-!      A%ze(:,ie)=subA%ze
-!!      A%z(k)=subA%z
-!      A%t(:,k)=subA%t(:)
-!      A%s(:,k)=subA%s(:)
-!   end subroutine putA
+
 
    function add_states(A,B)
       type(states) add_states
@@ -203,10 +180,10 @@ contains
       A%s=real(B%s)
    end subroutine states8to4
 
-   subroutine push_dstate(A,B,C)
+   subroutine push_qstate(A,B,C)
       implicit none
       type(states), intent(in)  :: A,B
-      type(dstates), intent(out) :: C
+      type(qstate), intent(out) :: C
       C%qu=B%u
       C%qv=B%v
       C%qze=B%ze
@@ -219,11 +196,11 @@ contains
       C%z=A%z
       C%t=A%t
       C%s=A%s
-   end subroutine push_dstate
+   end subroutine push_qstate
 
-   subroutine pull_dstate(A,B,C)
+   subroutine pull_qstate(A,B,C)
       implicit none
-      type(dstates), intent(in) :: C
+      type(qstate), intent(in) :: C
       type(states), intent(out)  :: A,B
       B%u=C%qu
       B%v=C%qv
@@ -237,6 +214,6 @@ contains
       A%z=C%z
       A%t=C%t
       A%s=C%s
-   end subroutine pull_dstate
+   end subroutine pull_qstate
 
-end module mod_states
+end module mod_mod_states
