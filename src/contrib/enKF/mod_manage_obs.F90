@@ -1,5 +1,6 @@
 module mod_manage_obs
 
+  use mod_para
   use mod_init_enkf
   use mod_obs_states
 
@@ -13,30 +14,6 @@ module mod_manage_obs
   integer :: nobs_tot			! total number of obs with status = 0 (good)
   type(levels), allocatable :: o0dlev(:)
   type(currentf), allocatable :: o2dvel(:)
-
-  ! min-max values for the observations (by topaz)
-  !
-  real, parameter, private :: TEM_MIN = 0.0d0
-  real, parameter, private :: TEM_MAX = 50.0d0
-  real, parameter, private :: SAL_MIN = 0.0d0
-  real, parameter, private :: SAL_MAX = 40.0d0
-  real, parameter, private :: SSH_MIN = -3.0d0
-  real, parameter, private :: SSH_MAX = 3.0d0
-  real, parameter, private :: VEL_MIN = 0.0d0
-  real, parameter, private :: VEL_MAX = 4.0d0
-
-  ! multiplication factor for the ens std, to resize
-  ! the obs std. Set <= 0 to disable it.
-  !
-  real, parameter, private :: KSTD = -1
-
-  ! time interval to select the observations (sec)
-  !
-  double precision, parameter, private :: TEPS = 300.
-
-  ! standard flag for bad data
-  !
-  real, parameter, private :: OFLAG = -999.
 
 contains
 
@@ -420,6 +397,20 @@ contains
   end if
 
   end subroutine check_obs
+
+!********************************************************
+  
+!  subroutine super_obs
+!
+!  implicit none
+!
+!  if (n_0dlev > 0) then
+!     do n = 1,n_0dlev
+!        o0dlev%status
+!     end do
+!  end if
+!  
+!  end subroutine super_obs
 
 !********************************************************
 

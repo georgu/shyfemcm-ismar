@@ -1,6 +1,7 @@
 Run ./enKF.sh without arguments to see the help.
 
-In order to run the program, the following files are needed.
+In order to run the program some stuff must be made. This is described in the
+following. To set more parameters see the file mod_para.F90
 
 ----------
 setting file
@@ -69,14 +70,14 @@ init_ens.info must contain a row with:
   - nx ny fmult theta sigma
 
 mod_err.info must contain a row with:
-  - nx ny fmult theta sigma dt tau
+  - nx ny fmult theta rerror dt tau
 
   where:
   - nx,ny are the dimension of the grid of the pseudo random fields
   - fmult is the mult factor to create a supersample from the initial ensemble
   - theta is the rotation of the pseudo random fields (0 East, anticlockwise)
-  - sigma is the standard deviation of the fields (level. Change the code to
-    set different)
+  - rerror is the error relative to each value of the model variables. Use a
+    small one. At the moment just the water levels have errors.
   - dt is the time between two observation steps (assumes regular intervals)
   - tau is the e-folding time of the model error
 

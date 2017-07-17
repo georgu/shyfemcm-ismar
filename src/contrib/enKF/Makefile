@@ -35,8 +35,9 @@ HTOBJS = $(DIRFEM)/subrst.o $(DIRFEM)/subbas.o $(DIRFEM)/subdts.o $(DIRFEM)/mod_
 ENSOBJ1 = analysis.o m_randrot.o m_multa.o mod_anafunc.o m_mean_preserving_rotation.o
 #ENSOBJ1 = analysis6c.o m_randrot.o m_multa.o 
 #ENSOBJ1 = analysis2.o m_randrot.o m_multa.o 
-ENSOBJ2 = subenkf.o mod_ens_state.o mod_mod_err.o mod_prep_enkf.o mod_init_enkf.o \
-	mod_dimensions.o mod_mod_states.o mod_obs_states.o mod_manage_obs.o
+ENSOBJ2 = mod_para.o subenkf.o mod_ens_state.o mod_mod_err.o mod_prep_enkf.o \
+	mod_init_enkf.o mod_dimensions.o mod_mod_states.o mod_obs_states.o \
+	mod_manage_obs.o
 ENSOBJ3 = m_sample2D.o m_pseudo2D.o mod_fftw3.o m_newton2D.o \
 	m_newtonfunc2D.o m_fixsample2D.o m_random.o
 
@@ -104,11 +105,14 @@ cleanall:
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
 ../femlib/mod/mod_dimensions.mod: mod_dimensions.o
+../femlib/mod/mod_para.mod: mod_para.o
 ../femlib/mod/mod_init_enkf.mod: mod_init_enkf.o
-../femlib/mod/mod_prep_enkf.mod: mod_prep_enkf.o ../femlib/mod/mod_manage_obs.mod
+../femlib/mod/mod_prep_enkf.mod: mod_prep_enkf.o ../femlib/mod/mod_para.mod \
+		../femlib/mod/mod_manage_obs.mod
 ../femlib/mod/mod_mod_err.mod: mod_mod_err.o
 ../femlib/mod/mod_obs_states.mod: mod_obs_states.o
-../femlib/mod/mod_manage_obs.mod: mod_manage_obs.o ../femlib/mod/mod_obs_states.mod
+../femlib/mod/mod_manage_obs.mod: mod_manage_obs.o ../femlib/mod/mod_para.mod \
+		../femlib/mod/mod_obs_states.mod 
 ../femlib/mod/mod_mod_states.mod: mod_mod_states.o ../femlib/mod/mod_dimensions.mod
 ../femlib/mod/mod_ens_state.mod: mod_ens_state.o ../femlib/mod/mod_init_enkf.mod \
 		../femlib/mod/mod_mod_states.mod
@@ -123,9 +127,12 @@ cleanall:
 ../femlib/mod/m_newton2D.mod: m_newton2D.o ../femlib/mod/m_newtonfunc2D.mod
 ../femlib/mod/m_newtonfunc2D.mod: m_newtonfunc2D.o
 
-enkf_analysis.o: ../femlib/mod/mod_prep_enkf.mod \
+enkf_analysis.o: ../femlib/mod/mod_para.mod \
+		../femlib/mod/mod_prep_enkf.mod \
 		../femlib/mod/mod_mod_err.mod 
-mod_prep_enkf.o: ../femlib/mod/basin.mod ../femlib/mod/mod_conz.mod \
+mod_prep_enkf.o: ../femlib/mod/mod_para.mod \
+		../femlib/mod/basin.mod \
+		../femlib/mod/mod_conz.mod \
 		../femlib/mod/mod_hydro.mod \
 		../femlib/mod/mod_hydro_vel.mod \
 		../femlib/mod/mod_obs_states.mod \

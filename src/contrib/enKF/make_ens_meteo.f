@@ -56,21 +56,21 @@
 	pert_type = 3
 	! relative error
 	!
-	sigmaUV = 3.	
+	sigmaUV = 0.6
 	!sigmaUV = 3.
 	! absolute error
 	!
 	!sigmaUV = 4. 	!m/s
+	! false to remove pressure perturbation if pert_type = 3
+	!
+	bpress = .true.
 	! pressure standard deviation
 	!(1mbar->100Pa) Used only for the pressure, see the routine
 	!
-	sigmaP = 100. * 1.
-	! false to remove pressure perturbation if pert_type = 3
-	!
-	bpress = .false.
+	sigmaP = 100. * 2.
 	! decorrelation e-folding time
 	!
-	tau_er = 86400*2
+	tau_er = 86400*3
 	! Average latitude for the Coriolis factor. Used only with pert_type = 3
 	!
 	flat = 40.
@@ -79,8 +79,8 @@
 	fmult = 8
 	theta = 0.
 	!theta = 135	!prevalent wind direction in the Med
-	rx = 4.
-	ry = 4.
+	rx = 5.
+	ry = 5.
 	verbose = .false.
 	samp_fix = .true.     !keep true
 	! input file
@@ -543,7 +543,7 @@
         integer,intent(in) :: nx,ny,nrens
         real,intent(in) :: wind(2,nx,ny,nrens)
         integer,intent(out) :: ierr
-        real,parameter :: wsmax = 40.
+        real,parameter :: wsmax = 45.
         real ws
         integer ix,iy,nr
 

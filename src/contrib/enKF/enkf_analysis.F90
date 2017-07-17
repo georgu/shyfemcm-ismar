@@ -10,18 +10,12 @@
 !------------------------------------------------------------------------------
   program enKF_analysis
 
+  use mod_para
   use mod_mod_err
   use mod_prep_enkf
   use mod_ens_state
 
   implicit none
-
-  integer :: rmode = 13 ! Ensemble Kalman Filter
-  !integer :: rmode = 23 ! Square root algorithm
-  real :: truncation = 0.995 ! truncation of the SVD eigenvalues
-  logical :: update_randrot = .true. ! False for local analysis
-
-  logical :: verbose = .true. ! Prints diagnostic output
 
   integer :: date,time !date and time in the rst files
 
@@ -80,8 +74,7 @@
     call analysis(Aaug,R,E,S,D1,innov,2*global_ndim,nrens,nobs_tot,&
                   verbose,truncation,rmode,update_randrot)
     allocate(A(nrens))
-    call pull_aug(date,time,A)
-    deallocate(Aaug)
+    call pull_aug(A)
 
   end select
 

@@ -1,5 +1,6 @@
 module mod_prep_enkf
 
+  use mod_para
   use mod_manage_obs
   use mod_ens_state
 
@@ -14,11 +15,6 @@ module mod_prep_enkf
   real, save, allocatable :: innov(:)		! innovation vector holding d-H*mean(A)
   real, save, allocatable :: HA(:,:)		! matrix HA, ens model on obs space
 
-  ! decay time for the red noise of the observations (sec). 
-  ! Set lower than 0 to disable (white noise)
-  !
-  double precision, parameter, private :: TTAU_0DLEV = -1
-  double precision, parameter, private :: TTAU_2DVEL = 3*3600.
 
 contains
 
