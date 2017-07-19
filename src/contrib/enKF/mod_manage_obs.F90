@@ -11,9 +11,16 @@ module mod_manage_obs
   type(files), allocatable, dimension(:), private ::  ofile
 
   integer :: n_0dlev,n_2dvel		! number of obs files of different type
-  integer :: nobs_tot			! total number of obs with status = 0 (good)
+  integer :: nobs_tot			! total number of good obs to be assimilated
   type(levels), allocatable :: o0dlev(:)
   type(currentf), allocatable :: o2dvel(:)
+
+  ! status of an observation:
+  ! 0 = normal obs (assimilated)
+  ! 1 = super-observation (assimilated)
+  ! 2 = observation merged into a super-observation (not-assimilated)
+  ! 3 = observation out of range (not-assimilated)
+  ! 4 = observation with a flag value (not-assimilated)
 
 contains
 
@@ -114,6 +121,11 @@ contains
 
   end do
 
+  !-------------------------------
+  ! create super-observations
+  !-------------------------------
+  call make_super_2dvel
+
   return
 
  95 write(*,*) 'read_obs error reading file: ',trim(ofile(n)%name)
@@ -180,7 +192,7 @@ contains
      case (.false.)
           k = kinit
  91       read(26,*,end=101) tt, v
-          ostatus = 3
+          ostatus = 4
           ! Take only records with times near atime
           !
           if (abs(tt - atime) < eps) then
@@ -224,7 +236,7 @@ contains
 
   integer ios
   integer np,iformat,iunit
-  integer irec,i,ii
+  integer irec,i,ii,jj
   double precision tt
   integer nvers           !version of file format
   integer lmax            !vertical values
@@ -293,7 +305,7 @@ contains
     end if
 
     allocate(ilhkv(np),hd(np),data(nx,ny))
-    allocate(o2dvel(nrec)%x(nx),o2dvel(nrec)%y(ny),&
+    allocate(o2dvel(nrec)%x(nx,ny),o2dvel(nrec)%y(nx,ny),&
              o2dvel(nrec)%u(nx,ny),o2dvel(nrec)%v(nx,ny),&
              o2dvel(nrec)%std(nx,ny),o2dvel(nrec)%status(nx,ny))
 
@@ -315,10 +327,10 @@ contains
     ! find and assign the coords
     !
     do ii = 1,nx
-       o2dvel(nrec)%x(ii) = x0 + dx * (ii-1)	! x coords
+    do jj = 1,ny
+       o2dvel(nrec)%x(ii,jj) = x0 + dx * (ii-1)	! x coords
+       o2dvel(nrec)%y(ii,jj) = y0 + dy * (jj-1)	! y coords
     end do
-    do ii = 1,ny
-       o2dvel(nrec)%y(ii) = y0 + dy * (ii-1)	! y coords
     end do
     o2dvel(nrec)%z = 0.		! depth
 
@@ -375,7 +387,7 @@ contains
   status = 0
 
   if (v1 == flag .or. v2 == flag) then
-     status = 2
+     status = 4
      return
   end if
 
@@ -393,24 +405,57 @@ contains
   end if
 
   if (v < vmin .or. v > vmax) then
-     status = 1
+     status = 3
   end if
 
   end subroutine check_obs
 
 !********************************************************
-  
-!  subroutine super_obs
-!
-!  implicit none
-!
-!  if (n_0dlev > 0) then
-!     do n = 1,n_0dlev
-!        o0dlev%status
-!     end do
-!  end if
-!  
-!  end subroutine super_obs
+
+  subroutine make_super_2dvel
+
+  implicit none
+
+  integer nobs,nx,ny
+  real,allocatable :: x(:),y(:),v1(:),v2(:)
+  integer,allocatable :: stat(:)
+  integer n,ii,jj
+
+
+  if (n_2dvel < 1) return
+
+  do n = 1,n_2dvel
+     nx = o2dvel(n)%nx
+     ny = o2dvel(n)%ny
+     nobs = nx * ny
+
+    allocate(x(nobs),y(nobs),v1(nobs),v2(nobs),stat(nobs))
+
+    do ii = 1,nx
+    do jj = 1,ny
+     x(ii*jj) = o2dvel(n)%x(ii,jj)
+     y(ii*jj) = o2dvel(n)%y(ii,jj)
+     stat(ii*jj) = o2dvel(n)%status(ii,jj)
+     v1(ii*jj) = o2dvel(n)%u(ii,jj)
+     v2(ii*jj) = o2dvel(n)%v(ii,jj)
+    end do
+    end do
+
+    call superobs_horiz_el(nobs,x,y,stat,v1,v2)
+
+    do ii = 1,nx
+    do jj = 1,ny
+     o2dvel(n)%status(ii,jj) = stat(ii*jj)
+     o2dvel(n)%u(ii,jj) = v1(ii*jj)
+     o2dvel(n)%v(ii,jj) = v2(ii*jj)
+    end do
+    end do
+
+    deallocate(x,y,v1,v2,stat)
+
+  end do
+
+  end subroutine make_super_2dvel
 
 !********************************************************
 

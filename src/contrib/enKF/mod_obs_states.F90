@@ -1,5 +1,12 @@
 module mod_obs_states
 
+! status of an observation:
+! 0 = normal obs (assimilated)
+! 1 = super-observation (assimilated)
+! 2 = observation merged into a super-observation (not-assimilated)
+! 3 = observation out of range (not-assimilated)
+! 4 = observation with a flag value (not-assimilated)
+
 ! observation files
 !
    type files
@@ -16,9 +23,7 @@ module mod_obs_states
       real :: y                      ! y coord
       real :: val                    ! value
       real :: std                    ! std value
-      integer :: status		     ! = 0 can be assimilated
-                                     ! = 1 bad value not to be ass
-                                     ! = 2 flag value not to be ass
+      integer :: status		     ! = 0,1,2,3,4
       integer  :: id                 ! id number of the file
    end type levels
 
@@ -27,15 +32,13 @@ module mod_obs_states
    type currentf
       double precision  :: t                         ! time of the field
       integer           :: nx,ny                     ! dimensions
-      real, allocatable :: x(:)                      ! x coords
-      real, allocatable :: y(:)                      ! y coords
+      real, allocatable :: x(:,:)                      ! x coords
+      real, allocatable :: y(:,:)                      ! y coords
       real              :: z                         ! z coord
       real, allocatable :: u(:,:)                    ! u value
       real, allocatable :: v(:,:)                    ! v value
       real, allocatable :: std(:,:)                  ! std value
-      integer, allocatable :: status(:,:)	     ! = 0 can be assimilated
-                                                     ! = 1 bad value not to be ass
-                                                     ! = 2 flag value not to be ass
+      integer, allocatable :: status(:,:)	     ! = 0,1,2,3,4
       integer           :: id			     ! id number of the file
    end type currentf
 

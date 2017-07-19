@@ -75,7 +75,7 @@ contains
 
      ! next if the observation is not good
      !
-     if (o0dlev(nf)%status /= 0) cycle
+     if (o0dlev(nf)%status > 1) cycle
 
      nook = nook + 1
 
@@ -146,12 +146,12 @@ contains
 
      ! next if the observation is not good
      !
-     if (o2dvel(nf)%status(ix,iy) /= 0) cycle
+     if (o2dvel(nf)%status(ix,iy) > 1) cycle
 
      nook = nook + 2	! 2 obs, u and v components
 
-     x = o2dvel(nf)%x(ix)
-     y = o2dvel(nf)%y(iy)
+     x = o2dvel(nf)%x(ix,iy)
+     y = o2dvel(nf)%y(ix,iy)
      call find_el_node(x,y,iemin,kmin)
 
      ! compute the observation errors R

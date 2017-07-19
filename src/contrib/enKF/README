@@ -1,7 +1,60 @@
-Run ./enKF.sh without arguments to see the help.
+============================================
+This is the README file for the ensemble 
+Kalman Filter for the SHYFEM model
+============================================
 
-In order to run the program some stuff must be made. This is described in the
-following. To set more parameters see the file mod_para.F90
+    Copyright (c) 2017 by 
+
+    Marco Bajo
+    Oceanography, ISMAR-CNR
+    Arsenale Tesa 104, Castello 2737/F
+    30122 Venezia
+    Italy
+
+    Tel.   : +39-041-2407934
+    Fax    : +39-041-2407940
+    E-Mail : marco.bajo@ismar.cnr.it
+
+
+    This code is distributed under the conditions of the
+    GNU General Public License. 
+    See <http://www.gnu.org/licenses/>.
+
+
+
+Directory structure
+===================
+
+.		Main code and utilities
+EvKF		Geir Evenseen's code used for the analysis and
+		for generating perturbations.
+
+
+
+Compiling the code
+===================
+
+- cd enKF
+- make cleanall
+- make enkf_analysis
+
+In order to run the enKF.sh script you need a program named parallel 
+and the library liblapack-dev. You should find them in your Linux 
+distribution.
+
+Installation with Debian from root:
+apt-get update && apt-get install parallel liblapack-dev
+
+Installation with Ubuntu:
+sudo apt-get update && apt-get install parallel liblapack-dev
+
+
+
+Run the code
+===================
+
+Run ./enKF.sh without arguments to see the help.
+In order to run the program some files must be prepared:
 
 ----------
 setting file
@@ -135,41 +188,32 @@ As for the sea level timeseries, an info file is needed, containing a value
 for the standard deviation.
 
 
------------
+
+Advanced settings
+===================
+See the file mod_para.F90 to set some more assimilation parameters. In
+particular the analysis scheme (enKF and SQRT are tested).
+
+
+
 Utilities
------------
+===================
+
 shyfem_ens.sh:
-execute shyfem in parallel by using an ensemble of str files. Without data
+executes shyfem in parallel by using an ensemble of str files. Without data
 assimilation, just normal runs. For example you can use this for the final 
 forecast runs
 
 merge_ens.sh:
-merge ets, ext or shy files pruduced during the analysis period
+merges ets, ext or shy files pruduced during the analysis period
 (i.e., anXXX_enYYY.ZZZ) in nrens files.
 Timeseries are extracted in text files, with both the background and
 the analysis values at the analysis times. shy files are merged keeping
 the analysis fields at the analysis times.
 
+split_etss.sh:
+splits an ensemble of ets file with a common basename.
+
 make_ens_wind:
 makes an ens of perturbed fields from a 2D field. FEM file format. Works also
 for HFR radar fem files.
-
-
------------
-Compilation notes
------------
-Compile the code with:
-
-- cd enKF
-- make cleanall
-- make enkf_analysis
-
-In order to run the enKF.sh script you need a small GNU program, named "parallel" and liblapack-dev.
-
-Installation with Debian from root:
-apt-get update && apt-get install parallel liblapack-dev
-
-Installation with Ubuntu:
-sudo apt-get update && apt-get install parallel liblapack-dev
-
-

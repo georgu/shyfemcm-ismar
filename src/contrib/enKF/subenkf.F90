@@ -371,4 +371,76 @@
 
   end subroutine find_el_node
 
+!********************************************************
+  
+  subroutine superobs_horiz_el(no,x,y,ostatus,val1,val2)
+
+  use basin
+
+  implicit none
+
+  integer,intent(in) :: no
+  real,intent(in) :: x(no),y(no)
+  integer,intent(inout) :: ostatus(no)
+  real,intent(inout) :: val1(no),val2(no)
+  integer nobs(nel)
+  integer, allocatable :: ieobs(:)
+  integer, allocatable :: oindex(:,:)
+  integer omax
+  real*4 x4,y4
+  integer n,ie,nn
+  real avval
+
+  ! find the index of the elements containing obs
+  !
+  allocate(ieobs(no))
+  ieobs = -999
+  nobs = 0
+  do n = 1,no
+     if (ostatus(n) > 0) cycle
+
+     x4 = x(no)
+     y4 = y(no)
+     call find_element(x4,y4,ie)
+     ieobs(n) = ie
+     nobs(ie) = nobs(ie) + 1
+  end do
+
+  ! find the maximum number of obs inside an element
+  !
+  omax = 0
+  do ie = 1,nel
+     omax = max(omax,nobs(ie))
+  end do
+
+  ! find the final obs indexes
+  !
+  allocate(oindex(0:omax,nel))
+  oindex = 0
+  do n = 1,no
+     if (ostatus(n) > 0) cycle
+
+     ie = ieobs(n)
+     nn = oindex(0,ie)
+     nn = nn + 1
+     oindex(nn,ie) = n
+     oindex(0,ie) = nn
+  end do
+
+  ! average the values and assign the status
+  !
+  do ie = 1,nel
+     nn = oindex(0,ie)
+     if (nn == 0) cycle
+     write(*,*) 'making super-observation...'
+     avval = sum(val1(oindex(1:nn,ie)))/nn
+     val1(oindex(1,ie)) = avval
+     avval = sum(val2(oindex(1:nn,ie)))/nn
+     val2(oindex(1,ie)) = avval
+     ostatus(oindex(1,ie)) = 1
+     ostatus(oindex(2:nn,ie)) = 2
+  end do
+  
+  end subroutine superobs_horiz_el
+
 

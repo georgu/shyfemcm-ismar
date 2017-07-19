@@ -22,7 +22,7 @@
 	real*4,allocatable :: hd(:)
 	integer nlvddi
 	real*4,allocatable :: data(:,:),dataens(:,:)
-        real,allocatable :: windaux(:,:,:,:)
+        real,allocatable :: metaux(:,:,:,:)
 	real sigmaUV,sigmaP	!u-v relative error, std of pressure
 	integer nrens
 	integer irec
@@ -47,42 +47,52 @@
 	integer ix,iy
 	real dval
 	real flat	!Latitude for the Coriolis factor
+        real wsmax	!maximum wind speed
 
 	! n. of ens members
 	!
 	nrens = 30
+
 	! type of perturbed field
 	!
-	pert_type = 3
+	pert_type = 2
+
 	! relative error
 	!
 	sigmaUV = 0.6
 	!sigmaUV = 3.
-	! absolute error
+
+	! maximum wind speed. If more resize it
 	!
-	!sigmaUV = 4. 	!m/s
-	! false to remove pressure perturbation if pert_type = 3
+	wsmax = 40.
+
+	! false to remove pressure perturbation. Only if pert_type = 3
 	!
 	bpress = .true.
+
 	! pressure standard deviation
 	!(1mbar->100Pa) Used only for the pressure, see the routine
 	!
 	sigmaP = 100. * 2.
+
 	! decorrelation e-folding time
 	!
-	tau_er = 86400*3
+	tau_er = 86400*2
+
 	! Average latitude for the Coriolis factor. Used only with pert_type = 3
 	!
 	flat = 40.
+
 	! 2d pseudo random fields params
 	!
 	fmult = 8
 	theta = 0.
 	!theta = 135	!prevalent wind direction in the Med
-	rx = 5.
-	ry = 5.
+	rx = 4.
+	ry = 4.
 	verbose = .false.
 	samp_fix = .true.     !keep true
+
 	! input file
 	!
 	filein = 'wind.fem'
@@ -203,7 +213,7 @@
 	  !--------------------------------------------------
 	  ! Loop on variables
 	  !--------------------------------------------------
-          allocate(windaux(2,nx,ny,nrens))
+          allocate(metaux(3,nx,ny,nrens))
  	  do i = 1,nvar
 
 	     ! Reads variable
@@ -215,6 +225,7 @@
      +                          ,ierr)
 	     write(*,*) 'Reading: ',string
 	  
+             ! loop on ens members
 	     do nr = 1,nrens
 
 		! Select perturbation type
@@ -231,31 +242,35 @@
      +                  bpress)
 		end select
 
-	        ! Writes record
-	        ounit = iunit + 10 + nr
-	        call fem_file_write_data(iformat,ounit
-     +                          ,nvers,np,lmax
-     +                          ,string
-     +                          ,ilhkv,hd
-     +                          ,nlvddi,dataens)
-
-                ! store wind for check
-                !
-                if (i < 3) windaux(i,:,:,nr) = dataens
+                metaux(i,:,:,nr) = dataens
 
 	     end do !------loop on ens members----
-
 	  end do !------loop on variables----
 
-          call check_wind(nx,ny,nrens,windaux,ierr)
-          if (ierr /= 0) error stop 'wind too high'
+          ! Write record
+	  do nr = 1,nrens
+
+             !call check_wind(nx,ny,nrens,metaux,ierr)
+             !if (ierr /= 0) error stop 'wind too high'
+             call correct_wind(nx,ny,metaux(:,:,:,nr),wsmax)
+
+	     ounit = iunit + 10 + nr
+	     do i = 1,nvar
+	        call fem_file_write_data(iformat,ounit
+     +                    ,nvers,np,lmax
+     +                    ,string
+     +                    ,ilhkv,hd
+     +                    ,nlvddi,metaux(i,:,:,nr))
+             end do
+
+          end do
 
 	  deallocate(ilhkv)
 	  deallocate(hd)
 	  deallocate(data)
 	  deallocate(dataens)
 	  deallocate(hlv)
-          deallocate(windaux)
+          deallocate(metaux)
 
 	end do 	!-------loop on records-----
 
@@ -537,27 +552,52 @@
 
 
 !--------------------------------------------------
-	subroutine check_wind(nx,ny,nrens,wind,ierr)
+	subroutine check_wind(nx,ny,wind,ierr)
 !--------------------------------------------------
         implicit none
-        integer,intent(in) :: nx,ny,nrens
-        real,intent(in) :: wind(2,nx,ny,nrens)
+        integer,intent(in) :: nx,ny
+        real,intent(in) :: wind(2,nx,ny)
         integer,intent(out) :: ierr
         real,parameter :: wsmax = 45.
         real ws
-        integer ix,iy,nr
+        integer ix,iy
 
         ierr = 0
-        do nr = 1,nrens
-          do ix = 1,nx
-          do iy = 1,ny
-             ws = sqrt(wind(1,ix,iy,nr)**2 + wind(2,ix,iy,nr)**2)
-             if (ws > wsmax) then
-                write(*,*) 'wind too high (nr,ix,iy,ws): ',nr,ix,iy,ws
-                ierr = 1
-             end if
-          end do
-          end do
+        do ix = 1,nx
+        do iy = 1,ny
+           ws = sqrt(wind(1,ix,iy)**2 + wind(2,ix,iy)**2)
+           if (ws > wsmax) then
+              write(*,*) 'wind too high (ix,iy,ws): ',ix,iy,ws
+              ierr = 1
+           end if
+        end do
         end do
               
 	end subroutine check_wind
+
+
+!--------------------------------------------------
+	subroutine correct_wind(nx,ny,met,wsmax)
+!--------------------------------------------------
+        implicit none
+        integer,intent(in) :: nx,ny
+        real,intent(in) :: wsmax
+        real,intent(inout) :: met(3,nx,ny)
+        real ws,u,v
+        integer ix,iy
+
+        do ix = 1,nx
+        do iy = 1,ny
+           u = met(1,ix,iy)
+           v = met(2,ix,iy)
+           ws = sqrt(u**2 + v**2)
+           if (ws > wsmax) then
+              met(1,ix,iy) = u/ws * wsmax
+              met(2,ix,iy) = v/ws * wsmax
+              write(*,*) 'moderating wind u: ',u,met(1,ix,iy)
+              write(*,*) 'moderating wind v: ',v,met(2,ix,iy)
+           end if
+        end do
+        end do
+              
+	end subroutine correct_wind
