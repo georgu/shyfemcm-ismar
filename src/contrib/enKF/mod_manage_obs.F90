@@ -38,8 +38,7 @@ contains
   logical linit
   integer nobs
 
-     write(*,*) 'Observation file list: ',trim(obsfile)
-
+  write(*,*) 'reading observations...'
   !-------------------------------
   ! Read a list of obs files
   !-------------------------------
@@ -540,8 +539,9 @@ contains
      stdv_new = sqrt( sqrt( (ens_std**2 + stdv**2)**2 +&
                  (1/KSTD * ens_std * inn)**2 ) - ens_std**2 )
 
-     write(*,*) 'innovation too high. Changing std:'
-     write(*,'(a5,2x,4f8.4)') trim(ty),inn,ens_std,stdv,stdv_new
+     if (verbose)&
+     write(*,'(a18,2x,a5,2f8.4,2x,2f8.4)') 'changing obs std:',&
+             trim(ty),inn,ens_std,stdv,stdv_new
 
      stdv = stdv_new
   end if

@@ -16,21 +16,23 @@
 	real*4 regpar(7)          !regular array params
 	integer lmax		!vertical values
 	real*4,allocatable :: hlv(:)          !vertical structure
-	character*50 string
+	character*50,allocatable :: string(:)
 	real flag
 	integer,allocatable :: ilhkv(:)
 	real*4,allocatable :: hd(:)
 	integer nlvddi
 	real*4,allocatable :: data(:,:),dataens(:,:)
-        real,allocatable :: metaux(:,:,:,:)
+        real,allocatable :: ens_met(:,:,:),ctrl_met(:,:,:)
 	real sigmaUV,sigmaP	!u-v relative error, std of pressure
 	integer nrens
 	integer irec
 	integer i,nr
 
-	integer pert_type	! type of perturbation:	1 = 0D spatially constant
-				!			2 = 2D u and v indipendently
+	integer pert_type	! type of perturbation:	1 = 0D spatially constant, no press
+				!			2 = 2D u and v indipendently, no press
 				!			3 = Pressure pert and geostr wind pert
+				!			4 = Wind speed perturbation, no press
+				!			5 = geostr pert in both senses
 	logical bpress
 	real tau_er	! e-folding time for the error memory
 	integer nx,ny
@@ -47,7 +49,7 @@
 	integer ix,iy
 	real dval
 	real flat	!Latitude for the Coriolis factor
-        real wsmax	!maximum wind speed
+	logical bcorr
 
 	! n. of ens members
 	!
@@ -57,14 +59,14 @@
 	!
 	pert_type = 2
 
+	! correction for extreme wind. Use it if pert_type = 2
+	!
+	bcorr = .true.
+
 	! relative error
 	!
-	sigmaUV = 0.6
+	sigmaUV = 0.4
 	!sigmaUV = 3.
-
-	! maximum wind speed. If more resize it
-	!
-	wsmax = 40.
 
 	! false to remove pressure perturbation. Only if pert_type = 3
 	!
@@ -128,7 +130,6 @@
 	  dy = regpar(6)
 
 	  allocate(ilhkv(np),hd(np),data(nx,ny))
-	  allocate(dataens(nx,ny))
 
           !--------------------------------------------------
 	  ! Makes 2D perturbed normalised fields and update them
@@ -150,9 +151,9 @@
 		call merge_old_vec(irec,tt,tt_old,tau_er,
      +                  nrens,2,pvec,pvec_old)
 
-	    case(2)		! u and v indipendent
+	    case(2,5)		! u and v indipendent
 
-		write(*,*) 'Case 2: indipendent wind perturbations'
+		write(*,*) 'Case 2: two perturbations'
 
 	        if(.not.allocated(pmat)) allocate(pmat(2,nx,ny,nrens))
 	        if(.not.allocated(pmat_old))
@@ -178,9 +179,9 @@
 		call merge_old_field(irec,tt,tt_old,tau_er,nx,ny,
      +			2,nrens,pmat,pmat_old)
 
-	    case(3)		! perturbed p, u and v with geostroph. pert.
+	    case(3,4)		! perturbed p, u and v with geostroph. pert.
 		
-		write(*,*) 'Case 3: geostrophic wind perturbations'
+		write(*,*) 'Case 3: one perturbation'
 
 	        if(.not.allocated(pmat)) allocate(pmat(1,nx,ny,nrens))
 	        if(.not.allocated(pmat_old))
@@ -196,10 +197,58 @@
 
 	  end select 
 
-          !--------------------------------------------------
-	  ! Writes headers
-          !--------------------------------------------------
+
+	  !--------------------------------------------------
+	  ! Loop on variables
+	  !--------------------------------------------------
+          allocate(ctrl_met(nvar,nx,ny))
+	  allocate(string(nvar))
+ 	  do i = 1,nvar
+
+	     ! Reads variable
+	     call fem_file_read_data(iformat,iunit
+     +                          ,nvers,np,lmax
+     +                          ,string(i)
+     +                          ,ilhkv,hd
+     +                          ,nlvddi,data
+     +                          ,ierr)
+	     write(*,*) 'Reading: ',string(i)
+
+	     ! store control meteo
+	     ctrl_met(i,:,:) = data
+	  
+	  end do !------loop on variables----
+
+          ! loop on ens members
 	  do nr = 1,nrens
+
+             allocate(ens_met(nvar,nx,ny))
+	     ! Select perturbation type
+             select case (pert_type)
+	        case (1)
+	  	  call make_const_field(nr,nvar,nrens,nx,ny,pvec,
+     +				ctrl_met,ens_met,flag,sigmaUV)
+		case (2)
+		  call make_ind_field(nvar,nr,nrens,nx,ny,pmat,
+     +				ctrl_met,ens_met,flag,sigmaUV)
+		case (3)
+		  call make_geo_field(nvar,nr,nrens,nx,ny,dx,dy,
+     +				pmat,ctrl_met,ens_met,flag,sigmaUV,
+     +				sigmaP,flat,bpress)
+		case (4)
+		  call make_ws_pert(nvar,nr,nrens,nx,ny,pmat,
+     +                 ctrl_met,ens_met,flag,sigmaUV)
+
+		case (5)
+		  call make_2geo_field(nvar,nr,nrens,nx,ny,dx,dy,
+     +				pmat,ctrl_met,ens_met,flag,sigmaUV,
+     +				sigmaP,flat)
+	     end select
+
+             !call check_wind(nx,ny,nrens,ens_met,ierr)
+             !if (ierr /= 0) error stop 'wind too high'
+             call correct_wind(bcorr,nr,nvar,nx,ny,sigmauv,ctrl_met,
+     +                         ens_met)
 
 	     ounit = iunit + 10 + nr
 	     call fem_file_write_header(iformat,ounit,tt
@@ -207,70 +256,27 @@
      +                          ,nvar,ntype
      +                          ,nlvddi,hlv,datetime,regpar)
 
-	  end do
 
-
-	  !--------------------------------------------------
-	  ! Loop on variables
-	  !--------------------------------------------------
-          allocate(metaux(3,nx,ny,nrens))
- 	  do i = 1,nvar
-
-	     ! Reads variable
-	     call fem_file_read_data(iformat,iunit
-     +                          ,nvers,np,lmax
-     +                          ,string
-     +                          ,ilhkv,hd
-     +                          ,nlvddi,data
-     +                          ,ierr)
-	     write(*,*) 'Reading: ',string
-	  
-             ! loop on ens members
-	     do nr = 1,nrens
-
-		! Select perturbation type
-                select case (pert_type)
-		   case (1)
-			call make_const_field(i,nr,2,nrens,nx,ny,pvec,
-     +					data,dataens,flag,sigmaUV)
-		   case (2)
-			call make_ind_field(i,nr,2,nrens,nx,ny,pmat,
-     +					data,dataens,flag,sigmaUV)
-		   case (3)
-			call make_geo_field(i,nr,1,nrens,nx,ny,dx,dy,
-     +			pmat,data,dataens,flag,sigmaUV,sigmaP,flat,
-     +                  bpress)
-		end select
-
-                metaux(i,:,:,nr) = dataens
-
-	     end do !------loop on ens members----
-	  end do !------loop on variables----
-
-          ! Write record
-	  do nr = 1,nrens
-
-             !call check_wind(nx,ny,nrens,metaux,ierr)
-             !if (ierr /= 0) error stop 'wind too high'
-             call correct_wind(nx,ny,metaux(:,:,:,nr),wsmax)
-
-	     ounit = iunit + 10 + nr
+	     allocate(dataens(nx,ny))
 	     do i = 1,nvar
+	        dataens = ens_met(i,:,:) !write in real4
 	        call fem_file_write_data(iformat,ounit
      +                    ,nvers,np,lmax
-     +                    ,string
+     +                    ,string(i)
      +                    ,ilhkv,hd
-     +                    ,nlvddi,metaux(i,:,:,nr))
+     +                    ,nlvddi,dataens)
              end do
+
+             deallocate(ens_met,dataens)
 
           end do
 
 	  deallocate(ilhkv)
 	  deallocate(hd)
 	  deallocate(data)
-	  deallocate(dataens)
 	  deallocate(hlv)
-          deallocate(metaux)
+          deallocate(string)
+          deallocate(ctrl_met)
 
 	end do 	!-------loop on records-----
 
@@ -364,100 +370,110 @@
 
 
 !--------------------------------------------------
-	subroutine make_const_field(ivar,iens,vardim,nrens,nx,ny,vec,
-     +					data,dataens,flag,err)
+	subroutine make_const_field(iens,nvar,nrens,nx,ny,vec,
+     +					datain,dataout,flag,err)
 !--------------------------------------------------
 	implicit none
 
-	integer,intent(in) :: ivar,iens
-	integer,intent(in) :: vardim,nrens,nx,ny
+	integer,intent(in) :: nvar,iens
+	integer,intent(in) :: nrens,nx,ny
 	real,intent(in) :: err,flag
-	real,intent(in) :: vec(vardim,nrens)
-	real*4,intent(in) :: data(nx,ny)
-	real*4,intent(out) :: dataens(nx,ny)
+	real,intent(in) :: vec(2,nrens)
+	real,intent(in) :: datain(nvar,nx,ny)
+	real,intent(out) :: dataout(nvar,nx,ny)
 
-	integer ix,iy
+	integer ix,iy,ivar
 
-	select case (ivar)
+        do ivar = 1,nvar
 
-	  case default
+ 	   select case (ivar)
 
-	    do iy = 1,ny
-	    do ix = 1,nx
-! if err is relative use this
-		dataens(ix,iy) = data(ix,iy) + (err * abs(data(ix,iy))) 
-     +					* vec(ivar,iens)
-!		dataens(ix,iy) = data(ix,iy) + (err * vec(ivar,iens))
-		if( data(ix,iy).eq.flag ) dataens(ix,iy) = flag
-	    end do
-	    end do
+	     case default
 
-	  case (3)
+	       do iy = 1,ny
+	       do ix = 1,nx
+		! if err is relative use this
+		dataout(ivar,ix,iy) = datain(ivar,ix,iy) + 
+     +                 (err * abs(datain(ivar,ix,iy))) * vec(ivar,iens)
+		! dataens(ix,iy) = data(ix,iy) + (err * vec(ivar,iens))
+		if (datain(ivar,ix,iy) == flag) 
+     +                 dataout(ivar,ix,iy) = flag
+	       end do
+	       end do
 
-	    dataens = data
+	     case (3)
 
-	end select
+	       dataout(ivar,:,:) = datain(ivar,:,:)
+
+	   end select
+
+	end do
 
 	end subroutine make_const_field
 
 
 !--------------------------------------------------
-	subroutine make_ind_field(ivar,iens,vardim,nrens,nx,ny,mat,
-     +				data,dataens,flag,err)
+	subroutine make_ind_field(nvar,iens,nrens,nx,ny,mat,
+     +				datain,dataout,flag,err)
 !--------------------------------------------------
 	implicit none
 
-	integer,intent(in) :: ivar,iens
-	integer,intent(in) :: vardim,nrens,nx,ny
+	integer,intent(in) :: nvar,iens
+	integer,intent(in) :: nrens,nx,ny
 	real,intent(in) :: err,flag
-	real,intent(in) :: mat(vardim,nx,ny,nrens)
-	real*4,intent(in) :: data(nx,ny)
-	real*4,intent(out) :: dataens(nx,ny)
+	real,intent(in) :: mat(2,nx,ny,nrens)
+	real,intent(in) :: datain(nvar,nx,ny)
+	real,intent(out) :: dataout(nvar,nx,ny)
 
-	integer ix,iy
+	integer ix,iy,ivar
 
-	select case (ivar)
+        do ivar = 1,nvar
+	  select case (ivar)
 
-	  case default
+	    case default
 
-	    do iy = 1,ny
-	    do ix = 1,nx
-! if err is relative use this
-		dataens(ix,iy) = data(ix,iy) + (err*abs(data(ix,iy)))
-     +					* mat(ivar,ix,iy,iens)
-!		dataens(ix,iy) = data(ix,iy) + 
+	      do iy = 1,ny
+	      do ix = 1,nx
+	        ! if err is relative use this
+		dataout(ivar,ix,iy) = datain(ivar,ix,iy) + 
+     +            (err*abs(datain(ivar,ix,iy))) * mat(ivar,ix,iy,iens)
+		! dataout(ivar,ix,iy) = datain(ivar,ix,iy) + 
 !     +				(err * mat(ivar,ix,iy,iens))
-		if( data(ix,iy).eq.flag ) dataens(ix,iy) = flag
-	    end do
-	    end do
+		if (datain(ivar,ix,iy) == flag) 
+     +			dataout(ivar,ix,iy) = flag
+	      end do
+	      end do
 
-	  case (3)
+	    case (3)
 
-	    dataens = data
+	      dataout(ivar,:,:) = datain(ivar,:,:)
 
-	end select
+	  end select
+
+	end do
+	!write(*,*) iens,datain(:,5,5),dataout(:,5,5)
 
 	end subroutine make_ind_field
 
 
 
 !--------------------------------------------------
-	subroutine make_geo_field(ivar,iens,vardim,nrens,nx,ny,dx,dy,
-     +			mat,data,dataens,flag,err,sigmaP,flat,bpress)
+	subroutine make_geo_field(nvar,iens,nrens,nx,ny,dx,dy,
+     +		mat,datain,dataout,flag,err,sigmaP,flat,bpress)
 !--------------------------------------------------
 	implicit none
 
-	integer,intent(in) :: ivar,iens
-	integer,intent(in) :: vardim,nrens,nx,ny
+	integer,intent(in) :: nvar,iens
+	integer,intent(in) :: nrens,nx,ny
 	real,intent(in) :: dx,dy
 	real,intent(in) :: err,sigmaP,flag
 	real,intent(in) :: flat
         logical,intent(in) :: bpress
-	real,intent(in) :: mat(vardim,nx,ny,nrens)
-	real*4,intent(in) :: data(nx,ny)
-	real*4,intent(out) :: dataens(nx,ny)
+	real,intent(in) :: mat(1,nx,ny,nrens)
+	real,intent(in) :: datain(nvar,nx,ny)
+	real,intent(out) :: dataout(nvar,nx,ny)
 
-	integer ix,iy
+	integer ix,iy,ivar
 	real Fp1,Fp2,Up,Vp
 	real sigmaU, sigmaV
 	real dxm,dym
@@ -479,8 +495,10 @@
 	dxm = dx * pi/180. * er
 	dym = dy * pi/180. * er
 
-        select case(ivar)
-	  case(1)	!u-wind
+	do ivar = 1,nvar
+
+          select case(ivar)
+	      case(1)	!u-wind
 
 		do ix = 1,nx
 		do iy = 2,ny
@@ -488,24 +506,25 @@
 		  Fp2 = mat(1,ix,iy,iens)
 		  Fp1 = mat(1,ix,iy-1,iens)
 		  ! if err is relative use this
-		  sigmaU = err * abs(data(ix,iy))
+		  sigmaU = err * abs(datain(ivar,ix,iy))
 		  !sigmaU = err
 
 		  !Up = - (((Fp2 - Fp1)/dym) * sigmaP) / (rhoa * fcor)
 		  Up = - (Fp2 - Fp1) * sigmaU
 
-		  !dataens(ix,iy) = Up
-		  dataens(ix,iy) = data(ix,iy) + Up
+		  !dataout(ivar,ix,iy) = Up
+		  dataout(ivar,ix,iy) = datain(ivar,ix,iy) + Up
 
-		  if( data(ix,iy).eq.flag ) dataens(ix,iy) = flag
+		  if (datain(ivar,ix,iy) == flag) 
+     +			dataout(ivar,ix,iy) = flag
 
 		end do
 		end do
 
 		! First row unchanged
-		dataens(:,1) = data(:,1)
+		dataout(ivar,:,1) = datain(ivar,:,1)
 		
-	  case(2)	!v-wind
+	    case(2)	!v-wind
 
 		do iy = 1,ny
 		do ix = 2,nx
@@ -513,42 +532,186 @@
 		  Fp2 = mat(1,ix,iy,iens)
 		  Fp1 = mat(1,ix-1,iy,iens)
 		  ! if err is relative use this
-		  sigmaV = err * abs(data(ix,iy))
+		  sigmaV = err * abs(datain(ivar,ix,iy))
 		  !sigmaV = err
 
 		  !Vp = (((Fp2 - Fp1)/dxm) * sigmaP) / (rhoa * fcor)
 		  Vp = (Fp2 - Fp1) * sigmaV
 
-		  !dataens(ix,iy) =  Vp
-		  dataens(ix,iy) = data(ix,iy) + Vp
+		  !dataout(ivar,ix,iy) =  Vp
+		  dataout(ivar,ix,iy) = datain(ivar,ix,iy) + Vp
 
-		  if( data(ix,iy).eq.flag ) dataens(ix,iy) = flag
+		  if (datain(ivar,ix,iy) == flag) 
+     +			dataout(ivar,ix,iy) = flag
 
 		end do
 		end do
 
 		! First row unchanged
-		dataens(1,:) = data(1,:)
+		dataout(ivar,1,:) = datain(ivar,1,:)
 
-	  case(3)	!pressure
+	    case(3)	!pressure
 
 	      if (bpress) then
 		do iy = 1,ny
 		do ix = 1,nx
-		     dataens(ix,iy) = data(ix,iy) + sigmaP *
-     +					mat(1,ix,iy,iens)
-!		  dataens(ix,iy) = sigmaP * mat(1,ix,iy,iens)
-		  if (data(ix,iy) == flag) dataens(ix,iy) = flag
+		     dataout(ivar,ix,iy) = datain(ivar,ix,iy) + sigmaP
+     +					* mat(1,ix,iy,iens)
+!		  dataout(ivar,ix,iy) = sigmaP * mat(1,ix,iy,iens)
+		  if (datain(ivar,ix,iy) == flag) 
+     +			dataout(ivar,ix,iy) = flag
 		end do
 		end do
               else
 		write(*,*) 'pressure not perturbed'
-		dataens = data ! no perturbation
+		dataout = datain ! no perturbation
               end if
 
-	end select
+	  end select
+	end do
 	
 	end subroutine make_geo_field
+
+
+!--------------------------------------------------
+	subroutine make_2geo_field(nvar,iens,nrens,nx,ny,dx,dy,
+     +		mat,datain,dataout,flag,err,sigmaP,flat)
+!--------------------------------------------------
+	implicit none
+
+	integer,intent(in) :: nvar,iens
+	integer,intent(in) :: nrens,nx,ny
+	real,intent(in) :: dx,dy
+	real,intent(in) :: err,sigmaP,flag
+	real,intent(in) :: flat
+	real,intent(in) :: mat(2,nx,ny,nrens)
+	real,intent(in) :: datain(nvar,nx,ny)
+	real,intent(out) :: dataout(nvar,nx,ny)
+
+	integer ix,iy,ivar
+	real F1p,F2p,Up,Vp
+	real sigmaU, sigmaV
+	real dxm,dym
+
+	real, parameter :: pi = acos(-1.)
+	real, parameter :: rhoa = 1.2041
+	real, parameter :: er1 = 63781370. !max earth radius
+	real, parameter :: er2 = 63567523. !min earth radius
+	real fcor,er,theta
+
+	theta = flat * pi/180.
+	fcor = 2. * sin(theta) * (2.* pi / 86400.)
+	! earth radius with latitude
+	er = sqrt( ( (er1**2 * cos(theta))**2 + 
+     +			(er2**2 * sin(theta))**2 ) /
+     +			( (er1 * cos(theta))**2 + 
+     +			(er2 * sin(theta))**2 ) ) 
+
+	dxm = dx * pi/180. * er
+	dym = dy * pi/180. * er
+
+	do ivar = 1,nvar
+
+          select case(ivar)
+	      case(1)	!u-wind
+
+		do ix = 1,nx
+		do iy = 2,ny
+
+		  F1p = - (mat(1,ix,iy,iens) - mat(1,ix,iy-1,iens))
+		  F2p = (mat(2,ix,iy,iens) - mat(2,ix,iy-1,iens))
+
+		  ! if err is relative use this
+		  sigmaU = err * abs(datain(ivar,ix,iy))
+		  !sigmaU = err
+
+		  !Up = - (((F1p2 - F1p1)/dym) * sigmaP) / (rhoa * fcor)
+		  Up = (F1p + F2p) * sigmaU
+
+		  !dataout(ivar,ix,iy) = Up
+		  dataout(ivar,ix,iy) = datain(ivar,ix,iy) + Up
+
+		  if( datain(ivar,ix,iy).eq.flag ) 
+     +			dataout(ivar,ix,iy) = flag
+
+		end do
+		end do
+
+		! First row unchanged
+		dataout(ivar,:,1) = datain(ivar,:,1)
+		
+	    case(2)	!v-wind
+
+		do iy = 1,ny
+		do ix = 2,nx
+
+		  F1p = mat(1,ix,iy,iens) - mat(1,ix-1,iy,iens)
+		  F2p = - (mat(2,ix,iy,iens) - mat(2,ix-1,iy,iens))
+		  ! if err is relative use this
+		  sigmaV = err * abs(datain(ivar,ix,iy))
+		  !sigmaV = err
+
+		  !Vp = (((F1p2 - F1p1)/dxm) * sigmaP) / (rhoa * fcor)
+		  Vp = (F1p + F2p) * sigmaV
+
+		  !dataout(ivar,ix,iy) =  Vp
+		  dataout(ivar,ix,iy) = datain(ivar,ix,iy) + Vp
+
+		  if( datain(ivar,ix,iy).eq.flag ) 
+     +			dataout(ivar,ix,iy) = flag
+
+		end do
+		end do
+
+		! First row unchanged
+		dataout(ivar,1,:) = datain(ivar,1,:)
+
+	    case(3)	!pressure
+
+		dataout(ivar,:,:) = datain(ivar,:,:) ! no perturbation
+
+	  end select
+	end do
+	
+	end subroutine make_2geo_field
+
+
+!--------------------------------------------------
+	subroutine make_ws_pert(nvar,iens,nrens,nx,ny,mat,
+     +                 datain,dataout,flag,err)
+!--------------------------------------------------
+	implicit none
+        integer,intent(in) :: nvar,iens
+        integer,intent(in) :: nrens,nx,ny
+        real,intent(in) :: mat(1,nx,ny,nrens)
+        real,intent(in) :: datain(nvar,nx,ny)
+        real,intent(out) :: dataout(nvar,nx,ny)
+        real,intent(in) :: err,flag
+
+	real wso(nx,ny),wse(nx,ny)
+	integer ivar,ix,iy
+
+	wso = sqrt(datain(1,:,:)**2 + datain(2,:,:)**2)
+	wse = wso + err * wso * mat(1,:,:,iens)
+
+	do ivar = 1,nvar
+	   select case (ivar)
+	     case default	!wind
+		do ix = 1,nx
+		do iy = 1,ny
+	     	  dataout(ivar,ix,iy) = datain(ivar,ix,iy) + 
+     +                               wse(ix,iy)/wso(ix,iy)
+		  if (datain(ivar,ix,iy) == flag) 
+     +                           dataout(ivar,ix,iy) = flag
+		end do
+		end do
+	     case (3)	!pressure
+	       dataout(ivar,:,:) = datain(ivar,:,:)
+	   end select
+	end do
+
+
+	end subroutine make_ws_pert
 
 
 !--------------------------------------------------
@@ -577,25 +740,40 @@
 
 
 !--------------------------------------------------
-	subroutine correct_wind(nx,ny,met,wsmax)
+	subroutine correct_wind(bcorr,ne,nvar,nx,ny,err,omet,emet)
 !--------------------------------------------------
         implicit none
-        integer,intent(in) :: nx,ny
-        real,intent(in) :: wsmax
-        real,intent(inout) :: met(3,nx,ny)
+	logical, intent(in) :: bcorr
+	integer,intent(in) :: ne
+        integer,intent(in) :: nx,ny,nvar
+        real,intent(in) :: err
+        real,intent(in) :: omet(nvar,nx,ny)
+        real,intent(inout) :: emet(nvar,nx,ny)
         real ws,u,v
+        real ws0,u0,v0,wsmax
         integer ix,iy
+	real wmax
 
+	if (.not.bcorr) return
+
+        wmax = 30.
+	write(*,*) 'applying wind moderation...'
         do ix = 1,nx
         do iy = 1,ny
-           u = met(1,ix,iy)
-           v = met(2,ix,iy)
+           u = emet(1,ix,iy)
+           v = emet(2,ix,iy)
            ws = sqrt(u**2 + v**2)
+           u0 = omet(1,ix,iy)
+           v0 = omet(2,ix,iy)
+           ws0 = sqrt(u0**2 + v0**2)
+           wsmax = ws0 + err * ws0
+	   if (wsmax > wmax) wsmax = wmax
            if (ws > wsmax) then
-              met(1,ix,iy) = u/ws * wsmax
-              met(2,ix,iy) = v/ws * wsmax
-              write(*,*) 'moderating wind u: ',u,met(1,ix,iy)
-              write(*,*) 'moderating wind v: ',v,met(2,ix,iy)
+              emet(1,ix,iy) = u/ws * wsmax
+              emet(2,ix,iy) = v/ws * wsmax
+              !write(*,*) 'moderating wind. Ens member:',ne
+              !write(*,*) 'u->um v->vm: ',u,emet(1,ix,iy),v,emet(2,ix,iy)
+              !write(*,*) 'ws->wsm: ',ws,ws0,wsmax
            end if
         end do
         end do

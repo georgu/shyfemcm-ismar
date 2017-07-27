@@ -3,8 +3,8 @@ module mod_para
 !------------
 ! Settings for the analysis step (enkf_analysis)
 !
-  integer :: rmode = 13 ! Ensemble Kalman Filter
-  !integer :: rmode = 23 ! Square root algorithm
+  !integer :: rmode = 13 ! Ensemble Kalman Filter
+  integer :: rmode = 23 ! Square root algorithm
 
   real :: truncation = 0.995 ! truncation of the SVD eigenvalues
   logical :: update_randrot = .true. ! False for local analysis

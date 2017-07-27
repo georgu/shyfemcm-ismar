@@ -32,7 +32,7 @@ contains
 
    if ((bnew_ens == 0) .or. (nanal.gt.1)) then
 
-     write(*,*) 'Loading an ensemble of initial states'
+     write(*,*) 'loading an ensemble of initial states...'
      do ne = 1,nrens
         call num2str(ne-1,nrel)
         rstname='an'//nal//'_'//'en'//nrel//'b.rst'
@@ -43,7 +43,7 @@ contains
 
    else if ((bnew_ens == 1) .and. (nanal == 1)) then
 
-     write(*,*) 'Creating a new ensemble of initial states'
+     write(*,*) 'creating a new ensemble of initial states...'
      !read an input restart file
      call num2str(0,nrel)
      rstname = 'an'//nal//'_'//'en'//nrel//'b.rst'
@@ -65,7 +65,7 @@ contains
 
    else
 
-     write(*,*) 'Not a valid option for bnew_ens'
+     write(*,*) 'not a valid option for bnew_ens'
      error stop
 
    end if
@@ -85,6 +85,7 @@ contains
    integer ne
    integer dt,tm
 
+   write(*,*) 'writing the analysis restart files...'
    call num2str(nanal,nal)
    do ne = 1,nrens
       call num2str(ne-1,nrel)
@@ -179,11 +180,11 @@ contains
   call pull_state(A4)
   call num2str(nanal,nal)
   if (rstw == -1) then
-        write(*,*) 'Writing average background state...'
+        write(*,*) 'writing the ens mean background restart'
         rstname = 'an'//nal//'_enavrb.rst'
         call rst_write(rstname,atime,date,time)
   elseif (rstw == -2) then
-        write(*,*) 'Writing average analysis state...'
+        write(*,*) 'writing the ens mean analysis restart'
         rstname = 'an'//nal//'_enavra.rst'
         call rst_write(rstname,atime,date,time)
   end if
@@ -229,8 +230,5 @@ contains
     saltv = AA%s
 
    end subroutine pull_state
-
-
-
 
 end module mod_ens_state

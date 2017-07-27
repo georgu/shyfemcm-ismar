@@ -78,12 +78,9 @@
 
   end select
 
-  write(*,*) 'Analysis done'
-
 !--------------------------------
 ! Save the output in different restart files
 !--------------------------------
-  write(*,*) 'Writing the restart files with the analysis states...'
   call write_ensemble(date,time)
 
 !--------------------------------

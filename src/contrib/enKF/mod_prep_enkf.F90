@@ -29,6 +29,8 @@ contains
 
   integer nook
 
+  write(*,*) 'preparing the observations for the assimilation...'
+
   allocate(D(nobs_tot,nrens),E(nobs_tot,nrens),&
            R(nobs_tot,nobs_tot))
   allocate(S(nobs_tot,nrens),innov(nobs_tot))
@@ -97,7 +99,7 @@ contains
         HA(nook,ne) = A(ne)%z(kmin)
      end do
 
-     ! compute the innovation vector
+     ! check the obs std and compute the innovation vector
      !
      oval = o0dlev(nf)%val
      ostatus = o0dlev(nf)%status
@@ -105,7 +107,10 @@ contains
      call check_obs_inn('0DLEV',x,y,0.,oval,oval,stdv,inn1,inn2,ostatus)
      o0dlev(nf)%std = stdv
      innov(nook) = inn1
-     write(*,'(a,i5,3f8.4)') ' nobs, vobs, vmod, innov: ',nf,o0dlev(nf)%val,Am%z(kmin),inn1
+
+     if (verbose)&
+     write(*,'(a25,2x,i4,3f8.4)') 'nobs, vobs, vmod, innov:',&
+              nf,o0dlev(nf)%val,Am%z(kmin),inn1
  
      ! compute the perturbations E, the perturbed observations D
      ! and the innovation vectors D1

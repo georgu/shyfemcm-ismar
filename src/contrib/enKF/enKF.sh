@@ -363,7 +363,7 @@ for (( na = 1; na <= $nran; na++ )); do
    if [ $na != $nran ]; then # not the last one
 
       # run nrens sims before the obs
-      echo; echo "       Running $nrens ensemble simulations..."
+      echo; echo "       running $nrens ensemble simulations..."
 
       # with nthreads=0 uses the maximum number
       export -f Make_sim
@@ -372,7 +372,7 @@ for (( na = 1; na <= $nran; na++ )); do
 
       # Remove old files
       if [ $iclean = 1 ]; then
-	echo "Clean intermediate files."
+	echo "removing some old files"
 	naold=$((na - 1))
 	nal=$(printf "%03d" $naold)
 	rm -f an${nal}_en*.log

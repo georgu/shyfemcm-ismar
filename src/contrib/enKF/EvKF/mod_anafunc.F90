@@ -174,13 +174,15 @@ subroutine genX2(nrens,nrobs,idim,S,W,eig,X2)
    integer, intent(in) :: nrens
    integer, intent(in) :: nrobs
    integer, intent(in) :: idim ! idim=nrobs for A4 and nrmin for A5
-   real, intent(in)    :: W(idim,nrens)
+   real, intent(in)    :: W(nrobs,idim)	!bug correction: should not affect results - mbj
+   !real, intent(in)    :: W(idim,nrens)
    real, intent(in)    :: S(nrobs,nrens)
    real, intent(in)    :: eig(idim)
    real, intent(out)   :: X2(idim,nrens)
    integer i,j
 
-   call dgemm('t','n',idim,nrens,nrobs,1.0,W,nrobs, S,nrobs, 0.0,X2,idim)
+   !call dgemm('t','n',idim,nrens,nrobs,1.0,W,nrobs, S,nrobs, 0.0,X2,idim)
+   call dgemm('t','n',nrobs,nrens,idim,1.0,W,nrobs, S,nrobs, 0.0,X2,idim) ! mbj
 
    do j=1,nrens
    do i=1,idim
@@ -534,7 +536,7 @@ subroutine svdS(S,nrobs,nrens,nrmin,U0,sig0,truncation)
       endif
    enddo
 
-   write(*,'(a,i5,g13.5)') '      analysis svdS: dominant sing. values and share ',nrsigma,sigsum1/sigsum
+   write(*,'(a48,i5,g13.5)') 'analysis svdS: dominant sing. values and share ',nrsigma,sigsum1/sigsum
 !   write(*,'(5g11.3)')sig0
 
    do i=1,nrsigma
