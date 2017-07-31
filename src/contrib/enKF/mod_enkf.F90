@@ -1,4 +1,4 @@
-module mod_prep_enkf
+module mod_enkf
 
   use mod_para
   use mod_manage_obs
@@ -207,4 +207,57 @@ contains
 
   end subroutine fill_scurrents
 
-end module mod_prep_enkf
+!********************************************************
+
+  subroutine check_values
+  use levels
+  implicit none
+
+  integer k,ie,nl,ne
+  integer nbad
+
+  do ne = 1,nrens
+     nbad = 0
+     do k = 1,nnkn
+        if (A(ne)%z(k) > SSH_MAX) then
+           write(*,*) "Warning, bad sea level: ",A(ne)%z(k)
+           A(ne)%z(k) = SSH_MAX
+           nbad = nbad + 1
+        else if (A(ne)%z(k) < SSH_MIN) then
+           write(*,*) "Warning, bad sea level: ",A(ne)%z(k)
+           A(ne)%z(k) = SSH_MIN
+           nbad = nbad + 1
+        end if
+     end do
+     do nl = 1,nnlv
+        do ie = 1,nnel
+          ! u component
+          !
+          if (A(ne)%u(nl,ie) > VEL_MAX * hlv(nl)) then
+             write(*,*) "Warning, bad u-vel: ",A(ne)%u(nl,ie)/hlv(nl)
+             A(ne)%u(nl,ie) = VEL_MAX * hlv(nl)
+             nbad = nbad + 1
+          else if (A(ne)%u(nl,ie) < -VEL_MAX * hlv(nl)) then
+             write(*,*) "Warning, bad u-vel: ",A(ne)%u(nl,ie)/hlv(nl)
+             A(ne)%u(nl,ie) = -VEL_MAX * hlv(nl)
+             nbad = nbad + 1
+          end if
+          ! v component
+          !
+          if (A(ne)%v(nl,ie) > VEL_MAX * hlv(nl)) then
+             write(*,*) "Warning, bad v-vel: ",A(ne)%v(nl,ie)/hlv(nl)
+             A(ne)%v(nl,ie) = VEL_MAX * hlv(nl)
+             nbad = nbad + 1
+          else if (A(ne)%v(nl,ie) < -VEL_MAX * hlv(nl)) then
+             write(*,*) "Warning, bad v-vel: ",A(ne)%v(nl,ie)/hlv(nl)
+             A(ne)%v(nl,ie) = -VEL_MAX * hlv(nl)
+             nbad = nbad + 1
+          end if
+        end do
+     end do
+     if (nbad > 0) write(*,*) "n.ens, bad data: ",ne,nbad
+  end do
+  
+  end subroutine check_values
+
+end module mod_enkf

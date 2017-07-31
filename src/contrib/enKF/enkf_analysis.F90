@@ -12,7 +12,7 @@
 
   use mod_para
   use mod_mod_err
-  use mod_prep_enkf
+  use mod_enkf
   use mod_ens_state
 
   implicit none
@@ -65,6 +65,8 @@
     call analysis(A,R,E,S,D1,innov,global_ndim,nrens,nobs_tot,verbose,truncation,rmode,update_randrot)
     !call analysis6c(A,E,S,innov,global_ndim,nrens,nobs_tot,verbose)	!SQRT alg
     !call analysis2(A,D1,R,S,global_ndim,nrens,nobs_tot,verbose)	!ENKF alg
+
+    call check_values
 
    case(1)
 

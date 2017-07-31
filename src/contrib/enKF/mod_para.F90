@@ -3,15 +3,18 @@ module mod_para
 !------------
 ! Settings for the analysis step (enkf_analysis)
 !
-  !integer :: rmode = 13 ! Ensemble Kalman Filter
-  integer :: rmode = 23 ! Square root algorithm
+  integer :: rmode = 13 ! Ensemble Kalman Filter
+  !integer :: rmode = 23 ! Square root algorithm
 
+  logical :: verbose = .false. ! Prints diagnostic output
+
+  ! do not touch these
+  !
   real :: truncation = 0.995 ! truncation of the SVD eigenvalues
   logical :: update_randrot = .true. ! False for local analysis
-  logical :: verbose = .true. ! Prints diagnostic output
 
 !------------
-! Settings for the observation perturbations (mod_prep_enkf)
+! Settings for the observation perturbations (mod_enkf)
 !
   ! decay time for the red noise of the observations (sec). 
   ! Set lower than 0 to disable (white noise)
@@ -29,11 +32,11 @@ module mod_para
   real, parameter :: KSTD = 2
 
   ! time interval (sec) to select an observation
-  ! with respect to the prescribed time
+  ! with respect to the analysis time
   !
   double precision, parameter :: TEPS = 300.
 
-  ! standard flag for observation missing
+  ! standard flag for a missing observation
   !
   real, parameter :: OFLAG = -999.
 
