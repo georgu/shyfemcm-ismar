@@ -210,14 +210,20 @@ contains
 !********************************************************
 
   subroutine check_values
+  use basin
   use levels
   implicit none
 
-  integer k,ie,nl,ne
-  integer nbad
+  integer k,ie,nl,ne,i
+  integer nbad,nbadmax
+  real hly(nnlv),h,z	!Layer thickness
+
+  !nbadmax = nint(0.001 * (nnkn + 2*nnel*nnlv))
+  nbadmax = 2
 
   do ne = 1,nrens
      nbad = 0
+
      do k = 1,nnkn
         if (A(ne)%z(k) > SSH_MAX) then
            write(*,*) "Warning, bad sea level: ",A(ne)%z(k)
@@ -229,33 +235,59 @@ contains
            nbad = nbad + 1
         end if
      end do
+
+
+     hly = 0.
      do nl = 1,nnlv
         do ie = 1,nnel
+
+          z = 0.
+          h = 0.
+          do i=1,3
+             k = nen3v(i,ie)
+             z = z + A(ne)%z(k)
+             h = h + hm3v(i,ie)
+          end do
+          z = z/3.
+          h = h/3.
+
+          select case (size(hlv))
+            case default	!3D sim
+               hly = hlv
+               hly(1) = hly(1) + z
+            case (1)		!2D sim
+               hly(1) = h + z
+          end select
+          
           ! u component
           !
-          if (A(ne)%u(nl,ie) > VEL_MAX * hlv(nl)) then
-             write(*,*) "Warning, bad u-vel: ",A(ne)%u(nl,ie)/hlv(nl)
-             A(ne)%u(nl,ie) = VEL_MAX * hlv(nl)
+          if (A(ne)%u(nl,ie) > VEL_MAX * hly(nl)) then
+             write(*,*) "Warning, bad u-vel: ",A(ne)%u(nl,ie)/hly(nl), hly(nl)
+             A(ne)%u(nl,ie) = VEL_MAX * hly(nl)
              nbad = nbad + 1
-          else if (A(ne)%u(nl,ie) < -VEL_MAX * hlv(nl)) then
-             write(*,*) "Warning, bad u-vel: ",A(ne)%u(nl,ie)/hlv(nl)
-             A(ne)%u(nl,ie) = -VEL_MAX * hlv(nl)
+          else if (A(ne)%u(nl,ie) < -VEL_MAX * hly(nl)) then
+             write(*,*) "Warning, bad u-vel: ",A(ne)%u(nl,ie)/hly(nl)
+             A(ne)%u(nl,ie) = -VEL_MAX * hly(nl)
              nbad = nbad + 1
           end if
           ! v component
           !
-          if (A(ne)%v(nl,ie) > VEL_MAX * hlv(nl)) then
-             write(*,*) "Warning, bad v-vel: ",A(ne)%v(nl,ie)/hlv(nl)
-             A(ne)%v(nl,ie) = VEL_MAX * hlv(nl)
+          if (A(ne)%v(nl,ie) > VEL_MAX * hly(nl)) then
+             write(*,*) "Warning, bad v-vel: ",A(ne)%v(nl,ie)/hly(nl)
+             A(ne)%v(nl,ie) = VEL_MAX * hly(nl)
              nbad = nbad + 1
-          else if (A(ne)%v(nl,ie) < -VEL_MAX * hlv(nl)) then
-             write(*,*) "Warning, bad v-vel: ",A(ne)%v(nl,ie)/hlv(nl)
-             A(ne)%v(nl,ie) = -VEL_MAX * hlv(nl)
+          else if (A(ne)%v(nl,ie) < -VEL_MAX * hly(nl)) then
+             write(*,*) "Warning, bad v-vel: ",A(ne)%v(nl,ie)/hly(nl)
+             A(ne)%v(nl,ie) = -VEL_MAX * hly(nl)
              nbad = nbad + 1
           end if
+
         end do
      end do
+
      if (nbad > 0) write(*,*) "n.ens, bad data: ",ne,nbad
+     if (nbad > nbadmax) error stop 'Too many bad data'
+
   end do
   
   end subroutine check_values

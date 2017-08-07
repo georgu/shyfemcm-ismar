@@ -65,7 +65,7 @@
 
 	! relative error
 	!
-	sigmaUV = 0.4
+	sigmaUV = 0.3
 	!sigmaUV = 3.
 
 	! false to remove pressure perturbation. Only if pert_type = 3
@@ -79,7 +79,7 @@
 
 	! decorrelation e-folding time
 	!
-	tau_er = 86400*2
+	tau_er = 86400
 
 	! Average latitude for the Coriolis factor. Used only with pert_type = 3
 	!
@@ -231,6 +231,7 @@
 		case (2)
 		  call make_ind_field(nvar,nr,nrens,nx,ny,pmat,
      +				ctrl_met,ens_met,flag,sigmaUV)
+
 		case (3)
 		  call make_geo_field(nvar,nr,nrens,nx,ny,dx,dy,
      +				pmat,ctrl_met,ens_met,flag,sigmaUV,
@@ -245,10 +246,10 @@
      +				sigmaP,flat)
 	     end select
 
-             !call check_wind(nx,ny,nrens,ens_met,ierr)
+             !call check_wind(nx,ny,nrens,ens_met,ierr,flag)
              !if (ierr /= 0) error stop 'wind too high'
              call correct_wind(bcorr,nr,nvar,nx,ny,sigmauv,ctrl_met,
-     +                         ens_met)
+     +                         ens_met,flag)
 
 	     ounit = iunit + 10 + nr
 	     call fem_file_write_header(iformat,ounit,tt
@@ -715,12 +716,13 @@
 
 
 !--------------------------------------------------
-	subroutine check_wind(nx,ny,wind,ierr)
+	subroutine check_wind(nx,ny,wind,ierr,flag)
 !--------------------------------------------------
         implicit none
         integer,intent(in) :: nx,ny
         real,intent(in) :: wind(2,nx,ny)
         integer,intent(out) :: ierr
+	real,intent(in) :: flag
         real,parameter :: wsmax = 45.
         real ws
         integer ix,iy
@@ -728,6 +730,9 @@
         ierr = 0
         do ix = 1,nx
         do iy = 1,ny
+	   if ((wind(1,ix,iy) == flag) .or. 
+     +         (wind(2,ix,iy) == flag)) cycle
+
            ws = sqrt(wind(1,ix,iy)**2 + wind(2,ix,iy)**2)
            if (ws > wsmax) then
               write(*,*) 'wind too high (ix,iy,ws): ',ix,iy,ws
@@ -740,7 +745,7 @@
 
 
 !--------------------------------------------------
-	subroutine correct_wind(bcorr,ne,nvar,nx,ny,err,omet,emet)
+	subroutine correct_wind(bcorr,ne,nvar,nx,ny,err,omet,emet,flag)
 !--------------------------------------------------
         implicit none
 	logical, intent(in) :: bcorr
@@ -749,6 +754,7 @@
         real,intent(in) :: err
         real,intent(in) :: omet(nvar,nx,ny)
         real,intent(inout) :: emet(nvar,nx,ny)
+	real,intent(in) :: flag
         real ws,u,v
         real ws0,u0,v0,wsmax
         integer ix,iy
@@ -760,6 +766,9 @@
 	write(*,*) 'applying wind moderation...'
         do ix = 1,nx
         do iy = 1,ny
+           if ((emet(1,ix,iy) == flag) .or.
+     +         (emet(2,ix,iy) == flag)) cycle
+
            u = emet(1,ix,iy)
            v = emet(2,ix,iy)
            ws = sqrt(u**2 + v**2)
