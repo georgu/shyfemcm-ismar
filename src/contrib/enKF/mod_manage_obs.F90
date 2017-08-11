@@ -517,6 +517,8 @@ contains
      v = sqrt(v1**2 + v2**2)
      d1 = v1*h_1st_layer - Am%u(1,ie)
      d2 = v2*h_1st_layer - Am%v(1,ie)
+     !d1 = v1 - Am%u(1,ie)
+     !d2 = v2 - Am%v(1,ie)
      inn = sqrt(d1**2 + d2**2)
 
   end select

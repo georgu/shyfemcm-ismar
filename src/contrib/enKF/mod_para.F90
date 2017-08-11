@@ -6,7 +6,7 @@ module mod_para
   integer :: rmode = 13 ! Ensemble Kalman Filter
   !integer :: rmode = 23 ! Square root algorithm
 
-  logical :: verbose = .false. ! Prints diagnostic output
+  logical :: verbose = .true. ! Prints diagnostic output
 
   ! do not touch these
   !
@@ -40,7 +40,7 @@ module mod_para
   !
   real, parameter :: OFLAG = -999.
 
-  ! min-max values for the observation check
+  ! min-max values for the observation and model check
   !
   real, parameter :: TEM_MIN = 0.0d0
   real, parameter :: TEM_MAX = 50.0d0
@@ -49,6 +49,6 @@ module mod_para
   real, parameter :: SSH_MIN = -3.0d0
   real, parameter :: SSH_MAX = 3.0d0
   real, parameter :: VEL_MIN = 0.0d0
-  real, parameter :: VEL_MAX = 4.0d0
+  real, parameter :: VEL_MAX = 4.0d0	!used also for u and v, min with -
 
 end module mod_para

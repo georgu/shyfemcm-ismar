@@ -138,7 +138,6 @@ contains
   integer ostatus
   real inn1,inn2
 
- 
   do nf = 1,nfile 
      
     ! create a red noise random vector with mean 0 and std 1
@@ -214,13 +213,18 @@ contains
   use levels
   implicit none
 
-  integer k,ie,nl,ne,i
+  integer k,ie,nl,ne
   integer nbad,nbadmax
-  real hly(nnlv),h,z	!Layer thickness
+
+  real*4,allocatable :: hly(:,:),ze(:,:)
+  real cmax,cmin
+  real,allocatable :: tmax(:,:),tmin(:,:)
 
   !nbadmax = nint(0.001 * (nnkn + 2*nnel*nnlv))
   nbadmax = 2
 
+  allocate(tmax(nnlv,nnel),tmin(nnlv,nnel))
+  allocate(hly(nnlv,nnel),ze(3,nnel))
   do ne = 1,nrens
      nbad = 0
 
@@ -237,50 +241,40 @@ contains
      end do
 
 
-     hly = 0.
+     ! Layer thickness and max values
+     !
+     ze = A(ne)%ze
+     call layer_thick(ze,hly)
+     cmax = VEL_MAX
+     cmin = - VEL_MAX
+     tmax = VEL_MAX * hly
+     tmin = - VEL_MAX * hly
+
      do nl = 1,nnlv
         do ie = 1,nnel
 
-          z = 0.
-          h = 0.
-          do i=1,3
-             k = nen3v(i,ie)
-             z = z + A(ne)%z(k)
-             h = h + hm3v(i,ie)
-          end do
-          z = z/3.
-          h = h/3.
-
-          select case (size(hlv))
-            case default	!3D sim
-               hly = hlv
-               hly(1) = hly(1) + z
-            case (1)		!2D sim
-               hly(1) = h + z
-          end select
-          
-          ! u component
-          !
-          if (A(ne)%u(nl,ie) > VEL_MAX * hly(nl)) then
-             write(*,*) "Warning, bad u-vel: ",A(ne)%u(nl,ie)/hly(nl), hly(nl)
-             A(ne)%u(nl,ie) = VEL_MAX * hly(nl)
-             nbad = nbad + 1
-          else if (A(ne)%u(nl,ie) < -VEL_MAX * hly(nl)) then
-             write(*,*) "Warning, bad u-vel: ",A(ne)%u(nl,ie)/hly(nl)
-             A(ne)%u(nl,ie) = -VEL_MAX * hly(nl)
-             nbad = nbad + 1
-          end if
-          ! v component
-          !
-          if (A(ne)%v(nl,ie) > VEL_MAX * hly(nl)) then
-             write(*,*) "Warning, bad v-vel: ",A(ne)%v(nl,ie)/hly(nl)
-             A(ne)%v(nl,ie) = VEL_MAX * hly(nl)
-             nbad = nbad + 1
-          else if (A(ne)%v(nl,ie) < -VEL_MAX * hly(nl)) then
-             write(*,*) "Warning, bad v-vel: ",A(ne)%v(nl,ie)/hly(nl)
-             A(ne)%v(nl,ie) = -VEL_MAX * hly(nl)
-             nbad = nbad + 1
-          end if
+        ! u component
+        !
+         if (A(ne)%u(nl,ie) > tmax(nl,ie)) then
+            write(*,*) "Warning, bad u-vel: ",A(ne)%u(nl,ie)
+            A(ne)%u(nl,ie) = tmax(nl,ie) 
+            nbad = nbad + 1
+         else if (A(ne)%u(nl,ie) < tmin(nl,ie)) then
+            write(*,*) "Warning, bad u-vel: ",A(ne)%u(nl,ie)
+            A(ne)%u(nl,ie) = tmin(nl,ie)
+            nbad = nbad + 1
+         end if
+         ! v component
+         !
+         if (A(ne)%v(nl,ie) > tmax(nl,ie)) then
+            write(*,*) "Warning, bad v-vel: ",A(ne)%v(nl,ie)
+            A(ne)%v(nl,ie) = tmax(nl,ie)
+            nbad = nbad + 1
+         else if (A(ne)%v(nl,ie) < tmin(nl,ie)) then
+            write(*,*) "Warning, bad v-vel: ",A(ne)%v(nl,ie)
+            A(ne)%v(nl,ie) = tmin(nl,ie)
+            nbad = nbad + 1
+         end if
 
         end do
      end do

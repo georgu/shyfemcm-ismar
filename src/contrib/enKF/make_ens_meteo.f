@@ -23,7 +23,7 @@
 	integer nlvddi
 	real*4,allocatable :: data(:,:),dataens(:,:)
         real,allocatable :: ens_met(:,:,:),ctrl_met(:,:,:)
-	real sigmaUV,sigmaP	!u-v relative error, std of pressure
+	real sigmaUV,sigmaP,sigmaWS	!u-v relative error, std of pressure
 	integer nrens
 	integer irec
 	integer i,nr
@@ -33,6 +33,7 @@
 				!			3 = Pressure pert and geostr wind pert
 				!			4 = Wind speed perturbation, no press
 				!			5 = geostr pert in both senses
+				!			6 = u perturbed and v perturbed according to ws
 	logical bpress
 	real tau_er	! e-folding time for the error memory
 	integer nx,ny
@@ -61,12 +62,12 @@
 
 	! correction for extreme wind. Use it if pert_type = 2
 	!
-	bcorr = .true.
+	bcorr = .false.
 
 	! relative error
 	!
-	sigmaUV = 0.3
-	!sigmaUV = 3.
+	sigmaUV = 0.4
+	sigmaWS = 0.4
 
 	! false to remove pressure perturbation. Only if pert_type = 3
 	!
@@ -79,7 +80,7 @@
 
 	! decorrelation e-folding time
 	!
-	tau_er = 86400
+	tau_er = 2. * 86400.
 
 	! Average latitude for the Coriolis factor. Used only with pert_type = 3
 	!
@@ -151,7 +152,7 @@
 		call merge_old_vec(irec,tt,tt_old,tau_er,
      +                  nrens,2,pvec,pvec_old)
 
-	    case(2,5)		! u and v indipendent
+	    case(2,5,6)		! u and v indipendent
 
 		write(*,*) 'Case 2: two perturbations'
 
@@ -244,6 +245,9 @@
 		  call make_2geo_field(nvar,nr,nrens,nx,ny,dx,dy,
      +				pmat,ctrl_met,ens_met,flag,sigmaUV,
      +				sigmaP,flat)
+		case (6)
+		  call make_ind_field_ws(nvar,nr,nrens,nx,ny,pmat,
+     +                          ctrl_met,ens_met,flag,sigmaUV,sigmaWS)
 	     end select
 
              !call check_wind(nx,ny,nrens,ens_met,ierr,flag)
@@ -716,6 +720,69 @@
 
 
 !--------------------------------------------------
+	subroutine make_ind_field_ws(nvar,iens,nrens,nx,ny,mat,
+     +				datain,dataout,flag,err1,err2)
+!--------------------------------------------------
+! The idea was to perturb u and to use a coefficient k around 1
+! k = wsp/ws
+! With these conditions the perturbation for v is:
+! dv=(-b +/- sqrt(b**2 - 4.*c))/2.
+! with b=2.*v and c=-(k**2 - 1.)*ws**2 + du**2 + 2.*u*du
+! but the sqrt must be positive so:
+! k>=k0==sqrt((du**2 + 2.*u*du -v**2)/ws**2 + 1.)
+! Anyway there is something wrong... NaNs and other..
+	implicit none
+
+	integer,intent(in) :: nvar,iens
+	integer,intent(in) :: nrens,nx,ny
+	real,intent(in) :: err1,err2,flag
+	real,intent(in) :: mat(2,nx,ny,nrens)
+	real,intent(in) :: datain(nvar,nx,ny)
+	real,intent(out) :: dataout(nvar,nx,ny)
+        real, allocatable :: u(:,:),du(:,:),v(:,:),dv1(:,:),k(:,:),
+     +                       ws(:,:),uu(:,:),vv(:,:),b(:,:),c(:,:),
+     +                       dv2(:,:)
+        real k0
+
+        if (nvar /= 3) error stop 'dimension error'
+
+        allocate(u(nx,ny),du(nx,ny),v(nx,ny),dv1(nx,ny),k(nx,ny),
+     +           ws(nx,ny),uu(nx,ny),vv(nx,ny),b(nx,ny),c(nx,ny),
+     +           dv2(nx,ny))
+
+        u = datain(1,:,:)
+        v = datain(2,:,:)
+        ws = sqrt(u**2 + v**2)
+        du = mat(1,:,:,iens) * (err1 * abs(u))
+
+        k0 = maxval(sqrt((du**2 + 2.*u*du -v**2)/ws**2 + 1.))
+        k = k0 + mat(2,:,:,iens)/3. !Gaussian with av 1 and 0 and 2 as limits
+
+        ! u component
+        uu = flag
+        where (u /= flag)
+          uu = u + du
+        end where
+        dataout(1,:,:) = uu
+
+	! v component
+        b = 2. * v
+        c = -(k**2 - 1.)*ws**2 + du**2 + 2.*u*du
+        dv1 = (-b + sqrt(b**2 - 4.*c))/2.
+        dv2 = (-b - sqrt(b**2 - 4.*c))/2.
+        vv = flag
+        where (v /= flag)
+          vv = v + dv2
+        end where
+        dataout(2,:,:) = vv
+
+	! pressure
+	dataout(3,:,:) = datain(3,:,:)
+
+	end subroutine make_ind_field_ws
+
+
+!--------------------------------------------------
 	subroutine check_wind(nx,ny,wind,ierr,flag)
 !--------------------------------------------------
         implicit none
@@ -788,3 +855,6 @@
         end do
               
 	end subroutine correct_wind
+
+
+

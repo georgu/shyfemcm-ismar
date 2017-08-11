@@ -3,10 +3,14 @@
 ! Evenseen's routines
 !------------------------------------------------------------------------------
 ! Parameters for the routine analysis.F90
-! Depending on the type of analysis, different input
-! matrices are necessary for the observations. However 
-! the program computes all the matrices for both the
-! cases
+! Different types of analysis need different input
+! arguments. However the program computes all the 
+! matrices for both enkf and sqrt cases
+!
+! Remember that all the model variables and the shyfem
+! routines LINKED to this code work in real*4, while this
+! code is compiled in double precision. This is better for
+! the analysis (Topaz does the same).
 !------------------------------------------------------------------------------
   program enKF_analysis
 
@@ -66,7 +70,7 @@
     !call analysis6c(A,E,S,innov,global_ndim,nrens,nobs_tot,verbose)	!SQRT alg
     !call analysis2(A,D1,R,S,global_ndim,nrens,nobs_tot,verbose)	!ENKF alg
 
-    call check_values
+    !call check_values
 
    case(1)
 

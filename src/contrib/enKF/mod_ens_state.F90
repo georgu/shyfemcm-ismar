@@ -199,13 +199,18 @@ contains
     use mod_ts
     use mod_conz
     implicit none
+    real*4 hly(nnlv,nnel)
  
     type(states4) :: AA
 
-    AA%u = utlnv
-    AA%v = vtlnv
     AA%ze = zenv
     AA%z = znv
+    ! no significant differences by using currents rather than transports
+    !call layer_thick(AA%ze,hly)
+    !AA%u = utlnv/hly
+    !AA%v = vtlnv/hly
+    AA%u = utlnv
+    AA%v = vtlnv
     AA%t = tempv
     AA%s = saltv
    
@@ -219,16 +224,56 @@ contains
     use mod_ts
     use mod_conz
     implicit none
+    real*4 hly(nnlv,nnel)
  
     type(states4) :: AA
 
-    utlnv = AA%u
-    vtlnv = AA%v
     zenv = AA%ze
     znv = AA%z
+    ! no significant differences by using currents rather than transports
+    !call layer_thick(AA%ze,hly)
+    !utlnv = AA%u * hly
+    !vtlnv = AA%v * hly
+    utlnv = AA%u
+    vtlnv = AA%v
     tempv = AA%t
     saltv = AA%s
 
    end subroutine pull_state
+
+!********************************************************
+
+   subroutine layer_thick(ze,hly)
+   ! hly is a silly estimation of hdenv
+   use mod_hydro
+   use levels, only : hlv
+   use basin
+   implicit none
+   real*4, intent(in) :: ze(nnlv,nnel)
+   real*4, intent(out) :: hly(nnlv,nnel)
+   integer nl,ie
+
+   hly = 0.
+   do nl = 1,nnlv
+     do ie = 1,nnel
+
+       select case (size(hlv))
+       ! 3D sim
+       !
+       case default
+           hly(:,ie) = hlv
+           hly(1,ie) = hly(1,ie) + sum(ze(:,ie))/3.
+       ! 2D sim
+       !
+       case (1)
+           hly(1,ie) = sum(hm3v(:,ie))/3. + sum(ze(:,ie))/3.
+       end select
+
+       if (hly(1,ie) < 0) error stop 'layer_thick: bad thickness'
+
+      end do
+   end do
+
+   end subroutine layer_thick
 
 end module mod_ens_state
