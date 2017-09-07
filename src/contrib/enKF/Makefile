@@ -5,7 +5,7 @@ include ../Rules.make
 
 # Switch to double precision for real
 ifeq ($(FORTRAN_COMPILER),GNU_GFORTRAN)
-  R8FL = -fdefault-real-8
+  R8FL = -fdefault-real-8 -fdefault-double-8
 endif
 
 ifeq ($(FORTRAN_COMPILER),INTEL)
@@ -68,9 +68,13 @@ make_ens_meteo: make_EvKF
 	$(LINKER) $(LFLAGS) $@.o $(LIBS) $(LIBDIR)/libfem.a \
 	$(ENSOBJ1) $(ENSOBJ3) -o $@
 
+make_eof_ens_meteo: make_eof_ens_meteo.o 
+	$(LINKER) $(LFLAGS) $@.o -llapack -lblas \
+	$(LIBDIR)/libfem.a -o $@
+
 #--------------------
 #--------------------
-EXES = enkf_analysis make_ens_meteo
+EXES = enkf_analysis make_ens_meteo  make_eof_ens_meteo
 
 all: 	$(EXES)
 

@@ -5,7 +5,7 @@ MODDIR = .
 
 # Switch to double precision for real
 ifeq ($(FORTRAN_COMPILER),GNU_GFORTRAN)
-  R8FL = -fdefault-real-8
+  R8FL = -fdefault-real-8 -fdefault-double-8
 endif
 
 ifeq ($(FORTRAN_COMPILER),INTEL)

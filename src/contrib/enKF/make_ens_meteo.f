@@ -35,7 +35,7 @@
 				!			5 = geostr pert in both senses
 				!			6 = u perturbed and v perturbed according to ws
 	logical bpress
-	real tau_er	! e-folding time for the error memory
+	double precision tau_er	! e-folding time for the error memory
 	integer nx,ny
 	real dx,dy
 	integer fmult	!Mult factor for the super-sampling
