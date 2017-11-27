@@ -55,7 +55,7 @@ program make_eof_ens_meteo
  !----------------------------------
  ! number of records, set this!
  !
- nrec = 8
+ nrec = 120
 
  ! n. of ens members
  !
@@ -64,12 +64,12 @@ program make_eof_ens_meteo
  ! Minimum percentage of variance to keep a PC component
  ! in the creation of the ensemble members
  !
- perc = 1.
+ !perc = 1.
 
  ! shrinking factor for the distribution of random numbers
- ! use 3 at leas, in order to have positive numbers.
+ ! use 3 at least, in order to have positive numbers.
  !
- shfact = 6.
+ shfact = 3.
  !----------------------------------
 
  ! input file
@@ -228,8 +228,9 @@ program make_eof_ens_meteo
     Lnorm = L(k)**2/Ltot * 100.
     write(*,'(a,i3,2x,f6.3)') 'mode n, var(%): ',k,Lnorm
     ! set nmode if variance is less than 1%
-    if (Lnorm < perc) nmode = k
+    !if (Lnorm < perc) nmode = k
  end do
+ nmode = m 
 
  ! covariance: UL U
  !
@@ -247,7 +248,7 @@ program make_eof_ens_meteo
  allocate(pert(nrens,nmode),vec(nrens))
  do k = 1,nmode
     call make_random_0D(vec,nrens) !gaussian, 0 mean, 1 std
-    pert(:,k) = abs(vec)
+    pert(:,k) = vec
  end do
 
  allocate(VTe(nmode,n))

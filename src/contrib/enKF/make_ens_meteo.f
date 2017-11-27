@@ -62,7 +62,7 @@
 
 	! correction for extreme wind. Use it if pert_type = 2
 	!
-	bcorr = .false.
+	bcorr = .true.
 
 	! relative error
 	!
@@ -231,7 +231,7 @@
      +				ctrl_met,ens_met,flag,sigmaUV)
 		case (2)
 		  call make_ind_field(nvar,nr,nrens,nx,ny,pmat,
-     +				ctrl_met,ens_met,flag,sigmaUV)
+     +		        ctrl_met,ens_met,flag,sigmaUV,sigmaP)
 
 		case (3)
 		  call make_geo_field(nvar,nr,nrens,nx,ny,dx,dy,
@@ -419,16 +419,17 @@
 
 !--------------------------------------------------
 	subroutine make_ind_field(nvar,iens,nrens,nx,ny,mat,
-     +				datain,dataout,flag,err)
+     +		        datain,dataout,flag,err,errp)
 !--------------------------------------------------
 	implicit none
 
 	integer,intent(in) :: nvar,iens
 	integer,intent(in) :: nrens,nx,ny
-	real,intent(in) :: err,flag
+	real,intent(in) :: err,errp,flag
 	real,intent(in) :: mat(2,nx,ny,nrens)
 	real,intent(in) :: datain(nvar,nx,ny)
 	real,intent(out) :: dataout(nvar,nx,ny)
+        real ppert
 
 	integer ix,iy,ivar
 
@@ -452,6 +453,21 @@
 	    case (3)
 
 	      dataout(ivar,:,:) = datain(ivar,:,:)
+!	      ! pressure pert is a linear combination
+!	      do iy = 1,ny
+!	      do ix = 1,nx
+!
+!                 ppert = 1/2. * mat(1,ix,iy,iens) + 
+!     +                   1/2. * mat(2,ix,iy,iens)
+!
+!	         dataout(ivar,ix,iy) = datain(ivar,ix,iy) + 
+!     +              ppert * errp
+!
+!		 if (datain(ivar,ix,iy) == flag) 
+!     +			dataout(ivar,ix,iy) = flag
+!
+!	      end do
+!	      end do
 
 	  end select
 
@@ -830,11 +846,14 @@
 	if (.not.bcorr) return
 
         wmax = 30.
-	write(*,*) 'applying wind moderation...'
         do ix = 1,nx
         do iy = 1,ny
            if ((emet(1,ix,iy) == flag) .or.
      +         (emet(2,ix,iy) == flag)) cycle
+
+           ! Reduce ws of 5%
+           emet(1,ix,iy) = 0.95 * emet(1,ix,iy)
+           emet(2,ix,iy) = 0.95 * emet(2,ix,iy)
 
            u = emet(1,ix,iy)
            v = emet(2,ix,iy)
@@ -845,6 +864,7 @@
            wsmax = ws0 + err * ws0
 	   if (wsmax > wmax) wsmax = wmax
            if (ws > wsmax) then
+	      write(*,*) 'Limiting max wind speed: ',ws,wsmax
               emet(1,ix,iy) = u/ws * wsmax
               emet(2,ix,iy) = v/ws * wsmax
               !write(*,*) 'moderating wind. Ens member:',ne
