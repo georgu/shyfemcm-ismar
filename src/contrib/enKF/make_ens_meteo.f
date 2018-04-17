@@ -5,7 +5,7 @@
 	integer iunit, iformat
 	integer ounit
 	character(len=80) :: filein
-	double precision tt  !time stamp
+	double precision atime,dtime,tt  !time stamp
 	double precision tt_old
 	integer nvers           !version of file format
 	integer np              !size of data (horizontal, nodes or elements)
@@ -54,15 +54,16 @@
 
 	! n. of ens members
 	!
-	nrens = 30
+	nrens = 20
 
 	! type of perturbed field
 	!
-	pert_type = 2
+	pert_type = 1
 
 	! correction for extreme wind. Use it if pert_type = 2
 	!
-	bcorr = .true.
+	!bcorr = .true.
+	bcorr = .false.
 
 	! relative error
 	!
@@ -71,7 +72,7 @@
 
 	! false to remove pressure perturbation. Only if pert_type = 3
 	!
-	bpress = .true.
+	bpress = .false.
 
 	! pressure standard deviation
 	!(1mbar->100Pa) Used only for the pressure, see the routine
@@ -115,10 +116,15 @@
           !--------------------------------------------------
 	  ! Reads headers
           !--------------------------------------------------
- 	  call fem_file_read_params(iformat,iunit,tt
+ 	  call fem_file_read_params(iformat,iunit,dtime
      +                          ,nvers,np,lmax,nvar,ntype,datetime,ierr)
 	  if( ierr .lt. 0 ) exit
+
+          call dts_convert_to_atime(datetime,dtime,atime)
+
+          tt = atime
 	  write(*,*) 'time ',tt
+
 	  allocate(hlv(lmax))
 	  nlvddi = lmax
 	  call fem_file_read_2header(iformat,iunit,ntype,lmax
@@ -256,7 +262,7 @@
      +                         ens_met,flag)
 
 	     ounit = iunit + 10 + nr
-	     call fem_file_write_header(iformat,ounit,tt
+	     call fem_file_write_header(iformat,ounit,dtime
      +                          ,nvers,np,lmax
      +                          ,nvar,ntype
      +                          ,nlvddi,hlv,datetime,regpar)
