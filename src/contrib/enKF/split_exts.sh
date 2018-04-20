@@ -1,5 +1,5 @@
 #/bin/bash
-# Just split ets files 
+# Just split ext files 
 #----------------------------------------------------------
 
 # This finds the path of the current script
@@ -10,7 +10,7 @@ FEMDIR=$SCRIPTPATH/..   # fem directory
 
 Usage()
 {
-  echo "Usage: split_etss.sh [basename]"
+  echo "Usage: split_exts.sh [basename]"
   exit 0
 }
 
@@ -24,29 +24,32 @@ else
    Usage
 fi
 
-for efile in $(ls ${fbase}*.ets); do
+for efile in $(ls ${fbase}*.ext); do
     echo "file: $efile"
-    basefile=$(basename $efile .ets)
+    basefile=$(basename $efile .ext)
 
-    rm -f z.* u.* v.* t.* s.*
-    memory -s $efile > ets.log
-    $FEMDIR/fembin/splitets >> ets.log
+    rm -f zeta.2d.* velx.2d.* vely.2d.* temp.2d.* salt.2d.*
+    $FEMDIR/fembin/shyelab -split $efile > ext.log
 
-    for fl in $(ls z.*); do
+    for fl in $(ls zeta.2d.*); do
         mv -f $fl ${basefile}_${fl}
     done
-    for fl in $(ls u.*); do
+    for fl in $(ls velx.2d.*); do
         mv -f $fl ${basefile}_${fl}
     done
-    for fl in $(ls v.*); do
+    for fl in $(ls vely.2d.*); do
         mv -f $fl ${basefile}_${fl}
     done
-    for fl in $(ls t.*); do
+    if [ -e temp.2d.1 ]; then
+     for fl in $(ls temp.2d.*); do
         mv -f $fl ${basefile}_${fl}
-    done
-    for fl in $(ls s.*); do
+     done
+    fi
+    if [ -e salt.2d.1 ]; then
+     for fl in $(ls salt.2d.*); do
         mv -f $fl ${basefile}_${fl}
-    done
+     done
+    fi
 done
-rm -f ets.log
-rm -f z.* u.* v.* t.* s.*
+rm -f ext.log
+rm -f zeta.2d.* velx.2d.* vely.2d.* temp.2d.* salt.2d.*

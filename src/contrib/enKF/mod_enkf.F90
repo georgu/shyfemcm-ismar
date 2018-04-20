@@ -241,10 +241,6 @@ contains
      end do
 
 
-     ! Layer thickness and max values
-     !
-     ze = A(ne)%ze
-     call layer_thick(ze,hly)
      cmax = VEL_MAX
      cmin = - VEL_MAX
      tmax = VEL_MAX * hly

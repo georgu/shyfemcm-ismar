@@ -199,16 +199,13 @@ contains
     use mod_ts
     use mod_conz
     implicit none
-    real*4 hly(nnlv,nnel)
+    !real*4 hly(nnlv,nnel)
  
     type(states4) :: AA
 
-    AA%ze = zenv
     AA%z = znv
+    !AA%ze = zenv
     ! no significant differences by using currents rather than transports
-    !call layer_thick(AA%ze,hly)
-    !AA%u = utlnv/hly
-    !AA%v = vtlnv/hly
     AA%u = utlnv
     AA%v = vtlnv
     AA%t = tempv
@@ -223,17 +220,17 @@ contains
     use mod_hydro_vel
     use mod_ts
     use mod_conz
+    !use basutil
     implicit none
-    real*4 hly(nnlv,nnel)
  
     type(states4) :: AA
 
-    zenv = AA%ze
     znv = AA%z
+    ! make zenv
+    !AA%ze = zenv
+    call layer_thick
+
     ! no significant differences by using currents rather than transports
-    !call layer_thick(AA%ze,hly)
-    !utlnv = AA%u * hly
-    !vtlnv = AA%v * hly
     utlnv = AA%u
     vtlnv = AA%v
     tempv = AA%t
@@ -243,37 +240,33 @@ contains
 
 !********************************************************
 
-   subroutine layer_thick(ze,hly)
-   ! hly is a silly estimation of hdenv
+   subroutine layer_thick
+   ! Set zenv bigger than the depth hm3v
    use mod_hydro
-   use levels, only : hlv
    use basin
+
    implicit none
-   real*4, intent(in) :: ze(nnlv,nnel)
-   real*4, intent(out) :: hly(nnlv,nnel)
-   integer nl,ie
+   integer ie,ii,k
+   real*4 z,h
+   real*4 hmin
 
-   hly = 0.
-   do nl = 1,nnlv
-     do ie = 1,nnel
+   hmin = 0.03
+   
+   do ie = 1,nnel 
+     do ii = 1,3
+        k = nen3v(ii,ie)
+        zenv(ii,ie) = znv(k)
 
-       select case (size(hlv))
-       ! 3D sim
-       !
-       case default
-           hly(:,ie) = hlv
-           hly(1,ie) = hly(1,ie) + sum(ze(:,ie))/3.
-       ! 2D sim
-       !
-       case (1)
-           hly(1,ie) = sum(hm3v(:,ie))/3. + sum(ze(:,ie))/3.
-       end select
+        z = zenv(ii,ie)
+        h = hm3v(ii,ie)
+        if (z + h < hmin) then
+           z = -h + hmin
+           zenv(ii,ie) = z
+        end if
 
-       if (hly(1,ie) < 0) error stop 'layer_thick: bad thickness'
-
-      end do
+     end do
    end do
-
+   
    end subroutine layer_thick
 
 end module mod_ens_state

@@ -54,7 +54,7 @@
 
 	! n. of ens members
 	!
-	nrens = 20
+	nrens = 30
 
 	! type of perturbed field
 	!
@@ -67,8 +67,9 @@
 
 	! relative error
 	!
-	sigmaUV = 0.4
-	sigmaWS = 0.4
+	!sigmaUV = 0.3
+	sigmaUV = 0.07
+	!sigmaWS = 0.3
 
 	! false to remove pressure perturbation. Only if pert_type = 3
 	!
@@ -81,7 +82,7 @@
 
 	! decorrelation e-folding time
 	!
-	tau_er = 2. * 86400.
+	tau_er = 86400.
 
 	! Average latitude for the Coriolis factor. Used only with pert_type = 3
 	!
@@ -92,14 +93,15 @@
 	fmult = 8
 	theta = 0.
 	!theta = 135	!prevalent wind direction in the Med
-	rx = 4.
-	ry = 4.
+	rx = 5
+	ry = 5
 	verbose = .false.
 	samp_fix = .true.     !keep true
 
 	! input file
 	!
 	filein = 'wind.fem'
+	filein = 'zbound.fem'
 	!filein = 'hfr.fem'
 
 
@@ -404,9 +406,10 @@
 	       do iy = 1,ny
 	       do ix = 1,nx
 		! if err is relative use this
+!		dataout(ivar,ix,iy) = datain(ivar,ix,iy) + 
+!     +                 (err * abs(datain(ivar,ix,iy))) * vec(ivar,iens)
 		dataout(ivar,ix,iy) = datain(ivar,ix,iy) + 
-     +                 (err * abs(datain(ivar,ix,iy))) * vec(ivar,iens)
-		! dataens(ix,iy) = data(ix,iy) + (err * vec(ivar,iens))
+     +                 err * vec(ivar,iens)
 		if (datain(ivar,ix,iy) == flag) 
      +                 dataout(ivar,ix,iy) = flag
 	       end do

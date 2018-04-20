@@ -1,5 +1,5 @@
 #/bin/bash
-# Merges all the ens files extracted from ext, ets or shy files in the 
+# Merges all the ens files extracted from ext or shy files in the 
 # analysis period.
 #----------------------------------------------------------
 
@@ -17,7 +17,7 @@ SIMDIR=$(pwd)           # current dir
 Usage()
 {
   echo "Usage: merge_ens.sh [file_type]"
-  echo "file_type: ext ets shy"
+  echo "file_type: ext shy"
   exit 0
 }
 
@@ -28,19 +28,18 @@ Merge_timeseries()
    nen=$1
    ftype=$2
    files=$(ls an*_en${nen}b.${ftype})
-   rm -f z.* u.* v.* m.* tot${nen}_*
+   rm -f zeta.2d.* velx.2d.* vely.2d.* speed.2d.* merged_en${nen}_*
    for fil in $files; do
       echo "Processing file: $fil"
-      memory -s $fil > log
-      $FEMDIR/fembin/split${ftype} >> log
-      for flev in $(ls z.*); do
-          cat $flev >> tot${nen}_$flev
+      $FEMDIR/fembin/shyelab -split ${fil} > log
+      for flev in $(ls zeta.2d.*); do
+          cat $flev >> merged_en${nen}_$flev
       done
-      for flev in $(ls u.*); do
-          cat $flev >> tot${nen}_$flev
+      for flev in $(ls velx.2d.*); do
+          cat $flev >> merged_en${nen}_$flev
       done
-      for flev in $(ls v.*); do
-          cat $flev >> tot${nen}_$flev
+      for flev in $(ls vely.2d.*); do
+          cat $flev >> merged_en${nen}_$flev
       done
    done
 }
@@ -72,7 +71,7 @@ for efile in $(ls an002_en*.${file_type}); do
 
     ens_member=${efile:8:3}
 
-    if [ ${file_type} = 'ext' ] || [ ${file_type} = 'ets' ]; then
+    if [ ${file_type} = 'ext' ]; then
 
        Merge_timeseries ${ens_member} ${file_type}
 
