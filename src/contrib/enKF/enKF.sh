@@ -281,10 +281,10 @@ for (( ne = 0; ne < $nrens; ne++ )); do
 	Check_file $filename
 done
 
-filename="an${nanl}_enavrb.rst"	#Average
-Check_file $filename
-filename="an${nanl}_enavra.rst"	#Average
-Check_file $filename
+#filename="an${nanl}_mean_state_b.rst"	#Average
+#Check_file $filename
+#filename="an${nanl}_mean_state_a.rst"	#Average
+#Check_file $filename
 }
 
 #----------------------------------------------------------

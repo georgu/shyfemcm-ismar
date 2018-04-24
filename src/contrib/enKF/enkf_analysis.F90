@@ -22,11 +22,14 @@
   implicit none
 
   integer :: date,time !date and time in the rst files
+  character(len=3) :: nal
+  character(len=80) :: filin
 
 !----------------------------------------------------
 ! Opens info file
 !----------------------------------------------------
   call read_info
+  call num2str(nanal,nal)
   
 !----------------------------------------------------
 ! Set shyfem variables and init modules
@@ -42,7 +45,13 @@
 ! Makes the mean of A and saves a restart file with it
 ! before the analysis
 !----------------------------------------------------
-  call average_mat(date,time,-1)
+  call mean_state(Am)
+  call std_state(Am,Astd_old)
+
+  filin = 'an'//nal//'_mean_state_b.rst'
+  call write_state(date,time,Am,filin)
+  filin = 'an'//nal//'_std_states_b.rst'
+  call write_state(date,time,Astd_old,filin)
 
 !----------------------------------------------------
 ! Read observations and pre-process them
@@ -64,7 +73,7 @@
   !
   select case(bmod_err)
 
-   case(0)
+   case(0) !no model error
    
     call analysis(A,R,E,S,D1,innov,global_ndim,nrens,nobs_tot,verbose,truncation,rmode,update_randrot)
     !call analysis6c(A,E,S,innov,global_ndim,nrens,nobs_tot,verbose)	!SQRT alg
@@ -72,7 +81,7 @@
 
     !call check_values
 
-   case(1)
+   case(1) !add a model error to the state
 
     call init_moderr
     call push_aug(A)
@@ -85,13 +94,25 @@
   end select
 
 !--------------------------------
+!  the average state
+!--------------------------------
+  call mean_state(Am)
+  call std_state(Am,Astd_new)
+
+  filin = 'an'//nal//'_mean_state_a.rst'
+  call write_state(date,time,Am,filin)
+  filin = 'an'//nal//'_std_states_a.rst'
+  call write_state(date,time,Astd_new,filin)
+
+!--------------------------------
+!  state inflation
+!--------------------------------
+  call inflate_state(Astd_old,Astd_new,Am)
+
+!--------------------------------
 ! Save the output in different restart files
 !--------------------------------
   call write_ensemble(date,time)
 
-!--------------------------------
-! Save the average state
-!--------------------------------
-  call average_mat(date,time,-2)
 
   end program enKF_analysis

@@ -32,14 +32,15 @@ Merge_timeseries()
    for fil in $files; do
       echo "Processing file: $fil"
       $FEMDIR/fembin/shyelab -split ${fil} > log
+       
       for flev in $(ls zeta.2d.*); do
-          cat $flev >> merged_en${nen}_$flev
+          cat $flev |head -n -1 >> merged_en${nen}_$flev
       done
       for flev in $(ls velx.2d.*); do
-          cat $flev >> merged_en${nen}_$flev
+          cat $flev |head -n -1 >> merged_en${nen}_$flev
       done
       for flev in $(ls vely.2d.*); do
-          cat $flev >> merged_en${nen}_$flev
+          cat $flev |head -n -1 >> merged_en${nen}_$flev
       done
    done
 }

@@ -2,11 +2,13 @@ module mod_ens_state
 
   use mod_init_enkf
   use mod_mod_states
+  use mod_para
 
   implicit none
 
   type(states), allocatable :: A(:)      ! ensemble states
-  type(states) :: Am                     ! average state
+  type(states) :: Am                     ! mean state
+  type(states) :: Astd_old, Astd_new     ! standard deviation old and new
 
 
 contains
@@ -27,6 +29,12 @@ contains
 
    ! Allocates the state A to store the ens states
    allocate(A(nrens))
+
+   ! init to zero
+   do ne = 1,nrens
+      A(ne) = 0.
+   end do
+   A4 = A(1)
 
    call num2str(nanal,nal)
 
@@ -129,17 +137,14 @@ contains
 
    allocate(Apert(nrens-1))
 
-   ! perturbation for ze
+   ! perturbation for z
    call make_2Dpert(kvec,nnkn,nrens-1,fmult_in,theta_in,nx_in,ny_in)
 
    do ne = 1,nrens-1
      call assign_states(Apert(ne),0.)
 
-     do ie = 1,nnel
-        do n = 1,3
-           k = nen3v(n,ie)
-           Apert(ne)%ze(n,ie) = kvec(k,ne) * sigma_in
-        end do
+     do k = 1,nnkn
+        Apert(ne)%z(k) = kvec(k,ne) * sigma_in
      end do
 
    end do
@@ -154,42 +159,91 @@ contains
 
 !********************************************************
 
-  subroutine average_mat(date,time,rstw)
+  subroutine mean_state(Amean)
+  ! make the mean state
+  implicit none
+  type(states),intent(out) :: Amean
+  integer ne
+  real inrens
+  real, parameter :: eps = 1.e-15
+
+  Amean = eps
+  do ne = 1,nrens
+    Amean = Amean + A(ne)
+  end do
+  inrens = 1./float(nrens)
+  Amean = Amean * inrens
+
+  end subroutine mean_state
+
+!********************************************************
+
+  subroutine std_state(Amean,Astd)
+  ! make the standard deviation of the states
+  implicit none
+  type(states),intent(in) :: Amean
+  type(states),intent(out) :: Astd
+  integer ne
+  real inrens
+  real, parameter :: eps = 1.e-15
+
+  Astd = eps
+  do ne = 1,nrens
+     Astd = Astd + ((A(ne) - Amean) * (A(ne) - Amean))
+  end do
+
+  inrens = 1./float(nrens-1)
+  Astd = Astd * inrens
+  Astd = root_state(Astd)
+
+  end subroutine std_state
+
+!********************************************************
+
+  subroutine inflate_state(Astdo,Astdn,Amean)
+  ! Multiplicative state inflation according to Whitaker J. S. et al. 2012
+  ! Relaxation-to-prior-spread (RTPS) method
+  ! A = A * (alpha * (Astdo - Astdn)/Astdn + 1)
+  ! alpha ~ 0.5 
+  ! see mod_para
+  implicit none
+  type(states),intent(in) :: Astdo,Astdn,Amean
+  type(states) :: Aaux, Apert
+  integer ne
+
+  write(*,*) 'RTPS inflation, alpha = ',alpha_infl
+
+  Aaux = Astdo - Astdn
+  Aaux = Aaux / Astdn
+  Aaux = alpha_infl * Aaux 
+  Aaux = Aaux + 1.
+
+  do ne = 1,nrens
+     Apert = (A(ne) - Amean) * Aaux
+     A(ne) = Amean + Apert 
+  enddo
+  
+  end subroutine inflate_state
+  
+
+!********************************************************
+
+  subroutine write_state(date,time,Astate,filename)
   use mod_hydro
   use mod_ts
   implicit none
   integer,intent(in) :: date,time
-  integer,intent(in) :: rstw
-  integer ne
-  character(len=16) :: rstname
-  character(len=3) :: nal
+  type(states),intent(in) :: Astate
+  character(len=*),intent(in) :: filename
 
   type(states4) :: A4
 
-  ! make the average
-  !
-  Am = 0.
-  do ne = 1,nrens
-    Am = Am + A(ne)
-  end do
-  Am = states_real_mult(Am,1./float(nrens))
-
-  ! write in a file
-  !
-  A4 = Am
+  A4 = Astate
   call pull_state(A4)
-  call num2str(nanal,nal)
-  if (rstw == -1) then
-        write(*,*) 'writing the ens mean background restart'
-        rstname = 'an'//nal//'_enavrb.rst'
-        call rst_write(rstname,atime,date,time)
-  elseif (rstw == -2) then
-        write(*,*) 'writing the ens mean analysis restart'
-        rstname = 'an'//nal//'_enavra.rst'
-        call rst_write(rstname,atime,date,time)
-  end if
+  write(*,*) 'writing file: ',trim(filename)
+  call rst_write(trim(filename),atime,date,time)
+  end subroutine write_state
 
-  end subroutine average_mat
 
 !********************************************************
 
@@ -199,12 +253,10 @@ contains
     use mod_ts
     use mod_conz
     implicit none
-    !real*4 hly(nnlv,nnel)
  
     type(states4) :: AA
 
     AA%z = znv
-    !AA%ze = zenv
     ! no significant differences by using currents rather than transports
     AA%u = utlnv
     AA%v = vtlnv
@@ -220,53 +272,19 @@ contains
     use mod_hydro_vel
     use mod_ts
     use mod_conz
-    !use basutil
     implicit none
  
     type(states4) :: AA
 
     znv = AA%z
-    ! make zenv
-    !AA%ze = zenv
-    call layer_thick
-
     ! no significant differences by using currents rather than transports
     utlnv = AA%u
     vtlnv = AA%v
     tempv = AA%t
     saltv = AA%s
 
+    ! make zenv
+    call layer_thick
    end subroutine pull_state
-
-!********************************************************
-
-   subroutine layer_thick
-   ! Set zenv bigger than the depth hm3v
-   use mod_hydro
-   use basin
-
-   implicit none
-   integer ie,ii,k
-   real*4 z,h
-   real*4 hmin
-
-   hmin = 0.03
-   
-   do ie = 1,nnel 
-     do ii = 1,3
-        k = nen3v(ii,ie)
-        zenv(ii,ie) = znv(k)
-
-        z = zenv(ii,ie)
-        h = hm3v(ii,ie)
-        if (z + h < hmin) then
-           z = -h + hmin
-           zenv(ii,ie) = z
-        end if
-
-     end do
-   end do
-   
-   end subroutine layer_thick
 
 end module mod_ens_state

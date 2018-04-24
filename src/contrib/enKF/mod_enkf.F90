@@ -93,8 +93,6 @@ contains
      ! Remember for enKF: Aa = Af + A' [HA']^t [ U L^-1 U^t ] D' and D' = D-HA
      !
      do ne = 1,nrens
-        !S(nook,ne) = sum( A(ne)%ze(:,iemin) - Am%ze(:,iemin) )/3. !average of the three vertexes
-        !HA(nook,ne) = sum( A(ne)%ze(:,iemin) )/3. !average of the three vertexes
         S(nook,ne) = A(ne)%z(kmin) - Am%z(kmin)
         HA(nook,ne) = A(ne)%z(kmin)
      end do
@@ -216,7 +214,6 @@ contains
   integer k,ie,nl,ne
   integer nbad,nbadmax
 
-  real*4,allocatable :: hly(:,:),ze(:,:)
   real cmax,cmin
   real,allocatable :: tmax(:,:),tmin(:,:)
 
@@ -224,7 +221,6 @@ contains
   nbadmax = 2
 
   allocate(tmax(nnlv,nnel),tmin(nnlv,nnel))
-  allocate(hly(nnlv,nnel),ze(3,nnel))
   do ne = 1,nrens
      nbad = 0
 
@@ -243,8 +239,6 @@ contains
 
      cmax = VEL_MAX
      cmin = - VEL_MAX
-     tmax = VEL_MAX * hly
-     tmin = - VEL_MAX * hly
 
      do nl = 1,nnlv
         do ie = 1,nnel

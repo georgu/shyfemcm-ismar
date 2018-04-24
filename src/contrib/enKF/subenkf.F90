@@ -141,6 +141,39 @@
 
 !********************************************************
 
+   subroutine layer_thick
+   ! Set zenv from znv
+   ! A value bigger than the depth hm3v is set
+   use mod_dimensions
+   use mod_hydro
+   use basin
+
+   implicit none
+   integer ie,ii,k
+   real*4 z,h
+   real*4 hmin
+
+   hmin = 0.03
+   
+   do ie = 1,nnel 
+     do ii = 1,3
+        k = nen3v(ii,ie)
+        zenv(ii,ie) = znv(k)
+
+        z = zenv(ii,ie)
+        h = hm3v(ii,ie)
+        if (z + h < hmin) then
+           z = -h + hmin
+           zenv(ii,ie) = z
+        end if
+
+     end do
+   end do
+   
+   end subroutine layer_thick
+
+!********************************************************
+
   subroutine num2str(num,str)
 
   implicit none

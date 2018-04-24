@@ -8,6 +8,8 @@ module mod_para
 
   logical :: verbose = .true. ! Prints diagnostic output
 
+  real, parameter :: alpha_infl = 0.7  ! RTPS inflation par
+
   ! do not touch these
   !
   real :: truncation = 0.995 ! truncation of the SVD eigenvalues

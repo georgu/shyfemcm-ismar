@@ -78,16 +78,7 @@ contains
    allocate(qA(nrens))
    do ne = 1,nrens
       call assign_states(qA(ne),0.)
- 
       qA(ne)%z = kvec(:,ne)
-
-      do ie = 1,nnel
-        do n = 1,3
-          k = nen3v(n,ie)
-          qA(ne)%ze(n,ie) = kvec(k,ne)
-        end do
-      end do
-
    end do
  
    !---------------------------------------
