@@ -120,7 +120,7 @@ cleanall:
 		../femlib/mod/mod_obs_states.mod 
 ../femlib/mod/mod_mod_states.mod: mod_mod_states.o ../femlib/mod/mod_dimensions.mod
 ../femlib/mod/mod_ens_state.mod: mod_ens_state.o ../femlib/mod/mod_init_enkf.mod \
-		../femlib/mod/mod_mod_states.mod
+		../femlib/mod/mod_mod_states.mod ../femlib/mod/mod_dimensions.mod
 ../femlib/mod/m_sample2D.mod: m_sample2D.o ../femlib/mod/m_pseudo2D.mod \
 		../femlib/mod/m_randrot.mod ../femlib/mod/m_fixsample2D.mod
 ../femlib/mod/m_fixsample2D.mod: m_fixsample2D.o

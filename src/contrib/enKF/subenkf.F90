@@ -322,13 +322,15 @@
   xlength = ceiling(x2) - floor(x1)
   ylength = ceiling(y2) - floor(y1)
 
-  dx = xlength / float(nx - 1)
-  dy = ylength / float(ny - 1)
+  !dx = xlength / float(nx - 1)
+  !dy = ylength / float(ny - 1)
+  dx = 0.25
+  dy = 0.25
 
-  rx = 100. * dx
-  ry = 100. * dy
-  rx = rx/sqrt(3.0) !?
-  ry = ry/sqrt(3.0)
+  rx = 5
+  ry = 5
+  !rx = rx/sqrt(3.0) !?
+  !ry = ry/sqrt(3.0)
 
   verbose = .false.
   samp_fix = .true.	!keep true
@@ -476,4 +478,49 @@
   
   end subroutine superobs_horiz_el
 
+!********************************************************
 
+  subroutine save_X5(alabel,tt)
+
+  implicit none
+  character, intent(in) :: alabel*6
+  double precision, intent(in) :: tt
+
+  integer :: nrens
+  integer :: nrobs
+  real, allocatable :: X5(:,:)
+  real, allocatable :: X3(:,:)
+  real, allocatable :: S(:,:)
+  character(len=2) :: tag2
+
+  ! read X5.uf depending on the mult method (X5 or X3,S)
+  open(unit=25,file='X5.uf',form='unformatted',status='old')
+   read(25) tag2
+   rewind 25
+   if (tag2 == 'X3') then
+      read(25) tag2,nrens,nrobs
+      allocate(X3(nrens,nrens),S(nrobs,nrens))
+      rewind 25
+      read(25) tag2,nrens,nrobs,X3,S
+   else
+      read(25) tag2,nrens
+      allocate(X5(nrens,nrens))
+      rewind 25
+      read(25) tag2,nrens,X5
+   end if
+  close(25)
+  
+  ! write the total X5_tot.uf adding time and type of analysis (global or local)
+  write(*,*) 'saving X5 matrix for enKS'
+  open(unit=35,file='X5_tot.uf',form='unformatted',status='unknown',access='append')
+   write(35) tt,alabel,tag2
+   if (tag2 == 'X3') then
+      write(35) nrens,nrobs
+      write(35) X3,S
+   else
+      write(35) nrens
+      write(35) X5
+   end if
+  close(35)
+
+  end subroutine save_X5

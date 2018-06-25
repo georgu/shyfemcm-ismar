@@ -36,7 +36,7 @@ contains
   allocate(S(nobs_tot,nrens),innov(nobs_tot))
   allocate(HA(nobs_tot,nrens),D1(nobs_tot,nrens))
 
-  R(:,:) = 0.
+  R = 0.
   nook = 0
   ! This is for the levels
   !
@@ -71,7 +71,7 @@ contains
 
   do nf = 1,nfile 
 
-     ! create a red noise random vector with mean 0 and std 1
+     ! create a white/red noise random vector with mean 0 and std 1
      !
      call make_0Dpert('z',nrens,nanal,o0dlev(nf)%id,pvec,atime,TTAU_0DLEV)
 
@@ -87,7 +87,7 @@ contains
 
      ! compute the observation errors R
      !
-     !R(nook,nook) = o0dlev(nf)%std**2
+     R(nook,nook) = o0dlev(nf)%std**2
 
      ! compute the model perturbed values, S = HA' and HA
      ! Remember for enKF: Aa = Af + A' [HA']^t [ U L^-1 U^t ] D' and D' = D-HA
@@ -138,7 +138,7 @@ contains
 
   do nf = 1,nfile 
      
-    ! create a red noise random vector with mean 0 and std 1
+    ! create a white/red noise random vector with mean 0 and std 1
     !
     call make_0Dpert('u',nrens,nanal,o2dvel(nf)%id,pvec1,atime,TTAU_2DVEL)
     call make_0Dpert('v',nrens,nanal,o2dvel(nf)%id,pvec2,atime,TTAU_2DVEL)
@@ -158,8 +158,8 @@ contains
 
      ! compute the observation errors R
      !
-     !R(nook-1,nook-1) = o2dvel(nf)%std(ix,iy)**2
-     !R(nook,nook) = o2dvel(nf)%std(ix,iy)**2
+     R(nook-1,nook-1) = o2dvel(nf)%std(ix,iy)**2
+     R(nook,nook) = o2dvel(nf)%std(ix,iy)**2
 
      ! compute the model perturbed values, S = HA' and HA
      ! Remember for enKF: Aa = Af + A' [HA']^t [ U L^-1 U^t ] D' and D' = D-HA

@@ -132,13 +132,14 @@ mod_err.info must contain a row with:
   - rerror is the error relative to each value of the model variables. Use a
     small one. At the moment just the water levels have errors.
   - dt is the time between two observation steps (assumes regular intervals)
-  - tau is the e-folding time of the model error
+  - tau is the e-folding time of the red noise in the model error
 
 The values containted in the two files are indipendent. 
 The first file is used to create white noise to make the initial ensemble. 
 Only the sea level is perturbed.
-The second file is used to make white noise to propagate the model error,
-by using an augmented state.
+The second file is used to make red noise to propagate the model error,
+by using an augmented state. This is not working, the routine make_2Dpert
+gives a segmentation fault.
 
 ----------
 skel files

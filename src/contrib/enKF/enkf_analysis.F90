@@ -45,8 +45,8 @@
 ! Makes the mean of A and saves a restart file with it
 ! before the analysis
 !----------------------------------------------------
-  call mean_state(Am)
-  call std_state(Am,Astd_old)
+  call mean_state
+  call std_state('old')
 
   filin = 'an'//nal//'_mean_state_b.rst'
   call write_state(date,time,Am,filin)
@@ -83,21 +83,42 @@
 
    case(1) !add a model error to the state
 
-    call init_moderr
-    call push_aug(A)
+    call info_moderr
+    call push_aug
     deallocate(A)
     call analysis(Aaug,R,E,S,D1,innov,2*global_ndim,nrens,nobs_tot,&
                   verbose,truncation,rmode,update_randrot)
-    allocate(A(nrens))
-    call pull_aug(A)
+    call pull_aug
 
   end select
 
 !--------------------------------
+! Local analysis
+!--------------------------------
+  select case (is_local)
+
+   case(1)	! localisation
+ 
+    continue	!TODO
+    !call analysis_nkn
+    !call analysis_nel
+     
+    ! save a total X5 for enKS
+    !call save_X5('local',atime) !TODO
+
+   case default  ! no local analysis
+       
+    ! save a total X5 for enKS
+    call save_X5('global',atime)
+
+  end select
+   
+
+!--------------------------------
 !  the average state
 !--------------------------------
-  call mean_state(Am)
-  call std_state(Am,Astd_new)
+  call mean_state
+  call std_state('new')
 
   filin = 'an'//nal//'_mean_state_a.rst'
   call write_state(date,time,Am,filin)
@@ -107,7 +128,7 @@
 !--------------------------------
 !  state inflation
 !--------------------------------
-  call inflate_state(Astd_old,Astd_new,Am)
+  call inflate_state
 
 !--------------------------------
 ! Save the output in different restart files

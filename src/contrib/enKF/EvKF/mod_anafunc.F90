@@ -181,8 +181,7 @@ subroutine genX2(nrens,nrobs,idim,S,W,eig,X2)
    real, intent(out)   :: X2(idim,nrens)
    integer i,j
 
-   !call dgemm('t','n',idim,nrens,nrobs,1.0,W,nrobs, S,nrobs, 0.0,X2,idim)
-   call dgemm('t','n',nrobs,nrens,idim,1.0,W,nrobs, S,nrobs, 0.0,X2,idim) ! mbj
+   call dgemm('t','n',idim,nrens,nrobs,1.0,W,nrobs, S,nrobs, 0.0,X2,idim)
 
    do j=1,nrens
    do i=1,idim

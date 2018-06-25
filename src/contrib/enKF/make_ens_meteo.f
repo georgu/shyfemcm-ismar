@@ -54,21 +54,21 @@
 
 	! n. of ens members
 	!
-	nrens = 30
+	nrens = 50
 
 	! type of perturbed field
 	!
-	pert_type = 1
+	pert_type = 2
 
 	! correction for extreme wind. Use it if pert_type = 2
 	!
-	!bcorr = .true.
-	bcorr = .false.
+	bcorr = .true.
+	!bcorr = .false.
 
 	! relative error
 	!
-	!sigmaUV = 0.3
-	sigmaUV = 0.07
+	sigmaUV = 0.4	!40%
+	!sigmaUV = 0.05
 	!sigmaWS = 0.3
 
 	! false to remove pressure perturbation. Only if pert_type = 3
@@ -82,7 +82,7 @@
 
 	! decorrelation e-folding time
 	!
-	tau_er = 86400.
+	tau_er = 2*86400.
 
 	! Average latitude for the Coriolis factor. Used only with pert_type = 3
 	!
@@ -100,8 +100,8 @@
 
 	! input file
 	!
-	filein = 'wind.fem'
 	filein = 'zbound.fem'
+	filein = 'wind.fem'
 	!filein = 'hfr.fem'
 
 

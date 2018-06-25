@@ -3,12 +3,15 @@ module mod_para
 !------------
 ! Settings for the analysis step (enkf_analysis)
 !
-  integer :: rmode = 13 ! Ensemble Kalman Filter
-  !integer :: rmode = 23 ! Square root algorithm
+  integer :: rmode = 13 ! Ensemble Kalman Filter with SVD pseudo inversion of SS'+ EE'
+  !integer :: rmode = 22 ! Square root algorithm with SVD pseudo inversion of SS'+(N-1)R
+  !integer :: rmode = 23 ! Square root algorithm with SVD pseudo inversion of SS'+ EE'
 
   logical :: verbose = .true. ! Prints diagnostic output
 
-  real, parameter :: alpha_infl = 0.7  ! RTPS inflation par
+  real, parameter :: alpha_infl = 0. ! RTPS inflation (see WHITAKER, 2012). Set ~0.95 or 0. to disable it.
+  integer, parameter :: is_local = 0 !Local analysis. 0 disable, 1 localisation(TODO)
+  real, parameter :: r_local = 2. !Radius used in local analysis
 
   ! do not touch these
   !

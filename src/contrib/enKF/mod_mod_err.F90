@@ -23,7 +23,7 @@ contains
 
 !********************************************************
 
-  subroutine init_moderr
+  subroutine info_moderr
   
   implicit none
 
@@ -31,16 +31,15 @@ contains
    read(22,*) nx_er,ny_er,fmult_er,theta_er,rsigma,dt_er,tau_er
    close(22)
 
-  end subroutine init_moderr
+  end subroutine info_moderr
 
 !********************************************************
 
-  subroutine push_aug(Ain)
+  subroutine push_aug
   
-   use basin
+   !use basin
    
    implicit none
-   type(states), intent(inout)  :: Ain(nrens)
    integer nst 		!= nanal-1	number of time steps from the begin of the assimilation
    double precision alpha,rho
 
@@ -87,24 +86,24 @@ contains
    call load_error(alpha)
  
    !---------------------------------------
-   !compute the new state qA = Ain + sqrt(dt)*sigma*rho*q1
+   !compute the new state qA = A + sqrt(dt)*sigma*rho*q1
    !---------------------------------------
    mfact = sqrt(dt_er) * rsigma * rho
    do ne = 1,nrens
       ! find the spatial factor from the relative error (rsigma)
-      A1 = states_real_mult(A(ne),mfact)
+      A1 = A(ne) * mfact
       ! find the error
-      A2 = states_states_mult(qA(ne),A1)
+      A2 = qA(ne) * A1
       ! add the error
-      Ain(ne) = Ain(ne) + A2
+      A(ne) = A(ne) + A2
    end do
     
    !---------------------------------------
-   !make the augmented state Aaug = (Ain,qA)
+   !make the augmented state Aaug = (A,qA)
    !---------------------------------------
    allocate(Aaug(nrens))
    do ne = 1,nrens
-      call push_qstate(Ain(ne),qA(ne),Aaug(ne))
+      call push_qstate(A(ne),qA(ne),Aaug(ne))
    end do
    deallocate(qA)
  
@@ -112,13 +111,11 @@ contains
 
 !********************************************************
 
-  subroutine pull_aug(Aout)
+  subroutine pull_aug
   
   implicit none
 
-  type(states), intent(out)  :: Aout(nrens)
-
-  type(states),allocatable :: qA(:)
+  type(states) :: qA(nrens)
   character(len=3) :: nrel,nal
   character(len=16) fname
   type(states4) :: A4
@@ -126,9 +123,9 @@ contains
 
   write(*,*) 'Saving model errors'
 
-  allocate(qA(nrens))
+  allocate(A(nrens))
   do ne = 1,nrens
-     call pull_qstate(Aout(ne),qA(ne),Aaug(ne))
+     call pull_qstate(A(ne),qA(ne),Aaug(ne))
   end do
 
   call num2str(nanal,nal)
@@ -137,7 +134,6 @@ contains
   write(33) qA
   close(33)
 
-  deallocate(qA)
   deallocate(Aaug)
 
   end subroutine pull_aug

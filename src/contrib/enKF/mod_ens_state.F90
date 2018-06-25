@@ -1,15 +1,15 @@
 module mod_ens_state
 
-  use mod_init_enkf
+  use mod_dimensions
   use mod_mod_states
   use mod_para
+  use mod_init_enkf
 
   implicit none
 
-  type(states), allocatable :: A(:)      ! ensemble states
+  type(states), dimension(:), allocatable :: A      ! ensemble states
   type(states) :: Am                     ! mean state
   type(states) :: Astd_old, Astd_new     ! standard deviation old and new
-
 
 contains
 
@@ -22,7 +22,6 @@ contains
    integer,intent(out) :: date,time
 
    type(states4) :: A4
-   type(states) :: Ap(nrens-1)
    character(len=3) :: nrel,nal
    character(len=16) rstname
    integer ne
@@ -159,68 +158,74 @@ contains
 
 !********************************************************
 
-  subroutine mean_state(Amean)
+  subroutine mean_state
   ! make the mean state
   implicit none
-  type(states),intent(out) :: Amean
   integer ne
   real inrens
   real, parameter :: eps = 1.e-15
 
-  Amean = eps
+  Am = eps
   do ne = 1,nrens
-    Amean = Amean + A(ne)
+    Am = Am + A(ne)
   end do
   inrens = 1./float(nrens)
-  Amean = Amean * inrens
+  Am = Am * inrens
 
   end subroutine mean_state
 
 !********************************************************
 
-  subroutine std_state(Amean,Astd)
+  subroutine std_state(label)
   ! make the standard deviation of the states
   implicit none
-  type(states),intent(in) :: Amean
-  type(states),intent(out) :: Astd
+  character(len=3), intent(in) :: label
+  type(states), allocatable :: Astd
   integer ne
   real inrens
   real, parameter :: eps = 1.e-15
 
+  allocate(Astd)
   Astd = eps
   do ne = 1,nrens
-     Astd = Astd + ((A(ne) - Amean) * (A(ne) - Amean))
+     Astd = Astd + ((A(ne) - Am) * (A(ne) - Am))
   end do
 
   inrens = 1./float(nrens-1)
   Astd = Astd * inrens
   Astd = root_state(Astd)
 
+  if (label == 'new') then
+     Astd_new = Astd
+  else
+     Astd_old = Astd
+  end if
+
+  deallocate(Astd)
+
   end subroutine std_state
 
 !********************************************************
 
-  subroutine inflate_state(Astdo,Astdn,Amean)
+  subroutine inflate_state
   ! Multiplicative state inflation according to Whitaker J. S. et al. 2012
   ! Relaxation-to-prior-spread (RTPS) method
-  ! A = A * (alpha * (Astdo - Astdn)/Astdn + 1)
-  ! alpha ~ 0.5 
-  ! see mod_para
+  ! A' = A' * (alpha * (Astdo - Astdn)/Astdn + 1)
+  ! alpha ~ 0.1, see mod_para
   implicit none
-  type(states),intent(in) :: Astdo,Astdn,Amean
   type(states) :: Aaux, Apert
   integer ne
 
   write(*,*) 'RTPS inflation, alpha = ',alpha_infl
 
-  Aaux = Astdo - Astdn
-  Aaux = Aaux / Astdn
+  Aaux = Astd_old - Astd_new
+  Aaux = Aaux / Astd_new
   Aaux = alpha_infl * Aaux 
   Aaux = Aaux + 1.
 
   do ne = 1,nrens
-     Apert = (A(ne) - Amean) * Aaux
-     A(ne) = Amean + Apert 
+     Apert = (A(ne) - Am) * Aaux
+     A(ne) = Am + Apert 
   enddo
   
   end subroutine inflate_state
