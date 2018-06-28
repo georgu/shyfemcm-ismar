@@ -70,24 +70,19 @@ This file must contain the following information in different lines:
   normal state. If this option is 1 you must provide also a file named 
   "mod_err.info", described below.
 
-Note:
-It is advisable to make a first ensemble run without data assimilation,
-using an ensemble of different forcing (e.g., wind). The ensemble spread of
-this run must have the same size of the error of the simulation. Then the
-rst files of this ens run can be used as initial background states for the
-assimilation run and the ensemble forcing should be used as well for the
-assimilation run.
-This method is better than creating an initial ensemble of states.
-Moreover, the use of the model error slows the assimilation and if you 
-use an ensemble of forcing fields it should not be neccessary.
-Therefore set the last two parameters to 0.
-
 ----------
 ens_list.txt
 ----------
 This is a list of skel and rst files of the ensemble. Starting from member 0,
 each row must contain the name of a skel and a rst files, separated by space.
 The ensemble size is the number of rows of this file.
+
+----------
+antime_list.txt
+----------
+A list of the times, in string format, of the analysis steps. It is advisable to have analysis steps
+at least of one hour. At least an observation must be present at each step.
+String format has the same convention used in SHYFEM model (e.g., YYYY-MM-DD::HH:MM:SS)
 
 ----------
 obs_list.txt
@@ -102,12 +97,6 @@ Possible flag for the observations are:
 - 2DVEL : FEM-file with 2D surface current fields (e.g., HFR radar).
 
 The structure of the observation files is described below.
-
-----------
-antime_list.txt
-----------
-A list of the times, in string format, of the analysis steps. It is advisable to have analysis steps
-at least of one hour. String format has the same convention used in SHYFEM model: YYYY-MM-DD::HH:MM:SS
 
 ----------
 init_ens.info & mod_err.info
@@ -137,9 +126,10 @@ gives a segmentation fault.
 ----------
 skel files
 ----------
-It is advisable to make the skel files using the str files used to produce the initial
-background restart files. 
-It's extremely important that you put the followinf strings in the skel files:
+These are the files to make the str files of the ensemble members during the
+assimilation. If you made a previous ensemble you can use those str files to
+create these. 
+It's extremely important that you set the following strings in the skel files:
 
 - Section title:
   NAMESIM
@@ -165,12 +155,12 @@ All the other parameters can be set as you like.
 ----------
 Initial restart files
 ----------
-They must contain just one state, saved at the time of the first observation. The
-first restart file specified in the list is considered the control forecast, the
-0 ensemble member. The list of restart files must be sorted as that of the skel files 
-A possible way to make them is to run initial simulations ending at the first observation
-time, varying the most uncertain forcings. Then save the final states in restart files
-and list them.
+They must have one record at the time of the first analysis step. The first
+restart must be the control (unperturbed) run, the 0 ensemble member. 
+In order to create a good initial ensemble you can run an ensemble of
+simulations with different forcings and/or boundary conditions and save the
+restart at the first analysis step. The ensemble must be centered
+(mean~=control).
 
 ----------
 Observation files
@@ -192,7 +182,7 @@ As for the sea level timeseries, an info file is needed, containing a value
 for the standard deviation.
 
 
-Assimilation settings
+Parameters of the assimilation
 ===================
 See the file mod_para.F90 to set some more assimilation parameters.
 
