@@ -5,6 +5,7 @@ module mod_init_enkf
 
   integer :: nrens, nanal
   character (len=80) :: basfile, obsfile
+  character (len=80) :: ostring
   double precision :: atime
   integer :: bnew_ens
   integer :: bmod_err
@@ -15,14 +16,17 @@ contains
 
   subroutine read_info
 
+  use iso8601
   implicit none
+  integer ierr
+  integer date,time
 
   open(20, file='analysis.info', status='old')
 
   read(20,*) nrens	! number of ens members
   read(20,*) nanal		! analysis step
   read(20,*) basfile	! name of bas file (no extension)
-  read(20,*) atime	! current time of the observations
+  read(20,*) ostring	! current time of the observations, string format
   read(20,*) obsfile	! name of obs file list
   read(20,*) bnew_ens	! 1 to create a new initial ens of states
   read(20,*) bmod_err	! 1 to use an augmented state with mod err
@@ -32,10 +36,15 @@ contains
   if (mod(nrens,2) == 0)&
      error stop 'read_info: n of ens members must be odd, with the control as first.'
 
-  write(*,*) 'time: ',atime
+  call string2date(trim(ostring),date,time,ierr)
+  if (ierr /= 0) error stop 'read_info: invalid date string'
+  call dts_to_abs_time(date,time,atime)
+
+  write(*,*) 'time of the analysis step: ',trim(ostring)
+  write(*,*) 'absolute time: ',atime
   write(*,*) 'n. of ens members: ',nrens
-  write(*,*) 'bnew_ens: ',bnew_ens
-  write(*,*) 'bmod_err: ',bmod_err
+  write(*,*) 'ensemble state creation: ',bnew_ens
+  write(*,*) 'simulation of model errors: ',bmod_err
   
   end subroutine read_info
 

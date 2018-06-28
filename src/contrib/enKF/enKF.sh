@@ -4,9 +4,10 @@
 # 
 # Marco Bajo, ISMAR-CNR Venice
 #
-# First version on 2016
+# 2016 first version
+# 2018-06 important updates
 #
-# See the README file to set-up
+# See the README file
 # 
 #----------------------------------------------------------
 
@@ -81,17 +82,13 @@ Read_conf()
      elif [ $nrows = 1 ]; then
         sdim=$line
         
-     # number of ensemble members: nrens
-     elif [ $nrows = 2 ]; then
-        nrens=$line
-        
      # If 1 makes a new ens of initial states from 1
-     elif [ $nrows = 3 ]; then
+     elif [ $nrows = 2 ]; then
         is_new_ens=$line
         Check_num 0 1 'int' $is_new_ens
 
      # If 1 uses an augmented state with the model errors
-     elif [ $nrows = 4 ]; then
+     elif [ $nrows = 3 ]; then
         is_mod_err=$line
         Check_num 0 1 'int' $is_mod_err
 
@@ -104,14 +101,12 @@ Read_conf()
      nrows=$((nrows + 1))
   done < $1
 
-  skel_file_list='skel_list.txt'
-  Check_file $skel_file_list  
-  rst_file_list='rst_list.txt'
-  Check_file $rst_file_list
+  ens_file_list='ens_list.txt'
+  Check_file $ens_file_list  
   obs_file_list='obs_list.txt'
   Check_file $obs_file_list
-  obs_time_list='obstime_list.txt'
-  Check_file $obs_time_list
+  an_time_list='antime_list.txt'
+  Check_file $an_time_list
 }
 
 #----------------------------------------------------------
@@ -146,68 +141,52 @@ Check_exec(){
 
 #----------------------------------------------------------
 
-Read_skel_list(){
-# Reads the list of skel files used to make the str files in the
-# ensemble data assimilation window
-  echo "Read the list of skel files"
+Read_ens_list(){
+# Reads the list of skel and restart files of the ensemble
+  echo "Reading the ensemble list"
 
-  nrow=0
-  while read line
-  do
-     Check_file $line
-     skel_file[$nrow]=$line
-     nrow=$((nrow + 1))
-  done < $skel_file_list
-  if [ $is_new_ens == 0 ] && [ $nrow != $nrens ]; then
-     echo "Error in the number of skel files: $nrow != $nrens"
-     exit 1
-  elif [ $is_new_ens == 1 ] && [ $nrow != 1 ]; then
-     echo "Error in the number of skel files: $nrow != $nrens"
-     exit 1
-  fi
-  echo ""; echo "Number of ensemble members: $nrens"; echo ""
-}
-
-#----------------------------------------------------------
-
-Read_rst_list(){
-# Reads the list of the initial restart files and links them in order
-# to have a standard name (an000_en***b.rst) and determines
-# the size of the ensemble problem (nrens)
-  echo "Read the list of restart files"
-  
   rm -f an001_en*b.rst
 
   nrow=0
   while read line
   do
-    Check_file $line
-    nel=$(printf "%03d" $nrow)
-    ln -s $line an001_en${nel}b.rst
-    nrow=$((nrow + 1))
-  done < $rst_file_list
-  if [ $nrow -ne $nrens ] && [ $is_new_ens == 0 ]; then
-     echo "The number of restart files differs from the number of skel files"
-     echo "You must specify the same number, which is the dimension of the ensemble"
+     skelf=$(echo $line | cut -d " " -f 1)
+     rstf=$(echo $line | cut -d " " -f 2)
+     Check_file $skelf
+     Check_file $rstf
+
+     skel_file[$nrow]=$skelf
+
+     nel=$(printf "%03d" $nrow)
+     ln -fs $rstf an001_en${nel}b.rst
+
+     nrow=$((nrow + 1))
+
+  done < $ens_file_list
+
+  nrens=$nrow
+  echo ""; echo "Number of ensemble members: $nrens"; echo ""
+
+  if [ $is_new_ens == 1 ] && [ $nrow != 1 ]; then
+     echo "Error in the number of ens files: $nrow != 1"
      exit 1
   fi
 }
 
 #----------------------------------------------------------
 
-Read_obs_time_list(){
-# Reads the list of the observation times and determines
+Read_an_time_list(){
+# Reads the list of the analysis times and determines
 # the number of analysis steps (nran)
-  echo "Read the list of observation times"
+  echo "Read the list of analysis steps"
   
   # timeo starts from 1 as the analysis steps
   nrow=1
   while read line
   do
     timeo[$nrow]=$line
-    Check_num -300000000 300000000 'real' ${timeo[$nrow]}
     nrow=$((nrow + 1))
-  done < $obs_time_list
+  done < $an_time_list
   nran=$((nrow - 1))
   echo ""; echo "Number of analysis steps: $nran"
 }
@@ -217,24 +196,16 @@ Read_obs_time_list(){
 
 SkelStr(){
 # Makes a str file from a skel file
-inamesim=$1; iitrst=$2; iitanf=$3; iitend=$4; iidtout=$5; idragco=$6
-inomp=$7; irestrt=$8; ibasin=$9; iskelname=${10}; istrname=${11}        #needs brackets!
-
-[ $iitrst = 'none' ] && iitrst="''"
-[ $irestrt = 'none' ] && irestrt="" 
+inamesim=$1; iitanf=$2; iitend=$3; irestrt=$4; iskelname=$5; istrname=$6
 
 if [ ! -s $iskelname ]; then
         echo "File $iskelname does not exist"
         exit 1
 fi
 
-irestrt="'$irestrt'"
-
-cat $iskelname | sed -e "s/NAMESIM/$inamesim/g" |  sed -e "s/ITRST/$iitrst/g" | \
-        sed -e "s/ITANF/$iitanf/g" | sed -e "s/ITEND/$iitend/g" | \
-        sed -e "s/IDTOUT/$iidtout/g" |  sed -e "s/DRAGCO/$idragco/g" | \
-        sed -e "s/NOMP/$inomp/g" |  sed -e "s/RESTRT/$irestrt/g" | \
-        sed -e "s/BASIN/$ibasin/g" | sed -e "s/IDTRST/-1/" >  $istrname
+cat $iskelname | sed -e "s/NAMESIM/$inamesim/g" |  sed -e "s/ITANF/$iitanf/g" \
+               | sed -e "s/ITEND/$iitend/g" | sed -e "s/RESTRT/$irestrt/" \
+               >  $istrname
 }
 
 #----------------------------------------------------------
@@ -302,17 +273,20 @@ for (( ne = 0; ne < $nrens; ne++ )); do
 
    nel=$(printf "%03d" $ne); nal=$(printf "%03d" $na)
    naa=$((na + 1)); naal=$(printf "%03d" $naa)
-   itrst=${timeo[$na]}; itanf=${timeo[$na]}
+
+   itanf=${timeo[$na]}
+
    if [ $na != $nran ]; then
         name_sim="an${naal}_en${nel}b"
 	itend=${timeo[$naa]}
    else
         name_sim="forecast_en${nel}b"
-	itend=$((itanf + 4*86400))
+	itend=$itanf
    fi
-   idtout=300; wdrag=0.0025; nomp=1
+
    rstfile="an${nal}_en${nel}a.rst"; strnew="${name_sim}.str"
-   SkelStr $name_sim $itrst $itanf $itend $idtout $wdrag $nomp $rstfile $bas_file $ens_skel_file $strnew
+
+   SkelStr $name_sim $itanf $itend $rstfile $ens_skel_file $strnew
    strfiles="$strfiles $strnew"
 
 done
@@ -340,13 +314,10 @@ Compile_enkf $sdim
 Check_exec
 
 # Reading skel file list
-Read_skel_list
-
-# Reading rst file list
-Read_rst_list
+Read_ens_list
 
 # Reading obs file list
-Read_obs_time_list
+Read_an_time_list
 
 # Assimilation cycle for every analysis time step
 for (( na = 1; na <= $nran; na++ )); do

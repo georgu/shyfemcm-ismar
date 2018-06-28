@@ -75,7 +75,7 @@ contains
         case ('0DLEV')
              linit = .true.
              kinit = n_0dlev
-             call read_level(linit,trim(ofile(n)%name),atime,TEPS,&
+             call read_level(linit,trim(ofile(n)%name),TEPS,&
                              ofile(n)%id,kinit,kend,nobs)
              if (kend > kinit) n_0dlev = n_0dlev + 1
 
@@ -108,13 +108,13 @@ contains
              error stop 'read_obs: Unknown file type'
         case ('0DLEV')
              linit = .false.
-             call read_level(linit,trim(ofile(n)%name),atime,TEPS,&
+             call read_level(linit,trim(ofile(n)%name),TEPS,&
                              ofile(n)%id,kinit,kend,nobs)
              kinit = kend
              nobs_tot = nobs_tot + nobs
         case ('2DVEL')
              n_2dvel = n_2dvel + 1
-             call read_2dvel(trim(ofile(n)%name),ofile(n)%id,atime,n_2dvel,TEPS,nobs)
+             call read_2dvel(trim(ofile(n)%name),ofile(n)%id,n_2dvel,TEPS,nobs)
              nobs_tot = nobs_tot + 2 * nobs ! u and v components
     end select
 
@@ -134,20 +134,24 @@ contains
 
 !******************************************************
 
-  subroutine read_level(linit,filin,atime,eps,id,kinit,kend,nobs)
+  subroutine read_level(linit,filin,eps,id,kinit,kend,nobs)
 
+  use iso8601
   implicit none
 
   logical,intent(in)           :: linit
   character(len=*),intent(in)  :: filin
-  double precision, intent(in) :: atime
   double precision, intent(in) :: eps
   integer, intent(in)	       :: id
   integer, intent(in)          :: kinit
   integer, intent(out)         :: kend
   integer, intent(out)         :: nobs
   integer ios
-  double precision tt
+  character*80 dstring
+  integer nvar
+  integer ierr
+  integer date, time
+  double precision oatime
   real x, y, v, stdv
   integer k
   integer ostatus
@@ -172,10 +176,16 @@ contains
      !
      case (.true.)
           k = kinit
- 90       read(26,*,end=100) tt, v
+
+ 90       read(26,*,end=100) dstring
+
+          call string2date(trim(dstring),date,time,ierr)
+          if (ierr /= 0) error stop "read_level: error reading string"
+          call dts_to_abs_time(date,time,oatime)
+
           ! Take only records with times near atime
           !
-          if (abs(tt - atime) < eps) then
+          if (abs(oatime - atime) < eps) then
              ostatus = 0
              ! check if the obs value is out of range
              !
@@ -190,17 +200,23 @@ contains
      !
      case (.false.)
           k = kinit
- 91       read(26,*,end=101) tt, v
+
+ 91       read(26,*,end=101) dstring,v
+
+          call string2date(trim(dstring),date,time,ierr)
+          if (ierr /= 0) error stop "read_level: error reading string"
+          call dts_to_abs_time(date,time,oatime)
+
           ostatus = 4
           ! Take only records with times near atime
           !
-          if (abs(tt - atime) < eps) then
+          if (abs(oatime - atime) < eps) then
              ostatus = 0
              ! check if the obs value is out of range
              !
              call check_obs('0DLEV',v,v,OFLAG,ostatus)
              k = k + 1
-             o0dlev(k)%t = tt
+             o0dlev(k)%t = oatime
              o0dlev(k)%x = x
              o0dlev(k)%y = y
              o0dlev(k)%val = v
@@ -222,13 +238,12 @@ contains
 
 !********************************************************
 
-  subroutine read_2dvel(filin,fid,atime,nrec,eps,nobs)
+  subroutine read_2dvel(filin,fid,nrec,eps,nobs)
 
   implicit none
 
   character(len=*),intent(in)  :: filin
   integer,intent(in)           :: fid
-  double precision,intent(in)  :: atime
   integer, intent(in)          :: nrec
   double precision,intent(in)  :: eps
   integer, intent(out)          :: nobs
@@ -236,11 +251,11 @@ contains
   integer ios
   integer np,iformat,iunit
   integer irec,i,ii,jj
-  double precision tt
   integer nvers           !version of file format
   integer lmax            !vertical values
   integer nvar            !number of variables to write
   integer ntype           !type of information contained
+  double precision tt
   integer datetime(2)     !date and time information
   integer ierr            !return error code
   integer nlvddi
@@ -256,6 +271,7 @@ contains
   logical bdata
   real x,y,uu,vv,ostd
   integer ix,iy
+  double precision oatime
 
   nobs = 0
 
@@ -281,6 +297,8 @@ contains
     call fem_file_read_params(iformat,iunit,tt,nvers,np,lmax,nvar,ntype,datetime,ierr)
     if (ierr < 0) exit
 
+    call dts_convert_to_atime(datetime,tt,oatime)
+
     allocate(hhlv(lmax))
     nlvddi = lmax
     call fem_file_read_2header(iformat,iunit,ntype,lmax,hhlv,regpar,ierr)
@@ -295,7 +313,7 @@ contains
 
     if (flag /= OFLAG) error stop 'read_2dvel: bad flag'
 
-    if (abs(tt - atime) > eps) then
+    if (abs(oatime - atime) > eps) then
        do i=1,nvar
           call fem_file_skip_data(iformat,iunit,nvers,np,lmax,string,ierr)
           if (ierr /= 0) error stop 'read_2dvel: error reading file'

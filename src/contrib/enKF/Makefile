@@ -29,7 +29,8 @@ HTOBJS = $(DIRFEM)/subrst.o $(DIRFEM)/subbas.o $(DIRFEM)/subdts.o $(DIRFEM)/mod_
 	$(DIRFEM)/subbit10.o $(DIRFEM)/mod_geom_dynamic.o $(DIRFEM)/mod_ts.o \
 	$(DIRFEM)/newlevels.o $(DIRFEM)/mod_conz.o $(DIRFEM)/mod_hydro_vel.o \
 	$(DIRFEM)/ecological_dummy.o $(DIRFEM)/subdef.o $(DIRFEM)/subnev.o \
-	$(DIRFEM)/mod_geom.o $(DIRFEM)/subscn.o
+	$(DIRFEM)/mod_geom.o $(DIRFEM)/subscn.o $(DIRFEM)/suboutputd.o \
+	$(DIRFEM)/subiso8601.o
 
 #--------------------
 # Ensemble analysis objects
@@ -111,13 +112,13 @@ cleanall:
 
 ../femlib/mod/mod_dimensions.mod: mod_dimensions.o
 ../femlib/mod/mod_para.mod: mod_para.o
-../femlib/mod/mod_init_enkf.mod: mod_init_enkf.o
+../femlib/mod/mod_init_enkf.mod: mod_init_enkf.o ../femlib/mod/iso8601.mod
 ../femlib/mod/mod_enkf.mod: mod_enkf.o ../femlib/mod/mod_para.mod \
 		../femlib/mod/mod_manage_obs.mod
 ../femlib/mod/mod_mod_err.mod: mod_mod_err.o
 ../femlib/mod/mod_obs_states.mod: mod_obs_states.o
 ../femlib/mod/mod_manage_obs.mod: mod_manage_obs.o ../femlib/mod/mod_para.mod \
-		../femlib/mod/mod_obs_states.mod 
+		../femlib/mod/mod_obs_states.mod ../femlib/mod/iso8601.mod
 ../femlib/mod/mod_mod_states.mod: mod_mod_states.o ../femlib/mod/mod_dimensions.mod
 ../femlib/mod/mod_ens_state.mod: mod_ens_state.o ../femlib/mod/mod_init_enkf.mod \
 		../femlib/mod/mod_mod_states.mod ../femlib/mod/mod_dimensions.mod

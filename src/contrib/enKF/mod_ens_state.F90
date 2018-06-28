@@ -15,13 +15,10 @@ contains
 
 !********************************************************
 
-  subroutine read_ensemble(date,time)
+  subroutine read_ensemble
 
    implicit none
 
-   integer,intent(out) :: date,time
-
-   type(states4) :: A4
    character(len=3) :: nrel,nal
    character(len=16) rstname
    integer ne
@@ -33,7 +30,6 @@ contains
    do ne = 1,nrens
       A(ne) = 0.
    end do
-   A4 = A(1)
 
    call num2str(nanal,nal)
 
@@ -43,9 +39,7 @@ contains
      do ne = 1,nrens
         call num2str(ne-1,nrel)
         rstname='an'//nal//'_'//'en'//nrel//'b.rst'
-        call rst_read(rstname,atime,date,time)
-        call push_state(A4)
-        A(ne)=A4
+        call read_state(A(ne),rstname)
      end do
 
    else if ((bnew_ens == 1) .and. (nanal == 1)) then
@@ -54,20 +48,16 @@ contains
      !read an input restart file
      call num2str(0,nrel)
      rstname = 'an'//nal//'_'//'en'//nrel//'b.rst'
-     call rst_read(rstname,atime,date,time)
+     call read_state(A(1),rstname)
 
-     !push the vars into the state and makes the ens
-     call push_state(A4)
-     call make_init_ens(A4)
+     call make_init_ens(A(1))
      
      !save the initial ens in new restart files
      call num2str(nanal,nal)
      do ne = 1,nrens
         call num2str(ne-1,nrel)
-        A4 = A(ne)
-        call pull_state(A4)
         rstname='an'//nal//'_'//'en'//nrel//'b.rst'
-        call rst_write(rstname,atime,date,time)
+        call write_state(A(ne),rstname)
      end do
 
    else
@@ -82,38 +72,35 @@ contains
 
 !********************************************************
 
-  subroutine write_ensemble(date,time)
+  subroutine write_ensemble
    implicit none
-   integer,intent(in) :: date,time
 
    type(states4) :: A4
    character(len=3) :: nrel,nal
    character(len=16) rstname
    integer ne
-   integer dt,tm
 
    write(*,*) 'writing the analysis restart files...'
    call num2str(nanal,nal)
    do ne = 1,nrens
       call num2str(ne-1,nrel)
       rstname='an'//nal//'_'//'en'//nrel//'b.rst'
-      call rst_read(rstname,atime,dt,tm) !This is to load var not present 
-                                        ! in the ens state. It should be removed.
-      A4 = A(ne)
-      call pull_state(A4)
+      call rst_read(rstname,atime) !This is to load var not present 
+                                   ! in the ens state. It should be removed.
+
       rstname='an'//nal//'_'//'en'//nrel//'a.rst'
-      call rst_write(rstname,atime,date,time)
+      call write_state(A(ne),rstname)
    end do
   end subroutine write_ensemble
 
 !********************************************************
 
-  subroutine make_init_ens(A4)
+  subroutine make_init_ens(Ain)
    use basin
 
    implicit none
 
-   type(states4),intent(in) :: A4
+   type(states),intent(in) :: Ain
 
    ! parameters for the initial ensemble of states
    !
@@ -123,7 +110,6 @@ contains
    real sigma_in                 !standard deviation of the fields (level)
 
    type(states), allocatable, save :: Apert(:)
-   type(states) :: Aaux
    real kvec(nnkn,nrens-1),evec(nnel,nrens-1)
 
    integer ne,n,ie,k
@@ -131,8 +117,6 @@ contains
    open(21, file='init_ens.info', status='old')
    read(21,*) nx_in,ny_in,fmult_in,theta_in,sigma_in
    close(21)
-
-   Aaux = A4
 
    allocate(Apert(nrens-1))
 
@@ -149,9 +133,9 @@ contains
    end do
 
    ! The first state is unperturbed
-   A(1) = Aaux
+   A(1) = Ain
    do ne = 2,nrens
-      A(ne) = add_states(Aaux,Apert(ne-1))
+      A(ne) = add_states(Ain,Apert(ne-1))
    end do
 
   end subroutine make_init_ens
@@ -233,11 +217,10 @@ contains
 
 !********************************************************
 
-  subroutine write_state(date,time,Astate,filename)
+  subroutine write_state(Astate,filename)
   use mod_hydro
   use mod_ts
   implicit none
-  integer,intent(in) :: date,time
   type(states),intent(in) :: Astate
   character(len=*),intent(in) :: filename
 
@@ -245,10 +228,27 @@ contains
 
   A4 = Astate
   call pull_state(A4)
-  write(*,*) 'writing file: ',trim(filename)
-  call rst_write(trim(filename),atime,date,time)
+  call rst_write(trim(filename),atime)
   end subroutine write_state
 
+!********************************************************
+
+  subroutine read_state(Astate,filename)
+
+  implicit none
+
+  type(states),intent(out) :: Astate
+  character(len=*),intent(in) :: filename
+
+  type(states4) :: A4
+
+  Astate = 0.
+  A4 = Astate
+  call rst_read(filename,atime)
+  call push_state(A4)
+  Astate = A4
+
+  end subroutine read_state
 
 !********************************************************
 

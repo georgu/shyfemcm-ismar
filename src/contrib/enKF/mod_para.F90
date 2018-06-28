@@ -9,7 +9,7 @@ module mod_para
 
   logical :: verbose = .true. ! Prints diagnostic output
 
-  real, parameter :: alpha_infl = 0. ! RTPS inflation (see WHITAKER, 2012). Set ~0.95 or 0. to disable it.
+  real, parameter :: alpha_infl = 0.1 ! RTPS inflation (see WHITAKER, 2012). Set ~0.95 or 0. to disable it.
   integer, parameter :: is_local = 0 !Local analysis. 0 disable, 1 localisation(TODO)
   real, parameter :: r_local = 2. !Radius used in local analysis
 

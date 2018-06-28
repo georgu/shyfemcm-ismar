@@ -21,7 +21,6 @@
 
   implicit none
 
-  integer :: date,time !date and time in the rst files
   character(len=3) :: nal
   character(len=80) :: filin
 
@@ -39,7 +38,7 @@
 !----------------------------------------------------
 ! Read the ensemble
 !----------------------------------------------------
-  call read_ensemble(date,time)
+  call read_ensemble
 
 !----------------------------------------------------
 ! Makes the mean of A and saves a restart file with it
@@ -49,9 +48,9 @@
   call std_state('old')
 
   filin = 'an'//nal//'_mean_state_b.rst'
-  call write_state(date,time,Am,filin)
+  call write_state(Am,filin)
   filin = 'an'//nal//'_std_states_b.rst'
-  call write_state(date,time,Astd_old,filin)
+  call write_state(Astd_old,filin)
 
 !----------------------------------------------------
 ! Read observations and pre-process them
@@ -121,9 +120,9 @@
   call std_state('new')
 
   filin = 'an'//nal//'_mean_state_a.rst'
-  call write_state(date,time,Am,filin)
+  call write_state(Am,filin)
   filin = 'an'//nal//'_std_states_a.rst'
-  call write_state(date,time,Astd_new,filin)
+  call write_state(Astd_new,filin)
 
 !--------------------------------
 !  state inflation
@@ -133,7 +132,7 @@
 !--------------------------------
 ! Save the output in different restart files
 !--------------------------------
-  call write_ensemble(date,time)
+  call write_ensemble
 
 
   end program enKF_analysis

@@ -49,7 +49,6 @@ Installation with Ubuntu:
 sudo apt-get update && apt-get install parallel liblapack-dev
 
 
-
 Run the code
 ===================
 
@@ -62,7 +61,6 @@ setting file
 This file must contain the following information in different lines:
 - Name of the bas-file with the bas extension;
 - Dimension of the model state (nkn nel nlv);
-- Number of ensemble members;
 - A flag equal to 1 to create a new ensemble of initial states by perturbing
   one state specified in a restart file (specify one restart file in
   "rstlist.txt" and one file in "skellist.txt"). If it is set to 0 the program
@@ -85,16 +83,11 @@ use an ensemble of forcing fields it should not be neccessary.
 Therefore set the last two parameters to 0.
 
 ----------
-skel_list.txt
+ens_list.txt
 ----------
-This is a list of skeleton files to create the str file. The structure of the
-skel files is described below.
-
-----------
-rst_list.txt
-----------
-This is a list of initial restart files (background state). They must contain
-a record at the time of your first observation (first analysis step).
+This is a list of skel and rst files of the ensemble. Starting from member 0,
+each row must contain the name of a skel and a rst files, separated by space.
+The ensemble size is the number of rows of this file.
 
 ----------
 obs_list.txt
@@ -111,10 +104,10 @@ Possible flag for the observations are:
 The structure of the observation files is described below.
 
 ----------
-obstime_list.txt
+antime_list.txt
 ----------
-A list of the times of the analysis steps. It is advisable to have analysis steps
-at least of one hour.
+A list of the times, in string format, of the analysis steps. It is advisable to have analysis steps
+at least of one hour. String format has the same convention used in SHYFEM model: YYYY-MM-DD::HH:MM:SS
 
 ----------
 init_ens.info & mod_err.info
@@ -145,19 +138,29 @@ gives a segmentation fault.
 skel files
 ----------
 It is advisable to make the skel files using the str files used to produce the initial
-background restart files. skel files must have these lines:
-- in the "title" section put:
-  Whatever title of sim
+background restart files. 
+It's extremely important that you put the followinf strings in the skel files:
+
+- Section title:
   NAMESIM
-  BASIN
-- in the "para" section put: 
-  itrst = ITRST
-  idtrst = IDTRST
-  itanf = ITANF
-  itend = ITEND
-  nomp = NOMP 
-- in the "name" section put:
-  restrt = RESTRT
+
+- Section para: 
+  itanf = 'ITANF'
+  itend = 'ITEND'
+  itrst = 'ITANF'
+  idtrst = -1
+
+- Section name:
+  restrt = 'RESTRT'
+
+If you want to save the results during the analysis add:
+
+- Section para:
+  itout = 'ITANF'
+  itext = 'ITANF'
+  itcon = 'ITANF'
+
+All the other parameters can be set as you like.
 
 ----------
 Initial restart files
@@ -174,8 +177,8 @@ Observation files
 ----------
 1)
 Sea level timeseries with time and value:
-time1 value1
-time2 value2 
+string-time1 value1
+string-time2 value2 
 ...
 
 For each timeseries file a info file is needed, with the same name added of an
@@ -189,12 +192,9 @@ As for the sea level timeseries, an info file is needed, containing a value
 for the standard deviation.
 
 
-
-Advanced settings
+Assimilation settings
 ===================
-See the file mod_para.F90 to set some more assimilation parameters. In
-particular the analysis scheme (enKF and SQRT are tested).
-
+See the file mod_para.F90 to set some more assimilation parameters.
 
 
 Utilities
@@ -206,14 +206,14 @@ assimilation, just normal runs. For example you can use this for the final
 forecast runs
 
 merge_ens.sh:
-merges ets, ext or shy files pruduced during the analysis period
+merges ext or shy files pruduced during the analysis period
 (i.e., anXXX_enYYY.ZZZ) in nrens files.
 Timeseries are extracted in text files, with both the background and
 the analysis values at the analysis times. shy files are merged keeping
 the analysis fields at the analysis times.
 
-split_etss.sh:
-splits an ensemble of ets file with a common basename.
+split_ext.sh:
+splits an ensemble of ext file with a common basename.
 
 make_ens_wind:
 makes an ens of perturbed fields from a 2D field. FEM file format. Works also

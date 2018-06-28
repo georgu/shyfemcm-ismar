@@ -43,34 +43,31 @@
 
 !********************************************************
 
-  subroutine rst_read(rstname,tt,date,time)
+  subroutine rst_read(rstname,aatime)
 
   implicit none
 
   character(len=*), intent(in) :: rstname
-  double precision, intent(in) :: tt
-  integer,intent(out) :: date,time
+  double precision, intent(in) :: aatime
 
   integer io
-  integer it,ierr
-  double precision atime
+  integer ierr
+  double precision atimef
 
 
   open(24,file=trim(rstname),status='old',form='unformatted',iostat=io)
   if (io /= 0) error stop 'rst_read: Error opening file'
 
- 89  call rst_read_record(atime,it,24,ierr)
-     if (it /= nint(tt)) goto 89
+ 89  call rst_read_record(24,atimef,ierr)
      if (ierr /= 0) goto 90
+     if (atimef /= aatime) goto 89
 
   close(24)
 
-  call dts_from_abs_time(date,time,atime-tt)
-
   return
 
- 90 write(*,*) 'Error in the restart file. Are you sure that the first observation'
-    write(*,*) 'has the same time of the restart files?'
+ 90 write(*,*) 'Error in the restart file. Are you sure that the analysis step'
+    write(*,*) 'has a time present in the restart records?'
     error stop
 
 
@@ -78,7 +75,7 @@
 
 !********************************************************
 
-  subroutine rst_write(rstname,tt,date,time)
+  subroutine rst_write(rstname,aatime)
 
   use mod_restart
   use levels, only : hlv
@@ -86,26 +83,22 @@
   implicit none
 
   character(len=*), intent(in) :: rstname
-  double precision, intent(in) :: tt
-  integer, intent(in) :: date,time
-
-  integer it
+  double precision, intent(in) :: aatime
 
   ! adds parameters
   !
   call putpar('ibarcl',float(ibarcl_rst))
   call putpar('iconz',float(iconz_rst))
   call putpar('ibfm',0.)
-  call dputpar('date',dfloat(date))
-  call dputpar('time',dfloat(time))
+  !call dputpar('date',dfloat(date))
+  !call dputpar('time',dfloat(time))
 
   ! In 2D barotropic hlv is set to 10000.
   !
   if (size(hlv) == 1) hlv = 10000.
 
   open(34,file=rstname,form='unformatted')
-  it = nint(tt)
-  call rst_write_record(it,34)
+  call rst_write_record(aatime,34)
   close(34)
 
   end subroutine rst_write
@@ -126,6 +119,7 @@
   integer i,ikmin
   real d,dmin
 
+  ikmin = -999
   dmin=10e10
   do i = 1,3
      ik = nen3v(i,ie)
