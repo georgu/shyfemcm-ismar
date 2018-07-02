@@ -78,8 +78,6 @@
     !call analysis6c(A,E,S,innov,global_ndim,nrens,nobs_tot,verbose)	!SQRT alg
     !call analysis2(A,D1,R,S,global_ndim,nrens,nobs_tot,verbose)	!ENKF alg
 
-    !call check_values
-
    case(1) !add a model error to the state
 
     call info_moderr

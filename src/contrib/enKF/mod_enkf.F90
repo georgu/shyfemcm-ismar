@@ -38,15 +38,31 @@ contains
 
   R = 0.
   nook = 0
-  ! This is for the levels
+  ! 0D Levels
   !
   if (n_0dlev > 0) then
-     call fill_levels(n_0dlev,nook)
+     write(*,*) 'Assimilation of sea level'
+     call fill_scalar_0d('0DLEV',n_0dlev,nook,o0dlev)
   end if
 
-  ! This is for the currents
+  ! 0D Temperature
+  !
+  if (n_0dtemp > 0) then
+     write(*,*) 'Assimilation of temperature'
+     call fill_scalar_0d('0DTEM',n_0dtemp,nook,o0dtemp)
+  end if
+
+  ! 0D Salinity
+  !
+  if (n_0dsalt > 0) then
+     write(*,*) 'Assimilation of salinity'
+     call fill_scalar_0d('0DSAL',n_0dsalt,nook,o0dsalt)
+  end if
+
+  ! 2D currents
   !
   if (n_2dvel > 0) then
+     write(*,*) 'Assimilation of velocities'
      call fill_scurrents(n_2dvel,nook)
   end if
 
@@ -54,12 +70,16 @@ contains
 
 !********************************************************
 
-  subroutine fill_levels(nfile,nook)
+  subroutine fill_scalar_0d(olabel,nfile,nook,ostate)
+		!olabel,linit,filin,eps,kinit,kend,oatime,xv,yv,zv,vv,stdvv,ostatusv
 
   implicit none
 
+  character(len=5), intent(in) :: olabel
   integer, intent(in) :: nfile
+  type(scalar_0d), intent(inout) :: ostate(nfile)
   integer, intent(inout) :: nook
+
   integer nf,ne
   real x,y
   integer iemin,kmin
@@ -73,52 +93,72 @@ contains
 
      ! create a white/red noise random vector with mean 0 and std 1
      !
-     call make_0Dpert('z',nrens,nanal,o0dlev(nf)%id,pvec,atime,TTAU_0DLEV)
+     call make_0Dpert(olabel,nrens,nanal,ostate(nf)%id,pvec,atime,TTAU_0D)
 
      ! next if the observation is not good
      !
-     if (o0dlev(nf)%status > 1) cycle
+     if (ostate(nf)%status > 1) cycle
 
      nook = nook + 1
 
-     x = o0dlev(nf)%x
-     y = o0dlev(nf)%y
+     x = ostate(nf)%x
+     y = ostate(nf)%y
      call find_el_node(x,y,iemin,kmin)
 
      ! compute the observation errors R
      !
-     R(nook,nook) = o0dlev(nf)%std**2
+     R(nook,nook) = ostate(nf)%std**2
 
      ! compute the model perturbed values, S = HA' and HA
      ! Remember for enKF: Aa = Af + A' [HA']^t [ U L^-1 U^t ] D' and D' = D-HA
      !
-     do ne = 1,nrens
-        S(nook,ne) = A(ne)%z(kmin) - Am%z(kmin)
-        HA(nook,ne) = A(ne)%z(kmin)
-     end do
+     select case (olabel)
+
+       case ('0DLEV')
+        do ne = 1,nrens
+           S(nook,ne) = A(ne)%z(kmin) - Am%z(kmin)
+           HA(nook,ne) = A(ne)%z(kmin)
+        end do
+
+       case ('0DTEM')
+        if (ostate(nf)%z /= 0) error stop 'fill_scalar_0d: deep temperature not implemented yet'
+        do ne = 1,nrens
+           S(nook,ne) = A(ne)%t(1,kmin) - Am%t(1,kmin)
+           HA(nook,ne) = A(ne)%t(1,kmin)
+        end do
+
+       case ('0DSAL')
+        if (ostate(nf)%z /= 0) error stop 'fill_scalar_0d: deep salinity not implemented yet'
+        do ne = 1,nrens
+           S(nook,ne) = A(ne)%s(1,kmin) - Am%s(1,kmin)
+           HA(nook,ne) = A(ne)%s(1,kmin)
+        end do
+
+     end select
 
      ! check the obs std and compute the innovation vector
      !
-     oval = o0dlev(nf)%val
-     ostatus = o0dlev(nf)%status
-     stdv = o0dlev(nf)%std
-     call check_obs_inn('0DLEV',x,y,0.,oval,oval,stdv,inn1,inn2,ostatus)
-     o0dlev(nf)%std = stdv
+     oval = ostate(nf)%val
+     ostatus = ostate(nf)%status
+     stdv = ostate(nf)%std
+     call check_obs_inn(olabel,x,y,0.,oval,oval,stdv,inn1,inn2,ostatus)
+     ostate(nf)%std = stdv
      innov(nook) = inn1
 
      if (verbose)&
      write(*,'(a25,2x,i4,3f8.4)') 'nobs, vobs, vmod, innov:',&
-              nf,o0dlev(nf)%val,Am%z(kmin),inn1
+              nf,ostate(nf)%val,Am%z(kmin),inn1
  
      ! compute the perturbations E, the perturbed observations D
      ! and the innovation vectors D1
      !
-     E(nook,:) = o0dlev(nf)%std * pvec
-     D(nook,:) = o0dlev(nf)%val + (o0dlev(nf)%std * pvec)
+     E(nook,:) = ostate(nf)%std * pvec
+     D(nook,:) = ostate(nf)%val + (ostate(nf)%std * pvec)
      D1(nook,:) = D(nook,:) - HA(nook,:)
  
   end do
-  end subroutine fill_levels
+
+  end subroutine fill_scalar_0d
 
 !********************************************************
 
@@ -140,8 +180,8 @@ contains
      
     ! create a white/red noise random vector with mean 0 and std 1
     !
-    call make_0Dpert('u',nrens,nanal,o2dvel(nf)%id,pvec1,atime,TTAU_2DVEL)
-    call make_0Dpert('v',nrens,nanal,o2dvel(nf)%id,pvec2,atime,TTAU_2DVEL)
+    call make_0Dpert('u',nrens,nanal,o2dvel(nf)%id,pvec1,atime,TTAU_2D)
+    call make_0Dpert('v',nrens,nanal,o2dvel(nf)%id,pvec2,atime,TTAU_2D)
 
     do iy = 1,o2dvel(nf)%ny
     do ix = 1,o2dvel(nf)%nx
@@ -203,77 +243,5 @@ contains
   end do
 
   end subroutine fill_scurrents
-
-!********************************************************
-
-  subroutine check_values
-  use basin
-  use levels
-  implicit none
-
-  integer k,ie,nl,ne
-  integer nbad,nbadmax
-
-  real cmax,cmin
-  real,allocatable :: tmax(:,:),tmin(:,:)
-
-  !nbadmax = nint(0.001 * (nnkn + 2*nnel*nnlv))
-  nbadmax = 2
-
-  allocate(tmax(nnlv,nnel),tmin(nnlv,nnel))
-  do ne = 1,nrens
-     nbad = 0
-
-     do k = 1,nnkn
-        if (A(ne)%z(k) > SSH_MAX) then
-           write(*,*) "Warning, bad sea level: ",A(ne)%z(k)
-           A(ne)%z(k) = SSH_MAX
-           nbad = nbad + 1
-        else if (A(ne)%z(k) < SSH_MIN) then
-           write(*,*) "Warning, bad sea level: ",A(ne)%z(k)
-           A(ne)%z(k) = SSH_MIN
-           nbad = nbad + 1
-        end if
-     end do
-
-
-     cmax = VEL_MAX
-     cmin = - VEL_MAX
-
-     do nl = 1,nnlv
-        do ie = 1,nnel
-
-        ! u component
-        !
-         if (A(ne)%u(nl,ie) > tmax(nl,ie)) then
-            write(*,*) "Warning, bad u-vel: ",A(ne)%u(nl,ie)
-            A(ne)%u(nl,ie) = tmax(nl,ie) 
-            nbad = nbad + 1
-         else if (A(ne)%u(nl,ie) < tmin(nl,ie)) then
-            write(*,*) "Warning, bad u-vel: ",A(ne)%u(nl,ie)
-            A(ne)%u(nl,ie) = tmin(nl,ie)
-            nbad = nbad + 1
-         end if
-         ! v component
-         !
-         if (A(ne)%v(nl,ie) > tmax(nl,ie)) then
-            write(*,*) "Warning, bad v-vel: ",A(ne)%v(nl,ie)
-            A(ne)%v(nl,ie) = tmax(nl,ie)
-            nbad = nbad + 1
-         else if (A(ne)%v(nl,ie) < tmin(nl,ie)) then
-            write(*,*) "Warning, bad v-vel: ",A(ne)%v(nl,ie)
-            A(ne)%v(nl,ie) = tmin(nl,ie)
-            nbad = nbad + 1
-         end if
-
-        end do
-     end do
-
-     if (nbad > 0) write(*,*) "n.ens, bad data: ",ne,nbad
-     if (nbad > nbadmax) error stop 'Too many bad data'
-
-  end do
-  
-  end subroutine check_values
 
 end module mod_enkf

@@ -172,7 +172,7 @@ contains
   allocate(Astd)
   Astd = eps
   do ne = 1,nrens
-     Astd = Astd + ((A(ne) - Am) * (A(ne) - Am))
+     Astd =  Astd + (A(ne) - Am) * (A(ne) - Am)
   end do
 
   inrens = 1./float(nrens-1)

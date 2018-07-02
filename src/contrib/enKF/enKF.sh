@@ -281,7 +281,9 @@ for (( ne = 0; ne < $nrens; ne++ )); do
 	itend=${timeo[$naa]}
    else
         name_sim="forecast_en${nel}b"
-	itend=$itanf
+        dtfor1=$(date --date "${itanf:0:10} + $nfor days" +%Y-%m-%d)
+        dtfor2=$(echo $itanf | cut -d ':' -f 2-)
+	itend="${dtfor1}:${dtfor2}"
    fi
 
    rstfile="an${nal}_en${nel}a.rst"; strnew="${name_sim}.str"
@@ -306,6 +308,9 @@ if [ $3 ]; then
 else
    Usage
 fi
+
+# number of forecast days in the last str files
+nfor=5
 
 # Compiles the enKF code with the right total dimensions
 Compile_enkf $sdim

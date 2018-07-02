@@ -94,6 +94,8 @@ A list of files containing in each line:
 
 Possible flag for the observations are:
 - 0DLEV : sea level timeseries;
+- 0DTEM : surface temperature timeseries;
+- 0DSAL : surface salinity timeseries;
 - 2DVEL : FEM-file with 2D surface current fields (e.g., HFR radar).
 
 The structure of the observation files is described below.
@@ -149,6 +151,7 @@ If you want to save the results during the analysis add:
   itout = 'ITANF'
   itext = 'ITANF'
   itcon = 'ITANF'
+  itmflx = 'ITANF'
 
 All the other parameters can be set as you like.
 
@@ -172,8 +175,8 @@ string-time2 value2
 ...
 
 For each timeseries file a info file is needed, with the same name added of an
-extension '.info'. This file must contain in 1 row: x y std
-x, y = Coordinate of the observation, in the same reference system of the bas file. 
+extension '.info'. This file must contain in 1 row: x y z std
+x, y, z = Coordinate of the observation, in the same reference system of the bas file. 
 std = standard deviation (estimated error) of the observation
 
 2)

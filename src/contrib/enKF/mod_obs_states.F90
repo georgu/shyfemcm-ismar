@@ -15,21 +15,22 @@ module mod_obs_states
        character(len=80) :: name	!name of the file
    end type files
    
-! sea level obs (not correlated)
+! scalar variable in one location (0D)
 !
-   type levels
+   type scalar_0d
       double precision :: t          ! time
       real :: x                      ! x coord
       real :: y                      ! y coord
+      real :: z                      ! z coord
       real :: val                    ! value
       real :: std                    ! std value
       integer :: status		     ! = 0,1,2,3,4
       integer  :: id                 ! id number of the file
-   end type levels
+   end type scalar_0d
 
-! velocity obs
+! vector variable in a field (2D)
 !
-   type currentf
+   type vector_2d
       double precision  :: t                         ! time of the field
       integer           :: nx,ny                     ! dimensions
       real, allocatable :: x(:,:)                      ! x coords
@@ -40,6 +41,6 @@ module mod_obs_states
       real, allocatable :: std(:,:)                  ! std value
       integer, allocatable :: status(:,:)	     ! = 0,1,2,3,4
       integer           :: id			     ! id number of the file
-   end type currentf
+   end type vector_2d
 
 end module mod_obs_states

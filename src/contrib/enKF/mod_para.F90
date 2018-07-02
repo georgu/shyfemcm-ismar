@@ -3,13 +3,13 @@ module mod_para
 !------------
 ! Settings for the analysis step (enkf_analysis)
 !
-  integer :: rmode = 13 ! Ensemble Kalman Filter with SVD pseudo inversion of SS'+ EE'
+  !integer :: rmode = 13 ! Ensemble Kalman Filter with SVD pseudo inversion of SS'+ EE'
   !integer :: rmode = 22 ! Square root algorithm with SVD pseudo inversion of SS'+(N-1)R
-  !integer :: rmode = 23 ! Square root algorithm with SVD pseudo inversion of SS'+ EE'
+  integer :: rmode = 23 ! Square root algorithm with SVD pseudo inversion of SS'+ EE'
 
   logical :: verbose = .true. ! Prints diagnostic output
 
-  real, parameter :: alpha_infl = 0.1 ! RTPS inflation (see WHITAKER, 2012). Set ~0.95 or 0. to disable it.
+  real, parameter :: alpha_infl = 0. ! RTPS inflation (see WHITAKER, 2012). Set ~0.95 or 0. to disable it.
   integer, parameter :: is_local = 0 !Local analysis. 0 disable, 1 localisation(TODO)
   real, parameter :: r_local = 2. !Radius used in local analysis
 
@@ -24,8 +24,8 @@ module mod_para
   ! decay time for the red noise of the observations (sec). 
   ! Set lower than 0 to disable (white noise)
   !
-  double precision, parameter :: TTAU_0DLEV = -1
-  double precision, parameter :: TTAU_2DVEL = 3*3600.
+  double precision, parameter :: TTAU_0D = -1
+  double precision, parameter :: TTAU_2D = 3*3600.
 
 !------------
 ! Settings to manage the observations (mod_manage_obs)
@@ -47,7 +47,7 @@ module mod_para
 
   ! min-max values for the observation and model check
   !
-  real, parameter :: TEM_MIN = 0.0d0
+  real, parameter :: TEM_MIN = -5.0d0
   real, parameter :: TEM_MAX = 50.0d0
   real, parameter :: SAL_MIN = 0.0d0
   real, parameter :: SAL_MAX = 40.0d0

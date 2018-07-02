@@ -224,7 +224,7 @@
 
   implicit none
 
-  character(len=1), intent(in) :: vflag
+  character(len=5), intent(in) :: vflag
   integer, intent(in) :: n,na,id
   real, intent(out) :: vec(n)
   double precision, intent(in) :: t,tau
@@ -235,6 +235,7 @@
   real, allocatable :: vec_old(:)
   double precision t_old
   double precision alpha,dt
+  character(len=1) :: vfl
 
   ! make a new perturbation
   !
@@ -244,16 +245,24 @@
   !
   if (tau <= 0.) return
 
+  if (vflag == '0DLEV') then
+     vfl = 'z'
+  else if (vflag == '0DTEM') then
+     vfl = 't'
+  else if (vflag == '0DSAL') then
+     vfl = 's'
+  end if
+
   ! if exist load an old perturbation and merge
   !
   call num2str(na-1,nal)
   call num2str(id,idl)
-  pfile = vflag // 'pert_' // nal // '_' // idl // '.bin'
+  pfile = vfl // 'pert_' // nal // '_' // idl // '.bin'
   inquire(file=pfile,exist=bfile)
   if (bfile) then
      open(22,file=pfile,status='old',form='unformatted')
      read(22) nf
-     if (nf /= n) error stop 'make_level_pert: dimension mismatch'
+     if (nf /= n) error stop 'make_0Dpert: dimension mismatch'
      read(22) t_old
      allocate(vec_old(nf))
      read(22) vec_old
@@ -270,7 +279,7 @@
   ! save the last perturbation
   !
   call num2str(na,nal)
-  pfile = vflag // 'pert_' // nal // '_' // idl // '.bin'
+  pfile = vfl // 'pert_' // nal // '_' // idl // '.bin'
   open(32,file=pfile,form='unformatted')
   write(32) n
   write(32) t

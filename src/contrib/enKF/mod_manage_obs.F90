@@ -10,10 +10,13 @@ module mod_manage_obs
   !
   type(files), allocatable, dimension(:), private ::  ofile
 
-  integer :: n_0dlev,n_2dvel		! number of obs files of different type
+  integer :: n_0dlev,n_1dlev,n_2dlev    ! number of obs level (gauge,alt track,field)
+  integer :: n_0dvel,n_2dvel		! number of obs vel (gauge,field)
+  integer :: n_0dtemp,n_1dtemp,n_2dtemp	! number of obs temp (gauge,profile,field)
+  integer :: n_0dsalt,n_1dsalt,n_2dsalt	! number of obs salt (gauge,profile,field)
   integer :: nobs_tot			! total number of good obs to be assimilated
-  type(levels), allocatable :: o0dlev(:)
-  type(currentf), allocatable :: o2dvel(:)
+  type(scalar_0d), allocatable :: o0dlev(:),o0dtemp(:),o0dsalt(:)
+  type(vector_2d), allocatable :: o2dvel(:)
 
   ! status of an observation:
   ! 0 = normal obs (assimilated)
@@ -37,6 +40,10 @@ contains
   integer kinit,kend
   logical linit
   integer nobs
+  integer islev,isvel,istemp,issalt
+  double precision tobs
+  real xobs,yobs,zobs,vobs,stdobs
+  integer statobs
 
   write(*,*) 'reading observations...'
   !-------------------------------
@@ -61,8 +68,17 @@ contains
   !-------------------------------
   ! Read every file one time to find the number and the type of each obs
   !-------------------------------
+  islev = 0
+  isvel = 0
+  istemp = 0
+  issalt = 0
+
+  ! dimension of the types 
   n_0dlev = 0
+  n_0dtemp = 0
+  n_0dsalt = 0
   n_2dvel = 0
+
   do n = 1,nfile
 
     select case (trim(ofile(n)%ty))
@@ -75,24 +91,59 @@ contains
         case ('0DLEV')
              linit = .true.
              kinit = n_0dlev
-             call read_level(linit,trim(ofile(n)%name),TEPS,&
-                             ofile(n)%id,kinit,kend,nobs)
+             call read_scalar_0d('0DLEV',linit,trim(ofile(n)%name),TEPS,&
+                  kinit,kend,tobs,xobs,yobs,zobs,&
+                  vobs,stdobs,statobs)
              if (kend > kinit) n_0dlev = n_0dlev + 1
+             islev = 1
+
+        ! Temperature timeseries
+        !
+        case ('0DTEM')
+             linit = .true.
+             kinit = n_0dtemp
+             call read_scalar_0d('0DTEM',linit,trim(ofile(n)%name),TEPS,&
+                  kinit,kend,tobs,xobs,yobs,zobs,&
+                  vobs,stdobs,statobs)
+             if (kend > kinit) n_0dtemp = n_0dtemp + 1
+             istemp = 1
+
+        ! Salinity timeseries
+        !
+        case ('0DSAL')
+             linit = .true.
+             kinit = n_0dsalt
+             call read_scalar_0d('0DSAL',linit,trim(ofile(n)%name),TEPS,&
+                  kinit,kend,tobs,xobs,yobs,zobs,&
+                  vobs,stdobs,statobs)
+             if (kend > kinit) n_0dsalt = n_0dsalt + 1
+             issalt = 1
 
         ! 2d current fem files
         !
         case ('2DVEL')
              n_2dvel = n_2dvel + 1
+             isvel = 1
 
     end select
 
   end do
 
+  ! check that all the files have the same variable to assimilate
+  if ((islev + isvel + istemp + issalt) > 1) then
+     write(*,*) 'islev ',islev
+     write(*,*) 'isvel ',isvel
+     write(*,*) 'istemp ',istemp
+     write(*,*) 'issalt ',issalt
+     error stop 'Different type of observations. Assimilate them at different times'
+  end if 
 
   !-------------------------------
   ! allocate obs vars
   !-------------------------------
   if (n_0dlev > 0) allocate(o0dlev(n_0dlev))
+  if (n_0dtemp > 0) allocate(o0dtemp(n_0dtemp))
+  if (n_0dsalt > 0) allocate(o0dsalt(n_0dsalt))
   if (n_2dvel > 0) allocate(o2dvel(n_2dvel))
 
   !-------------------------------
@@ -108,10 +159,60 @@ contains
              error stop 'read_obs: Unknown file type'
         case ('0DLEV')
              linit = .false.
-             call read_level(linit,trim(ofile(n)%name),TEPS,&
-                             ofile(n)%id,kinit,kend,nobs)
+             call read_scalar_0d('0DLEV',linit,trim(ofile(n)%name),TEPS,&
+                  kinit,kend,tobs,xobs,yobs,zobs,&
+                  vobs,stdobs,statobs)
+             if (kend > kinit) then 
+                o0dlev(kend)%t = tobs
+                o0dlev(kend)%x = xobs
+                o0dlev(kend)%y = yobs
+                o0dlev(kend)%z = zobs
+                o0dlev(kend)%val = vobs
+                o0dlev(kend)%std = stdobs
+                o0dlev(kend)%status = statobs
+                o0dlev(kend)%id = ofile(n)%id
+
+                nobs_tot = nobs_tot + 1
+             end if
              kinit = kend
-             nobs_tot = nobs_tot + nobs
+        case ('0DTEM')
+             linit = .false.
+             call read_scalar_0d('0DTEM',linit,trim(ofile(n)%name),TEPS,&
+                  kinit,kend,tobs,xobs,yobs,zobs,&
+                  vobs,stdobs,statobs)
+             if (kend > kinit) then 
+                o0dtemp(kend)%t = tobs
+                o0dtemp(kend)%x = xobs
+                o0dtemp(kend)%y = yobs
+                o0dtemp(kend)%z = zobs
+                o0dtemp(kend)%val = vobs
+                o0dtemp(kend)%std = stdobs
+                o0dtemp(kend)%status = statobs
+                o0dtemp(kend)%id = ofile(n)%id
+
+                nobs_tot = nobs_tot + 1
+             end if
+             kinit = kend
+
+        case ('0DSAL')
+             linit = .false.
+             call read_scalar_0d('0DSAL',linit,trim(ofile(n)%name),TEPS,&
+                  kinit,kend,tobs,xobs,yobs,zobs,&
+                  vobs,stdobs,statobs)
+             if (kend > kinit) then 
+                o0dsalt(kend)%t = tobs
+                o0dsalt(kend)%x = xobs
+                o0dsalt(kend)%y = yobs
+                o0dsalt(kend)%z = zobs
+                o0dsalt(kend)%val = vobs
+                o0dsalt(kend)%std = stdobs
+                o0dsalt(kend)%status = statobs
+                o0dsalt(kend)%id = ofile(n)%id
+
+                nobs_tot = nobs_tot + 1
+             end if
+             kinit = kend
+
         case ('2DVEL')
              n_2dvel = n_2dvel + 1
              call read_2dvel(trim(ofile(n)%name),ofile(n)%id,n_2dvel,TEPS,nobs)
@@ -134,41 +235,47 @@ contains
 
 !******************************************************
 
-  subroutine read_level(linit,filin,eps,id,kinit,kend,nobs)
+  subroutine read_scalar_0d(olabel,linit,filin,eps,kinit,kend,oatime,xv,yv,zv,vv,stdvv,ostatusv)
 
   use iso8601
   implicit none
 
+  character(len=*),intent(in)  :: olabel
   logical,intent(in)           :: linit
   character(len=*),intent(in)  :: filin
   double precision, intent(in) :: eps
-  integer, intent(in)	       :: id
   integer, intent(in)          :: kinit
   integer, intent(out)         :: kend
-  integer, intent(out)         :: nobs
+  double precision, intent(out):: oatime
+  real, intent(out)            :: xv,yv,zv,vv,stdvv
+  integer, intent(out)         :: ostatusv
   integer ios
+  real x,y,z,v,stdv
+  integer ostatus
   character*80 dstring
   integer nvar
   integer ierr
   integer date, time
-  double precision oatime
-  real x, y, v, stdv
   integer k
-  integer ostatus
 
-  nobs = 0
+  xv = -999.
+  yv = -999.
+  zv = -999.
+  vv = -999.
+  stdvv = -999.
+  ostatusv = -999
 
   ! read info file for the obs file with coords and std
   !
   open(27,file=trim(filin)//'.info', status = 'old', form = 'formatted', iostat = ios)
-  if (ios /= 0) error stop 'read_level: error opening info file'
-  read(27,*) x,y,stdv
+  if (ios /= 0) error stop 'read_scalar_0d: error opening info file'
+  read(27,*) x,y,z,stdv
   close(27)
 
   ! read obs file
   !
   open(26,file=trim(filin), status = 'old', form = 'formatted', iostat = ios)
-  if (ios /= 0) error stop 'read_level: error opening file'
+  if (ios /= 0) error stop 'read_scalar_0d: error opening file'
 
   select case(linit)
   
@@ -180,7 +287,7 @@ contains
  90       read(26,*,end=100) dstring
 
           call string2date(trim(dstring),date,time,ierr)
-          if (ierr /= 0) error stop "read_level: error reading string"
+          if (ierr /= 0) error stop "read_scalar_0d: error reading string"
           call dts_to_abs_time(date,time,oatime)
 
           ! Take only records with times near atime
@@ -189,7 +296,7 @@ contains
              ostatus = 0
              ! check if the obs value is out of range
              !
-             call check_obs('0DLEV',v,v,OFLAG,ostatus)
+             call check_obs(olabel,v,v,OFLAG,ostatus)
              k = k + 1
           end if
           goto 90
@@ -204,7 +311,7 @@ contains
  91       read(26,*,end=101) dstring,v
 
           call string2date(trim(dstring),date,time,ierr)
-          if (ierr /= 0) error stop "read_level: error reading string"
+          if (ierr /= 0) error stop "read_scalar_0d: error reading string"
           call dts_to_abs_time(date,time,oatime)
 
           ostatus = 4
@@ -214,17 +321,14 @@ contains
              ostatus = 0
              ! check if the obs value is out of range
              !
-             call check_obs('0DLEV',v,v,OFLAG,ostatus)
+             call check_obs(olabel,v,v,OFLAG,ostatus)
              k = k + 1
-             o0dlev(k)%t = oatime
-             o0dlev(k)%x = x
-             o0dlev(k)%y = y
-             o0dlev(k)%val = v
-             o0dlev(k)%std = stdv
-             o0dlev(k)%status = ostatus
-             o0dlev(k)%id = id
-
-             nobs = nobs + 1
+             xv = x
+             yv = y
+             zv = z
+             vv = v
+             stdvv = stdv
+             ostatusv = ostatus
 
              goto 101	!take just 1 lev obs
           end if
@@ -234,7 +338,7 @@ contains
 
   end select
 
-  end subroutine read_level
+  end subroutine read_scalar_0d
 
 !********************************************************
 
@@ -401,6 +505,7 @@ contains
 
   real vmin,vmax,v
 
+
   status = 0
 
   if (v1 == flag .or. v2 == flag) then
@@ -411,6 +516,14 @@ contains
   if (trim(ty) == '0DLEV') then
      vmin = SSH_MIN
      vmax = SSH_MAX
+     v = v1
+  else if (trim(ty) == '0DTEM') then
+     vmin = TEM_MIN
+     vmax = TEM_MAX
+     v = v1
+  else if (trim(ty) == '0DSAL') then
+     vmin = SAL_MIN
+     vmax = SAL_MAX
      v = v1
   else if (trim(ty) == '2DVEL') then
      vmin = VEL_MIN
@@ -486,7 +599,7 @@ contains
 
   implicit none
 
-  character(len=*), intent(in) :: ty
+  character(len=5), intent(in) :: ty
   real, intent(in) :: x,y,z
   integer, intent(in) :: status
   real, intent(in) :: v1,v2
@@ -560,8 +673,8 @@ contains
                  (1/KSTD * ens_std * inn)**2 ) - ens_std**2 )
 
      if (verbose)&
-     write(*,'(a18,2x,a5,2f8.4,2x,2f8.4)') 'changing obs std:',&
-             trim(ty),inn,ens_std,stdv,stdv_new
+     write(*,'(a18,2f8.4)') ' changing obs std ',&
+             stdv,stdv_new
 
      stdv = stdv_new
   end if
