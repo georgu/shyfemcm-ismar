@@ -43,7 +43,7 @@ contains
    integer nst 		!= nanal-1	number of time steps from the begin of the assimilation
    double precision alpha,rho
 
-   type(states) :: A1,A2
+   type(states), allocatable :: Aaux
    real kvec(nnkn,nrens)
 
    ! Parameters for the sample fields
@@ -76,7 +76,7 @@ contains
  
    allocate(qA(nrens))
    do ne = 1,nrens
-      call assign_states(qA(ne),0.)
+      qA(ne) = 0.
       qA(ne)%z = kvec(:,ne)
    end do
  
@@ -89,14 +89,16 @@ contains
    !compute the new state qA = A + sqrt(dt)*sigma*rho*q1
    !---------------------------------------
    mfact = sqrt(dt_er) * rsigma * rho
+   allocate(Aaux)
    do ne = 1,nrens
       ! find the spatial factor from the relative error (rsigma)
-      A1 = A(ne) * mfact
+      Aaux = A(ne) * mfact
       ! find the error
-      A2 = qA(ne) * A1
+      Aaux = qA(ne) * Aaux
       ! add the error
-      A(ne) = A(ne) + A2
+      A(ne) = A(ne) + Aaux
    end do
+   deallocate(Aaux)
     
    !---------------------------------------
    !make the augmented state Aaug = (A,qA)
@@ -115,15 +117,14 @@ contains
   
   implicit none
 
-  type(states) :: qA(nrens)
+  type(states),allocatable :: qA(:)
   character(len=3) :: nrel,nal
   character(len=16) fname
-  type(states4) :: A4
   integer ne
 
   write(*,*) 'Saving model errors'
 
-  allocate(A(nrens))
+  allocate(A(nrens),qA(nrens))
   do ne = 1,nrens
      call pull_qstate(A(ne),qA(ne),Aaug(ne))
   end do
@@ -134,7 +135,7 @@ contains
   write(33) qA
   close(33)
 
-  deallocate(Aaug)
+  deallocate(Aaug,qA)
 
   end subroutine pull_aug
 
@@ -149,13 +150,13 @@ contains
    integer ne
    character(len=3) :: nrel,nal
    character(len=16) fname
-   type(states),allocatable :: A1(:),A2(:)
+   type(states),allocatable :: qA1(:),A2
 
-   real mfact,aalpha
+   real aalpha
 
    aalpha = alpha
 
-   allocate(A1(nrens),A2(nrens))
+   allocate(qA1(nrens),A2)
 
    ! Old analysis step
    !
@@ -170,17 +171,15 @@ contains
    ! Add the old error to the new one
    write(*,*) 'Loading model error from files'
    open(22,file=fname,status='old',form='unformatted')
-   read(22) A1
+   read(22) qA1
    close(22)
 
    do ne = 1,nrens
-      A1(ne) = states_real_mult(A1(ne),aalpha)
-      mfact = sqrt(1 - alpha**2)
-      A2(ne) = states_real_mult(qA(ne),mfact)
-      qA(ne) = A1(ne) + A2(ne)
+      A2 = qA1(ne) * aalpha
+      qA(ne) = A2 + (qA(ne) * sqrt(1 - alpha**2))
    end do
 
-   deallocate(A1,A2)
+   deallocate(qA1,A2)
 
    return
 

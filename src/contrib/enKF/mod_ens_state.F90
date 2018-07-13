@@ -9,7 +9,7 @@ module mod_ens_state
 
   type(states), dimension(:), allocatable :: A      ! ensemble states
   type(states) :: Am                     ! mean state
-  type(states) :: Astd_old, Astd_new     ! standard deviation old and new
+  type(states) :: Astd_b, Astd_a     ! standard deviation old and new
 
 contains
 
@@ -75,7 +75,6 @@ contains
   subroutine write_ensemble
    implicit none
 
-   type(states4) :: A4
    character(len=3) :: nrel,nal
    character(len=16) rstname
    integer ne
@@ -109,7 +108,7 @@ contains
    real theta_in                 !rotation of the random fields (0 East, anticlockwise)
    real sigma_in                 !standard deviation of the fields (level)
 
-   type(states), allocatable, save :: Apert(:)
+   type(states), allocatable, save :: Apert
    real kvec(nnkn,nrens-1),evec(nnel,nrens-1)
 
    integer ne,n,ie,k
@@ -118,27 +117,55 @@ contains
    read(21,*) nx_in,ny_in,fmult_in,theta_in,sigma_in
    close(21)
 
-   allocate(Apert(nrens-1))
+   allocate(Apert)
 
    ! perturbation for z
    call make_2Dpert(kvec,nnkn,nrens-1,fmult_in,theta_in,nx_in,ny_in)
 
-   do ne = 1,nrens-1
-     call assign_states(Apert(ne),0.)
+   do ne = 1,nrens
 
-     do k = 1,nnkn
-        Apert(ne)%z(k) = kvec(k,ne) * sigma_in
-     end do
+     if (ne == 1) then
+       A(ne) = Ain
+     else
+       Apert = 0.
+       do k = 1,nnkn
+          Apert%z(k) = kvec(k,ne-1) * sigma_in
+       end do
+       A(ne) = Ain + Apert
+     end if
 
    end do
 
-   ! The first state is unperturbed
-   A(1) = Ain
-   do ne = 2,nrens
-      A(ne) = add_states(Ain,Apert(ne-1))
-   end do
+   deallocate(Apert)
 
   end subroutine make_init_ens
+
+!********************************************************
+
+  subroutine make_mean_std(tflag,na)
+
+  implicit none
+  integer, intent(in) :: na
+  character(len=1), intent(in) :: tflag
+  character(len=3) :: nal
+  character(len=80) :: filinm,filins
+
+  call num2str(na,nal)
+  filinm = 'an'//nal//'_mean_'//tflag//'.rst'
+  filins = 'an'//nal//'_std_'//tflag//'.rst'
+
+  call mean_state
+  call std_state(tflag)
+
+  call write_state(Am,filinm)
+  if (tflag == 'a') then
+     call write_state(Astd_a,filins)
+  else
+     call write_state(Astd_b,filins)
+  end if
+
+  end subroutine make_mean_std
+
 
 !********************************************************
 
@@ -163,28 +190,31 @@ contains
   subroutine std_state(label)
   ! make the standard deviation of the states
   implicit none
-  character(len=3), intent(in) :: label
-  type(states), allocatable :: Astd
+  character(len=1), intent(in) :: label
+
+  type(states), allocatable :: Astd,Apert
   integer ne
   real inrens
   real, parameter :: eps = 1.e-15
 
-  allocate(Astd)
+  allocate(Astd,Apert)
   Astd = eps
   do ne = 1,nrens
-     Astd =  Astd + (A(ne) - Am) * (A(ne) - Am)
+     Apert =  A(ne) - Am
+     Apert =  Apert * Apert
+     Astd =  Astd + Apert
   end do
+  deallocate(Apert)
 
   inrens = 1./float(nrens-1)
   Astd = Astd * inrens
   Astd = root_state(Astd)
 
-  if (label == 'new') then
-     Astd_new = Astd
+  if (label == 'a') then
+     Astd_a = Astd
   else
-     Astd_old = Astd
+     Astd_b = Astd
   end if
-
   deallocate(Astd)
 
   end subroutine std_state
@@ -192,25 +222,51 @@ contains
 !********************************************************
 
   subroutine inflate_state
-  ! Multiplicative state inflation according to Whitaker J. S. et al. 2012
-  ! Relaxation-to-prior-spread (RTPS) method
-  ! A' = A' * (alpha * (Astdo - Astdn)/Astdn + 1)
-  ! alpha ~ 0.1, see mod_para
+  ! Multiplicative state inflation  Whitaker J. S. et al. 2012
+  ! 1- Relaxation-to-prior-spread (RTPS) method (Whitaker J. S. et al. 2012)
+  !    A' = A' * (alpha * (Astdo - Astdn)/Astdn + 1)
+  !    alpha ~ 0.1, see mod_para
+  ! 2- Simple multiplication: A' = A' (1 + alpha)
+  !
   implicit none
-  type(states) :: Aaux, Apert
+
+  type(states), allocatable :: Aaux, Apert
   integer ne
 
-  write(*,*) 'RTPS inflation, alpha = ',alpha_infl
+  if (type_infl == 1) then
 
-  Aaux = Astd_old - Astd_new
-  Aaux = Aaux / Astd_new
-  Aaux = alpha_infl * Aaux 
-  Aaux = Aaux + 1.
+     write(*,*) 'RTPS inflation, alpha = ',alpha_infl
 
-  do ne = 1,nrens
-     Apert = (A(ne) - Am) * Aaux
-     A(ne) = Am + Apert 
-  enddo
+     allocate(Aaux,Apert)
+
+     Aaux = Astd_b - Astd_a
+     Aaux = Aaux / Astd_a
+     Aaux = alpha_infl * Aaux 
+     Aaux = Aaux + 1.
+
+     do ne = 1,nrens
+        Apert = A(ne) - Am
+        A(ne) = Am + (Apert * Aaux)
+     enddo
+     deallocate(Aaux,Apert)
+
+  else if (type_infl == 2) then
+
+     write(*,*) 'Multiplication inflation, alpha = ',alpha_infl
+
+     allocate(Apert)
+     do ne = 1,nrens
+        Apert = A(ne) - Am
+        A(ne) = Am + (Apert * alpha_infl)
+     enddo
+     deallocate(Apert)
+
+  else
+  
+     write(*,*) 'No inflation'
+     return
+
+  end if
   
   end subroutine inflate_state
   
@@ -224,11 +280,14 @@ contains
   type(states),intent(in) :: Astate
   character(len=*),intent(in) :: filename
 
-  type(states4) :: A4
+  type(states4),allocatable :: A4
 
+  allocate(A4)
   A4 = Astate
   call pull_state(A4)
   call rst_write(trim(filename),atime)
+  deallocate(A4)
+
   end subroutine write_state
 
 !********************************************************
@@ -240,53 +299,55 @@ contains
   type(states),intent(out) :: Astate
   character(len=*),intent(in) :: filename
 
-  type(states4) :: A4
+  type(states4),allocatable :: A4
 
+  allocate(A4)
   Astate = 0.
   A4 = Astate
   call rst_read(filename,atime)
   call push_state(A4)
   Astate = A4
+  deallocate(A4)
 
   end subroutine read_state
 
 !********************************************************
 
-   subroutine push_state(AA)
+   subroutine push_state(A4)
     use mod_hydro
     use mod_hydro_vel
     use mod_ts
     use mod_conz
     implicit none
  
-    type(states4) :: AA
+    type(states4),intent(inout) :: A4
 
-    AA%z = znv
+    A4%z = znv
     ! no significant differences by using currents rather than transports
-    AA%u = utlnv
-    AA%v = vtlnv
-    AA%t = tempv
-    AA%s = saltv
+    A4%u = utlnv
+    A4%v = vtlnv
+    A4%t = tempv
+    A4%s = saltv
    
    end subroutine push_state
 
 !********************************************************
 
-   subroutine pull_state(AA)
+   subroutine pull_state(A4)
     use mod_hydro
     use mod_hydro_vel
     use mod_ts
     use mod_conz
     implicit none
  
-    type(states4) :: AA
+    type(states4),intent(in) :: A4
 
-    znv = AA%z
+    znv = A4%z
     ! no significant differences by using currents rather than transports
-    utlnv = AA%u
-    vtlnv = AA%v
-    tempv = AA%t
-    saltv = AA%s
+    utlnv = A4%u
+    vtlnv = A4%v
+    tempv = A4%t
+    saltv = A4%s
 
     ! make zenv
     call layer_thick

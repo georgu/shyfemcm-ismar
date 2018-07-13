@@ -325,13 +325,13 @@ Read_ens_list
 Read_an_time_list
 
 # Assimilation cycle for every analysis time step
+rm -f X5*.uf	# old EnKs files
 for (( na = 1; na <= $nran; na++ )); do
 
    # make the analysis
    echo; echo "			ANALYSIS STEP $na OF $nran"; echo
    Write_info_file $na
    Run_ensemble_analysis $na
-
 
    # Makes nrens str files for the simulations
    Make_ens_str
