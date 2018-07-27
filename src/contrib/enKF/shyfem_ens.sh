@@ -1,5 +1,7 @@
 #!/bin/bash
 #
+# Copyright (C) 2017, Marco Bajo, CNR-ISMAR Venice, All rights reserved.
+#
 # Run many shyfem simulations using different str files with a common
 # basename. This program uses "parallel".
 #

@@ -1,4 +1,7 @@
 #/bin/bash
+#
+# Copyright (C) 2017, Marco Bajo, CNR-ISMAR Venice, All rights reserved.
+#
 # Just split ext files 
 #----------------------------------------------------------
 

@@ -1,3 +1,6 @@
+!
+! Copyright (C) 2017, Marco Bajo, CNR-ISMAR Venice, All rights reserved.
+!
   subroutine init_shyfem_vars(nk,ne,nl)
 
   use basin

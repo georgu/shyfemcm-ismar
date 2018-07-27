@@ -1,3 +1,6 @@
+!
+! Copyright (C) 2017, Marco Bajo, CNR-ISMAR Venice, All rights reserved.
+!
 module mod_dimensions
 ! SHYFEM model grid dimensions
    integer, parameter :: nnkn = NKN             ! number of nodes

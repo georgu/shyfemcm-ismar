@@ -1,3 +1,6 @@
+!
+! Copyright (C) 2017, Marco Bajo, CNR-ISMAR Venice, All rights reserved.
+!
 ! Read the initial settings
 !
 module mod_init_enkf

@@ -1,3 +1,6 @@
+!
+! Copyright (C) 2017, Marco Bajo, CNR-ISMAR Venice, All rights reserved.
+!
 !------------------------------------------------------------------------------
 ! Runs the Ensemble Kalman filter or the Square Root analysis by using the 
 ! Evenseen's routines

@@ -1,3 +1,6 @@
+!
+! Copyright (C) 2017, Marco Bajo, CNR-ISMAR Venice, All rights reserved.
+!
 module mod_obs_states
 
 ! status of an observation:
@@ -10,7 +13,6 @@ module mod_obs_states
 ! observation files
 !
    type files
-       integer :: id	! id number
        character(len=5) :: ty	!type of file
        character(len=80) :: name	!name of the file
    end type files

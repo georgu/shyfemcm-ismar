@@ -1,3 +1,6 @@
+!
+! Copyright (C) 2017, Marco Bajo, CNR-ISMAR Venice, All rights reserved.
+!
 module mod_manage_obs
 
   use mod_para
@@ -61,7 +64,7 @@ contains
 
      allocate(ofile(nfile))
      do n = 1,nfile
-        read(25,*,err=95) ofile(n)
+        read(25,*,err=95) ofile(n)%ty,ofile(n)%name
      end do
      close(25)
 
@@ -170,7 +173,7 @@ contains
                 o0dlev(kend)%val = vobs
                 o0dlev(kend)%std = stdobs
                 o0dlev(kend)%status = statobs
-                o0dlev(kend)%id = ofile(n)%id
+                o0dlev(kend)%id = n
 
                 nobs_tot = nobs_tot + 1
              end if
@@ -188,7 +191,7 @@ contains
                 o0dtemp(kend)%val = vobs
                 o0dtemp(kend)%std = stdobs
                 o0dtemp(kend)%status = statobs
-                o0dtemp(kend)%id = ofile(n)%id
+                o0dtemp(kend)%id = n
 
                 nobs_tot = nobs_tot + 1
              end if
@@ -207,7 +210,7 @@ contains
                 o0dsalt(kend)%val = vobs
                 o0dsalt(kend)%std = stdobs
                 o0dsalt(kend)%status = statobs
-                o0dsalt(kend)%id = ofile(n)%id
+                o0dsalt(kend)%id = n
 
                 nobs_tot = nobs_tot + 1
              end if
@@ -215,7 +218,7 @@ contains
 
         case ('2DVEL')
              n_2dvel = n_2dvel + 1
-             call read_2dvel(trim(ofile(n)%name),ofile(n)%id,n_2dvel,TEPS,nobs)
+             call read_2dvel(trim(ofile(n)%name),n,n_2dvel,TEPS,nobs)
              nobs_tot = nobs_tot + 2 * nobs ! u and v components
     end select
 

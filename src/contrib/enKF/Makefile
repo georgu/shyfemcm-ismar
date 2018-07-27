@@ -1,4 +1,6 @@
-
+#
+# Copyright (C) 2017, Marco Bajo, CNR-ISMAR Venice, All rights reserved.
+#
 #--------------------
 # Include shyfem rules
 
@@ -70,9 +72,11 @@ make_ens_meteo: make_EvKF
 	$(LINKER) $(LFLAGS) $@.o $(LIBS) $(LIBDIR)/libfem.a \
 	$(ENSOBJ1) $(ENSOBJ3) -o $@
 
-make_eof_ens_meteo: make_eof_ens_meteo.o 
-	$(LINKER) $(LFLAGS) $@.o -llapack -lblas \
-	$(LIBDIR)/libfem.a -o $@
+make_eof_ens_meteo: make_EvKF
+	make make_sample
+	make make_eof_ens_meteo.o 
+	$(LINKER) $(LFLAGS) $@.o $(LIBS) $(LIBDIR)/libfem.a  -llapack -lblas \
+	-o $@
 
 #--------------------
 #--------------------

@@ -1,9 +1,9 @@
 #!/bin/bash
 #
+# Copyright (C) 2017, Marco Bajo, CNR-ISMAR Venice, All rights reserved.
+#
 # Ensemble Kalman Filter for SHYFEM. 
 # 
-# Marco Bajo, ISMAR-CNR Venice
-#
 # 2016 first version
 # 2018-06 important updates
 #
