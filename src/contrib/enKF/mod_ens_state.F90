@@ -10,9 +10,9 @@ module mod_ens_state
 
   implicit none
 
-  type(states), dimension(:), allocatable :: A      ! ensemble states
-  type(states) :: Am                     ! mean state
-  type(states) :: Astd_b, Astd_a     ! standard deviation old and new
+  type(states), dimension(:), allocatable :: Ashy      ! ensemble states
+  type(states) :: Ashy_m                     ! mean state
+  type(states) :: Ashy_stdb, Ashy_stda     ! standard deviation old and new
 
 contains
 
@@ -26,12 +26,12 @@ contains
    character(len=16) rstname
    integer ne
 
-   ! Allocates the state A to store the ens states
-   allocate(A(nrens))
+   ! Allocates the state Ashy to store the ens states
+   allocate(Ashy(nrens))
 
    ! init to zero
    do ne = 1,nrens
-      A(ne) = 0.
+      Ashy(ne) = 0.
    end do
 
    call num2str(nanal,nal)
@@ -42,7 +42,7 @@ contains
      do ne = 1,nrens
         call num2str(ne-1,nrel)
         rstname='an'//nal//'_'//'en'//nrel//'b.rst'
-        call read_state(A(ne),rstname)
+        call read_state(Ashy(ne),rstname)
      end do
 
    else if ((bnew_ens == 1) .and. (nanal == 1)) then
@@ -51,16 +51,16 @@ contains
      !read an input restart file
      call num2str(0,nrel)
      rstname = 'an'//nal//'_'//'en'//nrel//'b.rst'
-     call read_state(A(1),rstname)
+     call read_state(Ashy(1),rstname)
 
-     call make_init_ens(A(1))
+     call make_init_ens(Ashy(1))
      
      !save the initial ens in new restart files
      call num2str(nanal,nal)
      do ne = 1,nrens
         call num2str(ne-1,nrel)
         rstname='an'//nal//'_'//'en'//nrel//'b.rst'
-        call write_state(A(ne),rstname)
+        call write_state(Ashy(ne),rstname)
      end do
 
    else
@@ -91,7 +91,7 @@ contains
                                    ! in the ens state. It should be removed.
 
       rstname='an'//nal//'_'//'en'//nrel//'a.rst'
-      call write_state(A(ne),rstname)
+      call write_state(Ashy(ne),rstname)
    end do
   end subroutine write_ensemble
 
@@ -111,7 +111,7 @@ contains
    real theta_in                 !rotation of the random fields (0 East, anticlockwise)
    real sigma_in                 !standard deviation of the fields (level)
 
-   type(states), allocatable, save :: Apert
+   type(states), save :: Apert
    real kvec(nnkn,nrens-1),evec(nnel,nrens-1)
 
    integer ne,n,ie,k
@@ -120,26 +120,22 @@ contains
    read(21,*) nx_in,ny_in,fmult_in,theta_in,sigma_in
    close(21)
 
-   allocate(Apert)
-
    ! perturbation for z
    call make_2Dpert(kvec,nnkn,nrens-1,fmult_in,theta_in,nx_in,ny_in)
 
    do ne = 1,nrens
 
      if (ne == 1) then
-       A(ne) = Ain
+       Ashy(ne) = Ain
      else
        Apert = 0.
        do k = 1,nnkn
           Apert%z(k) = kvec(k,ne-1) * sigma_in
        end do
-       A(ne) = Ain + Apert
+       Ashy(ne) = Ain + Apert
      end if
 
    end do
-
-   deallocate(Apert)
 
   end subroutine make_init_ens
 
@@ -152,117 +148,64 @@ contains
   character(len=1), intent(in) :: tflag
   character(len=3) :: nal
   character(len=80) :: filinm,filins
+  type(states) :: Aaux
 
   call num2str(na,nal)
   filinm = 'an'//nal//'_mean_'//tflag//'.rst'
   filins = 'an'//nal//'_std_'//tflag//'.rst'
 
-  call mean_state
-  call std_state(tflag)
+  Aaux = mean_state(nrens,Ashy)
+  call write_state(Aaux,filinm)
+  Ashy_m = Aaux
 
-  call write_state(Am,filinm)
   if (tflag == 'a') then
-     call write_state(Astd_a,filins)
+     Aaux = std_state(nrens,Ashy)
+     call write_state(Aaux,filins)
+     Ashy_stda = Aaux
   else
-     call write_state(Astd_b,filins)
+     Aaux = std_state(nrens,Ashy)
+     call write_state(Aaux,filins)
+     Ashy_stdb = Aaux
   end if
 
   end subroutine make_mean_std
-
-
-!********************************************************
-
-  subroutine mean_state
-  ! make the mean state
-  implicit none
-  integer ne
-  real inrens
-  real, parameter :: eps = 1.e-15
-
-  Am = eps
-  do ne = 1,nrens
-    Am = Am + A(ne)
-  end do
-  inrens = 1./float(nrens)
-  Am = Am * inrens
-
-  end subroutine mean_state
-
-!********************************************************
-
-  subroutine std_state(label)
-  ! make the standard deviation of the states
-  implicit none
-  character(len=1), intent(in) :: label
-
-  type(states), allocatable :: Astd,Apert
-  integer ne
-  real inrens
-  real, parameter :: eps = 1.e-15
-
-  allocate(Astd,Apert)
-  Astd = eps
-  do ne = 1,nrens
-     Apert =  A(ne) - Am
-     Apert =  Apert * Apert
-     Astd =  Astd + Apert
-  end do
-  deallocate(Apert)
-
-  inrens = 1./float(nrens-1)
-  Astd = Astd * inrens
-  Astd = root_state(Astd)
-
-  if (label == 'a') then
-     Astd_a = Astd
-  else
-     Astd_b = Astd
-  end if
-  deallocate(Astd)
-
-  end subroutine std_state
 
 !********************************************************
 
   subroutine inflate_state
   ! Multiplicative state inflation  Whitaker J. S. et al. 2012
   ! 1- Relaxation-to-prior-spread (RTPS) method (Whitaker J. S. et al. 2012)
-  !    A' = A' * (alpha * (Astdo - Astdn)/Astdn + 1)
+  !    Ashy' = Ashy' * (alpha * (Astdo - Astdn)/Astdn + 1)
   !    alpha ~ 0.1, see mod_para
-  ! 2- Simple multiplication: A' = A' (1 + alpha)
+  ! 2- Simple multiplication: Ashy' = Ashy' (1 + alpha)
   !
   implicit none
 
-  type(states), allocatable :: Aaux, Apert
+  type(states) :: Aaux, Apert
   integer ne
 
   if (type_infl == 1) then
 
      write(*,*) 'RTPS inflation, alpha = ',alpha_infl
 
-     allocate(Aaux,Apert)
-
-     Aaux = Astd_b - Astd_a
-     Aaux = Aaux / Astd_a
+     Aaux = Ashy_stdb - Ashy_stda
+     Aaux = Aaux / Ashy_stda
      Aaux = alpha_infl * Aaux 
      Aaux = Aaux + 1.
 
      do ne = 1,nrens
-        Apert = A(ne) - Am
-        A(ne) = Am + (Apert * Aaux)
+        Apert = Ashy(ne) - Ashy_m
+        Ashy(ne) = Ashy_m + (Apert * Aaux)
      enddo
-     deallocate(Aaux,Apert)
 
   else if (type_infl == 2) then
 
      write(*,*) 'Multiplication inflation, alpha = ',alpha_infl
 
-     allocate(Apert)
      do ne = 1,nrens
-        Apert = A(ne) - Am
-        A(ne) = Am + (Apert * alpha_infl)
+        Apert = Ashy(ne) - Ashy_m
+        Ashy(ne) = Ashy_m + (Apert * alpha_infl)
      enddo
-     deallocate(Apert)
 
   else
   

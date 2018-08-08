@@ -35,12 +35,14 @@
   use mod_restart
 
   implicit none
+  real*4 :: zero = 0.
+  double precision :: zzero = 0.
   
-  call addpar('ibarcl',0.)
-  call addpar('iconz',0.)
-  call addpar('ibfm',0.)
-  call daddpar('date',0.)
-  call daddpar('time',0.)
+  call addpar('ibarcl',zero)
+  call addpar('iconz',zero)
+  call addpar('ibfm',zero)
+  call daddpar('date',zzero)
+  call daddpar('time',zzero)
 
   end subroutine add_rst_params
 
@@ -87,14 +89,16 @@
 
   character(len=*), intent(in) :: rstname
   double precision, intent(in) :: aatime
+  real*4 :: svar
 
   ! adds parameters
   !
-  call putpar('ibarcl',float(ibarcl_rst))
-  call putpar('iconz',float(iconz_rst))
-  call putpar('ibfm',0.)
-  !call dputpar('date',dfloat(date))
-  !call dputpar('time',dfloat(time))
+  svar = float(ibarcl_rst)
+  call putpar('ibarcl',svar)
+  svar = float(iconz_rst)
+  call putpar('iconz',svar)
+  svar = 0.
+  call putpar('ibfm',svar)
 
   ! In 2D barotropic hlv is set to 10000.
   !
@@ -309,6 +313,7 @@
   real x1,x2,y1,y2,x0,y0,xlength,ylength
   real dx,dy,rx,ry
   real*4 sdx,sdy,sx0,sy0
+  real*4 :: sflag = -999.
   logical samp_fix,verbose
 
   real, allocatable :: mat(:,:,:)
@@ -361,7 +366,7 @@
   sdy = dy
   sx0 = x0
   sy0 = y0
-  call setgeo(sx0,sy0,sdx,sdy,-999.)
+  call setgeo(sx0,sy0,sdx,sdy,sflag)
 
   allocate(mat4(nx,ny),vec4fem(n))
   do ne = 1,nens

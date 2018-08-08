@@ -632,8 +632,8 @@ contains
 
     case ('0DLEV')
 
-     vmod = Am%z(ik)
-     vmod_ens = A(:)%z(ik)
+     vmod = Ashy_m%z(ik)
+     vmod_ens = Ashy(:)%z(ik)
      v = v1
      d1 = v - vmod
      d2 = v - vmod
@@ -644,15 +644,15 @@ contains
      if (size(hlv) <= 1)&
      error stop 'check_obs_inn: a 3D sim is necessary to assimilate surface currents'
 
-     vmod = sqrt(Am%u(1,ie)**2 + Am%v(1,ie)**2)
-     vmod_ens = sqrt(A(:)%u(1,ie)**2 + A(:)%v(1,ie)**2)
-     h_1st_layer = hlv(1) + Am%z(ik)
+     vmod = sqrt(Ashy_m%u(1,ie)**2 + Ashy_m%v(1,ie)**2)
+     vmod_ens = sqrt(Ashy(:)%u(1,ie)**2 + Ashy(:)%v(1,ie)**2)
+     h_1st_layer = hlv(1) + Ashy_m%z(ik)
 
      v = sqrt(v1**2 + v2**2)
-     d1 = v1*h_1st_layer - Am%u(1,ie)
-     d2 = v2*h_1st_layer - Am%v(1,ie)
-     !d1 = v1 - Am%u(1,ie)
-     !d2 = v2 - Am%v(1,ie)
+     d1 = v1*h_1st_layer - Ashy_m%u(1,ie)
+     d2 = v2*h_1st_layer - Ashy_m%v(1,ie)
+     !d1 = v1 - Ashy_m%u(1,ie)
+     !d2 = v2 - Ashy_m%v(1,ie)
      inn = sqrt(d1**2 + d2**2)
 
   end select

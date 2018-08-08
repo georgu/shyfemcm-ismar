@@ -15,7 +15,7 @@ module mod_enkf
   real, save, allocatable :: R(:,:)		! Obs error cov matrix
 
   real, save, allocatable :: S(:,:)		! matrix holding HA' mod perturbations
-  real, save, allocatable :: innov(:)		! innovation vector holding d-H*mean(A)
+  real, save, allocatable :: innov(:)		! innovation vector holding d-H*mean(Ashy)
   real, save, allocatable :: HA(:,:)		! matrix HA, ens model on obs space
 
 
@@ -113,28 +113,28 @@ contains
      R(nook,nook) = ostate(nf)%std**2
 
      ! compute the model perturbed values, S = HA' and HA
-     ! Remember for enKF: Aa = Af + A' [HA']^t [ U L^-1 U^t ] D' and D' = D-HA
+     ! Remember for enKF: Aa = Af + Ashy' [HA']^t [ U L^-1 U^t ] D' and D' = D-HA
      !
      select case (olabel)
 
        case ('0DLEV')
         do ne = 1,nrens
-           S(nook,ne) = A(ne)%z(kmin) - Am%z(kmin)
-           HA(nook,ne) = A(ne)%z(kmin)
+           S(nook,ne) = Ashy(ne)%z(kmin) - Ashy_m%z(kmin)
+           HA(nook,ne) = Ashy(ne)%z(kmin)
         end do
 
        case ('0DTEM')
         if (ostate(nf)%z /= 0) error stop 'fill_scalar_0d: deep temperature not implemented yet'
         do ne = 1,nrens
-           S(nook,ne) = A(ne)%t(1,kmin) - Am%t(1,kmin)
-           HA(nook,ne) = A(ne)%t(1,kmin)
+           S(nook,ne) = Ashy(ne)%t(1,kmin) - Ashy_m%t(1,kmin)
+           HA(nook,ne) = Ashy(ne)%t(1,kmin)
         end do
 
        case ('0DSAL')
         if (ostate(nf)%z /= 0) error stop 'fill_scalar_0d: deep salinity not implemented yet'
         do ne = 1,nrens
-           S(nook,ne) = A(ne)%s(1,kmin) - Am%s(1,kmin)
-           HA(nook,ne) = A(ne)%s(1,kmin)
+           S(nook,ne) = Ashy(ne)%s(1,kmin) - Ashy_m%s(1,kmin)
+           HA(nook,ne) = Ashy(ne)%s(1,kmin)
         end do
 
      end select
@@ -150,7 +150,7 @@ contains
 
      if (verbose)&
      write(*,'(a25,2x,i4,3f8.4)') 'nobs, vobs, vmod, innov:',&
-              nf,ostate(nf)%val,Am%z(kmin),inn1
+              nf,ostate(nf)%val,Ashy_m%z(kmin),inn1
  
      ! compute the perturbations E, the perturbed observations D
      ! and the innovation vectors D1
@@ -183,8 +183,8 @@ contains
      
     ! create a white/red noise random vector with mean 0 and std 1
     !
-    call make_0Dpert('u',nrens,nanal,o2dvel(nf)%id,pvec1,atime,TTAU_2D)
-    call make_0Dpert('v',nrens,nanal,o2dvel(nf)%id,pvec2,atime,TTAU_2D)
+    call make_0Dpert('2DVEL',nrens,nanal,o2dvel(nf)%id,pvec1,atime,TTAU_2D)
+    call make_0Dpert('2DVEL',nrens,nanal,o2dvel(nf)%id,pvec2,atime,TTAU_2D)
 
     do iy = 1,o2dvel(nf)%ny
     do ix = 1,o2dvel(nf)%nx
@@ -205,13 +205,13 @@ contains
      R(nook,nook) = o2dvel(nf)%std(ix,iy)**2
 
      ! compute the model perturbed values, S = HA' and HA
-     ! Remember for enKF: Aa = Af + A' [HA']^t [ U L^-1 U^t ] D' and D' = D-HA
+     ! Remember for enKF: Aa = Af + Ashy' [HA']^t [ U L^-1 U^t ] D' and D' = D-HA
      !
      do ne = 1,nrens
-        S(nook-1,ne) = A(ne)%u(1,iemin) - Am%u(1,iemin)
-        S(nook,ne) = A(ne)%v(1,iemin) - Am%v(1,iemin)
-        HA(nook-1,ne) = A(ne)%u(1,iemin)
-        HA(nook,ne) = A(ne)%v(1,iemin)
+        S(nook-1,ne) = Ashy(ne)%u(1,iemin) - Ashy_m%u(1,iemin)
+        S(nook,ne) = Ashy(ne)%v(1,iemin) - Ashy_m%v(1,iemin)
+        HA(nook-1,ne) = Ashy(ne)%u(1,iemin)
+        HA(nook,ne) = Ashy(ne)%v(1,iemin)
      end do
 
      ! compute the innovation vector

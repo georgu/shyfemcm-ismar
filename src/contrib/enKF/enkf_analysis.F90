@@ -17,12 +17,14 @@
 !------------------------------------------------------------------------------
 program enKF_analysis
 
+  use mod_mod_states
   use mod_para
   use mod_mod_err
   use mod_enkf
   use mod_ens_state
 
   implicit none
+  real, allocatable :: Amat(:,:)
 
   write(*,*) "***"
   write(*,*) "*** Geir's analysis routine, method: ",rmode
@@ -54,7 +56,7 @@ program enKF_analysis
   call read_obs
 
 !----------------------------------------------------
-! makes D1, E and R, S and d-H*mean(A)
+! makes D1, E and R, S and d-H*mean(Ashy)
 !----------------------------------------------------
   call make_matrices
 
@@ -65,17 +67,35 @@ program enKF_analysis
 
    case(0) !no model error
    
-    call analysis(A,R,E,S,D1,innov,global_ndim,nrens,nobs_tot,verbose,truncation,rmode,update_randrot)
-    !call analysis6c(A,E,S,innov,global_ndim,nrens,nobs_tot,verbose)	!SQRT alg
-    !call analysis2(A,D1,R,S,global_ndim,nrens,nobs_tot,verbose)	!ENKF alg
+    allocate(Amat(global_ndim,nrens))
+    call tystate_to_matrix(nrens,Ashy,Amat)
+    deallocate(Ashy)
+
+    call analysis(Amat,R,E,S,D1,innov,global_ndim,nrens,nobs_tot,verbose,&
+                  truncation,rmode,update_randrot)
+    !call analysis6c(Amat,E,S,innov,global_ndim,nrens,nobs_tot,verbose)	!SQRT alg
+    !call analysis2(Amat,D1,R,S,global_ndim,nrens,nobs_tot,verbose)	!ENKF alg
+
+    allocate(Ashy(nrens))
+    call matrix_to_tystate(nrens,Amat,Ashy)
+    deallocate(Amat)
 
    case(1) !add a model error to the state (augmented state. Not working)
 
     call info_moderr
     call push_aug
-    deallocate(A)
-    call analysis(Aaug,R,E,S,D1,innov,2*global_ndim,nrens,nobs_tot,&
+
+    allocate(Amat(2*global_ndim,nrens))
+    call tyqstate_to_matrix(nrens,Ashy_aug,Amat)
+    deallocate(Ashy_aug)
+
+    call analysis(Amat,R,E,S,D1,innov,2*global_ndim,nrens,nobs_tot,&
                   verbose,truncation,rmode,update_randrot)
+
+    allocate(Ashy_aug(nrens))
+    call matrix_to_tyqstate(nrens,Amat,Ashy_aug)
+    deallocate(Amat)
+
     call pull_aug
 
   end select
