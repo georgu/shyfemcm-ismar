@@ -431,11 +431,11 @@ contains
          Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,n) = reshape(A(n)%qt,(/dimts/))
          Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,n) = reshape(A(n)%qs,(/dimts/))
 
-         Amat(global_dim+1:global_dim+dimuv,n) = reshape(A(n)%u,(/dimuv/))
-         Amat(global_dim+dimuv+1:global_dim+2*dimuv,n) = reshape(A(n)%v,(/dimuv/))
-         Amat(global_dim+2*dimuv+1:global_dim+2*dimuv+dimz,n) = A(n)%z
-         Amat(global_dim+2*dimuv+dimz+1:global_dim+2*dimuv+dimz+dimts,n) = reshape(A(n)%t,(/dimts/))
-         Amat(global_dim+2*dimuv+dimz+dimts+1:global_dim+2*dimuv+dimz+2*dimts,n) = reshape(A(n)%s,(/dimts/))
+         Amat(global_ndim+1:global_ndim+dimuv,n) = reshape(A(n)%u,(/dimuv/))
+         Amat(global_ndim+dimuv+1:global_ndim+2*dimuv,n) = reshape(A(n)%v,(/dimuv/))
+         Amat(global_ndim+2*dimuv+1:global_ndim+2*dimuv+dimz,n) = A(n)%z
+         Amat(global_ndim+2*dimuv+dimz+1:global_ndim+2*dimuv+dimz+dimts,n) = reshape(A(n)%t,(/dimts/))
+         Amat(global_ndim+2*dimuv+dimz+dimts+1:global_ndim+2*dimuv+dimz+2*dimts,n) = reshape(A(n)%s,(/dimts/))
       end do
    end subroutine tyqstate_to_matrix
 
@@ -456,11 +456,11 @@ contains
          A(n)%qt = reshape(Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,n),(/nnlv,nnkn/))
          A(n)%qs = reshape(Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,n),(/nnlv,nnkn/))
 
-         A(n)%u = reshape(Amat(global_dim+1:global_dim+dimuv,n),(/nnlv,nnel/))
-         A(n)%v = reshape(Amat(global_dim+dimuv+1:global_dim+2*dimuv,n),(/nnlv,nnel/))
-         A(n)%z = Amat(global_dim+2*dimuv+1:global_dim+2*dimuv+dimz,n)
-         A(n)%t = reshape(Amat(global_dim+2*dimuv+dimz+1:global_dim+2*dimuv+dimz+dimts,n),(/nnlv,nnkn/))
-         A(n)%s = reshape(Amat(global_dim+2*dimuv+dimz+dimts+1:global_dim+2*dimuv+dimz+2*dimts,n),(/nnlv,nnkn/))
+         A(n)%u = reshape(Amat(global_ndim+1:global_ndim+dimuv,n),(/nnlv,nnel/))
+         A(n)%v = reshape(Amat(global_ndim+dimuv+1:global_ndim+2*dimuv,n),(/nnlv,nnel/))
+         A(n)%z = Amat(global_ndim+2*dimuv+1:global_ndim+2*dimuv+dimz,n)
+         A(n)%t = reshape(Amat(global_ndim+2*dimuv+dimz+1:global_ndim+2*dimuv+dimz+dimts,n),(/nnlv,nnkn/))
+         A(n)%s = reshape(Amat(global_ndim+2*dimuv+dimz+dimts+1:global_ndim+2*dimuv+dimz+2*dimts,n),(/nnlv,nnkn/))
       end do
    end subroutine matrix_to_tyqstate
 
