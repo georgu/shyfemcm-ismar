@@ -187,25 +187,13 @@ contains
   if (type_infl == 1) then
 
      write(*,*) 'RTPS inflation, alpha = ',alpha_infl
-
-     Aaux = Ashy_stdb - Ashy_stda
-     Aaux = Aaux / Ashy_stda
-     Aaux = alpha_infl * Aaux 
-     Aaux = Aaux + 1.
-
-     do ne = 1,nrens
-        Apert = Ashy(ne) - Ashy_m
-        Ashy(ne) = Ashy_m + (Apert * Aaux)
-     enddo
+     call rtps_inflation(alpha_infl,nrens,Ashy,Ashy_m,Ashy_stdb,Ashy_stda)
 
   else if (type_infl == 2) then
 
      write(*,*) 'Multiplication inflation, alpha = ',alpha_infl
+     call mult_inflation(alpha_infl,nrens,Ashy,Ashy_m)
 
-     do ne = 1,nrens
-        Apert = Ashy(ne) - Ashy_m
-        Ashy(ne) = Ashy_m + (Apert * alpha_infl)
-     enddo
 
   else
   

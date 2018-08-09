@@ -24,6 +24,7 @@ program enKF_analysis
   use mod_ens_state
 
   implicit none
+  integer :: dim_tot
   real, allocatable :: Amat(:,:)
 
   write(*,*) "***"
@@ -61,42 +62,70 @@ program enKF_analysis
   call make_matrices
 
 !--------------------------------
+! Make the state for the analysis (model error, parameters)
+!--------------------------------
+  select case(mode_an)
+
+   case(0) !normal call
+ 
+     allocate(Amat(global_ndim,nrens))
+     call tystate_to_matrix(nrens,Ashy,Amat)
+     deallocate(Ashy)
+     dim_tot = global_ndim
+
+   case(1) !state with model error
+
+     call info_moderr
+     call push_aug
+     allocate(Amat(2*global_ndim,nrens))
+     call tyqstate_to_matrix(nrens,Ashy_aug,Amat)
+     deallocate(Ashy_aug)
+     dim_tot = 2*global_ndim
+
+    case(2) !state with model parameter
+
+     error stop 'TODO'
+     ! call load_model_params(npar,nrens_p,pars)
+     ! if (nrens_p /= nrens) stop error 'bad parameter ensemble'
+     ! allocate(Amat(global_ndim+npar,nrens))
+     ! call typstate_to_matrix(nrens,npar,pars,Ashy,Amat)
+     ! deallocate(Ashy)
+     ! dim_tot = global_ndim + npar
+
+  end select
+
+!--------------------------------
 ! Call the analysis routine
 !--------------------------------
-  select case(bmod_err)
-
-   case(0) !no model error
-   
-    allocate(Amat(global_ndim,nrens))
-    call tystate_to_matrix(nrens,Ashy,Amat)
-    deallocate(Ashy)
-
-    call analysis(Amat,R,E,S,D1,innov,global_ndim,nrens,nobs_tot,verbose,&
+  call analysis(Amat,R,E,S,D1,innov,dim_tot,nrens,nobs_tot,verbose,&
                   truncation,rmode,update_randrot)
-    !call analysis6c(Amat,E,S,innov,global_ndim,nrens,nobs_tot,verbose)	!SQRT alg
-    !call analysis2(Amat,D1,R,S,global_ndim,nrens,nobs_tot,verbose)	!ENKF alg
+  !call analysis6c(Amat,E,S,innov,dim_tot,nrens,nobs_tot,verbose)	!SQRT alg
+  !call analysis2(Amat,D1,R,S,dim_tot,nrens,nobs_tot,verbose)	!ENKF alg
+    
+!--------------------------------
+! Do after... 
+!--------------------------------
+  select case(mode_an)
 
-    allocate(Ashy(nrens))
-    call matrix_to_tystate(nrens,Amat,Ashy)
-    deallocate(Amat)
+   case(0) !normal call
+   
+     allocate(Ashy(nrens))
+     call matrix_to_tystate(nrens,Amat,Ashy)
+     deallocate(Amat)
 
-   case(1) !add a model error to the state (augmented state. Not working)
+   case(1) !state with model error
 
-    call info_moderr
-    call push_aug
+     allocate(Ashy_aug(nrens))
+     call matrix_to_tyqstate(nrens,Amat,Ashy_aug)
+     deallocate(Amat)
+     call pull_aug
 
-    allocate(Amat(2*global_ndim,nrens))
-    call tyqstate_to_matrix(nrens,Ashy_aug,Amat)
-    deallocate(Ashy_aug)
-
-    call analysis(Amat,R,E,S,D1,innov,2*global_ndim,nrens,nobs_tot,&
-                  verbose,truncation,rmode,update_randrot)
-
-    allocate(Ashy_aug(nrens))
-    call matrix_to_tyqstate(nrens,Amat,Ashy_aug)
-    deallocate(Amat)
-
-    call pull_aug
+   case(2) !state with model parameter
+     
+     !allocate(Ashy(nrens))
+     !call matrix_to_typstate(nrens,npar,Amat,pars,Ashy)
+     !call save_model_params(npar,nrens,pars)
+     !deallocate(Amat)
 
   end select
 

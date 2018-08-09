@@ -61,14 +61,12 @@ setting file
 This file must contain the following information in different lines:
 - Name of the bas-file with the bas extension;
 - Dimension of the model state (nkn nel nlv);
-- A flag equal to 1 to create a new ensemble of initial states by perturbing
-  one state specified in a restart file (specify one restart file in
-  "rstlist.txt" and one file in "skellist.txt"). If it is set to 0 the program
-  loads an ensemble of restart files. If you use 1 you must provide also a file 
-  named "init_ens.info", described below;
-- A flag equal to 1 to use an augmented state with the model error, 0 to use a
-  normal state. If this option is 1 you must provide also a file named 
-  "mod_err.info", described below.
+- Initial ensemble: 0 for an ensemble loaded from files (suggested), 1 to
+  create an ensemble from a state (just z level is perturbed).
+  With 1 make also a file named "init_ens.info", as described below;
+- Analysis mode: 0 normal mode; 1 with model error; 2 with model parameters.
+  If 1 make a file "mod_err.info", described below;
+  If 2 TODO.
 
 ----------
 ens_list.txt

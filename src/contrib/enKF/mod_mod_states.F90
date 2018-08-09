@@ -1,6 +1,8 @@
 !
 ! Copyright (C) 2017, Marco Bajo, CNR-ISMAR Venice, All rights reserved.
 !
+! This routine determines the state of the model and some operations on it
+!
 module mod_mod_states
 
    use mod_dimensions
@@ -14,9 +16,6 @@ module mod_mod_states
       real s(nnlv,nnkn)                      ! 3-D Salinity 
    end type states
    integer, save ::  global_ndim = 2*nnlv*nnel + nnkn + 2*nnlv*nnkn
-                      
-
- ! Dimension of states
 
 ! single precision model state (used for read and write to files)
    type states4
@@ -88,162 +87,9 @@ module mod_mod_states
 
 contains
 
-   subroutine tystate_to_matrix(n,A,Amat)
-      integer, intent(in) :: n
-      type(states), intent(in) :: A(n)
-      real, intent(out) :: Amat(global_ndim,n)
-
-      integer i,dimuv,dimts,dimz
-
-      dimz = nnkn
-      dimuv = nnlv*nnel
-      dimts = nnlv*nnkn
-      do i = 1,n
-         Amat(1:dimuv,n) = reshape(A(n)%u,(/dimuv/))
-         Amat(dimuv+1:2*dimuv,n) = reshape(A(n)%v,(/dimuv/))
-         Amat(2*dimuv+1:2*dimuv+dimz,n) = A(n)%z
-         Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,n) = reshape(A(n)%t,(/dimts/))
-         Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,n) = reshape(A(n)%s,(/dimts/))
-      end do
-   end subroutine tystate_to_matrix
-
-   subroutine matrix_to_tystate(n,Amat,A)
-      integer, intent(in) :: n
-      real, intent(in) :: Amat(global_ndim,n)
-      type(states), intent(out) :: A(n)
-
-      integer i,dimuv,dimts,dimz
-
-      dimz = nnkn
-      dimuv = nnlv*nnel
-      dimts = nnlv*nnkn
-      do i = 1,n
-         A(n)%u = reshape(Amat(1:dimuv,n),(/nnlv,nnel/))
-         A(n)%v = reshape(Amat(dimuv+1:2*dimuv,n),(/nnlv,nnel/))
-         A(n)%z = Amat(2*dimuv+1:2*dimuv+dimz,n)
-         A(n)%t = reshape(Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,n),(/nnlv,nnkn/))
-         A(n)%s = reshape(Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,n),(/nnlv,nnkn/))
-      end do
-   end subroutine matrix_to_tystate
-
-   subroutine tyqstate_to_matrix(n,A,Amat)
-      integer, intent(in) :: n
-      type(qstates), intent(in) :: A(n)
-      real, intent(out) :: Amat(2*global_ndim,n)
-
-      integer i,dimuv,dimts,dimz
-
-      dimz = nnkn
-      dimuv = nnlv*nnel
-      dimts = nnlv*nnkn
-      do i = 1,n
-         Amat(1:dimuv,n) = reshape(A(n)%qu,(/dimuv/))
-         Amat(dimuv+1:2*dimuv,n) = reshape(A(n)%qv,(/dimuv/))
-         Amat(2*dimuv+1:2*dimuv+dimz,n) = A(n)%qz
-         Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,n) = reshape(A(n)%qt,(/dimts/))
-         Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,n) = reshape(A(n)%qs,(/dimts/))
-
-         Amat(global_dim+1:global_dim+dimuv,n) = reshape(A(n)%u,(/dimuv/))
-         Amat(global_dim+dimuv+1:global_dim+2*dimuv,n) = reshape(A(n)%v,(/dimuv/))
-         Amat(global_dim+2*dimuv+1:global_dim+2*dimuv+dimz,n) = A(n)%z
-         Amat(global_dim+2*dimuv+dimz+1:global_dim+2*dimuv+dimz+dimts,n) = reshape(A(n)%t,(/dimts/))
-         Amat(global_dim+2*dimuv+dimz+dimts+1:global_dim+2*dimuv+dimz+2*dimts,n) = reshape(A(n)%s,(/dimts/))
-      end do
-   end subroutine tyqstate_to_matrix
-
-   subroutine matrix_to_tyqstate(n,Amat,A)
-      integer, intent(in) :: n
-      real, intent(in) :: Amat(2*global_ndim,n)
-      type(qstates), intent(out) :: A(n)
-
-      integer i,dimuv,dimts,dimz
-
-      dimz = nnkn
-      dimuv = nnlv*nnel
-      dimts = nnlv*nnkn
-      do i = 1,n
-         A(n)%qu = reshape(Amat(1:dimuv,n),(/nnlv,nnel/))
-         A(n)%qv = reshape(Amat(dimuv+1:2*dimuv,n),(/nnlv,nnel/))
-         A(n)%qz = Amat(2*dimuv+1:2*dimuv+dimz,n)
-         A(n)%qt = reshape(Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,n),(/nnlv,nnkn/))
-         A(n)%qs = reshape(Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,n),(/nnlv,nnkn/))
-
-         A(n)%u = reshape(Amat(global_dim+1:global_dim+dimuv,n),(/nnlv,nnel/))
-         A(n)%v = reshape(Amat(global_dim+dimuv+1:global_dim+2*dimuv,n),(/nnlv,nnel/))
-         A(n)%z = Amat(global_dim+2*dimuv+1:global_dim+2*dimuv+dimz,n)
-         A(n)%t = reshape(Amat(global_dim+2*dimuv+dimz+1:global_dim+2*dimuv+dimz+dimts,n),(/nnlv,nnkn/))
-         A(n)%s = reshape(Amat(global_dim+2*dimuv+dimz+dimts+1:global_dim+2*dimuv+dimz+2*dimts,n),(/nnlv,nnkn/))
-      end do
-   end subroutine matrix_to_tyqstate
-
-   function mean_state(n,A)
-      type(states) mean_state
-      integer, intent(in) :: n
-      type(states), intent(in) :: A(n)
-      integer i
-      mean_state%u = 1.e-15
-      mean_state%v = 1.e-15
-      mean_state%z = 1.e-15
-      mean_state%t = 1.e-15
-      mean_state%s = 1.e-15
-      do i = 1,n
-       mean_state%u = mean_state%u + A(n)%u
-       mean_state%v = mean_state%v + A(n)%v
-       mean_state%z = mean_state%z + A(n)%z
-       mean_state%t = mean_state%t + A(n)%t
-       mean_state%s = mean_state%s + A(n)%s
-      end do
-      mean_state%u = mean_state%u / float(n)
-      mean_state%v = mean_state%v / float(n)
-      mean_state%z = mean_state%z / float(n)
-      mean_state%t = mean_state%t / float(n)
-      mean_state%s = mean_state%s / float(n)
-   end function mean_state
-
-   function std_state(n,A)
-      type(states) std_state
-      integer, intent(in) :: n
-      type(states), intent(in) :: A(n)
-      type(states) :: Amean
-      integer i
-
-      Amean%u = 1.e-15
-      Amean%v = 1.e-15
-      Amean%z = 1.e-15
-      Amean%t = 1.e-15
-      Amean%s = 1.e-15
-      do i = 1,n
-       Amean%u = Amean%u + A(n)%u
-       Amean%v = Amean%v + A(n)%v
-       Amean%z = Amean%z + A(n)%z
-       Amean%t = Amean%t + A(n)%t
-       Amean%s = Amean%s + A(n)%s
-      end do
-      Amean%u = Amean%u / float(n)
-      Amean%v = Amean%v / float(n)
-      Amean%z = Amean%z / float(n)
-      Amean%t = Amean%t / float(n)
-      Amean%s = Amean%s / float(n)
-
-      std_state%u = 1.e-15
-      std_state%v = 1.e-15
-      std_state%z = 1.e-15
-      std_state%t = 1.e-15
-      std_state%s = 1.e-15
-      do i = 1,n
-       std_state%u = std_state%u + (A(n)%u - Amean%u)**2
-       std_state%v = std_state%v + (A(n)%v - Amean%v)**2
-       std_state%z = std_state%z + (A(n)%z - Amean%z)**2
-       std_state%t = std_state%t + (A(n)%t - Amean%t)**2
-       std_state%s = std_state%s + (A(n)%s - Amean%s)**2
-      end do
-      std_state%u = sqrt(std_state%u / float(n-1))
-      std_state%v = sqrt(std_state%v / float(n-1))
-      std_state%z = sqrt(std_state%z / float(n-1))
-      std_state%t = sqrt(std_state%t / float(n-1))
-      std_state%s = sqrt(std_state%s / float(n-1))
-
-   end function std_state
+!-------------------------------------------------------------------
+! Functions
+!-------------------------------------------------------------------
 
    function add_states(A,B)
       type(states) add_states
@@ -345,6 +191,79 @@ contains
        root_state%s = sqrt(A%s)
    end function root_state
 
+   function mean_state(n,A)
+      type(states) mean_state
+      integer, intent(in) :: n
+      type(states), intent(in) :: A(n)
+      integer i
+      mean_state%u = 1.e-15
+      mean_state%v = 1.e-15
+      mean_state%z = 1.e-15
+      mean_state%t = 1.e-15
+      mean_state%s = 1.e-15
+      do i = 1,n
+       mean_state%u = mean_state%u + A(n)%u
+       mean_state%v = mean_state%v + A(n)%v
+       mean_state%z = mean_state%z + A(n)%z
+       mean_state%t = mean_state%t + A(n)%t
+       mean_state%s = mean_state%s + A(n)%s
+      end do
+      mean_state%u = mean_state%u / float(n)
+      mean_state%v = mean_state%v / float(n)
+      mean_state%z = mean_state%z / float(n)
+      mean_state%t = mean_state%t / float(n)
+      mean_state%s = mean_state%s / float(n)
+   end function mean_state
+
+   function std_state(n,A)
+      type(states) std_state
+      integer, intent(in) :: n
+      type(states), intent(in) :: A(n)
+      type(states) :: Amean
+      integer i
+
+      Amean%u = 1.e-15
+      Amean%v = 1.e-15
+      Amean%z = 1.e-15
+      Amean%t = 1.e-15
+      Amean%s = 1.e-15
+      do i = 1,n
+       Amean%u = Amean%u + A(n)%u
+       Amean%v = Amean%v + A(n)%v
+       Amean%z = Amean%z + A(n)%z
+       Amean%t = Amean%t + A(n)%t
+       Amean%s = Amean%s + A(n)%s
+      end do
+      Amean%u = Amean%u / float(n)
+      Amean%v = Amean%v / float(n)
+      Amean%z = Amean%z / float(n)
+      Amean%t = Amean%t / float(n)
+      Amean%s = Amean%s / float(n)
+
+      std_state%u = 1.e-15
+      std_state%v = 1.e-15
+      std_state%z = 1.e-15
+      std_state%t = 1.e-15
+      std_state%s = 1.e-15
+      do i = 1,n
+       std_state%u = std_state%u + (A(n)%u - Amean%u)**2
+       std_state%v = std_state%v + (A(n)%v - Amean%v)**2
+       std_state%z = std_state%z + (A(n)%z - Amean%z)**2
+       std_state%t = std_state%t + (A(n)%t - Amean%t)**2
+       std_state%s = std_state%s + (A(n)%s - Amean%s)**2
+      end do
+      std_state%u = sqrt(std_state%u / float(n-1))
+      std_state%v = sqrt(std_state%v / float(n-1))
+      std_state%z = sqrt(std_state%z / float(n-1))
+      std_state%t = sqrt(std_state%t / float(n-1))
+      std_state%s = sqrt(std_state%s / float(n-1))
+
+   end function std_state
+
+!-------------------------------------------------------------------
+! subroutines
+!-------------------------------------------------------------------
+
    subroutine assign_states(A,r)
       type(states), intent(out) :: A
       real, intent(in) :: r
@@ -406,5 +325,143 @@ contains
       A%t=C%t
       A%s=C%s
    end subroutine pull_qstate
+
+   subroutine rtps_inflation(alpha,n,A,Amean,Astdo,Astdn)
+
+      real, intent(in) :: alpha
+      integer, intent(in) :: n
+      type(states), intent(inout) :: A(n)
+      type(states), intent(in) :: Amean,Astdo,Astdn
+      type(states), allocatable :: Aaux
+      integer i
+
+      allocate(Aaux)
+      Aaux%u = (alpha * (Astdo%u - Astdn%u) / Astdn%u) + 1.
+      Aaux%v = (alpha * (Astdo%v - Astdn%v) / Astdn%v) + 1.
+      Aaux%z = (alpha * (Astdo%z - Astdn%z) / Astdn%z) + 1.
+      Aaux%t = (alpha * (Astdo%t - Astdn%t) / Astdn%t) + 1.
+      Aaux%s = (alpha * (Astdo%s - Astdn%s) / Astdn%s) + 1.
+
+      do i = 1,n
+         A(i)%u = Amean%u + (A(i)%u - Amean%u) * Aaux%u
+         A(i)%v = Amean%v + (A(i)%v - Amean%v) * Aaux%v
+         A(i)%z = Amean%z + (A(i)%z - Amean%z) * Aaux%z
+         A(i)%t = Amean%t + (A(i)%t - Amean%t) * Aaux%t
+         A(i)%s = Amean%s + (A(i)%s - Amean%s) * Aaux%s
+      end do
+      deallocate(Aaux)
+
+   end subroutine rtps_inflation
+
+   subroutine mult_inflation(alpha,n,A,Amean)
+
+      real, intent(in) :: alpha
+      integer, intent(in) :: n
+      type(states), intent(inout) :: A(n)
+      type(states), intent(in) :: Amean
+      integer i
+
+      do i = 1,n
+         A(i)%u = Amean%u + (A(i)%u - Amean%u) * alpha
+         A(i)%v = Amean%v + (A(i)%v - Amean%v) * alpha
+         A(i)%z = Amean%z + (A(i)%z - Amean%z) * alpha
+         A(i)%t = Amean%t + (A(i)%t - Amean%t) * alpha
+         A(i)%s = Amean%s + (A(i)%s - Amean%s) * alpha
+      end do
+
+   end subroutine mult_inflation
+
+
+!-------------------------------------------------------------------
+! subroutines to switch between type and matrix formats
+!-------------------------------------------------------------------
+
+   subroutine tystate_to_matrix(n,A,Amat)
+      integer, intent(in) :: n
+      type(states), intent(in) :: A(n)
+      real, intent(out) :: Amat(global_ndim,n)
+
+      integer i,dimuv,dimts,dimz
+
+      dimz = nnkn
+      dimuv = nnlv*nnel
+      dimts = nnlv*nnkn
+      do i = 1,n
+         Amat(1:dimuv,n) = reshape(A(n)%u,(/dimuv/))
+         Amat(dimuv+1:2*dimuv,n) = reshape(A(n)%v,(/dimuv/))
+         Amat(2*dimuv+1:2*dimuv+dimz,n) = A(n)%z
+         Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,n) = reshape(A(n)%t,(/dimts/))
+         Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,n) = reshape(A(n)%s,(/dimts/))
+      end do
+   end subroutine tystate_to_matrix
+
+   subroutine matrix_to_tystate(n,Amat,A)
+      integer, intent(in) :: n
+      real, intent(in) :: Amat(global_ndim,n)
+      type(states), intent(out) :: A(n)
+
+      integer i,dimuv,dimts,dimz
+
+      dimz = nnkn
+      dimuv = nnlv*nnel
+      dimts = nnlv*nnkn
+      do i = 1,n
+         A(n)%u = reshape(Amat(1:dimuv,n),(/nnlv,nnel/))
+         A(n)%v = reshape(Amat(dimuv+1:2*dimuv,n),(/nnlv,nnel/))
+         A(n)%z = Amat(2*dimuv+1:2*dimuv+dimz,n)
+         A(n)%t = reshape(Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,n),(/nnlv,nnkn/))
+         A(n)%s = reshape(Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,n),(/nnlv,nnkn/))
+      end do
+   end subroutine matrix_to_tystate
+
+   subroutine tyqstate_to_matrix(n,A,Amat)
+      integer, intent(in) :: n
+      type(qstates), intent(in) :: A(n)
+      real, intent(out) :: Amat(2*global_ndim,n)
+
+      integer i,dimuv,dimts,dimz
+
+      dimz = nnkn
+      dimuv = nnlv*nnel
+      dimts = nnlv*nnkn
+      do i = 1,n
+         Amat(1:dimuv,n) = reshape(A(n)%qu,(/dimuv/))
+         Amat(dimuv+1:2*dimuv,n) = reshape(A(n)%qv,(/dimuv/))
+         Amat(2*dimuv+1:2*dimuv+dimz,n) = A(n)%qz
+         Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,n) = reshape(A(n)%qt,(/dimts/))
+         Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,n) = reshape(A(n)%qs,(/dimts/))
+
+         Amat(global_dim+1:global_dim+dimuv,n) = reshape(A(n)%u,(/dimuv/))
+         Amat(global_dim+dimuv+1:global_dim+2*dimuv,n) = reshape(A(n)%v,(/dimuv/))
+         Amat(global_dim+2*dimuv+1:global_dim+2*dimuv+dimz,n) = A(n)%z
+         Amat(global_dim+2*dimuv+dimz+1:global_dim+2*dimuv+dimz+dimts,n) = reshape(A(n)%t,(/dimts/))
+         Amat(global_dim+2*dimuv+dimz+dimts+1:global_dim+2*dimuv+dimz+2*dimts,n) = reshape(A(n)%s,(/dimts/))
+      end do
+   end subroutine tyqstate_to_matrix
+
+   subroutine matrix_to_tyqstate(n,Amat,A)
+      integer, intent(in) :: n
+      real, intent(in) :: Amat(2*global_ndim,n)
+      type(qstates), intent(out) :: A(n)
+
+      integer i,dimuv,dimts,dimz
+
+      dimz = nnkn
+      dimuv = nnlv*nnel
+      dimts = nnlv*nnkn
+      do i = 1,n
+         A(n)%qu = reshape(Amat(1:dimuv,n),(/nnlv,nnel/))
+         A(n)%qv = reshape(Amat(dimuv+1:2*dimuv,n),(/nnlv,nnel/))
+         A(n)%qz = Amat(2*dimuv+1:2*dimuv+dimz,n)
+         A(n)%qt = reshape(Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,n),(/nnlv,nnkn/))
+         A(n)%qs = reshape(Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,n),(/nnlv,nnkn/))
+
+         A(n)%u = reshape(Amat(global_dim+1:global_dim+dimuv,n),(/nnlv,nnel/))
+         A(n)%v = reshape(Amat(global_dim+dimuv+1:global_dim+2*dimuv,n),(/nnlv,nnel/))
+         A(n)%z = Amat(global_dim+2*dimuv+1:global_dim+2*dimuv+dimz,n)
+         A(n)%t = reshape(Amat(global_dim+2*dimuv+dimz+1:global_dim+2*dimuv+dimz+dimts,n),(/nnlv,nnkn/))
+         A(n)%s = reshape(Amat(global_dim+2*dimuv+dimz+dimts+1:global_dim+2*dimuv+dimz+2*dimts,n),(/nnlv,nnkn/))
+      end do
+   end subroutine matrix_to_tyqstate
 
 end module mod_mod_states
