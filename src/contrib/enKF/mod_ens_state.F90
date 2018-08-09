@@ -148,24 +148,20 @@ contains
   character(len=1), intent(in) :: tflag
   character(len=3) :: nal
   character(len=80) :: filinm,filins
-  type(states) :: Aaux
 
   call num2str(na,nal)
   filinm = 'an'//nal//'_mean_'//tflag//'.rst'
   filins = 'an'//nal//'_std_'//tflag//'.rst'
 
-  Aaux = mean_state(nrens,Ashy)
-  call write_state(Aaux,filinm)
-  Ashy_m = Aaux
+  Ashy_m = mean_state(nrens,Ashy)
+  call write_state(Ashy_m,filinm)
 
   if (tflag == 'a') then
-     Aaux = std_state(nrens,Ashy)
-     call write_state(Aaux,filins)
-     Ashy_stda = Aaux
+     Ashy_stda = std_state(nrens,Ashy)
+     call write_state(Ashy_stda,filins)
   else
-     Aaux = std_state(nrens,Ashy)
-     call write_state(Aaux,filins)
-     Ashy_stdb = Aaux
+     Ashy_stdb = std_state(nrens,Ashy)
+     call write_state(Ashy_stdb,filins)
   end if
 
   end subroutine make_mean_std

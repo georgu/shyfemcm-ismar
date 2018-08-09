@@ -202,11 +202,11 @@ contains
       mean_state%t = 1.e-15
       mean_state%s = 1.e-15
       do i = 1,n
-       mean_state%u = mean_state%u + A(n)%u
-       mean_state%v = mean_state%v + A(n)%v
-       mean_state%z = mean_state%z + A(n)%z
-       mean_state%t = mean_state%t + A(n)%t
-       mean_state%s = mean_state%s + A(n)%s
+       mean_state%u = mean_state%u + A(i)%u
+       mean_state%v = mean_state%v + A(i)%v
+       mean_state%z = mean_state%z + A(i)%z
+       mean_state%t = mean_state%t + A(i)%t
+       mean_state%s = mean_state%s + A(i)%s
       end do
       mean_state%u = mean_state%u / float(n)
       mean_state%v = mean_state%v / float(n)
@@ -228,11 +228,11 @@ contains
       Amean%t = 1.e-15
       Amean%s = 1.e-15
       do i = 1,n
-       Amean%u = Amean%u + A(n)%u
-       Amean%v = Amean%v + A(n)%v
-       Amean%z = Amean%z + A(n)%z
-       Amean%t = Amean%t + A(n)%t
-       Amean%s = Amean%s + A(n)%s
+       Amean%u = Amean%u + A(i)%u
+       Amean%v = Amean%v + A(i)%v
+       Amean%z = Amean%z + A(i)%z
+       Amean%t = Amean%t + A(i)%t
+       Amean%s = Amean%s + A(i)%s
       end do
       Amean%u = Amean%u / float(n)
       Amean%v = Amean%v / float(n)
@@ -246,11 +246,11 @@ contains
       std_state%t = 1.e-15
       std_state%s = 1.e-15
       do i = 1,n
-       std_state%u = std_state%u + (A(n)%u - Amean%u)**2
-       std_state%v = std_state%v + (A(n)%v - Amean%v)**2
-       std_state%z = std_state%z + (A(n)%z - Amean%z)**2
-       std_state%t = std_state%t + (A(n)%t - Amean%t)**2
-       std_state%s = std_state%s + (A(n)%s - Amean%s)**2
+       std_state%u = std_state%u + (A(i)%u - Amean%u)**2
+       std_state%v = std_state%v + (A(i)%v - Amean%v)**2
+       std_state%z = std_state%z + (A(i)%z - Amean%z)**2
+       std_state%t = std_state%t + (A(i)%t - Amean%t)**2
+       std_state%s = std_state%s + (A(i)%s - Amean%s)**2
       end do
       std_state%u = sqrt(std_state%u / float(n-1))
       std_state%v = sqrt(std_state%v / float(n-1))
@@ -389,11 +389,11 @@ contains
       dimuv = nnlv*nnel
       dimts = nnlv*nnkn
       do i = 1,n
-         Amat(1:dimuv,n) = reshape(A(n)%u,(/dimuv/))
-         Amat(dimuv+1:2*dimuv,n) = reshape(A(n)%v,(/dimuv/))
-         Amat(2*dimuv+1:2*dimuv+dimz,n) = A(n)%z
-         Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,n) = reshape(A(n)%t,(/dimts/))
-         Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,n) = reshape(A(n)%s,(/dimts/))
+         Amat(1:dimuv,i) = reshape(A(i)%u,(/dimuv/))
+         Amat(dimuv+1:2*dimuv,i) = reshape(A(i)%v,(/dimuv/))
+         Amat(2*dimuv+1:2*dimuv+dimz,i) = A(i)%z
+         Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,i) = reshape(A(i)%t,(/dimts/))
+         Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,i) = reshape(A(i)%s,(/dimts/))
       end do
    end subroutine tystate_to_matrix
 
@@ -408,11 +408,11 @@ contains
       dimuv = nnlv*nnel
       dimts = nnlv*nnkn
       do i = 1,n
-         A(n)%u = reshape(Amat(1:dimuv,n),(/nnlv,nnel/))
-         A(n)%v = reshape(Amat(dimuv+1:2*dimuv,n),(/nnlv,nnel/))
-         A(n)%z = Amat(2*dimuv+1:2*dimuv+dimz,n)
-         A(n)%t = reshape(Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,n),(/nnlv,nnkn/))
-         A(n)%s = reshape(Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,n),(/nnlv,nnkn/))
+         A(i)%u = reshape(Amat(1:dimuv,i),(/nnlv,nnel/))
+         A(i)%v = reshape(Amat(dimuv+1:2*dimuv,i),(/nnlv,nnel/))
+         A(i)%z = Amat(2*dimuv+1:2*dimuv+dimz,i)
+         A(i)%t = reshape(Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,i),(/nnlv,nnkn/))
+         A(i)%s = reshape(Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,i),(/nnlv,nnkn/))
       end do
    end subroutine matrix_to_tystate
 
@@ -427,17 +427,17 @@ contains
       dimuv = nnlv*nnel
       dimts = nnlv*nnkn
       do i = 1,n
-         Amat(1:dimuv,n) = reshape(A(n)%qu,(/dimuv/))
-         Amat(dimuv+1:2*dimuv,n) = reshape(A(n)%qv,(/dimuv/))
-         Amat(2*dimuv+1:2*dimuv+dimz,n) = A(n)%qz
-         Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,n) = reshape(A(n)%qt,(/dimts/))
-         Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,n) = reshape(A(n)%qs,(/dimts/))
+         Amat(1:dimuv,i) = reshape(A(i)%qu,(/dimuv/))
+         Amat(dimuv+1:2*dimuv,i) = reshape(A(i)%qv,(/dimuv/))
+         Amat(2*dimuv+1:2*dimuv+dimz,i) = A(i)%qz
+         Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,i) = reshape(A(i)%qt,(/dimts/))
+         Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,i) = reshape(A(i)%qs,(/dimts/))
 
-         Amat(global_ndim+1:global_ndim+dimuv,n) = reshape(A(n)%u,(/dimuv/))
-         Amat(global_ndim+dimuv+1:global_ndim+2*dimuv,n) = reshape(A(n)%v,(/dimuv/))
-         Amat(global_ndim+2*dimuv+1:global_ndim+2*dimuv+dimz,n) = A(n)%z
-         Amat(global_ndim+2*dimuv+dimz+1:global_ndim+2*dimuv+dimz+dimts,n) = reshape(A(n)%t,(/dimts/))
-         Amat(global_ndim+2*dimuv+dimz+dimts+1:global_ndim+2*dimuv+dimz+2*dimts,n) = reshape(A(n)%s,(/dimts/))
+         Amat(global_ndim+1:global_ndim+dimuv,i) = reshape(A(i)%u,(/dimuv/))
+         Amat(global_ndim+dimuv+1:global_ndim+2*dimuv,i) = reshape(A(i)%v,(/dimuv/))
+         Amat(global_ndim+2*dimuv+1:global_ndim+2*dimuv+dimz,i) = A(i)%z
+         Amat(global_ndim+2*dimuv+dimz+1:global_ndim+2*dimuv+dimz+dimts,i) = reshape(A(i)%t,(/dimts/))
+         Amat(global_ndim+2*dimuv+dimz+dimts+1:global_ndim+2*dimuv+dimz+2*dimts,i) = reshape(A(i)%s,(/dimts/))
       end do
    end subroutine tyqstate_to_matrix
 
@@ -452,17 +452,17 @@ contains
       dimuv = nnlv*nnel
       dimts = nnlv*nnkn
       do i = 1,n
-         A(n)%qu = reshape(Amat(1:dimuv,n),(/nnlv,nnel/))
-         A(n)%qv = reshape(Amat(dimuv+1:2*dimuv,n),(/nnlv,nnel/))
-         A(n)%qz = Amat(2*dimuv+1:2*dimuv+dimz,n)
-         A(n)%qt = reshape(Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,n),(/nnlv,nnkn/))
-         A(n)%qs = reshape(Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,n),(/nnlv,nnkn/))
+         A(i)%qu = reshape(Amat(1:dimuv,i),(/nnlv,nnel/))
+         A(i)%qv = reshape(Amat(dimuv+1:2*dimuv,i),(/nnlv,nnel/))
+         A(i)%qz = Amat(2*dimuv+1:2*dimuv+dimz,i)
+         A(i)%qt = reshape(Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,i),(/nnlv,nnkn/))
+         A(i)%qs = reshape(Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,i),(/nnlv,nnkn/))
 
-         A(n)%u = reshape(Amat(global_ndim+1:global_ndim+dimuv,n),(/nnlv,nnel/))
-         A(n)%v = reshape(Amat(global_ndim+dimuv+1:global_ndim+2*dimuv,n),(/nnlv,nnel/))
-         A(n)%z = Amat(global_ndim+2*dimuv+1:global_ndim+2*dimuv+dimz,n)
-         A(n)%t = reshape(Amat(global_ndim+2*dimuv+dimz+1:global_ndim+2*dimuv+dimz+dimts,n),(/nnlv,nnkn/))
-         A(n)%s = reshape(Amat(global_ndim+2*dimuv+dimz+dimts+1:global_ndim+2*dimuv+dimz+2*dimts,n),(/nnlv,nnkn/))
+         A(i)%u = reshape(Amat(global_ndim+1:global_ndim+dimuv,i),(/nnlv,nnel/))
+         A(i)%v = reshape(Amat(global_ndim+dimuv+1:global_ndim+2*dimuv,i),(/nnlv,nnel/))
+         A(i)%z = Amat(global_ndim+2*dimuv+1:global_ndim+2*dimuv+dimz,i)
+         A(i)%t = reshape(Amat(global_ndim+2*dimuv+dimz+1:global_ndim+2*dimuv+dimz+dimts,i),(/nnlv,nnkn/))
+         A(i)%s = reshape(Amat(global_ndim+2*dimuv+dimz+dimts+1:global_ndim+2*dimuv+dimz+2*dimts,i),(/nnlv,nnkn/))
       end do
    end subroutine matrix_to_tyqstate
 
