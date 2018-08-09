@@ -17,8 +17,8 @@ module mod_para
 				       !    uniform observation, but can explode if there 
                                        !    are grid areas without observations (spread 
                                        !    is not reduced)
-  real, parameter :: alpha_infl = 0.1 ! type_infl = 1 -> ~ 0.1 
-                                       ! type_infl = 2 -> ~1.04 (lower with SQRT method)
+  real, parameter :: alpha_infl = 0.01 ! type_infl = 1 -> ~ 0.01 
+                                       ! type_infl = 2 -> ~ 0.01 (lower with SQRT method)
 
   integer, parameter :: is_local = 0 !Local analysis. 0 disable, 1 localisation(TODO)
   real, parameter :: r_local = 2. !Radius used in local analysis

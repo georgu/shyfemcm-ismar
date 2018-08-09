@@ -327,6 +327,7 @@ contains
    end subroutine pull_qstate
 
    subroutine rtps_inflation(alpha,n,A,Amean,Astdo,Astdn)
+   ! spatially variable rtps mult inflation
 
       real, intent(in) :: alpha
       integer, intent(in) :: n
@@ -354,6 +355,7 @@ contains
    end subroutine rtps_inflation
 
    subroutine mult_inflation(alpha,n,A,Amean)
+   ! spatially constant mult inflation
 
       real, intent(in) :: alpha
       integer, intent(in) :: n
@@ -362,11 +364,11 @@ contains
       integer i
 
       do i = 1,n
-         A(i)%u = Amean%u + (A(i)%u - Amean%u) * alpha
-         A(i)%v = Amean%v + (A(i)%v - Amean%v) * alpha
-         A(i)%z = Amean%z + (A(i)%z - Amean%z) * alpha
-         A(i)%t = Amean%t + (A(i)%t - Amean%t) * alpha
-         A(i)%s = Amean%s + (A(i)%s - Amean%s) * alpha
+         A(i)%u = Amean%u + (A(i)%u - Amean%u) * (alpha + 1.)
+         A(i)%v = Amean%v + (A(i)%v - Amean%v) * (alpha + 1.)
+         A(i)%z = Amean%z + (A(i)%z - Amean%z) * (alpha + 1.)
+         A(i)%t = Amean%t + (A(i)%t - Amean%t) * (alpha + 1.)
+         A(i)%s = Amean%s + (A(i)%s - Amean%s) * (alpha + 1.)
       end do
 
    end subroutine mult_inflation
