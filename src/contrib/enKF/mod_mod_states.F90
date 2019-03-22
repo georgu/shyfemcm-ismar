@@ -92,6 +92,7 @@ contains
 !-------------------------------------------------------------------
 
    function add_states(A,B)
+      implicit none
       type(states) add_states
       type(states), intent(in) :: A
       type(states), intent(in) :: B
@@ -103,6 +104,7 @@ contains
    end function add_states
 
    function subtract_states(A,B)
+      implicit none
       type(states) subtract_states
       type(states), intent(in) :: A
       type(states), intent(in) :: B
@@ -114,6 +116,7 @@ contains
    end function subtract_states
 
    function states_real_mult(A,B)
+      implicit none
       type(states) states_real_mult
       type(states), intent(in) :: A
       real, intent(in) :: B
@@ -125,6 +128,7 @@ contains
    end function states_real_mult
 
    function real_states_mult(B,A)
+      implicit none
       type(states) real_states_mult
       type(states), intent(in) :: A
       real, intent(in) :: B
@@ -136,6 +140,7 @@ contains
    end function real_states_mult
 
    function states_real_add(A,B)
+      implicit none
       type(states) states_real_add
       type(states), intent(in) :: A
       real, intent(in) :: B
@@ -148,6 +153,7 @@ contains
 
 
    function real_states_add(B,A)
+      implicit none
       type(states) real_states_add
       type(states), intent(in) :: A
       real, intent(in) :: B
@@ -160,6 +166,7 @@ contains
 
 
    function states_states_mult(A,B)
+      implicit none
       type(states) states_states_mult
       type(states), intent(in) :: A
       type(states), intent(in) :: B
@@ -171,6 +178,7 @@ contains
    end function states_states_mult
 
    function states_states_div(A,B)
+      implicit none
       type(states) states_states_div
       type(states), intent(in) :: A
       type(states), intent(in) :: B
@@ -182,6 +190,7 @@ contains
    end function states_states_div
 
    function root_state(A)
+      implicit none
       type(states) root_state
       type(states), intent(in) :: A
        root_state%u = sqrt(A%u)
@@ -192,15 +201,19 @@ contains
    end function root_state
 
    function mean_state(n,A)
+      implicit none
       type(states) mean_state
       integer, intent(in) :: n
       type(states), intent(in) :: A(n)
       integer i
-      mean_state%u = 1.e-15
-      mean_state%v = 1.e-15
-      mean_state%z = 1.e-15
-      mean_state%t = 1.e-15
-      mean_state%s = 1.e-15
+
+      if (n <= 0) error stop 'mean_state: invalid n'
+
+      mean_state%u = 1.d-15
+      mean_state%v = 1.d-15
+      mean_state%z = 1.d-15
+      mean_state%t = 1.d-15
+      mean_state%s = 1.d-15
       do i = 1,n
        mean_state%u = mean_state%u + A(i)%u
        mean_state%v = mean_state%v + A(i)%v
@@ -216,47 +229,55 @@ contains
    end function mean_state
 
    function std_state(n,A)
+      implicit none
       type(states) std_state
       integer, intent(in) :: n
       type(states), intent(in) :: A(n)
-      type(states) :: Amean
+      type(states), allocatable :: Aaux
       integer i
 
-      Amean%u = 1.e-15
-      Amean%v = 1.e-15
-      Amean%z = 1.e-15
-      Amean%t = 1.e-15
-      Amean%s = 1.e-15
-      do i = 1,n
-       Amean%u = Amean%u + A(i)%u
-       Amean%v = Amean%v + A(i)%v
-       Amean%z = Amean%z + A(i)%z
-       Amean%t = Amean%t + A(i)%t
-       Amean%s = Amean%s + A(i)%s
-      end do
-      Amean%u = Amean%u / float(n)
-      Amean%v = Amean%v / float(n)
-      Amean%z = Amean%z / float(n)
-      Amean%t = Amean%t / float(n)
-      Amean%s = Amean%s / float(n)
+      if (n <= 0) error stop 'mean_state: invalid n'
 
-      std_state%u = 1.e-15
-      std_state%v = 1.e-15
-      std_state%z = 1.e-15
-      std_state%t = 1.e-15
-      std_state%s = 1.e-15
+      allocate(Aaux)
+
+      ! This is not zero in case some vars are always zero
+      Aaux%u = 1.d-15
+      Aaux%v = 1.d-15
+      Aaux%z = 1.d-15
+      Aaux%t = 1.d-15
+      Aaux%s = 1.d-15
       do i = 1,n
-       std_state%u = std_state%u + (A(i)%u - Amean%u)**2
-       std_state%v = std_state%v + (A(i)%v - Amean%v)**2
-       std_state%z = std_state%z + (A(i)%z - Amean%z)**2
-       std_state%t = std_state%t + (A(i)%t - Amean%t)**2
-       std_state%s = std_state%s + (A(i)%s - Amean%s)**2
+       Aaux%u = Aaux%u + A(i)%u
+       Aaux%v = Aaux%v + A(i)%v
+       Aaux%z = Aaux%z + A(i)%z
+       Aaux%t = Aaux%t + A(i)%t
+       Aaux%s = Aaux%s + A(i)%s
+      end do
+      Aaux%u = Aaux%u / float(n)
+      Aaux%v = Aaux%v / float(n)
+      Aaux%z = Aaux%z / float(n)
+      Aaux%t = Aaux%t / float(n)
+      Aaux%s = Aaux%s / float(n)
+
+      std_state%u = 1.d-15
+      std_state%v = 1.d-15
+      std_state%z = 1.d-15
+      std_state%t = 1.d-15
+      std_state%s = 1.d-15
+      do i = 1,n
+       std_state%u = std_state%u + (A(i)%u - Aaux%u)**2
+       std_state%v = std_state%v + (A(i)%v - Aaux%v)**2
+       std_state%z = std_state%z + (A(i)%z - Aaux%z)**2
+       std_state%t = std_state%t + (A(i)%t - Aaux%t)**2
+       std_state%s = std_state%s + (A(i)%s - Aaux%s)**2
       end do
       std_state%u = sqrt(std_state%u / float(n-1))
       std_state%v = sqrt(std_state%v / float(n-1))
       std_state%z = sqrt(std_state%z / float(n-1))
       std_state%t = sqrt(std_state%t / float(n-1))
       std_state%s = sqrt(std_state%s / float(n-1))
+
+      deallocate(Aaux)
 
    end function std_state
 
@@ -265,6 +286,7 @@ contains
 !-------------------------------------------------------------------
 
    subroutine assign_states(A,r)
+      implicit none
       type(states), intent(out) :: A
       real, intent(in) :: r
        A%u = r
@@ -275,6 +297,7 @@ contains
    end subroutine assign_states
 
    subroutine states4to8(A,B)
+      implicit none
       type(states), intent(out) :: A
       type(states4), intent(in)  :: B
       A%u=DBLE(B%u)
@@ -285,6 +308,7 @@ contains
    end subroutine states4to8
 
    subroutine states8to4(A,B)
+      implicit none
       type(states), intent(in)  :: B
       type(states4),  intent(out) :: A
       A%u=real(B%u)
@@ -327,6 +351,7 @@ contains
    end subroutine pull_qstate
 
    subroutine rtps_inflation(alpha,n,A,Amean,Astdo,Astdn)
+      implicit none
    ! spatially variable rtps mult inflation
 
       real, intent(in) :: alpha
@@ -355,6 +380,7 @@ contains
    end subroutine rtps_inflation
 
    subroutine mult_inflation(alpha,n,A,Amean)
+      implicit none
    ! spatially constant mult inflation
 
       real, intent(in) :: alpha
@@ -379,6 +405,7 @@ contains
 !-------------------------------------------------------------------
 
    subroutine tystate_to_matrix(n,A,Amat)
+      implicit none
       integer, intent(in) :: n
       type(states), intent(in) :: A(n)
       real, intent(out) :: Amat(global_ndim,n)
@@ -398,6 +425,7 @@ contains
    end subroutine tystate_to_matrix
 
    subroutine matrix_to_tystate(n,Amat,A)
+      implicit none
       integer, intent(in) :: n
       real, intent(in) :: Amat(global_ndim,n)
       type(states), intent(out) :: A(n)
@@ -417,6 +445,7 @@ contains
    end subroutine matrix_to_tystate
 
    subroutine tyqstate_to_matrix(n,A,Amat)
+      implicit none
       integer, intent(in) :: n
       type(qstates), intent(in) :: A(n)
       real, intent(out) :: Amat(2*global_ndim,n)
@@ -442,6 +471,7 @@ contains
    end subroutine tyqstate_to_matrix
 
    subroutine matrix_to_tyqstate(n,Amat,A)
+      implicit none
       integer, intent(in) :: n
       real, intent(in) :: Amat(2*global_ndim,n)
       type(qstates), intent(out) :: A(n)

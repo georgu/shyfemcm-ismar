@@ -213,7 +213,7 @@ contains
   type(states4),allocatable :: A4
 
   allocate(A4)
-  A4 = Astate
+  call states8to4(A4,Astate)
   call pull_state(A4)
   call rst_write(trim(filename),atime)
   deallocate(A4)
@@ -233,10 +233,10 @@ contains
 
   allocate(A4)
   Astate = 0.
-  A4 = Astate
+  call states8to4(A4,Astate)
   call rst_read(filename,atime)
   call push_state(A4)
-  Astate = A4
+  call states4to8(Astate,A4)
   deallocate(A4)
 
   end subroutine read_state

@@ -287,7 +287,8 @@ contains
      case (.true.)
           k = kinit
 
- 90       read(26,*,end=100) dstring
+ 90       read(26,*,end=100) dstring,v
+          if (isnan(v)) v = OFLAG
 
           call string2date(trim(dstring),date,time,ierr)
           if (ierr /= 0) error stop "read_scalar_0d: error reading string"
@@ -312,6 +313,7 @@ contains
           k = kinit
 
  91       read(26,*,end=101) dstring,v
+          if (isnan(v)) v = OFLAG
 
           call string2date(trim(dstring),date,time,ierr)
           if (ierr /= 0) error stop "read_scalar_0d: error reading string"
