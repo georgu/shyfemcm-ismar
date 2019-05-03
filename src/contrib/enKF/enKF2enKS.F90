@@ -96,7 +96,9 @@ program enKF2enKS
   call make_mean_std(sdim,nrens,Astate,AmeanKF,AstdKF)
 
   !--- make analysis
-  call make_analysis(atime,sdim,nrens,Astate)
+  ! Results differ for a very small epsilon. 2nd method is much faster.
+  !call make_analysis1(atime,sdim,nrens,Astate)
+  call make_analysis2(atime,sdim,nrens,Astate)
 
   !--- make mean and std of the ensemble Kalman Smoother
   call make_mean_std(sdim,nrens,Astate,AmeanKS,AstdKS)
@@ -351,7 +353,7 @@ end subroutine init_shyfem
 
 !********************************************************
 
-  subroutine make_analysis(atime,sdim,nrens,Amat)
+  subroutine make_analysis1(atime,sdim,nrens,Amat)
   implicit none
   double precision, intent(in) :: atime
   integer, intent(in) :: sdim,nrens
@@ -392,7 +394,60 @@ end subroutine init_shyfem
 
   deallocate(Aaux,X5)
 
-  end subroutine make_analysis
+  end subroutine make_analysis1
+
+!********************************************************
+
+  subroutine make_analysis2(atime,sdim,nrens,Amat)
+  implicit none
+  double precision, intent(in) :: atime
+  integer, intent(in) :: sdim,nrens
+  real, intent(inout) :: Amat(sdim,nrens)
+
+  double precision tt
+  character(len=6) :: alabel
+  character(len=2) :: tag
+  integer nren
+  real, allocatable :: Aaux(:,:),X5(:,:),X5old(:,:),X5aux(:,:)
+  integer n
+
+    allocate(Aaux(sdim,nrens))
+    allocate(X5(nrens,nrens),X5old(nrens,nrens),X5aux(nrens,nrens))
+
+    ! initial set the identity
+    X5old = 0.
+    forall(n = 1:nrens) X5old(n,n) = 1. 
+
+    open(15,status='old',form='unformatted',file='X5_tot.uf')
+ 45 read(15,end=44) tt,alabel,tag
+
+     read(15) nren
+
+     if ((tag == 'X3').or.(nren /= nrens)) then
+        error stop 'Error reading X5_tot.uf.'
+     end if
+
+     read(15) X5
+
+     if (tt >= atime) then
+	X5aux = 0.
+	! This way should be fine (as used in Geir's code)
+	call dgemm('n','n',nrens,nrens,nrens,1.0,X5old,nrens,X5,nrens,0.0,X5aux,nrens)
+	X5old = X5aux
+     end if
+
+     goto 45
+
+ 44 close(15)
+
+    Aaux = 0.0
+    call dgemm('n','n',sdim,nrens,nrens,1.0,Amat,sdim,X5old,nrens,0.0,Aaux,sdim)
+    Amat = Aaux
+
+    deallocate(Aaux,X5,X5old,X5aux)
+
+  end subroutine make_analysis2
+
 
 !********************************************************
 
