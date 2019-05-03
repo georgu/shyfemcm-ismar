@@ -9,7 +9,7 @@ module mod_init_enkf
   integer :: nrens, nanal
   character (len=80) :: basfile, obsfile
   character (len=80) :: ostring
-  double precision :: atime
+  double precision :: atime_an
   integer :: bnew_ens
   integer :: mode_an
 
@@ -27,7 +27,7 @@ contains
   open(20, file='analysis.info', status='old')
 
   read(20,*) nrens	! number of ens members
-  read(20,*) nanal		! analysis step
+  read(20,*) nanal	! analysis step
   read(20,*) basfile	! name of bas file (no extension)
   read(20,*) ostring	! current time of the observations, string format
   read(20,*) obsfile	! name of obs file list
@@ -41,10 +41,10 @@ contains
 
   call string2date(trim(ostring),date,time,ierr)
   if (ierr /= 0) error stop 'read_info: invalid date string'
-  call dts_to_abs_time(date,time,atime)
+  call dts_to_abs_time(date,time,atime_an)
 
   write(*,*) 'time of the analysis step: ',trim(ostring)
-  write(*,*) 'absolute time: ',atime
+  write(*,*) 'absolute time: ',atime_an
   write(*,*) 'n. of ens members: ',nrens
   write(*,*) 'ensemble state creation: ',bnew_ens
   write(*,*) 'mode of simulation: ',mode_an

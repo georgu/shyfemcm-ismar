@@ -1,0 +1,418 @@
+!
+! Copyright (C) 2017, Marco Bajo, CNR-ISMAR Venice, All rights reserved.
+!
+!------------------------------------------------------------------------------
+! Convert a enKF simulation saved in rst format into a enKS analysis.
+!------------------------------------------------------------------------------
+! This program needs a rst file with the background of the KF run and
+! the "X5_tot.uf" file, which contains the X5 matrix at each timestep
+!------------------------------------------------------------------------------
+program enKF2enKS
+
+  use basin
+  use levels, only : nlv
+  implicit none
+
+  character(len=4) :: arg1
+  character(len=80) :: arg2
+  character(len=16) :: enfile
+  integer nrens,nre
+  character(len=3) :: nrel
+  integer ierr
+  double precision atime
+  integer fid
+  real, allocatable :: Astate(:,:),AmeanKF(:),AstdKF(:),AmeanKS(:),AstdKS(:)
+  integer rrec,sdim
+
+  ! read number of ens member from input
+  call get_command_argument(1, arg1)
+  call get_command_argument(2, arg2)
+  if ((trim(arg2) /= 'norm').and.(trim(arg2) /= 'full')) then
+	  write(*,*) ''
+	  write(*,*) 'Usage: enKF2enKS [nrens] [output]'
+	  write(*,*) ''
+	  write(*,*) '[nrens] is the n. of ens members, control included.'
+	  write(*,*) '[output] full (full) or just mean and std (norm).'
+	  write(*,*) ''
+	  stop
+  end if
+  read(arg1,*) nrens
+  if (nrens <= 0) error stop 'enKF2enKS: not a valid nrens number'
+
+  !--- init variables
+  call init_shyfem
+  call add_rst_params
+
+  !--- open rst files  
+  do nre = 1,nrens
+     fid = 20 + nre
+     call num2str(nre-1,nrel)
+     enfile = 'backKF_en'//nrel//'.rst'
+     open(fid,file=enfile,status='old',form='unformatted',iostat=ierr)
+     if (ierr /= 0) error stop 'enKF2enKS: error opening file'
+  end do
+
+  if (trim(arg2) == 'full') then
+    write(*,*) 'Writing the full output'
+    do nre = 1,nrens
+       fid = 20 + nrens + nre
+       call num2str(nre-1,nrel)
+       enfile = 'analKS_en'//nrel//'.rst'
+       open(fid,file=enfile,status='unknown',form='unformatted')
+    end do
+  end if
+
+  open(16,file='backKF_mean.rst',status='unknown',form='unformatted')
+  open(17,file='backKF_std.rst',status='unknown',form='unformatted')
+  open(18,file='analKS_mean.rst',status='unknown',form='unformatted')
+  open(19,file='analKS_std.rst',status='unknown',form='unformatted')
+
+
+  !--------------------------- loop on time records
+  rrec = 0
+ 89 continue  
+
+  !--- read ensemble
+  do nre = 1,nrens
+     fid = 20 + nre
+     call rst_read_record(fid,atime,ierr)
+     if (ierr == -1) goto 90
+     if (ierr > 0) goto 91
+
+     if (.not. allocated(Astate)) then
+	 sdim = nkn + 2*nlv*nel + 2*nlv*nkn
+	 allocate(Astate(sdim,nrens))
+	 allocate(AmeanKF(sdim),AmeanKS(sdim))
+	 allocate(AstdKF(sdim),AstdKS(sdim))
+	 Astate = 0.0
+     end if
+
+     call push_matrix(sdim,nrens,nre,Astate)
+  end do
+
+
+
+  !--- make mean and std of the ensemble Kalman Filter
+  call make_mean_std(sdim,nrens,Astate,AmeanKF,AstdKF)
+
+  !--- make analysis
+  call make_analysis(atime,sdim,nrens,Astate)
+
+  !--- make mean and std of the ensemble Kalman Smoother
+  call make_mean_std(sdim,nrens,Astate,AmeanKS,AstdKS)
+
+
+
+  !--- write means and stds
+  call pull_state(sdim,AmeanKF)
+  call rst_write_rec(16,atime)
+  call pull_state(sdim,AstdKF)
+  call rst_write_rec(17,atime)
+  call pull_state(sdim,AmeanKS)
+  call rst_write_rec(18,atime)
+  call pull_state(sdim,AstdKS)
+  call rst_write_rec(19,atime)
+
+  !--- write ensemble 
+  if (trim(arg2) == 'full') then
+    do nre = 1,nrens
+       fid = 20 + nrens + nre
+       call pull_matrix(sdim,nrens,nre,Astate)
+       call rst_write_rec(fid,atime)
+    end do
+  end if
+
+  rrec = rrec + 1
+  write(*,*) 'N. of record: ',rrec
+
+ goto 89
+  !--------------------------- end loop on time records
+
+  !--- close rst files
+ 90 continue
+  do nre = 1,nrens
+     fid = 20 + nre
+     close(fid)
+  end do
+
+  if (trim(arg2) == 'full') then
+    do nre = 1,nrens
+       fid = 20 + nrens + nre
+       close(fid)
+    end do
+  end if
+  close(16)
+  close(17)
+  close(18)
+  close(19)
+
+  stop
+
+ 91 error stop 'enKF2enKS error reading file'
+
+end program enKF2enKS
+
+
+!*******************************************************************
+!*******************************************************************
+
+!*******************************************************************
+
+subroutine num2str(num,str)
+
+  implicit none
+
+  integer, intent(in) :: num
+  character(len=3), intent(out) :: str
+
+  if ((num >= 0).and.(num < 10)) then
+    write(str,'(a2,i1)') '00',num
+  elseif ((num >= 10).and.(num < 100)) then
+    write(str,'(a1,i2)') '0',num
+  elseif ((num >= 100).and.(num < 1000)) then
+    write(str,'(i3)') num
+  else
+    error stop 'num2str: num out of range'
+  end if
+
+end subroutine num2str
+
+!*******************************************************************
+
+subroutine push_matrix(sdim,nrens,nre,Amat)
+  ! the sequence is: u,v,z,t,s
+  use basin
+  use levels, only : nlv
+  use mod_hydro
+  use mod_hydro_vel
+  use mod_ts
+  use mod_conz
+
+  implicit none
+
+  integer, intent(in) :: sdim,nrens,nre
+  real, intent(inout) :: Amat(sdim,nrens)
+
+  integer dimz,dimuv,dimts
+
+  dimz = nkn
+  dimuv = nlv*nel
+  dimts = nlv*nkn
+
+  Amat(1:dimuv,nre) = reshape(dble(utlnv),(/dimuv/))
+  Amat(dimuv+1:2*dimuv,nre) = reshape(dble(vtlnv),(/dimuv/))
+  Amat(2*dimuv+1:2*dimuv+dimz,nre) = dble(znv)
+  Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,nre) = reshape(dble(tempv),(/dimts/))
+  Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,nre) = reshape(dble(saltv),(/dimts/))
+
+end subroutine push_matrix
+
+!*******************************************************************
+
+subroutine pull_matrix(sdim,nrens,nre,Amat)
+  ! the sequence is: u,v,z,t,s
+  use basin
+  use levels, only : nlv
+  use mod_hydro
+  use mod_hydro_vel
+  use mod_ts
+  use mod_conz
+
+  implicit none
+
+  integer, intent(in) :: sdim,nrens,nre
+  real, intent(in) :: Amat(sdim,nrens)
+
+  integer dimz,dimuv,dimts
+
+  dimz = nkn
+  dimuv = nlv*nel
+  dimts = nlv*nkn
+
+  utlnv = reshape(real(Amat(1:dimuv,nre)),(/nlv,nel/))
+  vtlnv = reshape(real(Amat(dimuv+1:2*dimuv,nre)),(/nlv,nel/))
+  znv = real(Amat(2*dimuv+1:2*dimuv+dimz,nre))
+  tempv = reshape(real(Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,nre)),(/nlv,nkn/))
+  saltv = reshape(real(Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,nre)),(/nlv,nkn/))
+
+end subroutine pull_matrix
+
+!*******************************************************************
+
+subroutine pull_state(nvec,Avec)
+  ! the sequence is: u,v,z,t,s
+  use basin
+  use levels, only : nlv
+  use mod_hydro
+  use mod_hydro_vel
+  use mod_ts
+  use mod_conz
+
+  implicit none
+
+  integer, intent(in) :: nvec
+  real, intent(in) :: Avec(nvec)
+
+  integer dimz,dimuv,dimts
+
+  dimz = nkn
+  dimuv = nlv*nel
+  dimts = nlv*nkn
+
+  utlnv = reshape(real(Avec(1:dimuv)),(/nlv,nel/))
+  vtlnv = reshape(real(Avec(dimuv+1:2*dimuv)),(/nlv,nel/))
+  znv = real(Avec(2*dimuv+1:2*dimuv+dimz))
+  tempv = reshape(real(Avec(2*dimuv+dimz+1:2*dimuv+dimz+dimts)),(/nlv,nkn/))
+  saltv = reshape(real(Avec(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts)),(/nlv,nkn/))
+
+end subroutine pull_state
+
+!********************************************************
+
+subroutine rst_write_rec(fid,atimea)
+
+  use mod_restart
+  use levels, only : hlv
+
+  implicit none
+
+  integer, intent(in) :: fid
+  double precision, intent(in) :: atimea
+  real*4 :: svar
+
+  ! adds parameters
+  !
+  svar = float(ibarcl_rst)
+  call putpar('ibarcl',svar)
+  svar = float(iconz_rst)
+  call putpar('iconz',svar)
+  svar = 0.
+  call putpar('ibfm',svar)
+
+  ! In 2D barotropic hlv is set to 10000.
+  !
+  if (size(hlv) == 1) hlv = 10000.
+
+  call rst_write_record(atimea,fid)
+
+end subroutine rst_write_rec
+
+!********************************************************
+
+subroutine init_shyfem
+
+  use basin
+  use mod_restart
+  use mod_geom_dynamic
+  use levels
+  use mod_hydro
+  use mod_hydro_vel
+  use mod_ts
+  use mod_conz
+
+  implicit none
+
+  double precision atime
+  integer nvers,nrec,iflag,ierr
+
+  open(14,file='backKF_en000.rst',status='old',form='unformatted',iostat=ierr)
+  if (ierr /= 0) error stop 'enKF2enKS: error opening file'
+  call rst_skip_record(14,atime,nvers,nrec,nkn,nel,nlv,iflag,ierr)
+  close(14)
+
+  if (.not. allocated(hm3v)) allocate(hm3v(3,nel))
+
+  call mod_geom_dynamic_init(nkn,nel)
+  call mod_hydro_init(nkn,nel,nlv)
+  call mod_hydro_vel_init(nkn,nel,nlv)
+  call mod_ts_init(nkn,nlv)
+  if (iconz_rst > 0) call mod_conz_init(iconz_rst,nkn,nlv)
+  call levels_init(nkn,nel,nlv)
+
+end subroutine init_shyfem
+
+!********************************************************
+
+  subroutine add_rst_params
+
+  use mod_restart
+
+  implicit none
+  real*4 :: zero = 0.
+  double precision :: zzero = 0.
+
+  call addpar('ibarcl',float(ibarcl_rst))
+  call addpar('iconz',float(iconz_rst))
+  call addpar('ibfm',zero)
+  call daddpar('date',zzero)
+  call daddpar('time',zzero)
+
+  end subroutine add_rst_params
+
+!********************************************************
+
+  subroutine make_analysis(atime,sdim,nrens,Amat)
+  implicit none
+  double precision, intent(in) :: atime
+  integer, intent(in) :: sdim,nrens
+  real, intent(inout) :: Amat(sdim,nrens)
+
+  double precision tt
+  character(len=6) :: alabel
+  character(len=2) :: tag
+  integer nren
+  real, allocatable :: Aaux(:,:),X5(:,:)
+
+    allocate(Aaux(sdim,nrens))
+    allocate(X5(nrens,nrens))
+
+
+    open(15,status='old',form='unformatted',file='X5_tot.uf')
+ 45 read(15,end=44) tt,alabel,tag
+
+     read(15) nren
+
+     if ((tag == 'X3').or.(nren /= nrens)) then
+        error stop 'Error reading X5_tot.uf.'
+     end if
+
+     read(15) X5
+
+     Aaux = 0.0
+     if (tt >= atime) then
+        !Aaux = matmul(Amat,X5)
+	! This way should be fine (as used in Geir's code)
+	call dgemm('n','n',sdim,nrens,nrens,1.0,Amat,sdim,X5,nrens,0.0,Aaux,sdim)
+	Amat = Aaux
+     end if
+
+     goto 45
+
+ 44 close(15)
+
+  deallocate(Aaux,X5)
+
+  end subroutine make_analysis
+
+!********************************************************
+
+  subroutine make_mean_std(ndim,nens,Amat,Am,Astd)
+  implicit none
+
+  integer, intent(in) :: ndim,nens
+  real, intent(in) :: Amat(ndim,nens)
+  real, intent(out) :: Am(ndim),Astd(ndim)
+  real esum,esumsq
+  integer n
+
+  if (nens < 2) error stop 'Ensemble too small'
+
+  do n = 1,ndim
+     esum = sum(Amat(n,:))
+     esumsq = sum(Amat(n,:)*Amat(n,:))
+     Am(n) = esum / dble(nens)
+     Astd(n) = sqrt( (esumsq - esum*esum/dble(nens)) / (dble(nens) - 1.) )
+  end do
+
+  end subroutine make_mean_std
+

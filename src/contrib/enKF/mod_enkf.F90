@@ -74,7 +74,6 @@ contains
 !********************************************************
 
   subroutine fill_scalar_0d(olabel,nfile,nook,ostate)
-		!olabel,linit,filin,eps,kinit,kend,oatime,xv,yv,zv,vv,stdvv,ostatusv
 
   implicit none
 
@@ -96,7 +95,7 @@ contains
 
      ! create a white/red noise random vector with mean 0 and std 1
      !
-     call make_0Dpert(olabel,nrens,nanal,ostate(nf)%id,pvec,atime,TTAU_0D)
+     call make_0Dpert(olabel,nrens,nanal,ostate(nf)%id,pvec,atime_an,TTAU_0D)
 
      ! next if the observation is not good
      !
@@ -183,8 +182,8 @@ contains
      
     ! create a white/red noise random vector with mean 0 and std 1
     !
-    call make_0Dpert('2DVEL',nrens,nanal,o2dvel(nf)%id,pvec1,atime,TTAU_2D)
-    call make_0Dpert('2DVEL',nrens,nanal,o2dvel(nf)%id,pvec2,atime,TTAU_2D)
+    call make_0Dpert('2DVEL',nrens,nanal,o2dvel(nf)%id,pvec1,atime_an,TTAU_2D)
+    call make_0Dpert('2DVEL',nrens,nanal,o2dvel(nf)%id,pvec2,atime_an,TTAU_2D)
 
     do iy = 1,o2dvel(nf)%ny
     do ix = 1,o2dvel(nf)%nx

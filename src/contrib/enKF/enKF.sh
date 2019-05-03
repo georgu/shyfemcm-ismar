@@ -23,8 +23,7 @@ SIMDIR=$(pwd)		# current dir
 
 Usage()
 {
-  echo "Usage: enKF.sh [n. of threads] [conf-file] [iclean]"
-  echo "iclean = 1 to remove rst, inf, log, str intermediate files"
+  echo "Usage: enKF.sh [n. of threads] [conf-file]"
   exit 0
 }
 
@@ -74,21 +73,25 @@ Read_conf()
   do
 
      # Name of the bas file
-     if [ $nrows = 0 ]; then
+     if [ "$nrows" -eq "0" ]; then
         bas_file=$line
         Check_file $bas_file
 
      # Dimension of the state vector: nkn nel nlv
-     elif [ $nrows = 1 ]; then
+     elif [ "$nrows" -eq "1" ]; then
         sdim=$line
         
+     # idtrst
+     elif [ "$nrows" -eq "2" ]; then
+        idtrst=$line
+
      # If 1 makes a new ens of initial states from 1
-     elif [ $nrows = 2 ]; then
+     elif [ "$nrows" -eq "3" ]; then
         is_new_ens=$line
         Check_num 0 1 'int' $is_new_ens
 
      # If 1 uses an augmented state with the model errors
-     elif [ $nrows = 3 ]; then
+     elif [ "$nrows" -eq "4" ]; then
         is_mod_err=$line
         Check_num 0 1 'int' $is_mod_err
 
@@ -167,7 +170,7 @@ Read_ens_list(){
   nrens=$nrow
   echo ""; echo "Number of ensemble members: $nrens"; echo ""
 
-  if [ $is_new_ens == 1 ] && [ $nrow != 1 ]; then
+  if [ "$is_new_ens" -eq "1" ] && [ "$nrow" -ne "1" ]; then
      echo "Error in the number of ens files: $nrow != 1"
      exit 1
   fi
@@ -196,7 +199,7 @@ Read_an_time_list(){
 
 SkelStr(){
 # Makes a str file from a skel file
-inamesim=$1; iitanf=$2; iitend=$3; irestrt=$4; iskelname=$5; istrname=$6
+inamesim=$1; iitanf=$2; iitend=$3; irestrt=$4; iidtrst=$5; iskelname=$6; istrname=$7
 
 if [ ! -s $iskelname ]; then
         echo "File $iskelname does not exist"
@@ -205,6 +208,7 @@ fi
 
 cat $iskelname | sed -e "s/NAMESIM/$inamesim/g" |  sed -e "s/ITANF/$iitanf/g" \
                | sed -e "s/ITEND/$iitend/g" | sed -e "s/RESTRT/$irestrt/" \
+               | sed -e "s/IDTRST/$iidtrst/" \
                >  $istrname
 }
 
@@ -240,7 +244,7 @@ nanl=$(printf "%03d" $1)
 
 cd $SIMDIR
 $FEMDIR/enKF/enkf_analysis
-if [ $? -ne 0 ]; then
+if [ "$?" -ne "0" ]; then
           echo "Errors while running enkf_analysis."
           exit 1
 fi
@@ -264,7 +268,7 @@ Make_ens_str(){
 strfiles=""
 for (( ne = 0; ne < $nrens; ne++ )); do
 
-   if [ $is_new_ens == 0 ]; then
+   if [ "$is_new_ens" -eq "0" ]; then
       ens_skel_file=${skel_file[$ne]}
    else
       ens_skel_file=${skel_file[0]}
@@ -276,7 +280,7 @@ for (( ne = 0; ne < $nrens; ne++ )); do
 
    itanf=${timeo[$na]}
 
-   if [ $na != $nran ]; then
+   if [ "$na" -ne "$nran" ]; then
         name_sim="an${naal}_en${nel}b"
 	itend=${timeo[$naa]}
    else
@@ -288,7 +292,7 @@ for (( ne = 0; ne < $nrens; ne++ )); do
 
    rstfile="an${nal}_en${nel}a.rst"; strnew="${name_sim}.str"
 
-   SkelStr $name_sim $itanf $itend $rstfile $ens_skel_file $strnew
+   SkelStr $name_sim $itanf $itend $rstfile $idtrst $ens_skel_file $strnew
    strfiles="$strfiles $strnew"
 
 done
@@ -301,10 +305,9 @@ done
 #----------------------------------------------------------
 #----------------------------------------------------------
 
-if [ $3 ]; then
+if [ $2 ]; then
    nthreads=$1
    Read_conf $2
-   iclean=$3
 else
    Usage
 fi
@@ -325,7 +328,7 @@ Read_ens_list
 Read_an_time_list
 
 # Assimilation cycle for every analysis time step
-rm -f X5*.uf	# old EnKs files
+rm -f X5*.uf backKF_en*.rst analKF_en*.rst	# old files
 for (( na = 1; na <= $nran; na++ )); do
 
    # make the analysis
@@ -336,29 +339,33 @@ for (( na = 1; na <= $nran; na++ )); do
    # Makes nrens str files for the simulations
    Make_ens_str
 
-   if [ $na != $nran ]; then # not the last one
+   if [ "$na" -ne "$nran" ]; then # not the last one
 
       # run nrens sims before the obs
       echo; echo "       running $nrens ensemble simulations..."
 
       # with nthreads=0 uses the maximum number
       export -f Make_sim
-      #parallel --no-notice -j -k $nthreads Make_sim ::: $strfiles ::: $FEMDIR/fem3d
       parallel --no-notice -P $nthreads Make_sim ::: $strfiles ::: $FEMDIR/fem3d
-
-      # Remove old files
-      if [ $iclean = 1 ]; then
-	echo "removing some old files"
-	naold=$((na - 1))
-	nal=$(printf "%03d" $naold)
-	rm -f an${nal}_en*.log
-	rm -f an${nal}_en*.inf
-	rm -f an${nal}_en*.rst
-	rm -f an${nal}_en*.str
-      fi
 
    fi
 
+   # merge the rst files
+   for (( ne = 0; ne < $nrens; ne++ )); do
+        nel=$(printf "%03d" $ne)
+	nanl=$(printf "%03d" $na)
+        filename1="an${nanl}_en${nel}b.rst"
+        filename2="an${nanl}_en${nel}a.rst"
+        Check_file $filename1
+        Check_file $filename2
+	[[ "$na" -gt "1" ]] && cat $filename1 >> backKF_en$nel.rst
+	cat $filename2 >> analKF_en$nel.rst
+	rm -f $filename1 $filename2
+   done
+
 done
+
+# remove some files
+rm -f an*_en*b.str an*_en*.inf an*_en*.log X5col.dat X5row.dat X5.uf make.log
 
 exit 0

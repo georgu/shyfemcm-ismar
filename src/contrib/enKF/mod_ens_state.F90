@@ -87,7 +87,7 @@ contains
    do ne = 1,nrens
       call num2str(ne-1,nrel)
       rstname='an'//nal//'_'//'en'//nrel//'b.rst'
-      call rst_read(rstname,atime) !This is to load var not present 
+      call rst_read(rstname,atime_an) !This is to load var not present 
                                    ! in the ens state. It should be removed.
 
       rstname='an'//nal//'_'//'en'//nrel//'a.rst'
@@ -150,18 +150,18 @@ contains
   character(len=80) :: filinm,filins
 
   call num2str(na,nal)
-  filinm = 'an'//nal//'_mean_'//tflag//'.rst'
-  filins = 'an'//nal//'_std_'//tflag//'.rst'
+  !filinm = 'an'//nal//'_mean_'//tflag//'.rst'
+  !filins = 'an'//nal//'_std_'//tflag//'.rst'
 
   Ashy_m = mean_state(nrens,Ashy)
-  call write_state(Ashy_m,filinm)
+  !call write_state(Ashy_m,filinm)
 
   if (tflag == 'a') then
      Ashy_stda = std_state(nrens,Ashy)
-     call write_state(Ashy_stda,filins)
+     !call write_state(Ashy_stda,filins)
   else
      Ashy_stdb = std_state(nrens,Ashy)
-     call write_state(Ashy_stdb,filins)
+     !call write_state(Ashy_stdb,filins)
   end if
 
   end subroutine make_mean_std
@@ -215,7 +215,7 @@ contains
   allocate(A4)
   call states8to4(A4,Astate)
   call pull_state(A4)
-  call rst_write(trim(filename),atime)
+  call rst_write(trim(filename),atime_an)
   deallocate(A4)
 
   end subroutine write_state
@@ -234,7 +234,7 @@ contains
   allocate(A4)
   Astate = 0.
   call states8to4(A4,Astate)
-  call rst_read(filename,atime)
+  call rst_read(filename,atime_an)
   call push_state(A4)
   call states4to8(Astate,A4)
   deallocate(A4)
@@ -252,10 +252,10 @@ contains
  
     type(states4),intent(inout) :: A4
 
-    A4%z = znv
     ! no significant differences by using currents rather than transports
     A4%u = utlnv
     A4%v = vtlnv
+    A4%z = znv
     A4%t = tempv
     A4%s = saltv
    
@@ -272,10 +272,10 @@ contains
  
     type(states4),intent(in) :: A4
 
-    znv = A4%z
     ! no significant differences by using currents rather than transports
     utlnv = A4%u
     vtlnv = A4%v
+    znv = A4%z
     tempv = A4%t
     saltv = A4%s
 

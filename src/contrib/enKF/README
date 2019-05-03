@@ -30,6 +30,19 @@ EvKF		Geir Evenseen's code used for the analysis and
 		for generating perturbations.
 
 
+How it works
+===================
+Data assimilation allows you to use observations to improve the model
+simulation. The period where you have observations is defined as "assimilation
+window". It's better to have a restart before this period with a record
+corresponding to the time of the first observation. Then you need also an
+ensemble of simulations which should express the uncertainty of your modelling
+application. You can obtain this by varying the forcings and/or boundary
+conditions of each ensemble member (see the program make_ens_meteo.f for example). 
+Remember that the mean of the ensemble should be centred and near to an unperturbed 
+simulation. You have also to prepare the observations in the right format and to 
+follow carefully the instructions below...
+
 
 Compiling the code
 ===================
@@ -52,21 +65,32 @@ sudo apt-get update && apt-get install parallel liblapack-dev
 Run the code
 ===================
 
-Run ./enKF.sh without arguments to see the help.
-In order to run the program some files must be prepared:
+Run:
+
+./enKF.sh [n. of threads] [conf-file]
+
+Then if you want to do the Kalman Smoother analysis:
+
+./enKF2enKS [nrens] [output]
+
+
+Some files must be prepared before running enKF.sh:
 
 ----------
-setting file
+Configuration file
 ----------
 This file must contain the following information in different lines:
 - Name of the bas-file with the bas extension;
 - Dimension of the model state (nkn nel nlv);
+- Time step for the restart files (remember rst files can be converted into shy
+  files). Use -1 to set the minimum number of steps or use a value in seconds.
+  However, you must have a restart record at every analysis times, so if you are in
+  doubt use -1;
 - Initial ensemble: 0 for an ensemble loaded from files (suggested), 1 to
-  create an ensemble from a state (just z level is perturbed).
+  create an ensemble from a state (to be tested - just z level is perturbed).
   With 1 make also a file named "init_ens.info", as described below;
-- Analysis mode: 0 normal mode; 1 with model error; 2 with model parameters.
-  If 1 make a file "mod_err.info", described below;
-  If 2 TODO.
+- Model error mode: 0 normal mode; 1 with model error; 2 with model parameters.
+  If 1 make a file "mod_err.info", described below.
 
 ----------
 ens_list.txt
@@ -86,7 +110,6 @@ String format has the same convention used in SHYFEM model (e.g., YYYY-MM-DD::HH
 obs_list.txt
 ----------
 A list of files containing in each line:
-- an identification number of the file (e.g., 1,2,3);
 - a flag of the type of observation;
 - the name of the file.
 
@@ -138,7 +161,7 @@ It's extremely important that you set the following strings in the skel files:
   itanf = 'ITANF'
   itend = 'ITEND'
   itrst = 'ITANF'
-  idtrst = -1
+  idtrst = IDTRST	(no quotation marks)
 
 - Section name:
   restrt = 'RESTRT'

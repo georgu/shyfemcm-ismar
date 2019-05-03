@@ -141,12 +141,12 @@ program enKF_analysis
     !call analysis_nel
      
     ! save a total X5 for enKS
-    !call save_X5('local',atime) !TODO
+    !call save_X5('local',atime_an,global_ndim) !TODO
 
    case default  ! no local analysis
        
     ! save a total X5 for enKS
-    call save_X5('global',atime)
+    call save_X5('global',atime_an,global_ndim)
 
   end select
    

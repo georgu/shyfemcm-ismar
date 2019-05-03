@@ -78,6 +78,10 @@ make_eof_ens_meteo: make_EvKF
 	$(LINKER) $(LFLAGS) $@.o $(LIBS) $(LIBDIR)/libfem.a  -llapack -lblas \
 	-o $@
 
+enKF2enKS: enKF2enKS.o 
+	$(LINKER) $(LFLAGS) $(LIBS) $(HTOBJS) $@.o \
+	$(LIBDIR)/libfem.a -o $@
+
 #--------------------
 #--------------------
 EXES = enkf_analysis make_ens_meteo  make_eof_ens_meteo

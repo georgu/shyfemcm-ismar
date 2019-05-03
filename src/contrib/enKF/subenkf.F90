@@ -20,7 +20,7 @@
   call mod_hydro_init(nk,ne,nl)
   call mod_hydro_vel_init(nk,ne,nl)
   call mod_ts_init(nk,nl)  
-  !call mod_conz_init(iconz_rst,nk,nl)
+  if (iconz_rst > 0) call mod_conz_init(iconz_rst,nk,nl)
   call levels_init(nk,ne,nl)
 
   nlvdi = nl
@@ -38,8 +38,8 @@
   real*4 :: zero = 0.
   double precision :: zzero = 0.
   
-  call addpar('ibarcl',zero)
-  call addpar('iconz',zero)
+  call addpar('ibarcl',real(ibarcl_rst))
+  call addpar('iconz',real(iconz_rst))
   call addpar('ibfm',zero)
   call daddpar('date',zzero)
   call daddpar('time',zzero)
@@ -48,24 +48,23 @@
 
 !********************************************************
 
-  subroutine rst_read(rstname,aatime)
+  subroutine rst_read(rstname,atimea)
 
   implicit none
 
   character(len=*), intent(in) :: rstname
-  double precision, intent(in) :: aatime
+  double precision, intent(in) :: atimea
 
-  integer io
   integer ierr
   double precision atimef
 
 
-  open(24,file=trim(rstname),status='old',form='unformatted',iostat=io)
-  if (io /= 0) error stop 'rst_read: Error opening file'
+  open(24,file=trim(rstname),status='old',form='unformatted',iostat=ierr)
+  if (ierr /= 0) error stop 'rst_read: Error opening file'
 
  89  call rst_read_record(24,atimef,ierr)
      if (ierr /= 0) goto 90
-     if (atimef /= aatime) goto 89
+     if (atimef /= atimea) goto 89
 
   close(24)
 
@@ -80,7 +79,7 @@
 
 !********************************************************
 
-  subroutine rst_write(rstname,aatime)
+  subroutine rst_write(rstname,atimea)
 
   use mod_restart
   use levels, only : hlv
@@ -88,7 +87,7 @@
   implicit none
 
   character(len=*), intent(in) :: rstname
-  double precision, intent(in) :: aatime
+  double precision, intent(in) :: atimea
   real*4 :: svar
 
   ! adds parameters
@@ -105,7 +104,7 @@
   if (size(hlv) == 1) hlv = 10000.
 
   open(34,file=rstname,form='unformatted')
-  call rst_write_record(aatime,34)
+  call rst_write_record(atimea,34)
   close(34)
 
   end subroutine rst_write
@@ -491,11 +490,12 @@
 
 !********************************************************
 
-  subroutine save_X5(alabel,tt)
+  subroutine save_X5(alabel,tt,ndim)
 
   implicit none
   character, intent(in) :: alabel*6
   double precision, intent(in) :: tt
+  integer, intent(in) :: ndim
 
   integer :: nrens
   integer :: nrobs

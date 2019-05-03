@@ -238,7 +238,7 @@ contains
 
 !******************************************************
 
-  subroutine read_scalar_0d(olabel,linit,filin,eps,kinit,kend,oatime,xv,yv,zv,vv,stdvv,ostatusv)
+  subroutine read_scalar_0d(olabel,linit,filin,eps,kinit,kend,atime_obs,xv,yv,zv,vv,stdvv,ostatusv)
 
   use iso8601
   implicit none
@@ -249,7 +249,7 @@ contains
   double precision, intent(in) :: eps
   integer, intent(in)          :: kinit
   integer, intent(out)         :: kend
-  double precision, intent(out):: oatime
+  double precision, intent(out):: atime_obs
   real, intent(out)            :: xv,yv,zv,vv,stdvv
   integer, intent(out)         :: ostatusv
   integer ios
@@ -292,11 +292,11 @@ contains
 
           call string2date(trim(dstring),date,time,ierr)
           if (ierr /= 0) error stop "read_scalar_0d: error reading string"
-          call dts_to_abs_time(date,time,oatime)
+          call dts_to_abs_time(date,time,atime_obs)
 
-          ! Take only records with times near atime
+          ! Take only records with times near atime_an
           !
-          if (abs(oatime - atime) < eps) then
+          if (abs(atime_obs - atime_an) < eps) then
              ostatus = 0
              ! check if the obs value is out of range
              !
@@ -317,12 +317,12 @@ contains
 
           call string2date(trim(dstring),date,time,ierr)
           if (ierr /= 0) error stop "read_scalar_0d: error reading string"
-          call dts_to_abs_time(date,time,oatime)
+          call dts_to_abs_time(date,time,atime_obs)
 
           ostatus = 4
-          ! Take only records with times near atime
+          ! Take only records with times near atime_an
           !
-          if (abs(oatime - atime) < eps) then
+          if (abs(atime_obs - atime_an) < eps) then
              ostatus = 0
              ! check if the obs value is out of range
              !
@@ -380,7 +380,7 @@ contains
   logical bdata
   real x,y,uu,vv,ostd
   integer ix,iy
-  double precision oatime
+  double precision atime_obs
 
   nobs = 0
 
@@ -406,7 +406,7 @@ contains
     call fem_file_read_params(iformat,iunit,tt,nvers,np,lmax,nvar,ntype,datetime,ierr)
     if (ierr < 0) exit
 
-    call dts_convert_to_atime(datetime,tt,oatime)
+    call dts_convert_to_atime(datetime,tt,atime_obs)
 
     allocate(hhlv(lmax))
     nlvddi = lmax
@@ -422,7 +422,7 @@ contains
 
     if (flag /= OFLAG) error stop 'read_2dvel: bad flag'
 
-    if (abs(oatime - atime) > eps) then
+    if (abs(atime_obs - atime_an) > eps) then
        do i=1,nvar
           call fem_file_skip_data(iformat,iunit,nvers,np,lmax,string,ierr)
           if (ierr /= 0) error stop 'read_2dvel: error reading file'
