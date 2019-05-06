@@ -148,7 +148,7 @@ Read_ens_list(){
 # Reads the list of skel and restart files of the ensemble
   echo "Reading the ensemble list"
 
-  rm -f an001_en*b.rst
+  rm -f an00001_en*b.rst
 
   nrow=0
   while read line
@@ -160,8 +160,8 @@ Read_ens_list(){
 
      skel_file[$nrow]=$skelf
 
-     nel=$(printf "%03d" $nrow)
-     ln -fs $rstf an001_en${nel}b.rst
+     nel=$(printf "%05d" $nrow)
+     ln -fs $rstf an00001_en${nel}b.rst
 
      nrow=$((nrow + 1))
 
@@ -240,7 +240,7 @@ Write_info_file(){
 
 Run_ensemble_analysis()
 {
-nanl=$(printf "%03d" $1)
+nanl=$(printf "%05d" $1)
 
 cd $SIMDIR
 $FEMDIR/enKF/enkf_analysis
@@ -251,7 +251,7 @@ fi
 
 # Check restart files
 for (( ne = 0; ne < $nrens; ne++ )); do
-	nensl=$(printf "%03d" $nens)
+	nensl=$(printf "%05d" $nens)
 	filename="an${nanl}_en${nensl}a.rst"
 	Check_file $filename
 done
@@ -275,8 +275,8 @@ for (( ne = 0; ne < $nrens; ne++ )); do
    fi
    Check_file $ens_skel_file
 
-   nel=$(printf "%03d" $ne); nal=$(printf "%03d" $na)
-   naa=$((na + 1)); naal=$(printf "%03d" $naa)
+   nel=$(printf "%05d" $ne); nal=$(printf "%05d" $na)
+   naa=$((na + 1)); naal=$(printf "%05d" $naa)
 
    itanf=${timeo[$na]}
 
@@ -352,8 +352,8 @@ for (( na = 1; na <= $nran; na++ )); do
 
    # merge the rst files
    for (( ne = 0; ne < $nrens; ne++ )); do
-        nel=$(printf "%03d" $ne)
-	nanl=$(printf "%03d" $na)
+        nel=$(printf "%05d" $ne)
+	nanl=$(printf "%05d" $na)
         filename1="an${nanl}_en${nel}b.rst"
         filename2="an${nanl}_en${nel}a.rst"
         Check_file $filename1

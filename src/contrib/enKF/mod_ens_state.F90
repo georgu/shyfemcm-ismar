@@ -22,8 +22,8 @@ contains
 
    implicit none
 
-   character(len=3) :: nrel,nal
-   character(len=16) rstname
+   character(len=5) :: nrel,nal
+   character(len=80) rstname
    integer ne
 
    ! Allocates the state Ashy to store the ens states
@@ -78,8 +78,8 @@ contains
   subroutine write_ensemble
    implicit none
 
-   character(len=3) :: nrel,nal
-   character(len=16) rstname
+   character(len=5) :: nrel,nal
+   character(len=80) rstname
    integer ne
 
    write(*,*) 'writing the analysis restart files...'
@@ -146,7 +146,7 @@ contains
   implicit none
   integer, intent(in) :: na
   character(len=1), intent(in) :: tflag
-  character(len=3) :: nal
+  character(len=5) :: nal
   character(len=80) :: filinm,filins
 
   call num2str(na,nal)

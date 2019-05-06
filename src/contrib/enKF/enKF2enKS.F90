@@ -15,9 +15,9 @@ program enKF2enKS
 
   character(len=4) :: arg1
   character(len=80) :: arg2
-  character(len=16) :: enfile
+  character(len=80) :: enfile
   integer nrens,nre
-  character(len=3) :: nrel
+  character(len=5) :: nrel
   integer ierr
   double precision atime
   integer fid
@@ -48,7 +48,7 @@ program enKF2enKS
      fid = 20 + nre
      call num2str(nre-1,nrel)
      enfile = 'backKF_en'//nrel//'.rst'
-     open(fid,file=enfile,status='old',form='unformatted',iostat=ierr)
+     open(fid,file=trim(enfile),status='old',form='unformatted',iostat=ierr)
      if (ierr /= 0) error stop 'enKF2enKS: error opening file'
   end do
 
@@ -58,7 +58,7 @@ program enKF2enKS
        fid = 20 + nrens + nre
        call num2str(nre-1,nrel)
        enfile = 'analKS_en'//nrel//'.rst'
-       open(fid,file=enfile,status='unknown',form='unformatted')
+       open(fid,file=trim(enfile),status='unknown',form='unformatted')
     end do
   end if
 
@@ -158,21 +158,25 @@ end program enKF2enKS
 !*******************************************************************
 !*******************************************************************
 
-!*******************************************************************
+!********************************************************
 
 subroutine num2str(num,str)
 
   implicit none
 
   integer, intent(in) :: num
-  character(len=3), intent(out) :: str
+  character(len=5), intent(out) :: str
 
   if ((num >= 0).and.(num < 10)) then
-    write(str,'(a2,i1)') '00',num
+    write(str,'(a4,i1)') '0000',num
   elseif ((num >= 10).and.(num < 100)) then
-    write(str,'(a1,i2)') '0',num
+    write(str,'(a3,i2)') '000',num
   elseif ((num >= 100).and.(num < 1000)) then
-    write(str,'(i3)') num
+    write(str,'(a2,i3)') '00',num
+  elseif ((num >= 1000).and.(num < 10000)) then
+    write(str,'(a1,i4)') '0',num
+  elseif ((num >= 100).and.(num < 1000)) then
+    write(str,'(i5)') num
   else
     error stop 'num2str: num out of range'
   end if

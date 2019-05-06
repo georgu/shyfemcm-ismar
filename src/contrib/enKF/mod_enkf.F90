@@ -89,7 +89,7 @@ contains
   integer ostatus
   real inn1,inn2
   real pvec(nrens)
-  character(len=3) :: nal,nfil
+  character(len=5) :: nal
 
   do nf = 1,nfile 
 

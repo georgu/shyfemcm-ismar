@@ -179,14 +179,18 @@
   implicit none
 
   integer, intent(in) :: num
-  character(len=3), intent(out) :: str
+  character(len=5), intent(out) :: str
 
   if ((num >= 0).and.(num < 10)) then
-    write(str,'(a2,i1)') '00',num
+    write(str,'(a4,i1)') '0000',num
   elseif ((num >= 10).and.(num < 100)) then
-    write(str,'(a1,i2)') '0',num
+    write(str,'(a3,i2)') '000',num
   elseif ((num >= 100).and.(num < 1000)) then
-    write(str,'(i3)') num
+    write(str,'(a2,i3)') '00',num
+  elseif ((num >= 1000).and.(num < 10000)) then
+    write(str,'(a1,i4)') '0',num
+  elseif ((num >= 100).and.(num < 1000)) then
+    write(str,'(i5)') num
   else
     error stop 'num2str: num out of range'
   end if
@@ -234,7 +238,7 @@
   integer, intent(in) :: n,na,id
   real, intent(out) :: vec(n)
   double precision, intent(in) :: t,tau
-  character(len=3) :: nal,idl
+  character(len=5) :: nal,idl
   character(len=17) :: pfile
   logical bfile
   integer nf

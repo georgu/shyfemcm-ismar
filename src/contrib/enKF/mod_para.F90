@@ -6,9 +6,9 @@ module mod_para
 !------------
 ! Settings for the analysis step (enkf_analysis)
 !
-  !integer :: rmode = 13 ! Ensemble Kalman Filter with SVD pseudo inversion of SS'+ EE'
+  integer :: rmode = 13 ! Ensemble Kalman Filter with SVD pseudo inversion of SS'+ EE'
   !integer :: rmode = 22 ! Square root algorithm with SVD pseudo inversion of SS'+(N-1)R
-  integer :: rmode = 23 ! Square root algorithm with SVD pseudo inversion of SS'+ EE'
+  !integer :: rmode = 23 ! Square root algorithm with SVD pseudo inversion of SS'+ EE'
 
   logical :: verbose = .true. ! Prints diagnostic output
 

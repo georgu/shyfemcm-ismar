@@ -122,7 +122,7 @@ contains
   implicit none
 
   type(states),allocatable :: qA(:)
-  character(len=3) :: nrel,nal
+  character(len=5) :: nrel,nal
   character(len=16) fname
   integer ne
 
@@ -152,7 +152,7 @@ contains
 
    logical :: bfile
    integer ne
-   character(len=3) :: nrel,nal
+   character(len=5) :: nrel,nal
    character(len=16) fname
    type(states),allocatable :: qA1(:),A2
 
