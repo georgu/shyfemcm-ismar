@@ -107,20 +107,20 @@ program enKF2enKS
 
   !--- write means and stds
   call pull_state(sdim,AmeanKF)
-  call rst_write_rec(16,atime)
+  call rst_write_rec(atime,16)
   call pull_state(sdim,AstdKF)
-  call rst_write_rec(17,atime)
+  call rst_write_rec(atime,17)
   call pull_state(sdim,AmeanKS)
-  call rst_write_rec(18,atime)
+  call rst_write_rec(atime,18)
   call pull_state(sdim,AstdKS)
-  call rst_write_rec(19,atime)
+  call rst_write_rec(atime,19)
 
   !--- write ensemble 
   if (trim(arg2) == 'full') then
     do nre = 1,nrens
        fid = 20 + nrens + nre
        call pull_matrix(sdim,nrens,nre,Astate)
-       call rst_write_rec(fid,atime)
+       call rst_write_rec(atime,fid)
     end do
   end if
 
@@ -275,7 +275,7 @@ end subroutine pull_state
 
 !********************************************************
 
-subroutine rst_write_rec(fid,atimea)
+subroutine rst_write_rec(atimea,fid)
 
   use mod_restart
   use levels, only : hlv
@@ -319,11 +319,13 @@ subroutine init_shyfem
   implicit none
 
   double precision atime
-  integer nvers,nrec,iflag,ierr
+  integer nvers,nrec,iflag,ierr,iconzrst
+  character(len=5) :: nrel
 
-  open(14,file='backKF_en000.rst',status='old',form='unformatted',iostat=ierr)
+  call num2str(0,nrel)
+  open(14,file='backKF_en'//nrel//'.rst',status='old',form='unformatted',iostat=ierr)
   if (ierr /= 0) error stop 'enKF2enKS: error opening file'
-  call rst_skip_record(14,atime,nvers,nrec,nkn,nel,nlv,iflag,ierr)
+  call rst_skip_record(14,atime,nvers,nrec,nkn,nel,nlv,iconzrst,iflag,ierr)
   close(14)
 
   if (.not. allocated(hm3v)) allocate(hm3v(3,nel))
@@ -332,7 +334,7 @@ subroutine init_shyfem
   call mod_hydro_init(nkn,nel,nlv)
   call mod_hydro_vel_init(nkn,nel,nlv)
   call mod_ts_init(nkn,nlv)
-  if (iconz_rst > 0) call mod_conz_init(iconz_rst,nkn,nlv)
+  if (iconzrst > 0) call mod_conz_init(iconzrst,nkn,nlv)
   call levels_init(nkn,nel,nlv)
 
 end subroutine init_shyfem
