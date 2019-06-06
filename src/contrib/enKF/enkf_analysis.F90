@@ -19,9 +19,9 @@ program enKF_analysis
 
   use mod_mod_states
   use mod_para
-  use mod_mod_err
   use mod_enkf
   use mod_ens_state
+  use mod_mod_err
 
   implicit none
   integer :: dim_tot
@@ -49,7 +49,7 @@ program enKF_analysis
 !----------------------------------------------------
 ! compute the prior mean and std
 !----------------------------------------------------
-  call make_mean_std('b',nanal)
+  call make_mean_std('b')
 
 !----------------------------------------------------
 ! Read observations and pre-process them
@@ -57,7 +57,7 @@ program enKF_analysis
   call read_obs
 
 !----------------------------------------------------
-! makes D1, E and R, S and d-H*mean(Ashy)
+! makes D1, E and R, S and d-H*mean(Abk)
 !----------------------------------------------------
   call make_matrices
 
@@ -69,8 +69,7 @@ program enKF_analysis
    case(0) !normal call
  
      allocate(Amat(global_ndim,nrens))
-     call tystate_to_matrix(nrens,Ashy,Amat)
-     deallocate(Ashy)
+     call tystate_to_matrix(nrens,Abk,Amat)
      dim_tot = global_ndim
 
    case(1) !state with model error
@@ -78,8 +77,7 @@ program enKF_analysis
      call info_moderr
      call push_aug
      allocate(Amat(2*global_ndim,nrens))
-     call tyqstate_to_matrix(nrens,Ashy_aug,Amat)
-     deallocate(Ashy_aug)
+     call tyqstate_to_matrix(nrens,Abk_aug,Amat)
      dim_tot = 2*global_ndim
 
     case(2) !state with model parameter
@@ -88,8 +86,7 @@ program enKF_analysis
      ! call load_model_params(npar,nrens_p,pars)
      ! if (nrens_p /= nrens) stop error 'bad parameter ensemble'
      ! allocate(Amat(global_ndim+npar,nrens))
-     ! call typstate_to_matrix(nrens,npar,pars,Ashy,Amat)
-     ! deallocate(Ashy)
+     ! call typstate_to_matrix(nrens,npar,pars,Abk,Amat)
      ! dim_tot = global_ndim + npar
 
   end select
@@ -108,53 +105,37 @@ program enKF_analysis
   select case(mode_an)
 
    case(0) !normal call
-   
-     allocate(Ashy(nrens))
-     call matrix_to_tystate(nrens,Amat,Ashy)
+
+     allocate(Aan(nrens))
+     call matrix_to_tystate(nrens,Amat,Aan)
      deallocate(Amat)
 
+     if (is_local == 1) then
+	write(*,*) 'Running local analysis...'
+	call local_analysis
+     else
+        ! save a total X5 for enKS
+        call save_X5('global',atime_an,global_ndim)
+     end if
+   
    case(1) !state with model error
 
-     allocate(Ashy_aug(nrens))
-     call matrix_to_tyqstate(nrens,Amat,Ashy_aug)
+     call matrix_to_tyqstate(nrens,Amat,Abk_aug)
      deallocate(Amat)
      call pull_aug
 
    case(2) !state with model parameter
      
-     !allocate(Ashy(nrens))
-     !call matrix_to_typstate(nrens,npar,Amat,pars,Ashy)
+     !call matrix_to_typstate(nrens,npar,Amat,pars,Aan)
      !call save_model_params(npar,nrens,pars)
      !deallocate(Amat)
 
   end select
 
 !--------------------------------
-! Local analysis
+!  compute the posterior mean and std. This is needed for inflation
 !--------------------------------
-  select case (is_local)
-
-   case(1)	! localisation
- 
-    continue	!TODO
-    !call analysis_nkn
-    !call analysis_nel
-     
-    ! save a total X5 for enKS
-    !call save_X5('local',atime_an,global_ndim) !TODO
-
-   case default  ! no local analysis
-       
-    ! save a total X5 for enKS
-    call save_X5('global',atime_an,global_ndim)
-
-  end select
-   
-
-!--------------------------------
-!  compute the posterior mean and std
-!--------------------------------
-  call make_mean_std('a',nanal)
+  call make_mean_std('a')
 
 !--------------------------------
 !  state inflation

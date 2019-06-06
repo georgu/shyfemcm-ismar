@@ -10,9 +10,9 @@ module mod_ens_state
 
   implicit none
 
-  type(states), dimension(:), allocatable :: Ashy      ! ensemble states
-  type(states) :: Ashy_m                     ! mean state
-  type(states) :: Ashy_stdb, Ashy_stda     ! standard deviation old and new
+  type(states), dimension(:), allocatable :: Abk,Aan      ! ensemble states
+  type(states) :: Abk_m, Aan_m                    ! mean state
+  type(states) :: Abk_std, Aan_std     ! standard deviation old and new
 
 contains
 
@@ -26,12 +26,12 @@ contains
    character(len=80) rstname
    integer ne
 
-   ! Allocates the state Ashy to store the ens states
-   allocate(Ashy(nrens))
+   ! Allocates the state Abk to store the ens states
+   if (.not. allocated(Abk)) allocate(Abk(nrens))
 
    ! init to zero
    do ne = 1,nrens
-      Ashy(ne) = 0.
+      Abk(ne) = 0.
    end do
 
    call num2str(nanal,nal)
@@ -42,7 +42,7 @@ contains
      do ne = 1,nrens
         call num2str(ne-1,nrel)
         rstname='an'//nal//'_'//'en'//nrel//'b.rst'
-        call read_state(Ashy(ne),rstname)
+        call read_state(Abk(ne),rstname)
      end do
 
    else if ((bnew_ens == 1) .and. (nanal == 1)) then
@@ -51,16 +51,16 @@ contains
      !read an input restart file
      call num2str(0,nrel)
      rstname = 'an'//nal//'_'//'en'//nrel//'b.rst'
-     call read_state(Ashy(1),rstname)
+     call read_state(Abk(1),rstname)
 
-     call make_init_ens(Ashy(1))
+     call make_init_ens(Abk(1))
      
      !save the initial ens in new restart files
      call num2str(nanal,nal)
      do ne = 1,nrens
         call num2str(ne-1,nrel)
         rstname='an'//nal//'_'//'en'//nrel//'b.rst'
-        call write_state(Ashy(ne),rstname)
+        call write_state(Abk(ne),rstname)
      end do
 
    else
@@ -91,7 +91,7 @@ contains
                                    ! in the ens state. It should be removed.
 
       rstname='an'//nal//'_'//'en'//nrel//'a.rst'
-      call write_state(Ashy(ne),rstname)
+      call write_state(Aan(ne),rstname)
    end do
   end subroutine write_ensemble
 
@@ -126,13 +126,13 @@ contains
    do ne = 1,nrens
 
      if (ne == 1) then
-       Ashy(ne) = Ain
+       Abk(ne) = Ain
      else
        Apert = 0.
        do k = 1,nnkn
           Apert%z(k) = kvec(k,ne-1) * sigma_in
        end do
-       Ashy(ne) = Ain + Apert
+       Abk(ne) = Ain + Apert
      end if
 
    end do
@@ -141,27 +141,17 @@ contains
 
 !********************************************************
 
-  subroutine make_mean_std(tflag,na)
+  subroutine make_mean_std(tflag)
 
   implicit none
-  integer, intent(in) :: na
   character(len=1), intent(in) :: tflag
-  character(len=5) :: nal
-  character(len=80) :: filinm,filins
-
-  call num2str(na,nal)
-  !filinm = 'an'//nal//'_mean_'//tflag//'.rst'
-  !filins = 'an'//nal//'_std_'//tflag//'.rst'
-
-  Ashy_m = mean_state(nrens,Ashy)
-  !call write_state(Ashy_m,filinm)
 
   if (tflag == 'a') then
-     Ashy_stda = std_state(nrens,Ashy)
-     !call write_state(Ashy_stda,filins)
+     Aan_m = mean_state(nrens,Aan)
+     Aan_std = std_state(nrens,Aan)
   else
-     Ashy_stdb = std_state(nrens,Ashy)
-     !call write_state(Ashy_stdb,filins)
+     Abk_m = mean_state(nrens,Abk)
+     Abk_std = std_state(nrens,Abk)
   end if
 
   end subroutine make_mean_std
@@ -171,9 +161,9 @@ contains
   subroutine inflate_state
   ! Multiplicative state inflation  Whitaker J. S. et al. 2012
   ! 1- Relaxation-to-prior-spread (RTPS) method (Whitaker J. S. et al. 2012)
-  !    Ashy' = Ashy' * (alpha * (Astdo - Astdn)/Astdn + 1)
+  !    Abk' = Abk' * (alpha * (Astdo - Astdn)/Astdn + 1)
   !    alpha ~ 0.1, see mod_para
-  ! 2- Simple multiplication: Ashy' = Ashy' (1 + alpha)
+  ! 2- Simple multiplication: Abk' = Abk' (1 + alpha)
   !
   implicit none
 
@@ -183,13 +173,12 @@ contains
   if (type_infl == 1) then
 
      write(*,*) 'RTPS inflation, alpha = ',alpha_infl
-     call rtps_inflation(alpha_infl,nrens,Ashy,Ashy_m,Ashy_stdb,Ashy_stda)
+     call rtps_inflation(alpha_infl,nrens,Aan,Aan_m,Abk_std,Aan_std)
 
   else if (type_infl == 2) then
 
      write(*,*) 'Multiplication inflation, alpha = ',alpha_infl
-     call mult_inflation(alpha_infl,nrens,Ashy,Ashy_m)
-
+     call mult_inflation(alpha_infl,nrens,Aan,Aan_m)
 
   else
   

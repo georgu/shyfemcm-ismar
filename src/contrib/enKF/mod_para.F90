@@ -20,8 +20,8 @@ module mod_para
   real, parameter :: alpha_infl = 0.01 ! type_infl = 1 -> ~ 0.01 
                                        ! type_infl = 2 -> ~ 0.01 (lower with SQRT method)
 
-  integer, parameter :: is_local = 0 !Local analysis. 0 disable, 1 localisation(TODO)
-  real, parameter :: r_local = 2. !Radius used in local analysis
+  integer, parameter :: is_local = 1 !Local analysis. 0 disable, 1 local analysis
+  real, parameter :: rho_loc = 2.   !Radius for local analysis (use the same coords of the grid)
 
   ! do not touch these
   !

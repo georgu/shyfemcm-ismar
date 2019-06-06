@@ -13,6 +13,7 @@ module mod_manage_obs
   !
   type(files), allocatable, dimension(:), private ::  ofile
 
+  integer :: islev,isvel,istemp,issalt
   integer :: n_0dlev,n_1dlev,n_2dlev    ! number of obs level (gauge,alt track,field)
   integer :: n_0dvel,n_2dvel		! number of obs vel (gauge,field)
   integer :: n_0dtemp,n_1dtemp,n_2dtemp	! number of obs temp (gauge,profile,field)
@@ -43,10 +44,28 @@ contains
   integer kinit,kend
   logical linit
   integer nobs
-  integer islev,isvel,istemp,issalt
   double precision tobs
   real xobs,yobs,zobs,vobs,stdobs
   integer statobs
+
+  ! flag for the presence of obs
+  islev = 0
+  isvel = 0
+  istemp = 0
+  issalt = 0
+
+  ! dimension of the obs types
+  n_0dlev = 0
+  n_1dlev = 0
+  n_2dlev = 0
+  n_0dtemp = 0
+  n_1dtemp = 0
+  n_2dtemp = 0
+  n_0dsalt = 0
+  n_1dsalt = 0
+  n_2dsalt = 0
+  n_0dvel = 0
+  n_2dvel = 0
 
   write(*,*) 'reading observations...'
   !-------------------------------
@@ -71,17 +90,6 @@ contains
   !-------------------------------
   ! Read every file one time to find the number and the type of each obs
   !-------------------------------
-  islev = 0
-  isvel = 0
-  istemp = 0
-  issalt = 0
-
-  ! dimension of the types 
-  n_0dlev = 0
-  n_0dtemp = 0
-  n_0dsalt = 0
-  n_2dvel = 0
-
   do n = 1,nfile
 
     select case (trim(ofile(n)%ty))
@@ -132,7 +140,8 @@ contains
 
   end do
 
-  ! check that all the files have the same variable to assimilate
+  ! check that all the files have the same variable type. It's better to assimilate
+  ! only one type every time. Use different times if you have more types (e.g., level, salinity)
   if ((islev + isvel + istemp + issalt) > 1) then
      write(*,*) 'islev ',islev
      write(*,*) 'isvel ',isvel
@@ -172,7 +181,7 @@ contains
                 o0dlev(kend)%z = zobs
                 o0dlev(kend)%val = vobs
                 o0dlev(kend)%std = stdobs
-                o0dlev(kend)%status = statobs
+                o0dlev(kend)%stat = statobs
                 o0dlev(kend)%id = n
 
                 nobs_tot = nobs_tot + 1
@@ -190,7 +199,7 @@ contains
                 o0dtemp(kend)%z = zobs
                 o0dtemp(kend)%val = vobs
                 o0dtemp(kend)%std = stdobs
-                o0dtemp(kend)%status = statobs
+                o0dtemp(kend)%stat = statobs
                 o0dtemp(kend)%id = n
 
                 nobs_tot = nobs_tot + 1
@@ -209,7 +218,7 @@ contains
                 o0dsalt(kend)%z = zobs
                 o0dsalt(kend)%val = vobs
                 o0dsalt(kend)%std = stdobs
-                o0dsalt(kend)%status = statobs
+                o0dsalt(kend)%stat = statobs
                 o0dsalt(kend)%id = n
 
                 nobs_tot = nobs_tot + 1
@@ -433,7 +442,7 @@ contains
     allocate(ilhkv(np),hd(np),data(nx,ny))
     allocate(o2dvel(nrec)%x(nx,ny),o2dvel(nrec)%y(nx,ny),&
              o2dvel(nrec)%u(nx,ny),o2dvel(nrec)%v(nx,ny),&
-             o2dvel(nrec)%std(nx,ny),o2dvel(nrec)%status(nx,ny))
+             o2dvel(nrec)%std(nx,ny),o2dvel(nrec)%stat(nx,ny))
 
     do i = 1,nvar
        call fem_file_read_data(iformat,iunit,nvers,np,lmax,string,ilhkv,hd,nlvddi,&
@@ -468,7 +477,7 @@ contains
        vv = o2dvel(nrec)%v(ix,iy)
 
        call check_obs('2DVEL',uu,vv,flag,ostatus)
-       o2dvel(nrec)%status = ostatus
+       o2dvel(nrec)%stat = ostatus
 
        if (ostatus == 0) then
           bdata = .true. !at least 1 rec
@@ -484,7 +493,7 @@ contains
     o2dvel(nrec)%ny = ny	! n od y points
     o2dvel(nrec)%std = ostd	! standard dev
     o2dvel(nrec)%id = fid	! id of the original file
-    o2dvel(nrec)%status = ostatus ! status of the obs
+    o2dvel(nrec)%stat = ostatus ! status of the obs
 
     ! exit after finding 1 field
     !
@@ -499,22 +508,22 @@ contains
 
 !********************************************************
 
-  subroutine check_obs(ty,v1,v2,flag,status)
+  subroutine check_obs(ty,v1,v2,flag,stat)
 
   implicit none
 
   character(len=*), intent(in) :: ty
   real, intent(in) :: v1,v2
   real, intent(in) :: flag
-  integer, intent(out) :: status
+  integer, intent(out) :: stat
 
   real vmin,vmax,v
 
 
-  status = 0
+  stat = 0
 
   if (v1 == flag .or. v2 == flag) then
-     status = 4
+     stat = 4
      return
   end if
 
@@ -540,7 +549,7 @@ contains
   end if
 
   if (v < vmin .or. v > vmax) then
-     status = 3
+     stat = 3
   end if
 
   end subroutine check_obs
@@ -570,7 +579,7 @@ contains
     do jj = 1,ny
      x(ii*jj) = o2dvel(n)%x(ii,jj)
      y(ii*jj) = o2dvel(n)%y(ii,jj)
-     stat(ii*jj) = o2dvel(n)%status(ii,jj)
+     stat(ii*jj) = o2dvel(n)%stat(ii,jj)
      v1(ii*jj) = o2dvel(n)%u(ii,jj)
      v2(ii*jj) = o2dvel(n)%v(ii,jj)
     end do
@@ -580,7 +589,7 @@ contains
 
     do ii = 1,nx
     do jj = 1,ny
-     o2dvel(n)%status(ii,jj) = stat(ii*jj)
+     o2dvel(n)%stat(ii,jj) = stat(ii*jj)
      o2dvel(n)%u(ii,jj) = v1(ii*jj)
      o2dvel(n)%v(ii,jj) = v2(ii*jj)
     end do
@@ -597,7 +606,7 @@ contains
   ! Compute the innovation vectors and change the std if
   ! it is too low
   !
-  subroutine check_obs_inn(ty,x,y,z,v1,v2,stdv,d1,d2,status)
+  subroutine check_obs_inn(ty,x,y,z,v1,v2,stdv,d1,d2,stat)
 
   use levels
   use mod_ens_state
@@ -606,7 +615,7 @@ contains
 
   character(len=5), intent(in) :: ty
   real, intent(in) :: x,y,z
-  integer, intent(in) :: status
+  integer, intent(in) :: stat
   real, intent(in) :: v1,v2
   real, intent(inout) :: stdv
   real, intent(out) :: d1,d2
@@ -620,7 +629,7 @@ contains
 
   ! Exit if it is a bad obs, not to be assimilated
   !
-  if (status /= 0) return
+  if (stat /= 0) return
 
   ! Find the nearest node/element
   !
@@ -634,8 +643,8 @@ contains
 
     case ('0DLEV')
 
-     vmod = Ashy_m%z(ik)
-     vmod_ens = Ashy(:)%z(ik)
+     vmod = Abk_m%z(ik)
+     vmod_ens = Abk(:)%z(ik)
      v = v1
      d1 = v - vmod
      d2 = v - vmod
@@ -646,15 +655,15 @@ contains
      if (size(hlv) <= 1)&
      error stop 'check_obs_inn: a 3D sim is necessary to assimilate surface currents'
 
-     vmod = sqrt(Ashy_m%u(1,ie)**2 + Ashy_m%v(1,ie)**2)
-     vmod_ens = sqrt(Ashy(:)%u(1,ie)**2 + Ashy(:)%v(1,ie)**2)
-     h_1st_layer = hlv(1) + Ashy_m%z(ik)
+     vmod = sqrt(Abk_m%u(1,ie)**2 + Abk_m%v(1,ie)**2)
+     vmod_ens = sqrt(Abk(:)%u(1,ie)**2 + Abk(:)%v(1,ie)**2)
+     h_1st_layer = hlv(1) + Abk_m%z(ik)
 
      v = sqrt(v1**2 + v2**2)
-     d1 = v1*h_1st_layer - Ashy_m%u(1,ie)
-     d2 = v2*h_1st_layer - Ashy_m%v(1,ie)
-     !d1 = v1 - Ashy_m%u(1,ie)
-     !d2 = v2 - Ashy_m%v(1,ie)
+     d1 = v1*h_1st_layer - Abk_m%u(1,ie)
+     d2 = v2*h_1st_layer - Abk_m%v(1,ie)
+     !d1 = v1 - Abk_m%u(1,ie)
+     !d2 = v2 - Abk_m%v(1,ie)
      inn = sqrt(d1**2 + d2**2)
 
   end select

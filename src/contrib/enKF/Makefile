@@ -12,7 +12,7 @@ ifeq ($(FORTRAN_COMPILER),GNU_GFORTRAN)
 endif
 
 ifeq ($(FORTRAN_COMPILER),INTEL)
-  R8FL = -real-size 64
+  R8FL = -real-size 64 -double-size 64
 endif
 override FFLAGS += $(R8FL)
 override LFLAGS += $(R8FL)
@@ -41,7 +41,7 @@ ENSOBJ1 = analysis.o m_randrot.o m_multa.o mod_anafunc.o m_mean_preserving_rotat
 #ENSOBJ1 = analysis2.o m_randrot.o m_multa.o 
 ENSOBJ2 = mod_para.o subenkf.o mod_ens_state.o mod_mod_err.o mod_enkf.o \
 	mod_init_enkf.o mod_dimensions.o mod_mod_states.o mod_obs_states.o \
-	mod_manage_obs.o
+	mod_manage_obs.o sublocan.o
 ENSOBJ3 = m_sample2D.o m_pseudo2D.o mod_fftw3.o m_newton2D.o \
 	m_newtonfunc2D.o m_fixsample2D.o m_random.o
 

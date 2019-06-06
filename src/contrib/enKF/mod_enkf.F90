@@ -10,12 +10,12 @@ module mod_enkf
   implicit none
 
   real, save, allocatable :: D(:,:)		! matrix holding perturbed measurments
-  real, save, allocatable :: D1(:,:)		! Innovation vectors
+  real, save, allocatable :: D1(:,:)		! perturbed innovation vectors
   real, save, allocatable :: E(:,:)		! matrix holding perturbations (mode=?3)
   real, save, allocatable :: R(:,:)		! Obs error cov matrix
 
   real, save, allocatable :: S(:,:)		! matrix holding HA' mod perturbations
-  real, save, allocatable :: innov(:)		! innovation vector holding d-H*mean(Ashy)
+  real, save, allocatable :: innov(:)		! innovation vector holding d-H*mean(Abk)
   real, save, allocatable :: HA(:,:)		! matrix HA, ens model on obs space
 
 
@@ -99,7 +99,7 @@ contains
 
      ! next if the observation is not good
      !
-     if (ostate(nf)%status > 1) cycle
+     if (ostate(nf)%stat > 1) cycle
 
      nook = nook + 1
 
@@ -112,28 +112,28 @@ contains
      R(nook,nook) = ostate(nf)%std**2
 
      ! compute the model perturbed values, S = HA' and HA
-     ! Remember for enKF: Aa = Af + Ashy' [HA']^t [ U L^-1 U^t ] D' and D' = D-HA
+     ! Remember for enKF: Aa = Af + Abk' [HA']^t [ U L^-1 U^t ] D' and D' = D-HA
      !
      select case (olabel)
 
        case ('0DLEV')
         do ne = 1,nrens
-           S(nook,ne) = Ashy(ne)%z(kmin) - Ashy_m%z(kmin)
-           HA(nook,ne) = Ashy(ne)%z(kmin)
+           S(nook,ne) = Abk(ne)%z(kmin) - Abk_m%z(kmin)
+           HA(nook,ne) = Abk(ne)%z(kmin)
         end do
 
        case ('0DTEM')
         if (ostate(nf)%z /= 0) error stop 'fill_scalar_0d: deep temperature not implemented yet'
         do ne = 1,nrens
-           S(nook,ne) = Ashy(ne)%t(1,kmin) - Ashy_m%t(1,kmin)
-           HA(nook,ne) = Ashy(ne)%t(1,kmin)
+           S(nook,ne) = Abk(ne)%t(1,kmin) - Abk_m%t(1,kmin)
+           HA(nook,ne) = Abk(ne)%t(1,kmin)
         end do
 
        case ('0DSAL')
         if (ostate(nf)%z /= 0) error stop 'fill_scalar_0d: deep salinity not implemented yet'
         do ne = 1,nrens
-           S(nook,ne) = Ashy(ne)%s(1,kmin) - Ashy_m%s(1,kmin)
-           HA(nook,ne) = Ashy(ne)%s(1,kmin)
+           S(nook,ne) = Abk(ne)%s(1,kmin) - Abk_m%s(1,kmin)
+           HA(nook,ne) = Abk(ne)%s(1,kmin)
         end do
 
      end select
@@ -141,7 +141,7 @@ contains
      ! check the obs std and compute the innovation vector
      !
      oval = ostate(nf)%val
-     ostatus = ostate(nf)%status
+     ostatus = ostate(nf)%stat
      stdv = ostate(nf)%std
      call check_obs_inn(olabel,x,y,0.,oval,oval,stdv,inn1,inn2,ostatus)
      ostate(nf)%std = stdv
@@ -149,7 +149,7 @@ contains
 
      if (verbose)&
      write(*,'(a25,2x,i4,3f8.4)') 'nobs, vobs, vmod, innov:',&
-              nf,ostate(nf)%val,Ashy_m%z(kmin),inn1
+              nf,ostate(nf)%val,Abk_m%z(kmin),inn1
  
      ! compute the perturbations E, the perturbed observations D
      ! and the innovation vectors D1
@@ -190,7 +190,7 @@ contains
 
      ! next if the observation is not good
      !
-     if (o2dvel(nf)%status(ix,iy) > 1) cycle
+     if (o2dvel(nf)%stat(ix,iy) > 1) cycle
 
      nook = nook + 2	! 2 obs, u and v components
 
@@ -204,18 +204,18 @@ contains
      R(nook,nook) = o2dvel(nf)%std(ix,iy)**2
 
      ! compute the model perturbed values, S = HA' and HA
-     ! Remember for enKF: Aa = Af + Ashy' [HA']^t [ U L^-1 U^t ] D' and D' = D-HA
+     ! Remember for enKF: Aa = Af + Abk' [HA']^t [ U L^-1 U^t ] D' and D' = D-HA
      !
      do ne = 1,nrens
-        S(nook-1,ne) = Ashy(ne)%u(1,iemin) - Ashy_m%u(1,iemin)
-        S(nook,ne) = Ashy(ne)%v(1,iemin) - Ashy_m%v(1,iemin)
-        HA(nook-1,ne) = Ashy(ne)%u(1,iemin)
-        HA(nook,ne) = Ashy(ne)%v(1,iemin)
+        S(nook-1,ne) = Abk(ne)%u(1,iemin) - Abk_m%u(1,iemin)
+        S(nook,ne) = Abk(ne)%v(1,iemin) - Abk_m%v(1,iemin)
+        HA(nook-1,ne) = Abk(ne)%u(1,iemin)
+        HA(nook,ne) = Abk(ne)%v(1,iemin)
      end do
 
      ! compute the innovation vector
      !
-     ostatus = o2dvel(nf)%status(ix,iy)
+     ostatus = o2dvel(nf)%stat(ix,iy)
      uu = o2dvel(nf)%u(ix,iy)
      vv = o2dvel(nf)%v(ix,iy)
      stdv = o2dvel(nf)%std(ix,iy)

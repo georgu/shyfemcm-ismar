@@ -283,14 +283,16 @@ for (( ne = 0; ne < $nrens; ne++ )); do
    if [ "$na" -ne "$nran" ]; then
         name_sim="an${naal}_en${nel}b"
 	itend=${timeo[$naa]}
+        rstfile="an${nal}_en${nel}a.rst" 
    else
         name_sim="forecast_en${nel}b"
         dtfor1=$(date --date "${itanf:0:10} + $nfor days" +%Y-%m-%d)
         dtfor2=$(echo $itanf | cut -d ':' -f 2-)
 	itend="${dtfor1}:${dtfor2}"
+        rstfile="analKF_en${nel}.rst" 
    fi
 
-   rstfile="an${nal}_en${nel}a.rst"; strnew="${name_sim}.str"
+   strnew="${name_sim}.str"
 
    SkelStr $name_sim $itanf $itend $rstfile $idtrst $ens_skel_file $strnew
    strfiles="$strfiles $strnew"

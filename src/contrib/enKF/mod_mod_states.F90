@@ -26,21 +26,20 @@ module mod_mod_states
       real*4 s(nnlv,nnkn)                      ! 3-D Salinity 
    end type states4
 
-! Since we have a staggered grid we must use two local states.
-! It should be still a good assumption...
-! model state at one node (used in cov localisation)
-   type sub_states_nkn
-      real z 	                     	       ! 0-D water level 
-      real t(nnlv)                             ! 1-D Temperature
-      real s(nnlv)                             ! 1-D Salinity
-   end type sub_states_nkn
-   integer, parameter ::  local_ndim_nkn = 2*nnlv + 1
-! model state at one element (used in cov localisation)
-   type sub_states_nel
-      real u(nnlv)                             ! 1-D u-velocity
-      real v(nnlv)                             ! 1-D v-velocity
-   end type sub_states_nel
-   integer, parameter ::  local_ndim_nel = 2*nnlv 
+!! Since we have a staggered grid we must use two local states.
+!! model state at one node (used in local analysis)
+!   type sub_states_nkn
+!      real z 	                     	       ! 0-D water level 
+!      real t(nnlv)                             ! 1-D Temperature
+!      real s(nnlv)                             ! 1-D Salinity
+!   end type sub_states_nkn
+!   integer, parameter ::  local_ndim_nkn = 2*nnlv + 1
+!! model state at one element (used in local analysis)
+!   type sub_states_nel
+!      real u(nnlv)                             ! 1-D u-velocity
+!      real v(nnlv)                             ! 1-D v-velocity
+!   end type sub_states_nel
+!   integer, parameter ::  local_ndim_nel = 2*nnlv 
 
 ! double state, with the model errors
      type qstates

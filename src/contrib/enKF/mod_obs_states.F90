@@ -3,7 +3,7 @@
 !
 module mod_obs_states
 
-! status of an observation:
+! stat of an observation:
 ! 0 = normal obs (assimilated)
 ! 1 = super-observation (assimilated)
 ! 2 = observation merged into a super-observation (not-assimilated)
@@ -26,7 +26,7 @@ module mod_obs_states
       real :: z                      ! z coord
       real :: val                    ! value
       real :: std                    ! std value
-      integer :: status		     ! = 0,1,2,3,4
+      integer :: stat		     ! = 0,1,2,3,4
       integer  :: id                 ! id number of the file
    end type scalar_0d
 
@@ -41,7 +41,7 @@ module mod_obs_states
       real, allocatable :: u(:,:)                    ! u value
       real, allocatable :: v(:,:)                    ! v value
       real, allocatable :: std(:,:)                  ! std value
-      integer, allocatable :: status(:,:)	     ! = 0,1,2,3,4
+      integer, allocatable :: stat(:,:)	     ! = 0,1,2,3,4
       integer           :: id			     ! id number of the file
    end type vector_2d
 

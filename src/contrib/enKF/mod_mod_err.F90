@@ -18,7 +18,7 @@ module mod_mod_err
  double precision dt_er	!time between 2 analysis steps
  double precision tau_er	!time decorrelation (>=dt) of the old error: dq/dt = -(1/tau)*q
 
- type(qstates), allocatable :: Ashy_aug(:) 	! double state with model error
+ type(qstates), allocatable :: Abk_aug(:) 	! double state with model error
 
  type(states), allocatable, private :: qA(:)		! model error
 
@@ -89,29 +89,29 @@ contains
    call load_error(alpha)
  
    !---------------------------------------
-   !compute the new state qA = Ashy + sqrt(dt)*sigma*rho*q1
+   !compute the new state qA = Abk + sqrt(dt)*sigma*rho*q1
    !---------------------------------------
    mfact = sqrt(dt_er) * rsigma * rho
    allocate(Aaux)
    do ne = 1,nrens
       ! find the spatial factor from the relative error (rsigma)
-      Aaux = Ashy(ne) * mfact
+      Aaux = Abk(ne) * mfact
       ! find the error
       Aaux = qA(ne) * Aaux
       ! add the error
-      Ashy(ne) = Ashy(ne) + Aaux
+      Abk(ne) = Abk(ne) + Aaux
    end do
    deallocate(Aaux)
     
    !---------------------------------------
-   !make the augmented state Ashy_aug = (Ashy,qA)
+   !make the augmented state Abk_aug = (Abk,qA)
    !---------------------------------------
-   allocate(Ashy_aug(nrens))
+   allocate(Abk_aug(nrens))
    do ne = 1,nrens
-      call push_qstate(Ashy(ne),qA(ne),Ashy_aug(ne))
+      call push_qstate(Abk(ne),qA(ne),Abk_aug(ne))
    end do
    deallocate(qA)
-   deallocate(Ashy)
+   deallocate(Abk)
  
   end subroutine push_aug
 
@@ -128,9 +128,9 @@ contains
 
   write(*,*) 'Saving model errors'
 
-  allocate(Ashy(nrens),qA(nrens))
+  allocate(Abk(nrens),qA(nrens))
   do ne = 1,nrens
-     call pull_qstate(Ashy(ne),qA(ne),Ashy_aug(ne))
+     call pull_qstate(Abk(ne),qA(ne),Abk_aug(ne))
   end do
 
   call num2str(nanal,nal)
@@ -139,7 +139,7 @@ contains
   write(33) qA
   close(33)
 
-  deallocate(Ashy_aug,qA)
+  deallocate(Abk_aug,qA)
 
   end subroutine pull_aug
 

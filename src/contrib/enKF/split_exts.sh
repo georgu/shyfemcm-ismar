@@ -55,4 +55,4 @@ for efile in $(ls ${fbase}*.ext); do
     fi
 done
 rm -f ext.log
-rm -f zeta.2d.* velx.2d.* vely.2d.* temp.2d.* salt.2d.*
+rm -f zeta.2d.* velx.2d.* vely.2d.* temp.2d.* salt.2d.* all.2d.* dir.2d.* speed.2d.*

@@ -15,6 +15,7 @@ program enKF2enKS
 
   character(len=4) :: arg1
   character(len=80) :: arg2
+  character(len=9) :: arg3
   character(len=80) :: enfile
   integer nrens,nre
   character(len=5) :: nrel
@@ -23,21 +24,27 @@ program enKF2enKS
   integer fid
   real, allocatable :: Astate(:,:),AmeanKF(:),AstdKF(:),AmeanKS(:),AstdKS(:)
   integer rrec,sdim
+  integer nlag
 
   ! read number of ens member from input
   call get_command_argument(1, arg1)
   call get_command_argument(2, arg2)
+  call get_command_argument(3, arg3)
   if ((trim(arg2) /= 'norm').and.(trim(arg2) /= 'full')) then
 	  write(*,*) ''
-	  write(*,*) 'Usage: enKF2enKS [nrens] [output]'
+	  write(*,*) 'Usage: enKF2enKS [nrens] [output] [nlag]'
 	  write(*,*) ''
 	  write(*,*) '[nrens] is the n. of ens members, control included.'
 	  write(*,*) '[output] full (full) or just mean and std (norm).'
+	  write(*,*) '[nlag] number of forward analysis steps to consider (-1 to consider all)'
 	  write(*,*) ''
 	  stop
   end if
   read(arg1,*) nrens
   if (nrens <= 0) error stop 'enKF2enKS: not a valid nrens number'
+
+  read(arg3,*) nlag
+  write(*,*) 'Lagged smoother. N. of analysis steps: ',nlag
 
   !--- init variables
   call init_shyfem
@@ -93,15 +100,15 @@ program enKF2enKS
 
 
   !--- make mean and std of the ensemble Kalman Filter
-  call make_mean_std(sdim,nrens,Astate,AmeanKF,AstdKF)
+  call make_mn_std(sdim,nrens,Astate,AmeanKF,AstdKF)
 
   !--- make analysis
   ! Results differ for a very small epsilon. 2nd method is much faster.
   !call make_analysis1(atime,sdim,nrens,Astate)
-  call make_analysis2(atime,sdim,nrens,Astate)
+  call make_analysis2(atime,sdim,nrens,Astate,nlag)
 
   !--- make mean and std of the ensemble Kalman Smoother
-  call make_mean_std(sdim,nrens,Astate,AmeanKS,AstdKS)
+  call make_mn_std(sdim,nrens,Astate,AmeanKS,AstdKS)
 
 
 
@@ -404,27 +411,31 @@ end subroutine init_shyfem
 
 !********************************************************
 
-  subroutine make_analysis2(atime,sdim,nrens,Amat)
+  subroutine make_analysis2(atime,sdim,nrens,Amat,nlag)
   implicit none
   double precision, intent(in) :: atime
   integer, intent(in) :: sdim,nrens
   real, intent(inout) :: Amat(sdim,nrens)
+  integer, intent(inout) :: nlag
 
   double precision tt
   character(len=6) :: alabel
   character(len=2) :: tag
   integer nren
   real, allocatable :: Aaux(:,:),X5(:,:),X5old(:,:),X5aux(:,:)
-  integer n
+  integer n,k
 
     allocate(Aaux(sdim,nrens))
     allocate(X5(nrens,nrens),X5old(nrens,nrens),X5aux(nrens,nrens))
+
+    if (nlag == -1) nlag = 1000000000
 
     ! initial set the identity
     X5old = 0.
     forall(n = 1:nrens) X5old(n,n) = 1. 
 
     open(15,status='old',form='unformatted',file='X5_tot.uf')
+    k = 0
  45 read(15,end=44) tt,alabel,tag
 
      read(15) nren
@@ -435,12 +446,14 @@ end subroutine init_shyfem
 
      read(15) X5
 
-     if (tt >= atime) then
+     if ((tt >= atime).and.(k <= nlag)) then
 	X5aux = 0.
 	! This way should be fine (as used in Geir's code)
 	call dgemm('n','n',nrens,nrens,nrens,1.0,X5old,nrens,X5,nrens,0.0,X5aux,nrens)
 	X5old = X5aux
      end if
+
+     k = k + 1
 
      goto 45
 
@@ -457,7 +470,7 @@ end subroutine init_shyfem
 
 !********************************************************
 
-  subroutine make_mean_std(ndim,nens,Amat,Am,Astd)
+  subroutine make_mn_std(ndim,nens,Amat,Am,Astd)
   implicit none
 
   integer, intent(in) :: ndim,nens
@@ -475,5 +488,5 @@ end subroutine init_shyfem
      Astd(n) = sqrt( (esumsq - esum*esum/dble(nens)) / (dble(nens) - 1.) )
   end do
 
-  end subroutine make_mean_std
+  end subroutine make_mn_std
 

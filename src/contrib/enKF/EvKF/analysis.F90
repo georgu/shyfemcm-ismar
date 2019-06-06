@@ -44,7 +44,7 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
 
 
    lreps=.FALSE.
-   print *,'analysis: starting'
+   !print *,'analysis: starting'
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! Pseudo inversion of C=SS' +(N-1)*R
    if (verbose) print *,'analysis: inversion of C:'
@@ -144,7 +144,7 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! Final ensemble update
-   print *,'analysis: final ensemble update'
+   !print *,'analysis: final ensemble update'
    if (lreps) then
 !     A=A+matmul(Reps,X3)
       call dgemm('n','n',ndim,nrens,nrobs,1.0,Reps,ndim,X3,nrobs,1.0,A,ndim)

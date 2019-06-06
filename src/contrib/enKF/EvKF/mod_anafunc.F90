@@ -536,7 +536,7 @@ subroutine svdS(S,nrobs,nrens,nrmin,U0,sig0,truncation)
       endif
    enddo
 
-   write(*,'(a48,i5,g13.5)') 'analysis svdS: dominant sing. values and share ',nrsigma,sigsum1/sigsum
+   !write(*,'(a48,i5,g13.5)') 'analysis svdS: dominant sing. values and share ',nrsigma,sigsum1/sigsum
 !   write(*,'(5g11.3)')sig0
 
    do i=1,nrsigma
