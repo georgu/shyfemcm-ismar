@@ -110,12 +110,12 @@ program enKF_analysis
      call matrix_to_tystate(nrens,Amat,Aan)
      deallocate(Amat)
 
+     ! save a total X5 for enKS
+     call save_X5('global',atime_an)
+
      if (is_local == 1) then
 	write(*,*) 'Running local analysis...'
 	call local_analysis
-     else
-        ! save a total X5 for enKS
-        call save_X5('global',atime_an,global_ndim)
      end if
    
    case(1) !state with model error

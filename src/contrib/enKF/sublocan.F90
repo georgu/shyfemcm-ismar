@@ -25,7 +25,7 @@
 
   integer, parameter ::  lkdim = 2*nnlv+1
   integer, parameter ::  lnedim = 2*nnlv
-  integer :: nobs_tot_l
+  integer :: nobs_tot_k,nobs_tot_e
 
   real, allocatable :: xobs(:),yobs(:)
   real, allocatable :: Ak_loc(:,:),Ak_an(:,:),Ak_bk(:,:)
@@ -101,13 +101,13 @@
 
      end do
 
-     nobs_tot_l = nno
-     if (nobs_tot_l > 0) then
+     nobs_tot_k = nno
+     if (nobs_tot_k > 0) then
 	     
-        allocate(innovl(nobs_tot_l),D1l(nobs_tot_l,nrens),Sl(nobs_tot_l,nrens))
-        allocate(El(nobs_tot_l,nrens),Rl(nobs_tot_l,nobs_tot_l))
+        allocate(innovl(nobs_tot_k),D1l(nobs_tot_k,nrens),Sl(nobs_tot_k,nrens))
+        allocate(El(nobs_tot_k,nrens),Rl(nobs_tot_k,nobs_tot_k))
 
-        do no = 1,nobs_tot_l
+        do no = 1,nobs_tot_k
 
 	     ! tapering of the innovations and of the ens anomalies
 	     innovl(no) = innov(ido(no)) * wo(no)
@@ -123,12 +123,17 @@
 	nk_l = nk_l + 1
 	Ak_loc = Ak_bk	! set equal to the state before the analysis
 
-	call analysis(Ak_loc,Rl,El,Sl,D1l,innovl,lkdim,nrens,nobs_tot_l,'false',&
+	call analysis(Ak_loc,Rl,El,Sl,D1l,innovl,lkdim,nrens,nobs_tot_k,'false',&
 		           truncation,rmode,update_randrot)
 
 	update_randrot = .false.	! true just the first time. Beware in OMP
 
+        !call save_X5('local',atime_an)
+
         deallocate(innovl,D1l,Sl,El,Rl)
+
+	! This is to check the position
+	!write(120,*) '1',nk_l,'7',xgv(k),ygv(k)
 
      end if
 
@@ -153,7 +158,6 @@
      nno = 0	! number of local observations
      do no = 1,nobs_tot
 
-        !call find_dist_e(ne,xobs(no),yobs(no),dist)
 	xe =   0.
 	ye =   0.
 	do i = 1,3
@@ -175,13 +179,13 @@
 
      end do
 
-     nobs_tot_l = nno
-     if (nobs_tot_l > 0) then
+     nobs_tot_e = nno
+     if (nobs_tot_e > 0) then
 
-        allocate(innovl(nobs_tot_l),D1l(nobs_tot_l,nrens),Sl(nobs_tot_l,nrens))
-        allocate(El(nobs_tot_l,nrens),Rl(nobs_tot_l,nobs_tot_l))
+        allocate(innovl(nobs_tot_e),D1l(nobs_tot_e,nrens),Sl(nobs_tot_e,nrens))
+        allocate(El(nobs_tot_e,nrens),Rl(nobs_tot_e,nobs_tot_e))
 
-        do no = 1,nobs_tot_l
+        do no = 1,nobs_tot_e
 
 	     ! tapering of the innovations and of the ens anomalies
 	     innovl(no) = innov(ido(no)) * wo(no)
@@ -197,10 +201,15 @@
 	ne_l = ne_l + 1
 	Ane_loc = Ane_bk	! set equal to the state before the analysis
 
-	call analysis(Ane_loc,Rl,El,Sl,D1l,innovl,lnedim,nrens,nobs_tot_l,'false',&
+	call analysis(Ane_loc,Rl,El,Sl,D1l,innovl,lnedim,nrens,nobs_tot_e,'false',&
 	           truncation,rmode,update_randrot)
 
+        !call save_X5('local',atime_an)
+
         deallocate(innovl,D1l,Sl,El,Rl)
+
+	! This is to check the position
+	!write(121,*) '1',ne_l,'8',xe,ye
 
      end if
 

@@ -71,9 +71,9 @@ fi
 
 # loop on ens members
 #
-for efile in $(ls an002_en*.${file_type}); do
+for efile in $(ls an00002_en*.${file_type}); do
 
-    ens_member=${efile:8:3}
+    ens_member=${efile:10:5}
 
     if [ ${file_type} = 'ext' ]; then
 
