@@ -1,19 +1,4 @@
-# Include shyfem rules and redefines moddir
-include ../../Rules.make
-
 MODDIR = .
-
-# Switch to double precision for real
-ifeq ($(FORTRAN_COMPILER),GNU_GFORTRAN)
-  R8FL = -fdefault-real-8 -fdefault-double-8
-endif
-
-ifeq ($(FORTRAN_COMPILER),INTEL)
-  R8FL = -real-size 64
-endif
-override FFLAGS += $(R8FL)
-override LFLAGS += $(R8FL)
-
 
 OBJS = analysis.o analysis6c.o analysis2.o
 

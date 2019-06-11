@@ -1,16 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
 module m_newton2D
 contains
 subroutine newton2D(r1,r2,n1,n2,dx,dy,rx,ry,lconv,verbose)

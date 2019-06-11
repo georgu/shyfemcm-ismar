@@ -44,10 +44,10 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
 
 
    lreps=.FALSE.
-   if (verbose) print * ,'analysis: verbose is on'
+   !print *,'analysis: starting'
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! Pseudo inversion of C=SS' +(N-1)*R
-   print *,'      analysis: Inversion of C:'
+   if (verbose) print *,'analysis: inversion of C:'
    if (nrobs == 1) then
       nrmin=1
       allocate(W(1,1))
@@ -61,7 +61,7 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
       case(11,21)
          nrmin=nrobs
 !        Evaluate R= S*S` + (nrens-1)*R
-         call sgemm('n','t',nrobs,nrobs,nrens, &
+         call dgemm('n','t',nrobs,nrobs,nrens, &
                        1.0, S, nrobs, &
                             S, nrobs, &
              real(nrens-1), R, nrobs)
@@ -85,21 +85,16 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
          call lowrankE(S,E,nrobs,nrens,nrmin,W,eig,truncation)
 
       case default
-         print *,'analysis: Unknown mode: ',mode
+         print *,'analysis: unknown mode: ',mode
          stop
       end select
    endif
 
 
 
-
-
-
-
-
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! Generation of X5 (or representers in EnKF case with few measurements)
-   print *,'      analysis: Generation of X5:'
+   if (verbose) print *,'analysis: generation of X5:'
    select case (mode)
    case(11,12,13)
       allocate(X3(nrobs,nrens))
@@ -111,15 +106,15 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
 
       if (2_8*ndim*nrobs < 1_8*nrens*(nrobs+ndim)) then
 !        Code for few observations ( m<nN/(2n-N) )
-         if (verbose) print * ,'analysis: Representer approach is used'
+         if (verbose) print * ,'analysis: representer approach is used'
          lreps=.true.
          allocate (Reps(ndim,nrobs))
 !        Reps=matmul(A,transpose(S))
-         call sgemm('n','t',ndim,nrobs,nrens,1.0,A,ndim,S,nrobs,0.0,Reps,ndim)
+         call dgemm('n','t',ndim,nrobs,nrens,1.0,A,ndim,S,nrobs,0.0,Reps,ndim)
       else
          if (verbose) print * ,'analysis: X5 approach is used'
 !        X5=matmul(transpose(S),X3)
-         call sgemm('t','n',nrens,nrens,nrobs,1.0,S,nrobs,X3,nrobs,0.0,X5,nrens)
+         call dgemm('t','n',nrens,nrens,nrobs,1.0,S,nrobs,X3,nrobs,0.0,X5,nrens)
          do i=1,nrens
             X5(i,i)=X5(i,i)+1.0
          enddo
@@ -137,7 +132,7 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
       call X5sqrt(X2,nrobs,nrens,nrmin,X5,update_randrot,mode)
 
    case default
-      print *,'analysis: Unknown flag for mode: ',mode
+      print *,'analysis: unknown flag for mode: ',mode
       stop
    end select
 
@@ -149,10 +144,10 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! Final ensemble update
-   print *,'      analysis: Final ensemble update:'
+   !print *,'analysis: final ensemble update'
    if (lreps) then
 !     A=A+matmul(Reps,X3)
-      call sgemm('n','n',ndim,nrens,nrobs,1.0,Reps,ndim,X3,nrobs,1.0,A,ndim)
+      call dgemm('n','n',ndim,nrens,nrobs,1.0,Reps,ndim,X3,nrobs,1.0,A,ndim)
       call dumpX3(X3,S,nrobs,nrens)
    else
       iblkmax=min(ndim,200)

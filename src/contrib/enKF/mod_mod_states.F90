@@ -184,87 +184,6 @@ contains
        root_state%s = sqrt(A%s)
    end function root_state
 
-   function mean_state(n,A)
-      implicit none
-      type(states) mean_state
-      integer, intent(in) :: n
-      type(states), intent(in) :: A(n)
-      integer i
-
-      if (n <= 0) error stop 'mean_state: invalid n'
-
-      mean_state%u = 1.d-15
-      mean_state%v = 1.d-15
-      mean_state%z = 1.d-15
-      mean_state%t = 1.d-15
-      mean_state%s = 1.d-15
-      do i = 1,n
-       mean_state%u = mean_state%u + A(i)%u
-       mean_state%v = mean_state%v + A(i)%v
-       mean_state%z = mean_state%z + A(i)%z
-       mean_state%t = mean_state%t + A(i)%t
-       mean_state%s = mean_state%s + A(i)%s
-      end do
-      mean_state%u = mean_state%u / float(n)
-      mean_state%v = mean_state%v / float(n)
-      mean_state%z = mean_state%z / float(n)
-      mean_state%t = mean_state%t / float(n)
-      mean_state%s = mean_state%s / float(n)
-   end function mean_state
-
-   function std_state(n,A)
-      implicit none
-      type(states) std_state
-      integer, intent(in) :: n
-      type(states), intent(in) :: A(n)
-      type(states), allocatable :: Aaux
-      integer i
-
-      if (n <= 0) error stop 'mean_state: invalid n'
-
-      allocate(Aaux)
-
-      ! This is not zero in case some vars are always zero
-      Aaux%u = 1.d-15
-      Aaux%v = 1.d-15
-      Aaux%z = 1.d-15
-      Aaux%t = 1.d-15
-      Aaux%s = 1.d-15
-      do i = 1,n
-       Aaux%u = Aaux%u + A(i)%u
-       Aaux%v = Aaux%v + A(i)%v
-       Aaux%z = Aaux%z + A(i)%z
-       Aaux%t = Aaux%t + A(i)%t
-       Aaux%s = Aaux%s + A(i)%s
-      end do
-      Aaux%u = Aaux%u / float(n)
-      Aaux%v = Aaux%v / float(n)
-      Aaux%z = Aaux%z / float(n)
-      Aaux%t = Aaux%t / float(n)
-      Aaux%s = Aaux%s / float(n)
-
-      std_state%u = 1.d-15
-      std_state%v = 1.d-15
-      std_state%z = 1.d-15
-      std_state%t = 1.d-15
-      std_state%s = 1.d-15
-      do i = 1,n
-       std_state%u = std_state%u + (A(i)%u - Aaux%u)**2
-       std_state%v = std_state%v + (A(i)%v - Aaux%v)**2
-       std_state%z = std_state%z + (A(i)%z - Aaux%z)**2
-       std_state%t = std_state%t + (A(i)%t - Aaux%t)**2
-       std_state%s = std_state%s + (A(i)%s - Aaux%s)**2
-      end do
-      std_state%u = sqrt(std_state%u / float(n-1))
-      std_state%v = sqrt(std_state%v / float(n-1))
-      std_state%z = sqrt(std_state%z / float(n-1))
-      std_state%t = sqrt(std_state%t / float(n-1))
-      std_state%s = sqrt(std_state%s / float(n-1))
-
-      deallocate(Aaux)
-
-   end function std_state
-
 !-------------------------------------------------------------------
 ! subroutines
 !-------------------------------------------------------------------
@@ -333,6 +252,87 @@ contains
       A%t=C%t
       A%s=C%s
    end subroutine pull_qstate
+
+   subroutine mean_state(n,A,B)
+      implicit none
+      integer, intent(in) :: n
+      type(states), intent(in) :: A(n)
+      type(states), intent(out) :: B
+      integer i
+
+      if (n <= 0) error stop 'mean_state: invalid n'
+
+      B%u = 1.d-15
+      B%v = 1.d-15
+      B%z = 1.d-15
+      B%t = 1.d-15
+      B%s = 1.d-15
+      do i = 1,n
+       B%u = B%u + A(i)%u
+       B%v = B%v + A(i)%v
+       B%z = B%z + A(i)%z
+       B%t = B%t + A(i)%t
+       B%s = B%s + A(i)%s
+      end do
+      B%u = B%u / float(n)
+      B%v = B%v / float(n)
+      B%z = B%z / float(n)
+      B%t = B%t / float(n)
+      B%s = B%s / float(n)
+   end subroutine mean_state
+
+   subroutine std_state(n,A,B)
+      implicit none
+      integer, intent(in) :: n
+      type(states), intent(in) :: A(n)
+      type(states), intent(out) :: B
+      type(states), allocatable :: Aaux
+      integer i
+
+      if (n <= 0) error stop 'mean_state: invalid n'
+
+      allocate(Aaux)
+
+      ! This is not zero in case some vars are always zero
+      Aaux%u = 1.d-15
+      Aaux%v = 1.d-15
+      Aaux%z = 1.d-15
+      Aaux%t = 1.d-15
+      Aaux%s = 1.d-15
+      do i = 1,n
+       Aaux%u = Aaux%u + A(i)%u
+       Aaux%v = Aaux%v + A(i)%v
+       Aaux%z = Aaux%z + A(i)%z
+       Aaux%t = Aaux%t + A(i)%t
+       Aaux%s = Aaux%s + A(i)%s
+      end do
+      Aaux%u = Aaux%u / float(n)
+      Aaux%v = Aaux%v / float(n)
+      Aaux%z = Aaux%z / float(n)
+      Aaux%t = Aaux%t / float(n)
+      Aaux%s = Aaux%s / float(n)
+
+      B%u = 1.d-15
+      B%v = 1.d-15
+      B%z = 1.d-15
+      B%t = 1.d-15
+      B%s = 1.d-15
+      do i = 1,n
+       B%u = B%u + (A(i)%u - Aaux%u)**2
+       B%v = B%v + (A(i)%v - Aaux%v)**2
+       B%z = B%z + (A(i)%z - Aaux%z)**2
+       B%t = B%t + (A(i)%t - Aaux%t)**2
+       B%s = B%s + (A(i)%s - Aaux%s)**2
+      end do
+      B%u = sqrt(B%u / float(n-1))
+      B%v = sqrt(B%v / float(n-1))
+      B%z = sqrt(B%z / float(n-1))
+      B%t = sqrt(B%t / float(n-1))
+      B%s = sqrt(B%s / float(n-1))
+
+      deallocate(Aaux)
+
+   end subroutine std_state
 
    subroutine rtps_inflation(alpha,n,A,Amean,Astdo,Astdn)
       implicit none

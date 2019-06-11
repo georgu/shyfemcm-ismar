@@ -21,7 +21,6 @@ override LFLAGS += $(R8FL)
 LIBDIR = ../femlib
 DIRFEM = ../fem3d
 MODDIR = $(LIBDIR)/mod
-ENKDIR = EvKF
 
 #--------------------
 # ht objects
@@ -36,12 +35,12 @@ HTOBJS = $(DIRFEM)/subrst.o $(DIRFEM)/subbas.o $(DIRFEM)/subdts.o $(DIRFEM)/mod_
 
 #--------------------
 # Ensemble analysis objects
-ENSOBJ1 = analysis.o m_randrot.o m_multa.o mod_anafunc.o m_mean_preserving_rotation.o
-#ENSOBJ1 = analysis6c.o m_randrot.o m_multa.o 
-#ENSOBJ1 = analysis2.o m_randrot.o m_multa.o 
-ENSOBJ2 = mod_para.o subenkf.o mod_ens_state.o mod_mod_err.o mod_enkf.o \
+ENSOBJ1 = mod_para.o subenkf.o mod_ens_state.o mod_mod_err.o mod_enkf.o \
 	mod_init_enkf.o mod_dimensions.o mod_mod_states.o mod_obs_states.o \
 	mod_manage_obs.o sublocan.o
+ENSOBJ2 = analysis.o m_randrot.o m_multa.o mod_anafunc.o m_mean_preserving_rotation.o
+#ENSOBJ2 = analysis6c.o m_randrot.o m_multa.o 
+#ENSOBJ2 = analysis2.o m_randrot.o m_multa.o 
 ENSOBJ3 = m_sample2D.o m_pseudo2D.o mod_fftw3.o m_newton2D.o \
 	m_newtonfunc2D.o m_fixsample2D.o m_random.o
 
@@ -50,33 +49,16 @@ ENSOBJ3 = m_sample2D.o m_pseudo2D.o mod_fftw3.o m_newton2D.o \
 LIBS = -llapack -lblas -lfftw3 -lpthread
 
 #--------------------
-make_EvKF:
-	cd $(ENKDIR); make clean; make; cd -; mv -f $(ENKDIR)/*.o .
-	mv -f $(ENKDIR)/*.mod $(MODDIR)
-
-make_sample:
-	cd $(ENKDIR)/pseudo_random_fields; make clean; make; cd -
-	mv -f $(ENKDIR)/pseudo_random_fields/TMP/*.o .
-	mv -f $(ENKDIR)/pseudo_random_fields/TMP/*.mod $(MODDIR)
-
-enkf_analysis: make_EvKF
-	make make_sample
-	make enkf_analysis.o $(ENSOBJ2) 
+enkf_analysis: enkf_analysis.o $(ENSOBJ1) $(ENSOBJ2) $(ENSOBJ3)
 	$(LINKER) $(LFLAGS) $(LIBS) $(HTOBJS) $@.o \
         $(ENSOBJ1) $(ENSOBJ2) $(ENSOBJ3) $(LIBDIR)/libfem.a \
 	-o $@
 
-make_ens_meteo: make_EvKF
-	make make_sample
-	make make_ens_meteo.o 
-	$(LINKER) $(LFLAGS) $@.o $(LIBS) $(LIBDIR)/libfem.a \
-	$(ENSOBJ1) $(ENSOBJ3) -o $@
+make_ens_meteo: make_ens_meteo.o $(ENSOBJ3) m_randrot.o
+	$(LINKER) $(LFLAGS) $@.o $(ENSOBJ3) m_randrot.o $(LIBS) $(LIBDIR)/libfem.a -o $@
 
-make_eof_ens_meteo: make_EvKF
-	make make_sample
-	make make_eof_ens_meteo.o 
-	$(LINKER) $(LFLAGS) $@.o $(LIBS) $(LIBDIR)/libfem.a  -llapack -lblas \
-	-o $@
+make_eof_ens_meteo: make_eof_ens_meteo.o m_random.o
+	$(LINKER) $(LFLAGS) $@.o m_random.o $(LIBS) $(LIBDIR)/libfem.a -llapack -lblas -o $@
 
 enKF2enKS: enKF2enKS.o 
 	$(LINKER) $(LFLAGS) $(LIBS) $(HTOBJS) $@.o \
@@ -84,22 +66,17 @@ enKF2enKS: enKF2enKS.o
 
 #--------------------
 #--------------------
-EXES = enkf_analysis make_ens_meteo  make_eof_ens_meteo
+EXES = enkf_analysis make_ens_meteo make_eof_ens_meteo enKF2enKS
 
-all: 	$(EXES)
+all: $(EXES)
 
-default: 
-	make all
-
-# I don't know why but this is not necessary:
-depend:
-	$(FEMDIR)/fembin/mkdp.pl -moddir=$(MODDIR) *.F90
+default: all
 
 clean:
-	rm -fr $(EXES) *.o *.mod tags
+	rm -f $(EXES) *.o *.mod tags
 
 cleanall:
-	rm -fr $(EXES) *.o *.mod tags *.dat *.uf fort.*; cd $(ENKDIR); rm -fr *.o *.mod; rm -f *.bak
+	rm -f $(EXES) *.o *.mod tags *.dat *.uf fort.* *.bak
 
 
 #---------------------
@@ -112,57 +89,3 @@ cleanall:
 
 .F90.o:
 	$(F77) -c $(FFLAGS) $< 
-
-
-
-
-# DO NOT DELETE THIS LINE -- make depend depends on it.
-
-../femlib/mod/mod_dimensions.mod: mod_dimensions.o
-../femlib/mod/mod_para.mod: mod_para.o
-../femlib/mod/mod_init_enkf.mod: mod_init_enkf.o ../femlib/mod/iso8601.mod
-../femlib/mod/mod_enkf.mod: mod_enkf.o ../femlib/mod/mod_para.mod \
-		../femlib/mod/mod_manage_obs.mod
-../femlib/mod/mod_mod_err.mod: mod_mod_err.o
-../femlib/mod/mod_obs_states.mod: mod_obs_states.o
-../femlib/mod/mod_manage_obs.mod: mod_manage_obs.o ../femlib/mod/mod_para.mod \
-		../femlib/mod/mod_obs_states.mod ../femlib/mod/iso8601.mod
-../femlib/mod/mod_mod_states.mod: mod_mod_states.o ../femlib/mod/mod_dimensions.mod
-../femlib/mod/mod_ens_state.mod: mod_ens_state.o ../femlib/mod/mod_init_enkf.mod \
-		../femlib/mod/mod_mod_states.mod ../femlib/mod/mod_dimensions.mod
-../femlib/mod/m_sample2D.mod: m_sample2D.o ../femlib/mod/m_pseudo2D.mod \
-		../femlib/mod/m_randrot.mod ../femlib/mod/m_fixsample2D.mod
-../femlib/mod/m_fixsample2D.mod: m_fixsample2D.o
-../femlib/mod/m_randrot.mod: m_randrot.o
-
-../femlib/mod/m_pseudo2D.mod: m_pseudo2D.o ../femlib/mod/mod_fftw3.mod \
-		../femlib/mod/m_newton2D.mod
-../femlib/mod/mod_fftw3.mod: mod_fftw3.o
-../femlib/mod/m_newton2D.mod: m_newton2D.o ../femlib/mod/m_newtonfunc2D.mod
-../femlib/mod/m_newtonfunc2D.mod: m_newtonfunc2D.o
-
-enkf_analysis.o: ../femlib/mod/mod_para.mod \
-		../femlib/mod/mod_enkf.mod \
-		../femlib/mod/mod_mod_err.mod 
-mod_enkf.o: ../femlib/mod/mod_para.mod \
-		../femlib/mod/basin.mod \
-		../femlib/mod/mod_conz.mod \
-		../femlib/mod/mod_hydro.mod \
-		../femlib/mod/mod_hydro_vel.mod \
-		../femlib/mod/mod_obs_states.mod \
-		../femlib/mod/mod_mod_states.mod \
-		../femlib/mod/mod_ts.mod \
-		../femlib/mod/mod_init_enkf.mod \
-		../femlib/mod/mod_ens_state.mod \
-		../femlib/mod/mod_manage_obs.mod
-mod_mod_states.o: ../femlib/mod/mod_dimensions.mod
-subenkf.o: ../femlib/mod/basin.mod ../femlib/mod/levels.mod \
-		../femlib/mod/m_sample2D.mod \
-		../femlib/mod/mod_conz.mod \
-		../femlib/mod/mod_geom_dynamic.mod \
-		../femlib/mod/mod_hydro.mod \
-		../femlib/mod/mod_hydro_vel.mod \
-		../femlib/mod/mod_restart.mod \
-		../femlib/mod/mod_ts.mod ../femlib/mod/shyfile.mod 
-
-make_ens_meteo.o: ../femlib/mod/m_sample2D.mod

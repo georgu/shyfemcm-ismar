@@ -91,10 +91,8 @@ integer j,k
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! Creating the random orthonormal mean preserving nrens x nrens Upb matrix: Up=B^T Upb B
-!   call sgemm('n','n',nrens,nrens,nrens,1.0,B,nrens,Upb,nrens,0.0,Q,nrens) ! Bug? - mbj
-!   call sgemm('n','t',nrens,nrens,nrens,1.0,Q,nrens,B,nrens,0.0,Up,nrens)
-   call sgemm('t','n',nrens,nrens,nrens,1.0,B,nrens,Upb,nrens,0.0,Q,nrens)
-   call sgemm('n','n',nrens,nrens,nrens,1.0,Q,nrens,B,nrens,0.0,Up,nrens)
+   call dgemm('n','n',nrens,nrens,nrens,1.0,B,nrens,Upb,nrens,0.0,Q,nrens)
+   call dgemm('n','t',nrens,nrens,nrens,1.0,Q,nrens,B,nrens,0.0,Up,nrens)
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

@@ -347,6 +347,7 @@ end program make_eof_ens_meteo
 !--------------------------------------------------
 subroutine make_random_0D(vec,nvec)
 !--------------------------------------------------
+ use m_random
  implicit none
  integer, intent(in) :: nvec
  real, intent(out) :: vec(nvec)

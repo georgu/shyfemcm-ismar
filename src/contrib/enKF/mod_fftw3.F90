@@ -1,16 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
 module mod_fftw3
    integer, parameter :: FFTW_R2HC=0
    integer, parameter :: FFTW_HC2R=1

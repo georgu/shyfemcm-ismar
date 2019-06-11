@@ -1,16 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
 module m_newtonfunc2D
 contains
 subroutine newtonfunc2D(f,g,f1,g1,f2,g2,r1,r2,n1,n2,dx,dy,rx,ry)

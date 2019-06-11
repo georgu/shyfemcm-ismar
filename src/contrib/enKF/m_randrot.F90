@@ -9,7 +9,7 @@ subroutine randrot(Q,nrens)
    real sigma(nrens), work(10*nrens)
    real, parameter :: pi=3.14159253589
    integer ierr
-   !real meanB
+   real meanB
 
    call random_number(B)
    call random_number(A)
@@ -17,11 +17,11 @@ subroutine randrot(Q,nrens)
 
 !$OMP CRITICAL
 ! QR factorization
-   call sgeqrf(nrens, nrens, Q, nrens, sigma, work, 10*nrens, ierr )
-   if (ierr /= 0) print *, 'randrot: sgeqrf ierr=',ierr
+   call dgeqrf(nrens, nrens, Q, nrens, sigma, work, 10*nrens, ierr )
+   if (ierr /= 0) print *, 'randrot: dgeqrf ierr=',ierr
 
 ! Construction of Q
-   call sorgqr(nrens, nrens, nrens, Q, nrens, sigma, work, 10*nrens, ierr )
+   call dorgqr(nrens, nrens, nrens, Q, nrens, sigma, work, 10*nrens, ierr )
    if (ierr /= 0) print *, 'randrot: dorgqr ierr=',ierr
 !$OMP END CRITICAL
 

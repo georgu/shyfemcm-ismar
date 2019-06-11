@@ -1,21 +1,5 @@
 VPATH = .:RCS:TMP
 
-#--------------------
-# Include shyfem rules
-include ../../../Rules.make
-
-## Switch to double precision for real
-ifeq ($(FORTRAN_COMPILER),GNU_GFORTRAN)
-  R8FL = -fdefault-real-8
-  OPT_FFLAGS = -finit-local-zero -c -O3 
-endif
-
-ifeq ($(FORTRAN_COMPILER),INTEL)
-  R8FL = -real-size 64
-  OPT_FFLAGS = -implicitnone -init=nozero -warn unused -c -O3 -assume byterecl -assume nobuffered_io -convert big_endian
-endif
-
-
 .SUFFIXES:
 .SUFFIXES: .o .F90 .f90 .F .f .H .h  
 

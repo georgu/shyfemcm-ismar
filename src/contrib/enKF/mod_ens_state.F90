@@ -147,11 +147,11 @@ contains
   character(len=1), intent(in) :: tflag
 
   if (tflag == 'a') then
-     Aan_m = mean_state(nrens,Aan)
-     Aan_std = std_state(nrens,Aan)
+     call mean_state(nrens,Aan,Aan_m)
+     call std_state(nrens,Aan,Aan_std)
   else
-     Abk_m = mean_state(nrens,Abk)
-     Abk_std = std_state(nrens,Abk)
+     call mean_state(nrens,Abk,Abk_m)
+     call std_state(nrens,Abk,Abk_std)
   end if
 
   end subroutine make_mean_std

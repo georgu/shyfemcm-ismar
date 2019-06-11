@@ -1,16 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
 module m_random
 contains
 subroutine random(work1,n)
