@@ -11,6 +11,8 @@ subroutine randrot(Q,nrens)
    integer ierr
    real meanB
 
+   call random_seed
+
    call random_number(B)
    call random_number(A)
    Q = sqrt(-2.*log(A+tiny(A))) * cos(2.*pi*B)

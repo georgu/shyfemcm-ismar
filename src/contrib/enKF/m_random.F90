@@ -8,6 +8,8 @@ subroutine random(work1,n)
    real,   allocatable :: work2(:)
    real, parameter   ::  pi=3.141592653589
 
+   call random_seed
+
    allocate (work2(n))
 
    call random_number(work1)
