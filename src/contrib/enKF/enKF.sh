@@ -126,7 +126,7 @@ Compile_enkf(){
 	sed -e "s/NLV/$nlv/" > mod_dimensions.F90
 
   make cleanall > $SIMDIR/make.log
-  make enkf_analysis >> $SIMDIR/make.log
+  make main >> $SIMDIR/make.log
   cd $SIMDIR
 }
 
@@ -137,9 +137,9 @@ Check_exec(){
   echo "Check the exec programs"
   command -v parallel > /dev/null 2>&1 || { echo "parallel it's not installed.  Aborting." >&2; exit 1; }
   [ ! -s $FEMDIR/fem3d/shyfem ] && echo "shyfem exec does not exist. Compile the model first." && exit 1
-  # Make here the mod_dimensions and compile enkf_analysis
+  # Make here the mod_dimensions and compile main
   
-  [ ! -s $FEMDIR/enKF/enkf_analysis ] && echo "enkf_analysis exec does not exist. Compile the enKF first." && exit 1
+  [ ! -s $FEMDIR/enKF/main ] && echo "main exec does not exist. Compile the enKF first." && exit 1
 }
 
 #----------------------------------------------------------
@@ -243,9 +243,9 @@ Run_ensemble_analysis()
 nanl=$(printf "%05d" $1)
 
 cd $SIMDIR
-$FEMDIR/enKF/enkf_analysis
+$FEMDIR/enKF/main
 if [ "$?" -ne "0" ]; then
-          echo "Errors while running enkf_analysis."
+          echo "Errors while running main."
           exit 1
 fi
 

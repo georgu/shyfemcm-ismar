@@ -65,7 +65,6 @@ subroutine lowrankE(S,E,nrobs,nrens,nrmin,W,eig,truncation)
 
    call dgemm('n','n',nrobs,nrmin,nrmin, 1.0,U0,nrobs, U1,nrmin, 0.0,W,nrobs)
 
-
 end subroutine
 
 

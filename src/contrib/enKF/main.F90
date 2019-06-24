@@ -15,7 +15,7 @@
 ! code is compiled in double precision. This is better for
 ! the analysis (Topaz does the same).
 !------------------------------------------------------------------------------
-program enKF_analysis
+program main
 
   use mod_mod_states
   use mod_para
@@ -149,4 +149,4 @@ program enKF_analysis
 !--------------------------------
   call write_ensemble
 
-end program enKF_analysis
+end program main

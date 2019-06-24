@@ -121,8 +121,8 @@
           !--------------------------------------------------
 	  ! Reads headers
           !--------------------------------------------------
- 	  call fem_file_read_params(iformat,iunit,dtime
-     +                          ,nvers,np,lmax,nvar,ntype,datetime,ierr)
+ 	  call fem_file_read_params(iformat,iunit,dtime &
+               ,nvers,np,lmax,nvar,ntype,datetime,ierr)
 	  if( ierr .lt. 0 ) exit
 
           call dts_convert_to_atime(datetime,dtime,atime)
@@ -132,8 +132,8 @@
 
 	  allocate(hlv(lmax))
 	  nlvddi = lmax
-	  call fem_file_read_2header(iformat,iunit,ntype,lmax
-     +                  ,hlv,regpar,ierr)
+	  call fem_file_read_2header(iformat,iunit,ntype,lmax &
+	       ,hlv,regpar,ierr)
 
 	  nx = nint(regpar(1))
 	  ny = nint(regpar(2))
@@ -154,22 +154,22 @@
 		write(*,*) 'Case 1: spatially constant perturbations'
 
 		if(.not.allocated(pvec)) allocate(pvec(2,nrens))
-		if(.not.allocated(pvec_old)) 
-     +			allocate(pvec_old(2,nrens))
+		if(.not.allocated(pvec_old)) &
+			allocate(pvec_old(2,nrens))
 
         	call make_random_0D(pvec(1,:),nrens)
 	        call make_random_0D(pvec(2,:),nrens)
 
-		call merge_old_vec(irec,tt,tt_old,tau_er,
-     +                  nrens,2,pvec,pvec_old)
+		call merge_old_vec(irec,tt,tt_old,tau_er, &
+                       nrens,2,pvec,pvec_old)
 
 	    case(2,5,6)		! u and v indipendent
 
 		write(*,*) 'Case 2: two perturbations'
 
 	        if(.not.allocated(pmat)) allocate(pmat(2,nx,ny,nrens))
-	        if(.not.allocated(pmat_old))
-     +			allocate(pmat_old(2,nx,ny,nrens))
+	        if(.not.allocated(pmat_old)) &
+     			allocate(pmat_old(2,nx,ny,nrens))
 	        if(.not.allocated(amat)) allocate(amat(nx,ny,nrens))
 
 		! dx must resolve rx, but you need enough nx.
@@ -180,32 +180,32 @@
 		!ry = ((ny-1)/4) * dy
 
 		! Make the random fields
-		call sample2D(amat,nx,ny,nrens,fmult,dx,dy,rx,ry,theta
-     +               ,samp_fix,verbose)
+		call sample2D(amat,nx,ny,nrens,fmult,dx,dy,rx,ry,theta &
+                    ,samp_fix,verbose)
 		pmat(1,:,:,:) = amat
-		call sample2D(amat,nx,ny,nrens,fmult,dx,dy,rx,ry,theta
-     +               ,samp_fix,verbose)
+		call sample2D(amat,nx,ny,nrens,fmult,dx,dy,rx,ry,theta &
+                    ,samp_fix,verbose)
 		pmat(2,:,:,:) = amat
 
 		! Merge with the old fields in order to have time correlation
-		call merge_old_field(irec,tt,tt_old,tau_er,nx,ny,
-     +			2,nrens,pmat,pmat_old)
+		call merge_old_field(irec,tt,tt_old,tau_er,nx,ny, &
+     			2,nrens,pmat,pmat_old)
 
 	    case(3,4)		! perturbed p, u and v with geostroph. pert.
 		
 		write(*,*) 'Case 3: one perturbation'
 
 	        if(.not.allocated(pmat)) allocate(pmat(1,nx,ny,nrens))
-	        if(.not.allocated(pmat_old))
-     +			allocate(pmat_old(1,nx,ny,nrens))
+	        if(.not.allocated(pmat_old)) &
+     			allocate(pmat_old(1,nx,ny,nrens))
 	        if(.not.allocated(amat)) allocate(amat(nx,ny,nrens))
 
-		call sample2D(amat,nx,ny,nrens,fmult,dx,dy,rx,ry,theta
-     +               ,samp_fix,verbose)
+		call sample2D(amat,nx,ny,nrens,fmult,dx,dy,rx,ry,theta &
+                    ,samp_fix,verbose)
 		pmat(1,:,:,:) = amat
 
-		call merge_old_field(irec,tt,tt_old,tau_er,nx,ny,
-     +                  1,nrens,pmat,pmat_old)
+		call merge_old_field(irec,tt,tt_old,tau_er,nx,ny, &
+                       1,nrens,pmat,pmat_old)
 
 	  end select 
 
@@ -218,12 +218,12 @@
  	  do i = 1,nvar
 
 	     ! Reads variable
-	     call fem_file_read_data(iformat,iunit
-     +                          ,nvers,np,lmax
-     +                          ,string(i)
-     +                          ,ilhkv,hd
-     +                          ,nlvddi,data
-     +                          ,ierr)
+	     call fem_file_read_data(iformat,iunit &
+                               ,nvers,np,lmax &
+                               ,string(i) &
+                               ,ilhkv,hd &
+                               ,nlvddi,data &
+                               ,ierr)
 	     write(*,*) 'Reading: ',string(i)
 
 	     ! store control meteo
@@ -238,49 +238,49 @@
 	     ! Select perturbation type
              select case (pert_type)
 	        case (1)
-	  	  call make_const_field(nr,nvar,nrens,nx,ny,pvec,
-     +				ctrl_met,ens_met,flag,sigmaUV)
+	  	  call make_const_field(nr,nvar,nrens,nx,ny,pvec, &
+     				ctrl_met,ens_met,flag,sigmaUV)
 		case (2)
-		  call make_ind_field(nvar,nr,nrens,nx,ny,pmat,
-     +		        ctrl_met,ens_met,flag,sigmaUV,sigmaP)
+		  call make_ind_field(nvar,nr,nrens,nx,ny,pmat, &
+     		        ctrl_met,ens_met,flag,sigmaUV,sigmaP)
 
 		case (3)
-		  call make_geo_field(nvar,nr,nrens,nx,ny,dx,dy,
-     +				pmat,ctrl_met,ens_met,flag,sigmaUV,
-     +				sigmaP,flat,bpress)
+		  call make_geo_field(nvar,nr,nrens,nx,ny,dx,dy, &
+     				pmat,ctrl_met,ens_met,flag,sigmaUV, &
+     				sigmaP,flat,bpress)
 		case (4)
-		  call make_ws_pert(nvar,nr,nrens,nx,ny,pmat,
-     +                 ctrl_met,ens_met,flag,sigmaUV)
+		  call make_ws_pert(nvar,nr,nrens,nx,ny,pmat, &
+                      ctrl_met,ens_met,flag,sigmaUV)
 
 		case (5)
-		  call make_2geo_field(nvar,nr,nrens,nx,ny,dx,dy,
-     +				pmat,ctrl_met,ens_met,flag,sigmaUV,
-     +				sigmaP,flat)
+		  call make_2geo_field(nvar,nr,nrens,nx,ny,dx,dy, &
+     				pmat,ctrl_met,ens_met,flag,sigmaUV, &
+     				sigmaP,flat)
 		case (6)
-		  call make_ind_field_ws(nvar,nr,nrens,nx,ny,pmat,
-     +                          ctrl_met,ens_met,flag,sigmaUV,sigmaWS)
+		  call make_ind_field_ws(nvar,nr,nrens,nx,ny,pmat, &
+                               ctrl_met,ens_met,flag,sigmaUV,sigmaWS)
 	     end select
 
              !call check_wind(nx,ny,nrens,ens_met,ierr,flag)
              !if (ierr /= 0) error stop 'wind too high'
-             call correct_wind(bcorr,nr,nvar,nx,ny,sigmauv,ctrl_met,
-     +                         ens_met,flag)
+             call correct_wind(bcorr,nr,nvar,nx,ny,sigmauv,ctrl_met, &
+                              ens_met,flag)
 
 	     ounit = iunit + 10 + nr
-	     call fem_file_write_header(iformat,ounit,dtime
-     +                          ,nvers,np,lmax
-     +                          ,nvar,ntype
-     +                          ,nlvddi,hlv,datetime,regpar)
+	     call fem_file_write_header(iformat,ounit,dtime &
+                               ,nvers,np,lmax &
+                               ,nvar,ntype &
+                               ,nlvddi,hlv,datetime,regpar)
 
 
 	     allocate(dataens(nx,ny))
 	     do i = 1,nvar
 	        dataens = ens_met(i,:,:) !write in real4
-	        call fem_file_write_data(iformat,ounit
-     +                    ,nvers,np,lmax
-     +                    ,string(i)
-     +                    ,ilhkv,hd
-     +                    ,nlvddi,dataens)
+	        call fem_file_write_data(iformat,ounit &
+                         ,nvers,np,lmax &
+                         ,string(i) &
+                         ,ilhkv,hd &
+                         ,nlvddi,dataens)
              end do
 
              deallocate(ens_met,dataens)
@@ -310,8 +310,8 @@
 !***********************************************************
 	
 !--------------------------------------------------
-	subroutine merge_old_field(irec,tt,tt_old,tau_er,nx,ny,
-     +                  nvar,nrens,pmat,pmat_old)
+	subroutine merge_old_field(irec,tt,tt_old,tau_er,nx,ny, &
+                       nvar,nrens,pmat,pmat_old)
 !--------------------------------------------------
 	implicit none
 	integer irec
@@ -334,8 +334,8 @@
 	end subroutine merge_old_field
 
 !--------------------------------------------------
-	subroutine merge_old_vec(irec,tt,tt_old,tau_er,
-     +                  nrens,nvar,pvec,pvec_old)
+	subroutine merge_old_vec(irec,tt,tt_old,tau_er, &
+                       nrens,nvar,pvec,pvec_old)
 !--------------------------------------------------
 	implicit none
 	integer irec
@@ -386,8 +386,8 @@
 
 
 !--------------------------------------------------
-	subroutine make_const_field(iens,nvar,nrens,nx,ny,vec,
-     +					datain,dataout,flag,err)
+	subroutine make_const_field(iens,nvar,nrens,nx,ny,vec, &
+     					datain,dataout,flag,err)
 !--------------------------------------------------
 	implicit none
 
@@ -409,12 +409,12 @@
 	       do iy = 1,ny
 	       do ix = 1,nx
 		! if err is relative use this
-!		dataout(ivar,ix,iy) = datain(ivar,ix,iy) + 
-!     +                 (err * abs(datain(ivar,ix,iy))) * vec(ivar,iens)
-		dataout(ivar,ix,iy) = datain(ivar,ix,iy) + 
-     +                 err * vec(ivar,iens)
-		if (datain(ivar,ix,iy) == flag) 
-     +                 dataout(ivar,ix,iy) = flag
+!		dataout(ivar,ix,iy) = datain(ivar,ix,iy) + &
+!                      (err * abs(datain(ivar,ix,iy))) * vec(ivar,iens)
+		dataout(ivar,ix,iy) = datain(ivar,ix,iy) + &
+                      err * vec(ivar,iens)
+		if (datain(ivar,ix,iy) == flag) &
+                      dataout(ivar,ix,iy) = flag
 	       end do
 	       end do
 
@@ -430,8 +430,8 @@
 
 
 !--------------------------------------------------
-	subroutine make_ind_field(nvar,iens,nrens,nx,ny,mat,
-     +		        datain,dataout,flag,err,errp)
+	subroutine make_ind_field(nvar,iens,nrens,nx,ny,mat, &
+     		        datain,dataout,flag,err,errp)
 !--------------------------------------------------
 	implicit none
 
@@ -453,12 +453,12 @@
 	      do iy = 1,ny
 	      do ix = 1,nx
 	        ! if err is relative use this
-		dataout(ivar,ix,iy) = datain(ivar,ix,iy) + 
-     +            (err*abs(datain(ivar,ix,iy))) * mat(ivar,ix,iy,iens)
-		! dataout(ivar,ix,iy) = datain(ivar,ix,iy) + 
-!     +				(err * mat(ivar,ix,iy,iens))
-		if (datain(ivar,ix,iy) == flag) 
-     +			dataout(ivar,ix,iy) = flag
+		dataout(ivar,ix,iy) = datain(ivar,ix,iy) + &
+                 (err*abs(datain(ivar,ix,iy))) * mat(ivar,ix,iy,iens)
+		! dataout(ivar,ix,iy) = datain(ivar,ix,iy) + &
+!     				(err * mat(ivar,ix,iy,iens))
+		if (datain(ivar,ix,iy) == flag) &
+     			dataout(ivar,ix,iy) = flag
 	      end do
 	      end do
 
@@ -469,14 +469,14 @@
 !	      do iy = 1,ny
 !	      do ix = 1,nx
 !
-!                 ppert = 1/2. * mat(1,ix,iy,iens) + 
-!     +                   1/2. * mat(2,ix,iy,iens)
+!                 ppert = 1/2. * mat(1,ix,iy,iens) + &
+!                        1/2. * mat(2,ix,iy,iens)
 !
-!	         dataout(ivar,ix,iy) = datain(ivar,ix,iy) + 
-!     +              ppert * errp
+!	         dataout(ivar,ix,iy) = datain(ivar,ix,iy) + &
+!                   ppert * errp
 !
-!		 if (datain(ivar,ix,iy) == flag) 
-!     +			dataout(ivar,ix,iy) = flag
+!		 if (datain(ivar,ix,iy) == flag) &
+!     			dataout(ivar,ix,iy) = flag
 !
 !	      end do
 !	      end do
@@ -491,8 +491,8 @@
 
 
 !--------------------------------------------------
-	subroutine make_geo_field(nvar,iens,nrens,nx,ny,dx,dy,
-     +		mat,datain,dataout,flag,err,sigmaP,flat,bpress)
+	subroutine make_geo_field(nvar,iens,nrens,nx,ny,dx,dy, &
+     		mat,datain,dataout,flag,err,sigmaP,flat,bpress)
 !--------------------------------------------------
 	implicit none
 
@@ -520,10 +520,10 @@
 	theta = flat * pi/180.
 	fcor = 2. * sin(theta) * (2.* pi / 86400.)
 	! earth radius with latitude
-	er = sqrt( ( (er1**2 * cos(theta))**2 + 
-     +			(er2**2 * sin(theta))**2 ) /
-     +			( (er1 * cos(theta))**2 + 
-     +			(er2 * sin(theta))**2 ) ) 
+	er = sqrt( ( (er1**2 * cos(theta))**2 + &
+     			(er2**2 * sin(theta))**2 ) / &
+     			( (er1 * cos(theta))**2 + &
+     			(er2 * sin(theta))**2 ) ) 
 
 	dxm = dx * pi/180. * er
 	dym = dy * pi/180. * er
@@ -548,8 +548,7 @@
 		  !dataout(ivar,ix,iy) = Up
 		  dataout(ivar,ix,iy) = datain(ivar,ix,iy) + Up
 
-		  if (datain(ivar,ix,iy) == flag) 
-     +			dataout(ivar,ix,iy) = flag
+		  if (datain(ivar,ix,iy) == flag) dataout(ivar,ix,iy) = flag
 
 		end do
 		end do
@@ -574,8 +573,8 @@
 		  !dataout(ivar,ix,iy) =  Vp
 		  dataout(ivar,ix,iy) = datain(ivar,ix,iy) + Vp
 
-		  if (datain(ivar,ix,iy) == flag) 
-     +			dataout(ivar,ix,iy) = flag
+		  if (datain(ivar,ix,iy) == flag) &
+     			dataout(ivar,ix,iy) = flag
 
 		end do
 		end do
@@ -588,11 +587,10 @@
 	      if (bpress) then
 		do iy = 1,ny
 		do ix = 1,nx
-		     dataout(ivar,ix,iy) = datain(ivar,ix,iy) + sigmaP
-     +					* mat(1,ix,iy,iens)
+		     dataout(ivar,ix,iy) = datain(ivar,ix,iy) + sigmaP &
+     					* mat(1,ix,iy,iens)
 !		  dataout(ivar,ix,iy) = sigmaP * mat(1,ix,iy,iens)
-		  if (datain(ivar,ix,iy) == flag) 
-     +			dataout(ivar,ix,iy) = flag
+		  if (datain(ivar,ix,iy) == flag) dataout(ivar,ix,iy) = flag
 		end do
 		end do
               else
@@ -607,8 +605,8 @@
 
 
 !--------------------------------------------------
-	subroutine make_2geo_field(nvar,iens,nrens,nx,ny,dx,dy,
-     +		mat,datain,dataout,flag,err,sigmaP,flat)
+	subroutine make_2geo_field(nvar,iens,nrens,nx,ny,dx,dy, &
+     		mat,datain,dataout,flag,err,sigmaP,flat)
 !--------------------------------------------------
 	implicit none
 
@@ -635,10 +633,10 @@
 	theta = flat * pi/180.
 	fcor = 2. * sin(theta) * (2.* pi / 86400.)
 	! earth radius with latitude
-	er = sqrt( ( (er1**2 * cos(theta))**2 + 
-     +			(er2**2 * sin(theta))**2 ) /
-     +			( (er1 * cos(theta))**2 + 
-     +			(er2 * sin(theta))**2 ) ) 
+	er = sqrt( ( (er1**2 * cos(theta))**2 + &
+     			(er2**2 * sin(theta))**2 ) / &
+     			( (er1 * cos(theta))**2 + &
+     			(er2 * sin(theta))**2 ) ) 
 
 	dxm = dx * pi/180. * er
 	dym = dy * pi/180. * er
@@ -664,8 +662,7 @@
 		  !dataout(ivar,ix,iy) = Up
 		  dataout(ivar,ix,iy) = datain(ivar,ix,iy) + Up
 
-		  if( datain(ivar,ix,iy).eq.flag ) 
-     +			dataout(ivar,ix,iy) = flag
+		  if( datain(ivar,ix,iy).eq.flag ) dataout(ivar,ix,iy) = flag
 
 		end do
 		end do
@@ -690,8 +687,7 @@
 		  !dataout(ivar,ix,iy) =  Vp
 		  dataout(ivar,ix,iy) = datain(ivar,ix,iy) + Vp
 
-		  if( datain(ivar,ix,iy).eq.flag ) 
-     +			dataout(ivar,ix,iy) = flag
+		  if( datain(ivar,ix,iy).eq.flag ) dataout(ivar,ix,iy) = flag
 
 		end do
 		end do
@@ -710,8 +706,8 @@
 
 
 !--------------------------------------------------
-	subroutine make_ws_pert(nvar,iens,nrens,nx,ny,mat,
-     +                 datain,dataout,flag,err)
+	subroutine make_ws_pert(nvar,iens,nrens,nx,ny,mat, &
+		datain,dataout,flag,err)
 !--------------------------------------------------
 	implicit none
         integer,intent(in) :: nvar,iens
@@ -732,10 +728,9 @@
 	     case default	!wind
 		do ix = 1,nx
 		do iy = 1,ny
-	     	  dataout(ivar,ix,iy) = datain(ivar,ix,iy) + 
-     +                               wse(ix,iy)/wso(ix,iy)
-		  if (datain(ivar,ix,iy) == flag) 
-     +                           dataout(ivar,ix,iy) = flag
+	     	  dataout(ivar,ix,iy) = datain(ivar,ix,iy) + &
+                                    wse(ix,iy)/wso(ix,iy)
+		  if (datain(ivar,ix,iy) == flag) dataout(ivar,ix,iy) = flag
 		end do
 		end do
 	     case (3)	!pressure
@@ -748,8 +743,8 @@
 
 
 !--------------------------------------------------
-	subroutine make_ind_field_ws(nvar,iens,nrens,nx,ny,mat,
-     +				datain,dataout,flag,err1,err2)
+	subroutine make_ind_field_ws(nvar,iens,nrens,nx,ny,mat, &
+     				datain,dataout,flag,err1,err2)
 !--------------------------------------------------
 ! The idea was to perturb u and to use a coefficient k around 1
 ! k = wsp/ws
@@ -767,16 +762,16 @@
 	real,intent(in) :: mat(2,nx,ny,nrens)
 	real,intent(in) :: datain(nvar,nx,ny)
 	real,intent(out) :: dataout(nvar,nx,ny)
-        real, allocatable :: u(:,:),du(:,:),v(:,:),dv1(:,:),k(:,:),
-     +                       ws(:,:),uu(:,:),vv(:,:),b(:,:),c(:,:),
-     +                       dv2(:,:)
+        real, allocatable :: u(:,:),du(:,:),v(:,:),dv1(:,:),k(:,:), &
+                            ws(:,:),uu(:,:),vv(:,:),b(:,:),c(:,:), &
+                            dv2(:,:)
         real k0
 
         if (nvar /= 3) error stop 'dimension error'
 
-        allocate(u(nx,ny),du(nx,ny),v(nx,ny),dv1(nx,ny),k(nx,ny),
-     +           ws(nx,ny),uu(nx,ny),vv(nx,ny),b(nx,ny),c(nx,ny),
-     +           dv2(nx,ny))
+        allocate(u(nx,ny),du(nx,ny),v(nx,ny),dv1(nx,ny),k(nx,ny), &
+                ws(nx,ny),uu(nx,ny),vv(nx,ny),b(nx,ny),c(nx,ny), &
+                dv2(nx,ny))
 
         u = datain(1,:,:)
         v = datain(2,:,:)
@@ -825,8 +820,8 @@
         ierr = 0
         do ix = 1,nx
         do iy = 1,ny
-	   if ((wind(1,ix,iy) == flag) .or. 
-     +         (wind(2,ix,iy) == flag)) cycle
+	   if ((wind(1,ix,iy) == flag) .or. &
+              (wind(2,ix,iy) == flag)) cycle
 
            ws = sqrt(wind(1,ix,iy)**2 + wind(2,ix,iy)**2)
            if (ws > wsmax) then
@@ -860,8 +855,7 @@
         wmax = 30.
         do ix = 1,nx
         do iy = 1,ny
-           if ((emet(1,ix,iy) == flag) .or.
-     +         (emet(2,ix,iy) == flag)) cycle
+           if ((emet(1,ix,iy) == flag) .or.(emet(2,ix,iy) == flag)) cycle
 
            ! Reduce ws of 5%
            emet(1,ix,iy) = 0.95 * emet(1,ix,iy)
