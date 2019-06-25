@@ -99,7 +99,6 @@ program main
                   truncation,rmode,update_randrot)
   !call analysis6c(Amat,E,S,innov,dim_tot,nrens,nobs_tot,verbose)	!SQRT alg
   !call analysis2(Amat,D1,R,S,dim_tot,nrens,nobs_tot,verbose)	!ENKF alg
-  write(80,*) Amat(1:100,1:61)
     
 !--------------------------------
 ! Do after... 

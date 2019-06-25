@@ -23,7 +23,8 @@ real B(nrens,nrens),Q(nrens,nrens),R(nrens,nrens),U(nrens-1,nrens-1), Upb(nrens,
 integer j,k
 
 
-   call random_seed
+   !call random_seed
+   call init_random_seed()
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

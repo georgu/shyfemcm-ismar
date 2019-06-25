@@ -67,7 +67,8 @@ subroutine pseudo2D(Amat,nx,ny,lde,rx,ry,dx,dy,n1,n2,theta,verbose)
    logical cnv
    real e
 
-   call random_seed
+   !call random_seed
+   call init_random_seed()
 
    if (lde < 1)    stop 'pseudo2D: error lde < 1'
    if (rx <= 0.0)  stop 'pseudo2D: error, rx <= 0.0'

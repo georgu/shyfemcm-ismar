@@ -11,7 +11,8 @@ subroutine randrot(Q,nrens)
    integer ierr
    real meanB
 
-   call random_seed
+   !call random_seed
+   call init_random_seed()
 
    call random_number(B)
    call random_number(A)

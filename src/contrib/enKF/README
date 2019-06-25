@@ -26,30 +26,29 @@ Directory structure
 ===================
 
 .		Main code and utilities
-EvKF		Geir Evenseen's code used for the analysis and
+EvKF		Original Evenseen's code used for the analysis and
 		for generating perturbations.
 
 
 How it works
 ===================
-Data assimilation allows you to use observations to improve the model
-simulation. The period where you have observations is defined as "assimilation
-window". It's better to have a restart before this period with a record
-corresponding to the time of the first observation. Then you need also an
-ensemble of simulations which should express the uncertainty of your modelling
-application. You can obtain this by varying the forcings and/or boundary
-conditions of each ensemble member (see the program make_ens_meteo.f for example). 
-Remember that the mean of the ensemble should be centred and near to an unperturbed 
-simulation. You have also to prepare the observations in the right format and to 
-follow carefully the instructions below...
+Data assimilation use observations to improve the model results.
+The final state, called "analysis" minimises the errors of the model
+state, called "background", considering the observations with their
+errors.
+The period with observations is defined as "assimilation window".
+This program needs an ensemble of restart files at the begin of the
+assimilation window (first observation). 
+A good idea is also to keep each member of the ensemble separated using
+different forcings and/or boundary conditions.
+The spread of the forcing and of the boundary condition should represent
+their errors. 
+To create an ensemble of forcing and/or BC consider the programs:
+make_ens_meteo.F90 and make_eof_meteo.F90
 
 
 Compiling the code
 ===================
-
-- cd enKF
-- make cleanall
-- make enkf_analysis
 
 In order to run the enKF.sh script you need a program named parallel 
 and the library liblapack-dev. You should find them in your Linux 
@@ -58,18 +57,16 @@ distribution.
 Installation with Debian from root:
 apt-get update && apt-get install parallel liblapack-dev
 
-Installation with Ubuntu:
-sudo apt-get update && apt-get install parallel liblapack-dev
-
+The options of the data assimilation code are in mod_para.F90.
 
 Run the code
 ===================
 
-Run:
+Run data assimilation:
 
 ./enKF.sh [n. of threads] [conf-file]
 
-Then if you want to do the Kalman Smoother analysis:
+Then, to run the Kalman Smoother analysis:
 
 ./enKF2enKS [nrens] [output]
 
@@ -184,7 +181,7 @@ restart must be the control (unperturbed) run, the 0 ensemble member.
 In order to create a good initial ensemble you can run an ensemble of
 simulations with different forcings and/or boundary conditions and save the
 restart at the first analysis step. The ensemble must be centered
-(mean~=control).
+(mean ~ control).
 
 ----------
 Observation files
@@ -215,20 +212,27 @@ Utilities
 ===================
 
 shyfem_ens.sh:
-executes shyfem in parallel by using an ensemble of str files. Without data
-assimilation, just normal runs. For example you can use this for the final 
-forecast runs
+Executes normal shyfem runs in parallel by using an ensemble of str files.
 
 merge_ens.sh:
-merges ext or shy files pruduced during the analysis period
-(i.e., anXXX_enYYY.ZZZ) in nrens files.
+Merges ext or shy files produced during the analysis period
+(i.e., anXXXXX_enYYYYY.ZZZ) in nrens files.
 Timeseries are extracted in text files, with both the background and
-the analysis values at the analysis times. shy files are merged keeping
+the analysis values at the analysis times. Shy files are merged keeping
 the analysis fields at the analysis times.
+Anyway, it's better to use the rst files and then use rst2shy.
 
 split_ext.sh:
-splits an ensemble of ext file with a common basename.
+Splits an ensemble of ext files with a common basename.
 
 make_ens_wind:
-makes an ens of perturbed fields from a 2D field. FEM file format. Works also
-for HFR radar fem files.
+Makes an ensemble from a deterministic wind. FEM file format. Works also for HFR radar fem files
+and can be used also for the boundary condition with some adaptations.
+
+make_eof_wind:
+The same of the previous one, but using a EOF analysis of the wind and varying
+the PCs.
+
+enKF2enKS:
+Makes the Kalman Smoother analysis after the Kalman Filter run.
+
