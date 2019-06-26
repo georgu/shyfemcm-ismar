@@ -90,11 +90,6 @@ Read_conf()
         is_new_ens=$line
         Check_num 0 1 'int' $is_new_ens
 
-     # If 1 uses an augmented state with the model errors
-     elif [ "$nrows" -eq "4" ]; then
-        is_mod_err=$line
-        Check_num 0 1 'int' $is_mod_err
-
      else
 
         echo "Too many rows"
@@ -233,7 +228,6 @@ Write_info_file(){
   echo ${timeo[$na]} >> analysis.info	# current time
   echo $obs_file_list >> analysis.info	# obs file list
   echo $is_new_ens >> analysis.info	# if to make a new ens of states
-  echo $is_mod_err >> analysis.info	# if to use an augmented state with mod err
 }
 
 #----------------------------------------------------------

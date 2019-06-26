@@ -11,7 +11,6 @@ module mod_init_enkf
   character (len=80) :: ostring
   double precision :: atime_an
   integer :: bnew_ens
-  integer :: mode_an
 
 
 contains
@@ -32,7 +31,6 @@ contains
   read(20,*) ostring	! current time of the observations, string format
   read(20,*) obsfile	! name of obs file list
   read(20,*) bnew_ens	! 1 to create a new initial ens of states
-  read(20,*) mode_an	! 0 normal; 1 mod err; 2 mod params
 
   close(20)
 
@@ -47,7 +45,6 @@ contains
   write(*,*) 'absolute time: ',atime_an
   write(*,*) 'n. of ens members: ',nrens
   write(*,*) 'ensemble state creation: ',bnew_ens
-  write(*,*) 'mode of simulation: ',mode_an
   
   end subroutine read_info
 

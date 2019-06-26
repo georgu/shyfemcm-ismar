@@ -543,19 +543,25 @@
 
 ! Routines to init the random seed, from gcc.gnu.org
 subroutine init_random_seed()
+
   use iso_fortran_env, only: int64
+
+#ifdef __INTEL_COMPILER
+  use IFPORT
+#endif  
+
   implicit none
-  integer, allocatable :: seed(:)
+  integer, allocatable :: sseed(:)
   integer :: i, n, un, istat, dt(8), pid
   integer(int64) :: t
 
   call random_seed(size = n)
-  allocate(seed(n))
+  allocate(sseed(n))
   ! First try if the OS provides a random number generator
   open(newunit=un, file="/dev/urandom", access="stream", &
        form="unformatted", action="read", status="old", iostat=istat)
   if (istat == 0) then
-     read(un) seed
+     read(un) sseed
      close(un)
   else
      ! Fallback to XOR:ing the current time and pid. The PID is
@@ -574,10 +580,10 @@ subroutine init_random_seed()
      pid = getpid()
      t = ieor(t, int(pid, kind(t)))
      do i = 1, n
-        seed(i) = lcg(t)
+        sseed(i) = lcg(t)
      end do
   end if
-  call random_seed(put=seed)
+  call random_seed(put=sseed)
 contains
   ! This simple PRNG might not be good enough for real work, but is
   ! sufficient for seeding a better PRNG.

@@ -28,6 +28,11 @@ module mod_para
   real :: truncation = 0.995 ! truncation of the SVD eigenvalues
   logical :: update_randrot = .true. ! False for local analysis
 
+  ! set this to 1 to include the model errors in the analysis (to test) or equal 2 to
+  ! include model parameters (todo)
+  !
+  integer, parameter :: mode_an = 0
+
 !------------
 ! Settings for the observation perturbations (mod_enkf)
 !

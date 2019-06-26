@@ -86,8 +86,6 @@ This file must contain the following information in different lines:
 - Initial ensemble: 0 for an ensemble loaded from files (suggested), 1 to
   create an ensemble from a state (to be tested - just z level is perturbed).
   With 1 make also a file named "init_ens.info", as described below;
-- Model error mode: 0 normal mode; 1 with model error; 2 with model parameters.
-  If 1 make a file "mod_err.info", described below.
 
 ----------
 ens_list.txt
@@ -119,12 +117,33 @@ Possible flag for the observations are:
 The structure of the observation files is described below.
 
 ----------
-init_ens.info & mod_err.info
+init_ens.info (optional)
 ----------
+
+Set the initial ensemble to 1 in the configuration file.
+This file sets the white noise parameters to make an initial ensemble of
+states. Only the sea level is perturbed.
+
 init_ens.info must contain a row with:
   - nx ny fmult theta sigma
 
+  where:
+  - nx,ny are the dimension of the grid of the pseudo random fields
+  - fmult is the mult factor to create a supersample from the initial ensemble
+  - theta is the rotation of the pseudo random fields (0 East, anticlockwise)
+  - sigma is the standard deviation of the water level
+
+----------
+mod_err.info (optional)
+----------
+
+Set mode_an = 1 in mod_para.F90 to activate the model errors.
+This file is used to set the red noise parameters to propagate the model error,
+by using an augmented state.
+Warning!!! The routine make_2Dpert gives a segmentation fault.
+
 mod_err.info must contain a row with:
+
   - nx ny fmult theta rerror dt tau
 
   where:
@@ -135,13 +154,6 @@ mod_err.info must contain a row with:
     small one. At the moment just the water levels have errors.
   - dt is the time between two observation steps (assumes regular intervals)
   - tau is the e-folding time of the red noise in the model error
-
-The values containted in the two files are indipendent. 
-The first file is used to create white noise to make the initial ensemble. 
-Only the sea level is perturbed.
-The second file is used to make red noise to propagate the model error,
-by using an augmented state. This is not working, the routine make_2Dpert
-gives a segmentation fault.
 
 ----------
 skel files
