@@ -42,9 +42,7 @@ contains
   call dts_to_abs_time(date,time,atime_an)
 
   write(*,*) 'time of the analysis step: ',trim(ostring)
-  write(*,*) 'absolute time: ',atime_an
   write(*,*) 'n. of ens members: ',nrens
-  write(*,*) 'ensemble state creation: ',bnew_ens
   
   end subroutine read_info
 

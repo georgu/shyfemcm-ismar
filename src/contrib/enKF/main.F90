@@ -115,7 +115,7 @@ program main
      call save_X5('global',atime_an)
 
      if (is_local == 1) then
-	write(*,*) 'Running local analysis...'
+	write(*,*) 'Running local analysis. rho_loc: ',rho_loc
 	call local_analysis
      end if
    

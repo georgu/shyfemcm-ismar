@@ -10,7 +10,7 @@ module mod_para
   !integer :: rmode = 22 ! Square root algorithm with SVD pseudo inversion of SS'+(N-1)R
   !integer :: rmode = 23 ! Square root algorithm with SVD pseudo inversion of SS'+ EE'
 
-  logical :: verbose = .true. ! Prints diagnostic output
+  logical :: verbose = .false. ! Prints diagnostic output
 
   integer, parameter :: type_infl = 1  ! 1: RTPS inflation (see WHITAKER, 2012)
                                        ! 2: Multiplication inflation. Seems better with
@@ -20,7 +20,7 @@ module mod_para
   real, parameter :: alpha_infl = 0.02 ! type_infl = 1 -> ~ 0.01 
                                        ! type_infl = 2 -> ~ 0.01 (lower with SQRT method)
 
-  integer, parameter :: is_local = 0 !Local analysis. 0 disable, 1 local analysis
+  integer, parameter :: is_local = 1 !Local analysis. 0 disable, 1 local analysis
   real, parameter :: rho_loc = 1.5   !Radius for local analysis (use the same coords of the grid)
 
   ! do not touch these

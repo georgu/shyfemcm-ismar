@@ -123,7 +123,7 @@
 	nk_l = nk_l + 1
 	Ak_loc = Ak_bk	! set equal to the state before the analysis
 
-	call analysis(Ak_loc,Rl,El,Sl,D1l,innovl,lkdim,nrens,nobs_tot_k,'false',&
+	call analysis(Ak_loc,Rl,El,Sl,D1l,innovl,lkdim,nrens,nobs_tot_k,.false.,&
 		           truncation,rmode,update_randrot)
 
 	update_randrot = .false.	! true just the first time. Beware in OMP
@@ -201,7 +201,7 @@
 	ne_l = ne_l + 1
 	Ane_loc = Ane_bk	! set equal to the state before the analysis
 
-	call analysis(Ane_loc,Rl,El,Sl,D1l,innovl,lnedim,nrens,nobs_tot_e,'false',&
+	call analysis(Ane_loc,Rl,El,Sl,D1l,innovl,lnedim,nrens,nobs_tot_e,.false.,&
 	           truncation,rmode,update_randrot)
 
         !call save_X5('local',atime_an)
