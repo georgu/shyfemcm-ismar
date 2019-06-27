@@ -2,28 +2,27 @@
 # Copyright (C) 2017, Marco Bajo, CNR-ISMAR Venice, All rights reserved.
 #
 
+#-------------------- default values from shyfem
 FEMDIR = ..
 FEMBIN = $(FEMDIR)/fembin
 FEM3D = $(FEMDIR)/fem3d
-
 include ../Rules.make
 
-# Switch to real64
+#-------------------- switch from real/double-precision to real64 (real*8)
 ifeq ($(FORTRAN_COMPILER),GNU_GFORTRAN)
   R8FL = -fdefault-real-8 -fdefault-double-8
 endif
-
 ifeq ($(FORTRAN_COMPILER),INTEL)
   R8FL = -real-size 64 -double-size 64
 endif
 override FFLAGS += $(R8FL)
 override LFLAGS += $(R8FL)
 
+#-------------------- run to make depends
 MAKEDEPEND = $(FEMBIN)/mkdp.pl
 
-#--------------------
-# ht objects
-HTOBJS = $(FEM3D)/subrst.o $(FEM3D)/subbas.o $(FEM3D)/subdts.o $(FEM3D)/mod_bnd.o \
+#-------------------- shyfem objects
+SHYOBJ = $(FEM3D)/subrst.o $(FEM3D)/subbas.o $(FEM3D)/subdts.o $(FEM3D)/mod_bnd.o \
 	$(FEM3D)/subreg.o $(FEM3D)/subfind.o $(FEM3D)/subpar3.o $(FEM3D)/suboutput.o \
 	$(FEM3D)/subfil.o $(FEM3D)/mod_hydro.o $(FEM3D)/debug.o $(FEM3D)/subsss.o \
 	$(FEM3D)/subbit10.o $(FEM3D)/mod_geom_dynamic.o $(FEM3D)/mod_ts.o \
@@ -32,64 +31,69 @@ HTOBJS = $(FEM3D)/subrst.o $(FEM3D)/subbas.o $(FEM3D)/subdts.o $(FEM3D)/mod_bnd.
 	$(FEM3D)/mod_geom.o $(FEM3D)/subscn.o $(FEM3D)/suboutputd.o \
 	$(FEM3D)/subiso8601.o
 
-#--------------------
+#-------------------- ens objects
 # Ensemble analysis objects
-ENSOBJ1 = mod_para.o subenkf.o mod_ens_state.o mod_mod_err.o mod_enkf.o \
-	mod_init_enkf.o mod_dimensions.o mod_mod_states.o mod_obs_states.o \
-	mod_manage_obs.o sublocan.o
-ENSOBJ2 = analysis.o m_randrot.o m_multa.o mod_anafunc.o m_mean_preserving_rotation.o
-#ENSOBJ2 = analysis6c.o m_randrot.o m_multa.o 
-#ENSOBJ2 = analysis2.o m_randrot.o m_multa.o 
-ENSOBJ3 = m_sample2D.o m_pseudo2D.o mod_fftw3.o m_newton2D.o \
-	m_newtonfunc2D.o m_fixsample2D.o m_random.o
+ENSOBJ = mod_para.o subenkf.o mod_ens_state.o mod_mod_err.o mod_enkf.o \
+	mod_dimensions.o mod_init_enkf.o mod_mod_states.o mod_obs_states.o \
+	mod_manage_obs.o sublocan.o subrandom.o \
+	analysis6c.o analysis2.o analysis.o m_randrot.o m_multa.o mod_anafunc.o \
+	m_mean_preserving_rotation.o \
+	m_sample2D.o m_pseudo2D.o mod_fftw3.o m_newton2D.o m_newtonfunc2D.o \
+	m_fixsample2D.o m_random.o
 
-#--------------------
-# Libraries to link
+#-------------------- external libraries
 LIBS = -llapack -lblas -lfftw3 -lpthread
 
-#--------------------
-main: main.o $(ENSOBJ1) $(ENSOBJ2) $(ENSOBJ3)
-	$(LINKER) $(LFLAGS) $(LIBS) $(HTOBJS) $@.o \
-        $(ENSOBJ1) $(ENSOBJ2) $(ENSOBJ3) $(DIRLIB)/libfem.a \
-	-o $@
+#-------------------- ens modules (just to clean)
+ENSMOD = $(MODDIR)/m_random.mod $(MODDIR)/mod_mod_err.mod $(MODDIR)/mod_enkf.mod \
+	 $(MODDIR)/mod_manage_obs.mod $(MODDIR)/mod_ens_state.mod $(MODDIR)/mod_para.mod \
+	 $(MODDIR)/mod_init_enkf.mod $(MODDIR)/mod_anafunc.mod \
+	 $(MODDIR)/m_mean_preserving_rotation.mod $(MODDIR)/m_multa.mod $(MODDIR)/m_sample2d.mod \
+	 $(MODDIR)/m_randrot.mod $(MODDIR)/m_pseudo2d.mod $(MODDIR)/mod_fftw3.mod \
+	 $(MODDIR)/m_newton2d.mod $(MODDIR)/m_newtonfunc2d.mod $(MODDIR)/m_fixsample2d.mod \
+	 $(MODDIR)/mod_obs_states.mod $(MODDIR)/mod_mod_states.mod $(MODDIR)/mod_dimensions.mod
 
-make_ens_meteo: make_ens_meteo.o $(ENSOBJ3) m_randrot.o
-	$(LINKER) $(LFLAGS) $@.o $(ENSOBJ3) m_randrot.o $(LIBS) $(DIRLIB)/libfem.a -o $@
+#-------------------- all the exec files
+EXES = main make_ens_meteo make_eof_ens_meteo enKF2enKS
 
-make_eof_ens_meteo: make_eof_ens_meteo.o m_random.o
-	$(LINKER) $(LFLAGS) $@.o m_random.o $(LIBS) $(DIRLIB)/libfem.a -llapack -lblas -o $@
+
+#------------------- targets
+default: $(EXES)
+
+all: $(EXES)
+
+clean:
+	rm -f $(EXES) *.o $(ENSMOD)
+
+cleanall:
+	rm -f $(EXES) *.o $(ENSMOD) tags *.dat *.uf fort.* *.bak
+
+main: main.o $(ENSOBJ)
+	$(LINKER) $(LFLAGS) $(LIBS) $(SHYOBJ) $@.o \
+        $(ENSOBJ) $(DIRLIB)/libfem.a -o $@
+
+make_ens_meteo: make_ens_meteo.o m_sample2D.o m_pseudo2D.o \
+	m_randrot.o m_fixsample2D.o m_random.o m_newtonfunc2D.o subrandom.o
+	$(LINKER) $(LFLAGS) $@.o m_sample2D.o m_pseudo2D.o \
+	m_randrot.o m_fixsample2D.o m_random.o m_newtonfunc2D.o subrandom.o \
+	$(LIBS) $(DIRLIB)/libfem.a -o $@
+
+make_eof_ens_meteo: make_eof_ens_meteo.o m_random.o subrandom.o
+	$(LINKER) $(LFLAGS) $@.o m_random.o subrandom.o \
+	$(LIBS) $(DIRLIB)/libfem.a -llapack -lblas -o $@
 
 enKF2enKS: enKF2enKS.o 
-	$(LINKER) $(LFLAGS) $(LIBS) $(HTOBJS) $@.o \
+	$(LINKER) $(LFLAGS) $(LIBS) $(SHYOBJ) $@.o \
 	$(DIRLIB)/libfem.a -o $@
 
 depend:
 	@$(MAKEDEPEND) -moddir=$(MODDIR) *.F90
 
 
-#--------------------
-#--------------------
-EXES = main make_ens_meteo make_eof_ens_meteo enKF2enKS
-
-all: $(EXES)
-
-default: all
-
-clean:
-	rm -f $(EXES) *.o *.mod tags
-
-cleanall:
-	rm -f $(EXES) *.o *.mod tags *.dat *.uf fort.* *.bak
-
-
-#---------------------
-# Compilation rules
-
+#------------------- compilation rules
 .SUFFIXES: .f .F90
-
 .f.o:
 	$(F77) -c $(FFLAGS) $<
-
 .F90.o:
 	$(F77) -c $(FFLAGS) $< 
 

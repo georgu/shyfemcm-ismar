@@ -3,9 +3,6 @@
 !
 module mod_para
 
-!------------
-! Settings for the analysis step (enkf_analysis)
-!
   integer :: rmode = 13 ! Ensemble Kalman Filter with SVD pseudo inversion of SS'+ EE'
   !integer :: rmode = 22 ! Square root algorithm with SVD pseudo inversion of SS'+(N-1)R
   !integer :: rmode = 23 ! Square root algorithm with SVD pseudo inversion of SS'+ EE'
@@ -20,13 +17,10 @@ module mod_para
   real, parameter :: alpha_infl = 0.02 ! type_infl = 1 -> ~ 0.01 
                                        ! type_infl = 2 -> ~ 0.01 (lower with SQRT method)
 
-  integer, parameter :: is_local = 1 !Local analysis. 0 disable, 1 local analysis
-  real, parameter :: rho_loc = 1.5   !Radius for local analysis (use the same coords of the grid)
-
-  ! do not touch these
+  ! Set these parameters for local analysis. Important.				       
   !
-  real :: truncation = 0.995 ! truncation of the SVD eigenvalues
-  logical :: update_randrot = .true. ! False for local analysis
+  integer, parameter :: is_local = 1 !Local analysis. 0 disable, 1 local analysis
+  real, parameter :: rho_loc = 0.5   !Radius for local analysis (use the same coords of the grid)
 
   ! set this to 1 to include the model errors in the analysis (to test) or equal 2 to
   ! include model parameters (todo)
@@ -50,6 +44,10 @@ module mod_para
   ! See Sakov et al. 2012.
   !
   real, parameter :: KSTD = 2
+
+  ! parameters for the analysis
+  real :: truncation = 0.995 ! truncation of the SVD eigenvalues
+  logical :: update_randrot = .true. ! False for local analysis
 
   ! time interval (sec) to select an observation
   ! with respect to the analysis time
