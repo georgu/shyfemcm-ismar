@@ -53,6 +53,9 @@ ENSMOD = $(MODDIR)/m_random.mod $(MODDIR)/mod_mod_err.mod $(MODDIR)/mod_enkf.mod
 	 $(MODDIR)/m_newton2d.mod $(MODDIR)/m_newtonfunc2d.mod $(MODDIR)/m_fixsample2d.mod \
 	 $(MODDIR)/mod_obs_states.mod $(MODDIR)/mod_mod_states.mod $(MODDIR)/mod_dimensions.mod
 
+#-------------------- custom files (just to clean)
+CUSTF = mod_dimensions.F90
+
 #-------------------- all the exec files
 EXES = main make_ens_meteo make_eof_ens_meteo enKF2enKS
 
@@ -66,7 +69,7 @@ clean:
 	rm -f $(EXES) *.o $(ENSMOD)
 
 cleanall:
-	rm -f $(EXES) *.o $(ENSMOD) tags *.dat *.uf fort.* *.bak
+	rm -f $(EXES) *.o $(ENSMOD) $(CUSTF) tags *.dat *.uf fort.* *.bak
 
 main: main.o $(ENSOBJ)
 	$(LINKER) $(LFLAGS) $(LIBS) $(SHYOBJ) $@.o \

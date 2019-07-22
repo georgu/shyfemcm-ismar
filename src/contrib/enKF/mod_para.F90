@@ -6,8 +6,9 @@ module mod_para
   integer :: rmode = 13 ! Ensemble Kalman Filter with SVD pseudo inversion of SS'+ EE'
   !integer :: rmode = 22 ! Square root algorithm with SVD pseudo inversion of SS'+(N-1)R
   !integer :: rmode = 23 ! Square root algorithm with SVD pseudo inversion of SS'+ EE'
+  !integer :: rmode = 21
 
-  logical :: verbose = .false. ! Prints diagnostic output
+  logical :: verbose = .true. ! Prints diagnostic output
 
   integer, parameter :: type_infl = 1  ! 1: RTPS inflation (see WHITAKER, 2012)
                                        ! 2: Multiplication inflation. Seems better with
@@ -20,7 +21,7 @@ module mod_para
   ! Set these parameters for local analysis. Important.				       
   !
   integer, parameter :: is_local = 1 !Local analysis. 0 disable, 1 local analysis
-  real, parameter :: rho_loc = 0.5   !Radius for local analysis (use the same coords of the grid)
+  real, parameter :: rho_loc = 6.   !Radius for local analysis (use the same coords of the grid)
 
   ! set this to 1 to include the model errors in the analysis (to test) or equal 2 to
   ! include model parameters (todo)
@@ -47,7 +48,8 @@ module mod_para
 
   ! parameters for the analysis
   real :: truncation = 0.995 ! truncation of the SVD eigenvalues
-  logical :: update_randrot = .true. ! False for local analysis
+  logical :: update_randrot = .true. 
+  !logical :: update_randrot = .false. ! False to avoid randomness
 
   ! time interval (sec) to select an observation
   ! with respect to the analysis time

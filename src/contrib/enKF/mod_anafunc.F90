@@ -342,7 +342,11 @@ subroutine X5sqrt(X2,nrobs,nrens,nrmin,X5,update_randrot,mode)
 !   print '(a)','X5sqrt: sig: '
 !   print '(5g11.3)',sig(1:min(nrmin,nrens))
 
-   call dgemm('n','n',nrens,nrens,nrens,1.0,X33,nrens,ROT,nrens,0.0,X4,nrens)
+   if (update_randrot) then
+      call dgemm('n','n',nrens,nrens,nrens,1.0,X33,nrens,ROT,nrens,0.0,X4,nrens)
+   else
+      X4 = X33
+   end if
 
    IenN=-1.0/real(nrens)
    do i=1,nrens

@@ -117,11 +117,13 @@ Compile_enkf(){
 
   cd $FEMDIR/enKF
 
+  make cleanall > $SIMDIR/make.log
+
   cat mod_dimensions.skel | sed -e "s/NKN/$nkn/" | sed -e "s/NEL/$nel/" | \
 	sed -e "s/NLV/$nlv/" > mod_dimensions.F90
 
-  make cleanall > $SIMDIR/make.log
   make main >> $SIMDIR/make.log
+
   cd $SIMDIR
 }
 
