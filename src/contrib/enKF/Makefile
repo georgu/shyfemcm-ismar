@@ -75,9 +75,9 @@ main: main.o $(ENSOBJ)
 	$(LINKER) $(LFLAGS) $(LIBS) $(SHYOBJ) $@.o \
         $(ENSOBJ) $(DIRLIB)/libfem.a -o $@
 
-make_ens_meteo: make_ens_meteo.o m_sample2D.o m_pseudo2D.o \
+make_ens_meteo: make_ens_meteo.o m_sample2D.o m_pseudo2D.o m_newton2D.o \
 	m_randrot.o m_fixsample2D.o m_random.o m_newtonfunc2D.o subrandom.o
-	$(LINKER) $(LFLAGS) $@.o m_sample2D.o m_pseudo2D.o \
+	$(LINKER) $(LFLAGS) $@.o m_sample2D.o m_pseudo2D.o m_newton2D.o \
 	m_randrot.o m_fixsample2D.o m_random.o m_newtonfunc2D.o subrandom.o \
 	$(LIBS) $(DIRLIB)/libfem.a -o $@
 
@@ -92,6 +92,11 @@ enKF2enKS: enKF2enKS.o
 depend:
 	@$(MAKEDEPEND) -moddir=$(MODDIR) *.F90
 
+# if you run make depend remember to remove the lines:
+# subrandom.o: ../femlib/mod/ifport.mod \
+                ../femlib/mod/iso_fortran_env.mod
+# These modules come from the OS
+
 
 #------------------- compilation rules
 .SUFFIXES: .f .F90
@@ -99,7 +104,6 @@ depend:
 	$(F77) -c $(FFLAGS) $<
 .F90.o:
 	$(F77) -c $(FFLAGS) $< 
-
 
 
 # DO NOT DELETE THIS LINE -- make depend depends on it.

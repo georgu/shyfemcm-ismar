@@ -26,7 +26,7 @@ program make_eof_ens_meteo
  integer,allocatable :: ilhkv(:)
  real*4,allocatable :: hd(:)
  integer nlvddi
- real*4,allocatable :: data(:,:)
+ real*4,allocatable :: idata(:,:)
 
  integer nx,ny
  real dx,dy
@@ -63,6 +63,8 @@ program make_eof_ens_meteo
  ! n. of ens members
  !
  nrens = 30
+ nx = 0
+ ny = 0
 
  ! Minimum percentage of variance to keep a PC component
  ! in the creation of the ensemble members
@@ -109,18 +111,18 @@ program make_eof_ens_meteo
    !
    if (.not. allocated(ilhkv)) allocate(ilhkv(np))
    if (.not. allocated(hd)) allocate(hd(np))
-   if (.not. allocated(data)) allocate(data(nx,ny))
    if (.not. allocated(string)) allocate(string(nvar))
    if (.not. allocated(A)) allocate(A(nrec,2*nx*ny))
    if (.not. allocated(press)) allocate(press(nrec,nx*ny))
+   allocate(idata(nx,ny))
    allocate(ddata(nx,ny))
  
    ! Read variables
    do i = 1,nvar
  
       call fem_file_read_data(iformat,iunit,nvers,np,lmax,&
-                      string(i),ilhkv,hd,nlvddi,data,ierr)
-      ddata = data
+                      string(i),ilhkv,hd,nlvddi,idata,ierr)
+      ddata = idata
  
       write(*,*) 'Reading: ',string(i)
       
@@ -153,6 +155,7 @@ program make_eof_ens_meteo
  
    end do
 
+   deallocate(idata)
    deallocate(ddata)
 
  end do
@@ -168,8 +171,9 @@ program make_eof_ens_meteo
  !----------------------------------
  ! detrend data
  !
- allocate(av(2*nx*ny))
- do k = 1,2*nx*ny
+ n = 2*nx*ny
+ allocate(av(n))
+ do k = 1,n
     av(k) = sum(A(:,k))/float(nrec)
     A(:,k) = A(:,k) - av(k)
  end do
@@ -302,34 +306,42 @@ program make_eof_ens_meteo
   
       ! U
       k = 0
+      allocate(idata(nx,ny))
       do ix = 1,nx
       do iy = 1,ny
          k = k + 1
-         data(ix,iy) = A(irec,k)
+         idata(ix,iy) = A(irec,k)
       end do
       end do
       call fem_file_write_data(iformat,ounit,nvers,np,lmax,&
-                        string(1),ilhkv,hd,nlvddi,data)
+                        string(1),ilhkv,hd,nlvddi,idata)
+      deallocate(idata)
+
       ! V
       k = 0
+      allocate(idata(nx,ny))
       do ix = 1,nx
       do iy = 1,ny
          k = k + 1
-         data(ix,iy) = A(irec,nx*ny + k)
+         idata(ix,iy) = A(irec,nx*ny + k)
       end do
       end do
       call fem_file_write_data(iformat,ounit,nvers,np,lmax,&
-                        string(2),ilhkv,hd,nlvddi,data)
+                        string(2),ilhkv,hd,nlvddi,idata)
+      deallocate(idata)
+
       ! pressure
       k = 0
+      allocate(idata(nx,ny))
       do ix = 1,nx
       do iy = 1,ny
          k = k + 1
-         data(ix,iy) = press(irec,k)
+         idata(ix,iy) = press(irec,k)
       end do
       end do
       call fem_file_write_data(iformat,ounit,nvers,np,lmax,&
-                        string(3),ilhkv,hd,nlvddi,data)
+                        string(3),ilhkv,hd,nlvddi,idata)
+      deallocate(idata)
    end do
 
    close(ounit)

@@ -123,7 +123,7 @@ contains
 
   type(states),allocatable :: qA(:)
   character(len=5) :: nrel,nal
-  character(len=16) fname
+  character(len=18) fname
   integer ne
 
   write(*,*) 'Saving model errors'
@@ -153,7 +153,7 @@ contains
    logical :: bfile
    integer ne
    character(len=5) :: nrel,nal
-   character(len=16) fname
+   character(len=18) fname
    type(states),allocatable :: qA1(:),A2
 
    real aalpha

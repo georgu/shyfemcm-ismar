@@ -170,7 +170,7 @@
 	        if(.not.allocated(pmat)) allocate(pmat(2,nx,ny,nrens))
 	        if(.not.allocated(pmat_old)) &
      			allocate(pmat_old(2,nx,ny,nrens))
-	        if(.not.allocated(amat)) allocate(amat(nx,ny,nrens))
+		allocate(amat(nx,ny,nrens))
 
 		! dx must resolve rx, but you need enough nx.
 		! The same for y.
@@ -187,6 +187,8 @@
                     ,samp_fix,verbose)
 		pmat(2,:,:,:) = amat
 
+	        deallocate(amat)
+
 		! Merge with the old fields in order to have time correlation
 		call merge_old_field(irec,tt,tt_old,tau_er,nx,ny, &
      			2,nrens,pmat,pmat_old)
@@ -198,7 +200,7 @@
 	        if(.not.allocated(pmat)) allocate(pmat(1,nx,ny,nrens))
 	        if(.not.allocated(pmat_old)) &
      			allocate(pmat_old(1,nx,ny,nrens))
-	        if(.not.allocated(amat)) allocate(amat(nx,ny,nrens))
+		allocate(amat(nx,ny,nrens))
 
 		call sample2D(amat,nx,ny,nrens,fmult,dx,dy,rx,ry,theta &
                     ,samp_fix,verbose)
@@ -206,6 +208,8 @@
 
 		call merge_old_field(irec,tt,tt_old,tau_er,nx,ny, &
                        1,nrens,pmat,pmat_old)
+
+	        deallocate(amat)
 
 	  end select 
 

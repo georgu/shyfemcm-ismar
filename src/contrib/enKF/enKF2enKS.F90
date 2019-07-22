@@ -295,9 +295,9 @@ subroutine rst_write_rec(atimea,fid)
 
   ! adds parameters
   !
-  svar = float(ibarcl_rst)
+  svar = real(ibarcl_rst)
   call putpar('ibarcl',svar)
-  svar = float(iconz_rst)
+  svar = real(iconz_rst)
   call putpar('iconz',svar)
   svar = 0.
   call putpar('ibfm',svar)
@@ -355,9 +355,12 @@ end subroutine init_shyfem
   implicit none
   real*4 :: zero = 0.
   double precision :: zzero = 0.
+  real*4 :: apar
 
-  call addpar('ibarcl',float(ibarcl_rst))
-  call addpar('iconz',float(iconz_rst))
+  apar = ibarcl_rst
+  call addpar('ibarcl',apar)
+  apar = iconz_rst
+  call addpar('iconz',apar)
   call addpar('ibfm',zero)
   call daddpar('date',zzero)
   call daddpar('time',zzero)
