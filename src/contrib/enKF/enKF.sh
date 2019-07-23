@@ -23,7 +23,7 @@ SIMDIR=$(pwd)		# current dir
 
 Usage()
 {
-  echo "Usage: enKF.sh [n. of threads] [conf-file]"
+  echo "Usage: enKF.sh [n. of threads]"
   exit 0
 }
 
@@ -65,8 +65,9 @@ Check_num()
 
 Read_conf()
 {
-  echo "Read the configuration file: $1"
-  Check_file $1
+  cfile='assconf.dat'
+  echo "Read the configuration file: $cfile"
+  Check_file $cfile
 
   nrows=0
   while read line
@@ -97,7 +98,7 @@ Read_conf()
 
      fi
      nrows=$((nrows + 1))
-  done < $1
+  done < $cfile
 
   ens_file_list='ens_list.txt'
   Check_file $ens_file_list  
@@ -303,9 +304,9 @@ done
 #----------------------------------------------------------
 #----------------------------------------------------------
 
-if [ $2 ]; then
+if [ $1 ]; then
    nthreads=$1
-   Read_conf $2
+   Read_conf
 else
    Usage
 fi

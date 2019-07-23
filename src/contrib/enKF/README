@@ -32,7 +32,7 @@ EvKF		Original Evenseen's code used for the analysis and
 
 How it works
 ===================
-Data assimilation use observations to improve the model results.
+Data assimilation (DA) use observations to improve the model results.
 The final state, called "analysis" minimises the errors of the model
 state, called "background", considering the observations with their
 errors.
@@ -47,26 +47,39 @@ To create an ensemble of forcing and/or BC consider the programs:
 make_ens_meteo.F90 and make_eof_meteo.F90
 
 
-Compiling the code
+Before running the code
 ===================
 
 In order to run the enKF.sh script you need a program named parallel 
 and the library liblapack-dev. You should find them in your Linux 
 distribution.
 
-Installation with Debian from root:
+Installation with a Debian OS from root:
 apt-get update && apt-get install parallel liblapack-dev
 
-The options of the data assimilation code are in mod_para.F90.
+Several options of the DA can be changed in mod_para.F90.
 
-Run the code
+You need to make the following files:
+
+- assconf.dat
+- ens_list.txt
+- antime_list.txt
+- obs_list.txt
+- nrens restart files
+- nrens skel files
+- nrobs observation files
+- nrobs observation info files
+
+
+Running the code
 ===================
 
-Run data assimilation:
+In order to run the DA execute:
 
-./enKF.sh [n. of threads] [conf-file]
+./enKF.sh [n. of threads]
 
-Then, to run the Kalman Smoother analysis:
+At the end of this process you can run the Kalman Smoother analysis
+with (no with local analysis at the moment):
 
 ./enKF2enKS [nrens] [output]
 
@@ -74,7 +87,7 @@ Then, to run the Kalman Smoother analysis:
 Some files must be prepared before running enKF.sh:
 
 ----------
-Configuration file
+assconf.dat
 ----------
 This file must contain the following information in different lines:
 - Name of the bas-file with the bas extension;
@@ -178,6 +191,7 @@ It's extremely important that you set the following strings in the skel files:
 If you want to save the results during the analysis add:
 
 - Section para:
+  itrst = 'ITANF'
   itout = 'ITANF'
   itext = 'ITANF'
   itcon = 'ITANF'
@@ -207,7 +221,7 @@ string-time2 value2
 For each timeseries file a info file is needed, with the same name added of an
 extension '.info'. This file must contain in 1 row: x y z std
 x, y, z = Coordinate of the observation, in the same reference system of the bas file. 
-std = standard deviation (estimated error) of the observation
+std = standard deviation (estimated error) of the observations
 
 2)
 Fem file with a surface current field. Bad values should be flagged with a -999.
