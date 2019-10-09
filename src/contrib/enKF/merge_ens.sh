@@ -31,7 +31,7 @@ Merge_timeseries()
    nen=$1
    ftype=$2
    files=$(ls an*_en${nen}b.${ftype})
-   rm -f zeta.2d.* velx.2d.* vely.2d.* speed.2d.* merged_en${nen}_*
+   rm -f zeta.2d.* velx.2d.* vely.2d.* speed.2d.* dir.2d.* all.2d.* merged_en${nen}_*
    for fil in $files; do
       echo "Processing file: $fil"
       $FEMDIR/fembin/shyelab -split ${fil} > log
@@ -46,6 +46,7 @@ Merge_timeseries()
           cat $flev |head -n -1 >> merged_en${nen}_$flev
       done
    done
+   rm -f zeta.2d.* velx.2d.* vely.2d.* speed.2d.* dir.2d.* all.2d.*
 }
 
 #----------------------------------------------------------

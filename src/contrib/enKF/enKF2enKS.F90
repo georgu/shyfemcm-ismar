@@ -16,6 +16,7 @@ program enKF2enKS
   character(len=4) :: arg1
   character(len=80) :: arg2
   character(len=9) :: arg3
+  character(len=4) :: arg4,arg5
   character(len=80) :: enfile
   integer nrens,nre
   character(len=5) :: nrel
@@ -30,13 +31,17 @@ program enKF2enKS
   call get_command_argument(1, arg1)
   call get_command_argument(2, arg2)
   call get_command_argument(3, arg3)
+  call get_command_argument(4, arg4)
+  call get_command_argument(5, arg5)
   if ((trim(arg2) /= 'norm').and.(trim(arg2) /= 'full')) then
 	  write(*,*) ''
-	  write(*,*) 'Usage: enKF2enKS [nrens] [output] [nlag]'
+	  write(*,*) 'Usage: enKF2enKS [nrens] [output] [nlag] [file-type] [ks-option]'
 	  write(*,*) ''
 	  write(*,*) '[nrens] is the n. of ens members, control included.'
 	  write(*,*) '[output] full (full) or just mean and std (norm).'
 	  write(*,*) '[nlag] number of forward analysis steps to consider (-1 to consider all)'
+	  write(*,*) '[file_type] can be back or anal'
+	  write(*,*) '[ks-option] can be noks or ks, to make the KS analysis'
 	  write(*,*) ''
 	  stop
   end if
@@ -54,25 +59,33 @@ program enKF2enKS
   do nre = 1,nrens
      fid = 20 + nre
      call num2str(nre-1,nrel)
-     enfile = 'backKF_en'//nrel//'.rst'
+     if (arg4 == 'back') then
+        enfile = 'backKF_en'//nrel//'.rst'
+     else
+        enfile = 'analKF_en'//nrel//'.rst'
+     end if
      open(fid,file=trim(enfile),status='old',form='unformatted',iostat=ierr)
      if (ierr /= 0) error stop 'enKF2enKS: error opening file'
   end do
 
-  if (trim(arg2) == 'full') then
+  if ((trim(arg2) == 'full') .and. (trim(arg5) == 'ks')) then
     write(*,*) 'Writing the full output'
     do nre = 1,nrens
        fid = 20 + nrens + nre
        call num2str(nre-1,nrel)
-       enfile = 'analKS_en'//nrel//'.rst'
+       enfile = arg4//'KS_en'//nrel//'.rst'
        open(fid,file=trim(enfile),status='unknown',form='unformatted')
     end do
   end if
 
-  open(16,file='backKF_mean.rst',status='unknown',form='unformatted')
-  open(17,file='backKF_std.rst',status='unknown',form='unformatted')
-  open(18,file='analKS_mean.rst',status='unknown',form='unformatted')
-  open(19,file='analKS_std.rst',status='unknown',form='unformatted')
+  open(16,file=arg4//'KF_mean.rst',status='unknown',form='unformatted')
+  open(17,file=arg4//'KF_std.rst',status='unknown',form='unformatted')
+
+
+  if (trim(arg5) == 'ks') then
+    open(18,file=arg4//'KS_mean.rst',status='unknown',form='unformatted')
+    open(19,file=arg4//'KS_std.rst',status='unknown',form='unformatted')
+  end if
 
 
   !--------------------------- loop on time records
@@ -102,33 +115,35 @@ program enKF2enKS
   !--- make mean and std of the ensemble Kalman Filter
   call make_mn_std(sdim,nrens,Astate,AmeanKF,AstdKF)
 
-  !--- make analysis
-  ! Results differ for a very small epsilon. 2nd method is much faster.
-  !call make_analysis1(atime,sdim,nrens,Astate)
-  call make_analysis2(atime,sdim,nrens,Astate,nlag)
-
-  !--- make mean and std of the ensemble Kalman Smoother
-  call make_mn_std(sdim,nrens,Astate,AmeanKS,AstdKS)
-
-
-
-  !--- write means and stds
   call pull_state(sdim,AmeanKF)
   call rst_write_rec(atime,16)
   call pull_state(sdim,AstdKF)
   call rst_write_rec(atime,17)
-  call pull_state(sdim,AmeanKS)
-  call rst_write_rec(atime,18)
-  call pull_state(sdim,AstdKS)
-  call rst_write_rec(atime,19)
+ 
+  if (trim(arg5) == 'ks') then
 
-  !--- write ensemble 
-  if (trim(arg2) == 'full') then
-    do nre = 1,nrens
-       fid = 20 + nrens + nre
-       call pull_matrix(sdim,nrens,nre,Astate)
-       call rst_write_rec(atime,fid)
-    end do
+    !--- make analysis
+    ! Results differ for a very small epsilon. 2nd method is much faster.
+    !call make_analysis1(atime,sdim,nrens,Astate)
+    call make_analysis2(atime,sdim,nrens,Astate,nlag,arg4)
+
+    !--- make mean and std of the ensemble Kalman Smoother
+    call make_mn_std(sdim,nrens,Astate,AmeanKS,AstdKS)
+
+    call pull_state(sdim,AmeanKS)
+    call rst_write_rec(atime,18)
+    call pull_state(sdim,AstdKS)
+    call rst_write_rec(atime,19)
+
+    !--- write ensemble 
+    if (trim(arg2) == 'full') then
+      do nre = 1,nrens
+         fid = 20 + nrens + nre
+         call pull_matrix(sdim,nrens,nre,Astate)
+         call rst_write_rec(atime,fid)
+      end do
+    end if
+
   end if
 
   rrec = rrec + 1
@@ -144,16 +159,19 @@ program enKF2enKS
      close(fid)
   end do
 
-  if (trim(arg2) == 'full') then
-    do nre = 1,nrens
-       fid = 20 + nrens + nre
-       close(fid)
-    end do
-  end if
   close(16)
   close(17)
-  close(18)
-  close(19)
+
+  if (trim(arg5) == 'ks') then
+    close(18)
+    close(19)
+    if (trim(arg2) == 'full') then
+      do nre = 1,nrens
+         fid = 20 + nrens + nre
+         close(fid)
+      end do
+    end if
+  end if
 
   stop
 
@@ -414,12 +432,13 @@ end subroutine init_shyfem
 
 !********************************************************
 
-  subroutine make_analysis2(atime,sdim,nrens,Amat,nlag)
+  subroutine make_analysis2(atime,sdim,nrens,Amat,nlag,ftype)
   implicit none
   double precision, intent(in) :: atime
   integer, intent(in) :: sdim,nrens
   real, intent(inout) :: Amat(sdim,nrens)
   integer, intent(inout) :: nlag
+  character(len=4), intent(in) :: ftype
 
   double precision tt
   character(len=6) :: alabel
@@ -444,16 +463,25 @@ end subroutine init_shyfem
      read(15) nren
 
      if ((tag == 'X3').or.(nren /= nrens)) then
-        error stop 'Error reading X5_tot.uf.'
+        error stop 'X3 not implemented or bad n. of ens members'
      end if
 
      read(15) X5
 
-     if ((tt >= atime).and.(k <= nlag)) then
+     if (ftype == 'anal') then
+      if ((tt > atime).and.(k <= nlag)) then	!This should be correct using the analysis rst
 	X5aux = 0.
 	! This way should be fine (as used in Geir's code)
-	call dgemm('n','n',nrens,nrens,nrens,1.0,X5old,nrens,X5,nrens,0.0,X5aux,nrens)
+ 	call dgemm('n','n',nrens,nrens,nrens,1.0,X5old,nrens,X5,nrens,0.0,X5aux,nrens)
 	X5old = X5aux
+      end if
+     else
+      if ((tt >= atime).and.(k <= nlag)) then	!This should be correct using the back rst
+	X5aux = 0.
+	! This way should be fine (as used in Geir's code)
+ 	call dgemm('n','n',nrens,nrens,nrens,1.0,X5old,nrens,X5,nrens,0.0,X5aux,nrens)
+	X5old = X5aux
+      end if
      end if
 
      k = k + 1

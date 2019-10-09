@@ -286,7 +286,7 @@ subroutine X5sqrt(X2,nrobs,nrens,nrmin,X5,update_randrot,mode)
    real, allocatable, dimension(:)   :: work,isigma
    integer i,j,lwork,ierr
 
-   print *,'      analysis (X5sqrt): update_randrot= ',update_randrot
+   !print *,'      analysis (X5sqrt): update_randrot= ',update_randrot
    if (update_randrot) then
       if (allocated(ROT)) deallocate(ROT)
       allocate(ROT(nrens,nrens))
