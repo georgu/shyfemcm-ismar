@@ -33,13 +33,16 @@ SHYOBJ = $(FEM3D)/subrst.o $(FEM3D)/subbas.o $(FEM3D)/subdts.o $(FEM3D)/mod_bnd.
 
 #-------------------- ens objects
 # Ensemble analysis objects
-ENSOBJ = mod_para.o subenkf.o mod_ens_state.o mod_mod_err.o mod_enkf.o \
-	mod_dimensions.o mod_init_enkf.o mod_mod_states.o mod_obs_states.o \
-	mod_manage_obs.o sublocan.o subrandom.o \
-	analysis6c.o analysis2.o analysis.o m_randrot.o m_multa.o mod_anafunc.o \
-	m_mean_preserving_rotation.o \
-	m_sample2D.o m_pseudo2D.o mod_fftw3.o m_newton2D.o m_newtonfunc2D.o \
-	m_fixsample2D.o m_random.o
+#
+ENKOBJ = analysis.o m_ensmean.o m_ensvar.o m_mean_preserving_rotation.o \
+	 m_multa.o m_random.o m_randrot.o mod_anafunc.o
+
+SAMPOBJ = m_pseudo2D.o m_fixsample2D.o m_newton2D.o m_newtonfunc2D.o \
+	  m_sample2D.o mod_fftw3.o
+          
+ENSOBJ = $(ENKOBJ) $(SAMPOBJ) subenkf.o mod_mod_err.o mod_enkf.o \
+	 mod_ens_state.o mod_init_enkf.o mod_manage_obs.o mod_mod_states.o \
+	 mod_obs_states.o mod_para.o sublocan.o mod_dimensions.o
 
 #-------------------- external libraries
 LIBS = -llapack -lblas -lfftw3 -lpthread
@@ -76,13 +79,13 @@ main: main.o $(ENSOBJ)
         $(ENSOBJ) $(DIRLIB)/libfem.a -o $@
 
 make_ens_meteo: make_ens_meteo.o m_sample2D.o m_pseudo2D.o m_newton2D.o \
-	m_randrot.o m_fixsample2D.o m_random.o m_newtonfunc2D.o subrandom.o
+	m_randrot.o m_fixsample2D.o m_random.o m_newtonfunc2D.o
 	$(LINKER) $(LFLAGS) $@.o m_sample2D.o m_pseudo2D.o m_newton2D.o \
-	m_randrot.o m_fixsample2D.o m_random.o m_newtonfunc2D.o subrandom.o \
+	m_randrot.o m_fixsample2D.o m_random.o m_newtonfunc2D.o \
 	$(LIBS) $(DIRLIB)/libfem.a -o $@
 
-make_eof_ens_meteo: make_eof_ens_meteo.o m_random.o subrandom.o
-	$(LINKER) $(LFLAGS) $@.o m_random.o subrandom.o \
+make_eof_ens_meteo: make_eof_ens_meteo.o m_random.o
+	$(LINKER) $(LFLAGS) $@.o m_random.o \
 	$(LIBS) $(DIRLIB)/libfem.a -llapack -lblas -o $@
 
 enKF2enKS: enKF2enKS.o 
@@ -91,11 +94,6 @@ enKF2enKS: enKF2enKS.o
 
 depend:
 	@$(MAKEDEPEND) -moddir=$(MODDIR) *.F90
-
-# if you run make depend remember to remove the lines:
-# subrandom.o: ../femlib/mod/ifport.mod \
-                ../femlib/mod/iso_fortran_env.mod
-# These modules come from the OS
 
 
 #------------------- compilation rules
@@ -108,16 +106,24 @@ depend:
 
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
+../femlib/mod/m_ensmean.mod: m_ensmean.o
+../femlib/mod/m_ensvar.mod: m_ensvar.o
+../femlib/mod/m_fixsample1d.mod: m_fixsample1D.o
 ../femlib/mod/m_fixsample2d.mod: m_fixsample2D.o
 ../femlib/mod/m_mean_preserving_rotation.mod: \
 		m_mean_preserving_rotation.o 
 ../femlib/mod/m_multa.mod: m_multa.o
+../femlib/mod/m_newton1d.mod: m_newton1D.o
 ../femlib/mod/m_newton2d.mod: m_newton2D.o
+../femlib/mod/m_newtonfunc1d.mod: m_newtonfunc1D.o
 ../femlib/mod/m_newtonfunc2d.mod: m_newtonfunc2D.o
+../femlib/mod/m_pseudo1d.mod: m_pseudo1D.o
 ../femlib/mod/m_pseudo2d.mod: m_pseudo2D.o
 ../femlib/mod/m_random.mod: m_random.o
 ../femlib/mod/m_randrot.mod: m_randrot.o
+../femlib/mod/m_sample1d.mod: m_sample1D.o
 ../femlib/mod/m_sample2d.mod: m_sample2D.o
+../femlib/mod/m_set_random_seed2.mod: m_set_random_seed2.o
 ../femlib/mod/mod_anafunc.mod: mod_anafunc.o
 ../femlib/mod/mod_dimensions.mod: mod_dimensions.o
 ../femlib/mod/mod_enkf.mod: mod_enkf.o
@@ -129,11 +135,10 @@ depend:
 ../femlib/mod/mod_mod_states.mod: mod_mod_states.o
 ../femlib/mod/mod_obs_states.mod: mod_obs_states.o
 ../femlib/mod/mod_para.mod: mod_para.o
-analysis.o: ../femlib/mod/m_multa.mod \
+analysis.o: ../femlib/mod/m_ensmean.mod ../femlib/mod/m_ensvar.mod \
+		../femlib/mod/m_multa.mod \
 		../femlib/mod/mod_anafunc.mod 
-analysis2.o: ../femlib/mod/m_multa.mod
-analysis6c.o: ../femlib/mod/m_multa.mod \
-		../femlib/mod/m_randrot.mod 
+analysis2_EnOI.o: ../femlib/mod/m_multa.mod
 enKF2enKS.o: ../femlib/mod/basin.mod ../femlib/mod/levels.mod \
 		../femlib/mod/mod_conz.mod \
 		../femlib/mod/mod_geom_dynamic.mod \
@@ -142,9 +147,15 @@ enKF2enKS.o: ../femlib/mod/basin.mod ../femlib/mod/levels.mod \
 		../femlib/mod/mod_restart.mod \
 		../femlib/mod/mod_ts.mod 
 m_mean_preserving_rotation.o: ../femlib/mod/m_randrot.mod
+m_newton1D.o: ../femlib/mod/m_newtonfunc1d.mod
 m_newton2D.o: ../femlib/mod/m_newtonfunc2d.mod
+m_pseudo1D.o: ../femlib/mod/m_newton1d.mod \
+		../femlib/mod/m_random.mod \
+		../femlib/mod/mod_fftw3.mod 
 m_pseudo2D.o: ../femlib/mod/m_newton2d.mod \
 		../femlib/mod/mod_fftw3.mod 
+m_sample1D.o: ../femlib/mod/m_fixsample1d.mod \
+		../femlib/mod/m_pseudo1d.mod 
 m_sample2D.o: ../femlib/mod/m_fixsample2d.mod \
 		../femlib/mod/m_pseudo2d.mod \
 		../femlib/mod/m_randrot.mod 
@@ -155,7 +166,10 @@ main.o: ../femlib/mod/mod_enkf.mod ../femlib/mod/mod_ens_state.mod \
 make_ens_meteo.o: ../femlib/mod/m_random.mod \
 		../femlib/mod/m_sample2d.mod 
 make_eof_ens_meteo.o: ../femlib/mod/m_random.mod
-mod_anafunc.o: ../femlib/mod/m_mean_preserving_rotation.mod \
+mod_anafunc.o: ../femlib/mod/m_ensmean.mod \
+		../femlib/mod/m_mean_preserving_rotation.mod \
+		../femlib/mod/m_multa.mod \
+		../femlib/mod/m_random.mod \
 		../femlib/mod/m_randrot.mod 
 mod_enkf.o: ../femlib/mod/mod_ens_state.mod \
 		../femlib/mod/mod_manage_obs.mod \

@@ -65,11 +65,13 @@ subroutine lowrankE(S,E,nrobs,nrens,nrmin,W,eig,truncation)
 
    call dgemm('n','n',nrobs,nrmin,nrmin, 1.0,U0,nrobs, U1,nrmin, 0.0,W,nrobs)
 
+
 end subroutine
 
 
 subroutine eigC(R,nrobs,Z,eig)
 ! Compute eigenvalue decomposition of R -> Z*eig*Z` 
+! Returns eigenvectors and eigenvalues in ascending order.
    integer, intent(in) :: nrobs
    real, intent(in)    :: R(nrobs,nrobs)
    real, intent(out) :: Z(nrobs,nrobs)
@@ -107,6 +109,10 @@ subroutine eigC(R,nrobs,Z,eig)
    RR=R
    call dsyevx('V', 'A', 'U', nrobs, RR, nrobs, ddum, ddum, idum, idum, abstol, &
             neig, eig, Z, nrobs, fwork, 8*nrobs, iwork, ifail, ierr )
+   if (ierr /= 0)  then
+      print *,'              EigC:  dsyevx ierr     = ',ierr
+      stop
+   endif
 #endif
 
 
@@ -159,32 +165,30 @@ logical ex
          exit
       endif
    enddo
-   write(*,'(2(a,i5))')      '       analysis: Number of dominant eigenvalues: ',nrsigma,' of ',nrobs
-   write(*,'(2(a,g13.4),a)') '       analysis: Share (and truncation)        : ',sigsum1/sigsum,' (',truncation,')'
+   write(*,'(2(a,i5))')      '   analysis: Number of dominant eigenvalues: ',nrsigma,' of ',nrobs
+   write(*,'(2(a,g13.4),a)') '   analysis: Share (and truncation)        : ',sigsum1/sigsum,' (',truncation,')'
 
 
 end subroutine
 
 
 
-subroutine genX2(nrens,nrobs,idim,S,W,eig,X2)
+subroutine genX2(nrens,nrobs,nrmin,S,W,eig,X2)
 ! Generate X2= (I+eig)^{-0.5} * W^T * S
    implicit none
    integer, intent(in) :: nrens
    integer, intent(in) :: nrobs
-   integer, intent(in) :: idim ! idim=nrobs for A4 and nrmin for A5
-   real, intent(in)    :: W(nrobs,idim)	!bug correction: should not affect results - mbj
-   !real, intent(in)    :: W(idim,nrens)
+   integer, intent(in) :: nrmin ! nrmin=nrobs for A4 and nrmin for A5
+   real, intent(in)    :: W(nrobs,nrmin) !bug correction: should not affect results - mbj
    real, intent(in)    :: S(nrobs,nrens)
-   real, intent(in)    :: eig(idim)
-   real, intent(out)   :: X2(idim,nrens)
+   real, intent(in)    :: eig(nrmin)
+   real, intent(out)   :: X2(nrmin,nrens)
    integer i,j
 
-   !call dgemm('t','n',idim,nrens,nrobs,1.0,W,nrobs, S,nrobs, 0.0,X2,idim)
-   call dgemm('t','n',nrobs,nrens,idim,1.0,W,nrobs, S,nrobs, 0.0,X2,idim) ! mbj
+   call dgemm('t','n',nrmin,nrens,nrobs,1.0,W,nrobs, S,nrobs, 0.0,X2,nrmin)
 
    do j=1,nrens
-   do i=1,idim
+   do i=1,nrmin
       X2(i,j)=sqrt(eig(i))*X2(i,j)
    enddo
    enddo
@@ -228,7 +232,8 @@ subroutine meanX5(nrens,nrobs,nrmin,S,W,eig,innov,X5)
    integer, intent(in) :: nrens
    integer, intent(in) :: nrobs
    integer, intent(in) :: nrmin
-   real, intent(in)    :: W(nrmin,nrmin)
+!   real, intent(in)    :: W(nrmin,nrmin) !Bug reorted by Marco Bajo
+   real, intent(in)    :: W(nrobs,nrmin)
    real, intent(in)    :: S(nrobs,nrens)
    real, intent(in)    :: eig(nrmin)
    real, intent(in)    :: innov(nrobs)
@@ -263,7 +268,7 @@ end subroutine
 
 
 
-subroutine X5sqrt(X2,nrobs,nrens,nrmin,X5,update_randrot,mode)
+subroutine X5sqrt(X2,nrobs,nrens,nrmin,X5,lrandrot,lupdate_randrot,mode,lsymsqrt)
    use m_randrot
    use m_mean_preserving_rotation
    implicit none
@@ -272,30 +277,32 @@ subroutine X5sqrt(X2,nrobs,nrens,nrmin,X5,update_randrot,mode)
    integer, intent(inout) :: nrmin ! note that nrmin=nrobs in a4
    real, intent(in)    :: X2(nrmin,nrens)
    real, intent(inout) :: X5(nrens,nrens)
-   logical, intent(in) :: update_randrot
+   logical, intent(in) :: lrandrot
+   logical, intent(in) :: lupdate_randrot
    integer, intent(in) :: mode
+   logical, intent(in) :: lsymsqrt  ! switch of Sakovs symmetrical sqrt if false
 
    real X3(nrens,nrens)
    real X33(nrens,nrens)
    real X4(nrens,nrens)
    real IenN(nrens,nrens)
-   real, save, allocatable :: ROT(:,:)
+   real, save, allocatable :: rot(:,:)
 
 
    real U(nrmin,1),sig(nrmin),VT(nrens,nrens)
    real, allocatable, dimension(:)   :: work,isigma
    integer i,j,lwork,ierr
 
-   !print *,'      analysis (X5sqrt): update_randrot= ',update_randrot
-   if (update_randrot) then
-      if (allocated(ROT)) deallocate(ROT)
-      allocate(ROT(nrens,nrens))
-!!      ROT=0.0
-!!      do i=1,nrens
-!!         ROT(i,i)=1.0
-!!      enddo
-!      call randrot(ROT,nrens)  ! old non mean preserving random rotation
-      call mean_preserving_rotation(ROT,nrens)
+
+!   print *,'              X5sqrt: lsymsqrt          = ',lsymsqrt
+!   print *,'              X5sqrt: lrandrot        = ',lrandrot
+!   print *,'              X5sqrt: lupdate_randrot = ',lupdate_randrot
+
+   if (lrandrot .and. lupdate_randrot) then
+      print *,'  analysis: mean preserving random rotation'
+      if (allocated(rot)) deallocate(rot)
+      allocate(rot(nrens,nrens))
+      call mean_preserving_rotation(rot,nrens)
    endif
 
 ! SVD of X2
@@ -329,24 +336,20 @@ subroutine X5sqrt(X2,nrobs,nrens,nrmin,X5,update_randrot,mode)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! Multiply  X3* V' = (V*sqrt(I-sigma*sigma) * V' to ensure symmetric sqrt and 
 ! mean preserving rotation.   Sakov paper eq 13
-   call dgemm('n','n',nrens,nrens,nrens,1.0,X3,nrens,VT,nrens,0.0,X33,nrens)
-! Check mean preservation X33*1_N = a* 1_N (Sakov paper eq 15)
-!   do i=1,nrens
-!      print *,'sum(X33)= ',i,sum(X33(i,:))
-!   enddo
-   
-!!X33=X3
+   if (lsymsqrt) then
+      call dgemm('n','n',nrens,nrens,nrens,1.0,X3,nrens,VT,nrens,0.0,X33,nrens)
+   else
+      X33=X3
+   endif
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-!   print '(a)','X5sqrt: sig: '
-!   print '(5g11.3)',sig(1:min(nrmin,nrens))
-
-   if (update_randrot) then
+! Apply additional random rotation
+   if (lrandrot) then
       call dgemm('n','n',nrens,nrens,nrens,1.0,X33,nrens,ROT,nrens,0.0,X4,nrens)
    else
-      X4 = X33
-   end if
+      X4=X33
+   endif
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
    IenN=-1.0/real(nrens)
    do i=1,nrens
@@ -539,7 +542,7 @@ subroutine svdS(S,nrobs,nrens,nrmin,U0,sig0,truncation)
       endif
    enddo
 
-   !write(*,'(a48,i5,g13.5)') 'analysis svdS: dominant sing. values and share ',nrsigma,sigsum1/sigsum
+   !write(*,'(a,i5,g13.5)') '   analysis: dominant singular values and share ',nrsigma,sigsum1/sigsum
 !   write(*,'(5g11.3)')sig0
 
    do i=1,nrsigma
@@ -548,5 +551,158 @@ subroutine svdS(S,nrobs,nrens,nrmin,U0,sig0,truncation)
 
 end subroutine
 
+subroutine exact_diag_inversion(S,D,X5,nrens,nrobs)
+!        Exact inversion with diagonal R using: S' ( SS' + I )^{-1} == (S'S + I)^(-1) S'
+!        Analysis becomes
+!         mema=memf(I + (SS'+I)^{-1} S'D) 
+!              = memf (I + (S'S + I)^{-1} S' D) 
+!              = memf (I + Z L^{-1} Z' S' D) 
+!        In this formula S and D are bboth normalized by sqrt(N-1)
+!        The eigen value decomposition is of dimension N (rather than m)
+   integer, intent(in)   :: nrens
+   integer, intent(in)   :: nrobs
+   real, intent(in)      :: S(nrobs,nrens)
+   real, intent(in)      :: D(nrobs,nrens)
+   real, intent(out)     :: X5(nrens,nrens)
+   real, allocatable :: SS(:,:),SD(:,:),ZSD(:,:)
+   real, allocatable :: eig(:)
+   real, allocatable :: Z(:,:)
+   real n1
+   integer i,j
+
+   allocate(SS(nrens,nrens))
+   allocate(SD(nrens,nrens))
+   allocate(Z(nrens,nrens))
+   allocate(eig(nrens))
+   allocate(ZSD(nrens,nrens))
+
+   n1=1.0/real(nrens-1)
+
+   ! form S'S+I
+   call dgemm('t','n',nrens,nrens,nrobs,n1,S,nrobs,S,nrobs,0.0,SS,nrens)
+   do i=1,nrens
+      SS(i,i)=SS(i,i)+1.0
+   enddo
+
+   ! SD=S'*D with S and D scaled by sqrt(N-1)
+   call dgemm('t','n',nrens,nrens,nrobs,n1,S,nrobs,D,nrobs,0.0,SD,nrens)
+
+   ! eigenvalue decomp of SS
+   call eigC(SS,nrens,Z,eig)
+
+   ! ZSD=Z'*SD
+   call dgemm('t','n',nrens,nrens,nrens,1.0,Z,nrens,SD,nrens,0.0,ZSD,nrens)
+
+   ! ZSD=eig^{-1} ZSD
+   do j=1,nrens
+   do i=1,nrens
+      ZSD(i,j)=(1.0/eig(i))*ZSD(i,j)
+   enddo
+   enddo
+
+   ! X5=Z * (eig^{-1} ZSD)
+   call dgemm('n','n',nrens,nrens,nrens,1.0,Z,nrens,ZSD,nrens,0.0,X5,nrens)
+
+   do i=1,nrens
+      X5(i,i)=X5(i,i)+1.0
+   enddo
+   deallocate(eig)
+   deallocate(Z)
+   deallocate(SS)
+   deallocate(SD)
+   deallocate(ZSD)
+end subroutine
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
+!!! Inflation stuff
+
+subroutine inflationfactor(X5,nrens,inffac)
+   use m_multa
+   use m_random
+   implicit none
+   integer, intent(in) :: nrens
+   real, intent(in) :: X5(nrens,nrens)
+   real, intent(out) :: inffac
+
+   integer, parameter :: ndim=300
+   real aveverens
+   real stdverens
+   real :: verens(ndim,nrens)
+   real :: std(ndim)
+   integer i,j
+
+   call random(verens,ndim*nrens)
+
+
+! subtract mean to get ensemble of mean=0.0
+   do i=1,ndim
+      aveverens=sum(verens(i,1:nrens))/real(nrens)
+      do j=1,nrens
+         verens(i,j)=verens(i,j)-aveverens
+      enddo
+   enddo
+
+! compute std dev and scale ensemble so that it has variance=1.0
+   do i=1,ndim
+      stdverens=0.0
+      do j=1,nrens
+         stdverens=stdverens+verens(i,j)**2
+      enddo
+      stdverens=sqrt(stdverens/real(nrens))
+      do j=1,nrens
+         verens(i,j)=verens(i,j)/stdverens
+      enddo
+   enddo
+
+   call multa(verens, X5, ndim, nrens, ndim)
+   
+! subtract mean from verens
+   do i=1,ndim
+      aveverens=sum(verens(i,1:nrens))/real(nrens)
+      do j=1,nrens
+         verens(i,j)=verens(i,j)-aveverens
+      enddo
+   enddo
+
+! compute average variance over all ndim states 
+   std(:)=0.0
+   do j=1,nrens
+      do i=1,ndim
+         std(i)=std(i)+verens(i,j)**2
+      enddo
+   enddo
+   do i=1,ndim
+      std(i)=sqrt(std(i)/real(nrens))
+   enddo
+   stdverens=sum(std(1:ndim))/real(ndim)
+
+   inffac=1.0/stdverens
+
+end subroutine
+
+
+
+subroutine inflateA(ndim,nrens,A,inflation)
+   use m_ensmean
+   integer, intent(in) :: ndim
+   integer, intent(in) :: nrens
+   real,    intent(inout) :: A(ndim,nrens)
+   real,    intent(in) :: inflation(ndim)
+
+   real ave(ndim)
+   integer i,j
+
+   call ensmean(A,ave,ndim,nrens)
+
+   do j=1,nrens
+   do i=1,ndim
+      A(i,j)=ave(i) + (A(i,j)-ave(i))*inflation(i)
+   enddo
+   enddo
+
+end subroutine
+
+
 
 end module
+                                                                                                                                                                                                                                                                                                                                                                                                  

@@ -96,9 +96,8 @@ program main
 !--------------------------------
   
   call analysis(Amat,R,E,S,D1,innov,dim_tot,nrens,nobs_tot,verbose,&
-                  truncation,rmode,update_randrot)
-  !call analysis6c(Amat,E,S,innov,dim_tot,nrens,nobs_tot,verbose)	!SQRT alg
-  !call analysis2(Amat,D1,R,S,dim_tot,nrens,nobs_tot,verbose)	!ENKF alg
+                  truncation,rmode,lrandrot,lupdate_randrot,lsymsqrt,&
+		  inflate,infmult)
     
 !--------------------------------
 ! Do after... 
@@ -137,11 +136,6 @@ program main
 !  compute the posterior mean and std. This is needed for inflation
 !--------------------------------
   call make_mean_std('a')
-
-!--------------------------------
-!  state inflation
-!--------------------------------
-  call inflate_state
 
 !--------------------------------
 ! Save the output in different restart files

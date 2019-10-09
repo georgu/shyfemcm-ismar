@@ -158,40 +158,6 @@ contains
 
 !********************************************************
 
-  subroutine inflate_state
-  ! Multiplicative state inflation  Whitaker J. S. et al. 2012
-  ! 1- Relaxation-to-prior-spread (RTPS) method (Whitaker J. S. et al. 2012)
-  !    Abk' = Abk' * (alpha * (Astdo - Astdn)/Astdn + 1)
-  !    alpha ~ 0.1, see mod_para
-  ! 2- Simple multiplication: Abk' = Abk' (1 + alpha)
-  !
-  implicit none
-
-  type(states) :: Aaux, Apert
-  integer ne
-
-  if (type_infl == 1) then
-
-     write(*,*) 'RTPS inflation, alpha = ',alpha_infl
-     call rtps_inflation(alpha_infl,nrens,Aan,Aan_m,Abk_std,Aan_std)
-
-  else if (type_infl == 2) then
-
-     write(*,*) 'Multiplication inflation, alpha = ',alpha_infl
-     call mult_inflation(alpha_infl,nrens,Aan,Aan_m)
-
-  else
-  
-     write(*,*) 'No inflation'
-     return
-
-  end if
-  
-  end subroutine inflate_state
-  
-
-!********************************************************
-
   subroutine write_state(Astate,filename)
   use mod_hydro
   use mod_ts

@@ -6,22 +6,21 @@ module mod_para
   integer :: rmode = 13 ! Ensemble Kalman Filter with SVD pseudo inversion of SS'+ EE'
   !integer :: rmode = 22 ! Square root algorithm with SVD pseudo inversion of SS'+(N-1)R
   !integer :: rmode = 23 ! Square root algorithm with SVD pseudo inversion of SS'+ EE'
-  !integer :: rmode = 21
+  !integer :: rmode = 10 ! exact update scheme for diagonal obs-err-cov-mat
 
   logical :: verbose = .true. ! Prints diagnostic output
 
-  integer, parameter :: type_infl = 1  ! 1: RTPS inflation (see WHITAKER, 2012)
-                                       ! 2: Multiplication inflation. Seems better with
-				       !    uniform observation, but can explode if there 
-                                       !    are grid areas without observations (spread 
-                                       !    is not reduced)
-  real, parameter :: alpha_infl = 0.02 ! type_infl = 1 -> ~ 0.01 
-                                       ! type_infl = 2 -> ~ 0.01 (lower with SQRT method)
+  integer, parameter :: inflate = 1  ! Inflation
+                                     ! 0 = off
+				     ! 1 = multiplicative
+				     ! 2 = adaptive according to Evensen 2009
+  real, parameter :: infmult = 0.1  ! inflation factor
+                                   
 
   ! Set these parameters for local analysis. Important.				       
   !
-  integer, parameter :: is_local = 1 !Local analysis. 0 disable, 1 local analysis
-  real, parameter :: rho_loc = 6.   !Radius for local analysis (use the same coords of the grid)
+  integer, parameter :: is_local = 0 !Local analysis. 0 disable, 1 local analysis
+  real, parameter :: rho_loc = 1.   !Radius for local analysis (use the same coords of the grid)
 
   ! set this to 1 to include the model errors in the analysis (to test) or equal 2 to
   ! include model parameters (todo)
@@ -47,9 +46,11 @@ module mod_para
   real, parameter :: KSTD = 2
 
   ! parameters for the analysis
-  real :: truncation = 0.995 ! truncation of the SVD eigenvalues
-  logical :: update_randrot = .true. 
-  !logical :: update_randrot = .false. ! False to avoid randomness
+  real :: truncation = 0.99 ! truncation of the SVD eigenvalues
+  logical :: lrandrot = .false. ! True if additional random rotation is used
+  logical :: lupdate_randrot = .true. 
+  !logical :: lupdate_randrot = .false. ! False to avoid randomness
+  logical :: lsymsqrt = .true. ! true if symmetrical square root of Sakov is used (should be used)
 
   ! time interval (sec) to select an observation
   ! with respect to the analysis time

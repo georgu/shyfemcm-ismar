@@ -78,7 +78,7 @@
 
   !----------------------nodes-------------------------
   nk_l = 0 	! number of nodes corrected
-  update_randrot = .true.
+  lupdate_randrot = .true.
   do k = 1,nnkn
 
      call type_to_kmat(Ak_bk,Ak_an,k,lkdim)
@@ -124,9 +124,10 @@
 	Ak_loc = Ak_bk	! set equal to the state before the analysis
 
 	call analysis(Ak_loc,Rl,El,Sl,D1l,innovl,lkdim,nrens,nobs_tot_k,.false.,&
-		           truncation,rmode,update_randrot)
+		           truncation,rmode,lrandrot,lupdate_randrot,lsymsqrt,&
+			   inflate,infmult)
 
-	update_randrot = .false.	! true just the first time. Beware in OMP
+	lupdate_randrot = .false.	! true just the first time. Beware in OMP
 
         !call save_X5('local',atime_an)
 
@@ -202,7 +203,8 @@
 	Ane_loc = Ane_bk	! set equal to the state before the analysis
 
 	call analysis(Ane_loc,Rl,El,Sl,D1l,innovl,lnedim,nrens,nobs_tot_e,.false.,&
-	           truncation,rmode,update_randrot)
+	           truncation,rmode,lrandrot,lupdate_randrot,lsymsqrt,&
+		   inflate,infmult)
 
         !call save_X5('local',atime_an)
 
