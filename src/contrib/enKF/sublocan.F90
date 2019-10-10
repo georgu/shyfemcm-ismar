@@ -81,9 +81,9 @@
   lupdate_randrot = .true.
   do k = 1,nnkn
 
-     call type_to_kmat(Ak_bk,Ak_an,k,lkdim)
+     call type_to_kmat(Ak_bk,k,lkdim)
 
-     Ak_loc = Ak_an	! set the local analysis equal to the global
+     Ak_loc = Ak_bk	! set the local analysis equal to the global
 
      ido = 0
      wo = 0
@@ -138,7 +138,7 @@
 
      end if
 
-     Ak_an = Ak_an + (Ak_loc - Ak_an)
+     Ak_an = Ak_bk + (Ak_loc - Ak_bk)
 
      call kmat_to_type(Ak_an,k,lkdim)
 
@@ -150,9 +150,9 @@
   ne_l = 0 	! number of nodes corrected
   do ne = 1,nnel
 
-     call type_to_emat(Ane_bk,Ane_an,ne,lnedim)
+     call type_to_emat(Ane_bk,ne,lnedim)
 
-     Ane_loc = Ane_an	! set the local analysis equal to the global
+     Ane_loc = Ane_bk	! set the local analysis equal to the global
 
      ido = 0
      wo = 0
@@ -215,7 +215,7 @@
 
      end if
 
-     Ane_an = Ane_an + (Ane_loc - Ane_an)
+     Ane_an = Ane_bk + (Ane_loc - Ane_bk)
 
      call emat_to_type(Ane_an,ne,lnedim)
 
@@ -251,11 +251,11 @@
 
 !*************************************************************
 
-  subroutine type_to_kmat(Ak_bk,Ak_an,k,kdim)
+  subroutine type_to_kmat(Ak_bk,k,kdim)
   use mod_ens_state
   implicit none
   integer, intent(in) :: k,kdim
-  real, intent(out) :: Ak_bk(kdim,nrens),Ak_an(kdim,nrens)
+  real, intent(out) :: Ak_bk(kdim,nrens)
   integer n
 
   do n = 1,nrens
@@ -264,31 +264,20 @@
     Ak_bk(nnlv+2:2*nnlv+1,n) = Abk(n)%s(:,k)
   end do
 
-  do n = 1,nrens
-    Ak_an(1,n) = Aan(n)%z(k)
-    Ak_an(2:nnlv+1,n) = Aan(n)%t(:,k)
-    Ak_an(nnlv+2:2*nnlv+1,n) = Aan(n)%s(:,k)
-  end do
-
   end subroutine type_to_kmat
 
 !*************************************************************
 
-  subroutine type_to_emat(Ane_bk,Ane_an,ne,nedim)
+  subroutine type_to_emat(Ane_bk,ne,nedim)
   use mod_ens_state
   implicit none
   integer, intent(in) :: ne,nedim
-  real, intent(out) :: Ane_bk(nedim,nrens),Ane_an(nedim,nrens)
+  real, intent(out) :: Ane_bk(nedim,nrens)
   integer n
 
   do n = 1,nrens
     Ane_bk(1:nnlv,n) = Abk(n)%u(:,ne)
     Ane_bk(nnlv+1:2*nnlv,n) = Abk(n)%v(:,ne)
-  end do
-
-  do n = 1,nrens
-    Ane_an(1:nnlv,n) = Aan(n)%u(:,ne)
-    Ane_an(nnlv+1:2*nnlv,n) = Aan(n)%v(:,ne)
   end do
 
   end subroutine type_to_emat

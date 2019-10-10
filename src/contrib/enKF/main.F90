@@ -68,8 +68,10 @@ program main
 
    case(0) !normal call
  
-     allocate(Amat(global_ndim,nrens))
-     call tystate_to_matrix(nrens,Abk,Amat)
+     if (is_local == 0) then
+        allocate(Amat(global_ndim,nrens))
+        call tystate_to_matrix(nrens,Abk,Amat)
+     end if
      dim_tot = global_ndim
 
    case(1) !state with model error
@@ -95,9 +97,6 @@ program main
 ! Call the analysis routine
 !--------------------------------
   
-  call analysis(Amat,R,E,S,D1,innov,dim_tot,nrens,nobs_tot,verbose,&
-                  truncation,rmode,lrandrot,lupdate_randrot,lsymsqrt,&
-		  inflate,infmult)
     
 !--------------------------------
 ! Do after... 
@@ -106,16 +105,24 @@ program main
 
    case(0) !normal call
 
-     allocate(Aan(nrens))
-     call matrix_to_tystate(nrens,Amat,Aan)
-     deallocate(Amat)
+     if (is_local == 0) then
 
-     ! save a total X5 for enKS
-     call save_X5('global',atime_an)
+        call analysis(Amat,R,E,S,D1,innov,dim_tot,nrens,nobs_tot,verbose,&
+                  truncation,rmode,lrandrot,lupdate_randrot,lsymsqrt,&
+		  inflate,infmult)
+	  
+        allocate(Aan(nrens))
+        call matrix_to_tystate(nrens,Amat,Aan)
+        deallocate(Amat)
 
-     if (is_local == 1) then
+        ! save a total X5 for enKS
+        call save_X5('global',atime_an)
+
+     elseif (is_local == 1) then
+
 	write(*,*) 'Running local analysis. rho_loc: ',rho_loc
 	call local_analysis
+	
      end if
    
    case(1) !state with model error

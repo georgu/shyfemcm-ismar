@@ -10,11 +10,14 @@ module mod_para
 
   logical :: verbose = .true. ! Prints diagnostic output
 
-  integer, parameter :: inflate = 1  ! Inflation
+  integer, parameter :: inflate = 2  ! Inflation
                                      ! 0 = off
 				     ! 1 = multiplicative
 				     ! 2 = adaptive according to Evensen 2009
-  real, parameter :: infmult = 0.1  ! inflation factor
+  real, parameter :: infmult = 1.    ! If inflate=1 -> infmult in the range 1.01-1.1 may be reasonable inflation factors 
+		                                       ! dependent on the ensemble size.
+						       ! If inflate=2 -> you can set it to 1.0 since infmult only serves as an adjustment of
+						       ! the adaptive multiplication factor
                                    
 
   ! Set these parameters for local analysis. Important.				       
