@@ -75,7 +75,6 @@
 
   end do
 
-
   !----------------------nodes-------------------------
   nk_l = 0 	! number of nodes corrected
   lupdate_randrot = .true.
@@ -121,7 +120,6 @@
 	end do
 
 	nk_l = nk_l + 1
-	Ak_loc = Ak_bk	! set equal to the state before the analysis
 
 	call analysis(Ak_loc,Rl,El,Sl,D1l,innovl,lkdim,nrens,nobs_tot_k,.false.,&
 		           truncation,rmode,lrandrot,lupdate_randrot,lsymsqrt,&
@@ -200,7 +198,6 @@
 	end do
 
 	ne_l = ne_l + 1
-	Ane_loc = Ane_bk	! set equal to the state before the analysis
 
 	call analysis(Ane_loc,Rl,El,Sl,D1l,innovl,lnedim,nrens,nobs_tot_e,.false.,&
 	           truncation,rmode,lrandrot,lupdate_randrot,lsymsqrt,&

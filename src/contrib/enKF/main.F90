@@ -68,10 +68,8 @@ program main
 
    case(0) !normal call
  
-     if (is_local == 0) then
-        allocate(Amat(global_ndim,nrens))
-        call tystate_to_matrix(nrens,Abk,Amat)
-     end if
+     allocate(Amat(global_ndim,nrens))
+     call tystate_to_matrix(nrens,Abk,Amat)
      dim_tot = global_ndim
 
    case(1) !state with model error
@@ -121,6 +119,10 @@ program main
      elseif (is_local == 1) then
 
 	write(*,*) 'Running local analysis. rho_loc: ',rho_loc
+        allocate(Aan(nrens))
+        call matrix_to_tystate(nrens,Amat,Aan)
+        deallocate(Amat)
+
 	call local_analysis
 	
      end if
