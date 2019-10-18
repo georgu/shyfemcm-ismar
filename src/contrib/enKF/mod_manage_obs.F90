@@ -142,6 +142,7 @@ contains
 
   ! check that all the files have the same variable type. It's better to assimilate
   ! only one type every time. Use different times if you have more types (e.g., level, salinity)
+  ! Otherwise the matrices should be normalised (not still implemented).
   if ((islev + isvel + istemp + issalt) > 1) then
      write(*,*) 'islev ',islev
      write(*,*) 'isvel ',isvel
@@ -344,7 +345,7 @@ contains
              stdvv = stdv
              ostatusv = ostatus
 
-             goto 101	!take just 1 lev obs
+             goto 101	!take just 1 obs
           end if
           goto 91
  101      close(26)
@@ -645,6 +646,24 @@ contains
 
      vmod = Abk_m%z(ik)
      vmod_ens = Abk(:)%z(ik)
+     v = v1
+     d1 = v - vmod
+     d2 = v - vmod
+     inn = d1
+
+    case ('0DTEM')
+
+     vmod = Abk_m%t(1,ik)
+     vmod_ens = Abk(:)%t(1,ik)
+     v = v1
+     d1 = v - vmod
+     d2 = v - vmod
+     inn = d1
+
+    case ('0DSAL')
+
+     vmod = Abk_m%s(1,ik)
+     vmod_ens = Abk(:)%s(1,ik)
      v = v1
      d1 = v - vmod
      d2 = v - vmod

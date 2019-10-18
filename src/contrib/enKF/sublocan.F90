@@ -63,11 +63,35 @@
 		  !yobs(no) = o3dlev(no)%y
 	  end if
      else if (istemp /= 0) then
-	  write(*,*) 'Do it!'
-	  stop
+	  if (no <= n_0dtemp) then
+		  xobs(no) = o0dtemp(no)%x
+		  yobs(no) = o0dtemp(no)%y
+	  else if ((no > n_0dtemp).and.(no <= n_0dtemp+n_1dtemp)) then
+	          write(*,*) 'Do it!'
+	          stop
+		  !xobs(no) = o1dtemp(no)%x
+		  !yobs(no) = o1dtemp(no)%y
+	  else if (no > n_0dtemp+n_1dtemp) then
+	          write(*,*) 'Do it!'
+	          stop
+		  !xobs(no) = o2dtemp(no)%x
+		  !yobs(no) = o3dtemp(no)%y
+	  end if
      else if (issalt /= 0) then
-	  write(*,*) 'Do it!'
-	  stop
+	  if (no <= n_0dsalt) then
+		  xobs(no) = o0dsalt(no)%x
+		  yobs(no) = o0dsalt(no)%y
+	  else if ((no > n_0dsalt).and.(no <= n_0dsalt+n_1dsalt)) then
+	          write(*,*) 'Do it!'
+	          stop
+		  !xobs(no) = o1dsalt(no)%x
+		  !yobs(no) = o1dsalt(no)%y
+	  else if (no > n_0dsalt+n_1dsalt) then
+	          write(*,*) 'Do it!'
+	          stop
+		  !xobs(no) = o2dsalt(no)%x
+		  !yobs(no) = o3dsalt(no)%y
+	  end if
      else if (isvel /= 0) then
 	  write(*,*) 'Do it!'
 	  stop
