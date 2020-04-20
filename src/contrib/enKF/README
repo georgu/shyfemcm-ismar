@@ -51,11 +51,11 @@ Before running the code
 ===================
 
 In order to run the enKF.sh script you need a program named parallel 
-and the library liblapack-dev. You should find them in your Linux 
-distribution.
+and the libraries: liblapack-dev, libfftw3-dev. You should find them 
+in your Linux distribution.
 
 Installation with a Debian OS from root:
-apt-get update && apt-get install parallel liblapack-dev
+apt-get update && apt-get install parallel liblapack-dev libfftw3-dev
 
 Several options of the DA can be changed in mod_para.F90.
 
