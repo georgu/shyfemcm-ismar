@@ -60,7 +60,7 @@ ENSMOD = $(MODDIR)/m_random.mod $(MODDIR)/mod_mod_err.mod $(MODDIR)/mod_enkf.mod
 CUSTF = mod_dimensions.F90
 
 #-------------------- all the exec files
-EXES = main make_ens_meteo make_eof_ens_meteo enKF2enKS
+EXES = main make_ens_meteo make_eof_ens_meteo enKF2enKS perturbeBC
 
 
 #------------------- targets
@@ -77,6 +77,12 @@ cleanall:
 main: main.o $(ENSOBJ)
 	$(LINKER) $(LFLAGS) $(LIBS) $(SHYOBJ) $@.o \
         $(ENSOBJ) $(DIRLIB)/libfem.a -o $@
+
+perturbeBC: perturbeBC.o m_sample2D.o m_pseudo2D.o m_newton2D.o \
+	m_randrot.o m_fixsample2D.o m_random.o m_newtonfunc2D.o
+	$(LINKER) $(LFLAGS) $@.o m_sample2D.o m_pseudo2D.o m_newton2D.o \
+	m_randrot.o m_fixsample2D.o m_random.o m_newtonfunc2D.o \
+	$(LIBS) $(DIRLIB)/libfem.a -o $@
 
 make_ens_meteo: make_ens_meteo.o m_sample2D.o m_pseudo2D.o m_newton2D.o \
 	m_randrot.o m_fixsample2D.o m_random.o m_newtonfunc2D.o
@@ -164,6 +170,8 @@ main.o: ../femlib/mod/mod_enkf.mod ../femlib/mod/mod_ens_state.mod \
 		../femlib/mod/mod_mod_states.mod \
 		../femlib/mod/mod_para.mod 
 make_ens_meteo.o: ../femlib/mod/m_random.mod \
+		../femlib/mod/m_sample2d.mod 
+perturbeBC.o: ../femlib/mod/m_random.mod \
 		../femlib/mod/m_sample2d.mod 
 make_eof_ens_meteo.o: ../femlib/mod/m_random.mod
 mod_anafunc.o: ../femlib/mod/m_ensmean.mod \
