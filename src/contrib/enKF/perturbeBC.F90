@@ -27,6 +27,8 @@ program perturbeBC
   double precision mem_time
   integer pert_type
 
+  character(len=80) :: inbname
+
   ! FEM files
   integer iunit,iformat
   integer nvers           !version of file format
@@ -69,8 +71,10 @@ program perturbeBC
 
   ! SHYFEM single precision variables
   real*4, allocatable :: var2d(:,:,:),var2d_ens(:,:,:)
+  real*4, allocatable :: var3d(:,:,:,:),var3d_ens(:,:,:,:)
+  real*4, allocatable :: femdata(:,:,:)
 
-  integer n,i,ne
+  integer n,i,ne,l,ix,iy
   integer fid
 
   ! read input
@@ -142,7 +146,7 @@ program perturbeBC
   end select
 
   iunit = 20
-  call open_files(iunit,nrens,filein,filety)
+  call open_files(iunit,nrens,filein,filety,inbname)
 
   told = -999.
   ! time loop
@@ -154,8 +158,10 @@ program perturbeBC
     ! read record
     select case(trim(filety))
     case('ts')
+
 	if (n > nrec_file) exit
         call read_ts(.false.,filein,nrec_file,var,tnew,dstring)
+
     case('fem')
 
 	! read 1st header
@@ -183,11 +189,12 @@ program perturbeBC
 
 	! read variables
 	do i = 1,nvar
-	   if (.not.allocated(var2d)) allocate(var2d(nvar,nx,ny))
+	   if (.not.allocated(femdata)) allocate(femdata(lmax,nx*ny,nvar))
            call fem_file_read_data(iformat,iunit,nvers,np,lmax, &
-		   vstring(i),ilhkv,hd,nlvddi,var2d(i,:,:),ierr)
+		   vstring(i),ilhkv,hd,nlvddi,femdata(:,:,i),ierr)
 	   if (n==1) write(*,*) 'Reading: ',vstring(i)
         end do
+
     end select
 
     ! generate perturbations and write the files
@@ -208,6 +215,17 @@ program perturbeBC
     case(2)	! 2D variable
 
 	if (trim(filety) /= 'fem') error stop 'Bad file format'
+
+	! save control in a 2D matrix
+	if (lmax /= 1) error stop 'Dimension error'
+	if (.not. allocated(var2d)) allocate(var2d(nvar,nx,ny))
+	do i = 1,nvar
+	  do iy = 1,ny
+	     do ix = 1,nx
+	        var2d(i,ix,iy) = femdata(1,ix*iy,i)
+	     end do
+          end do
+	end do
 
 	select case(pert_type)
 	case(1)
@@ -230,15 +248,20 @@ program perturbeBC
 	    do ne=1,nrens
 	      ! create member
 	      if (.not.allocated(var2d_ens)) allocate(var2d_ens(nvar,nx,ny))
-              call make_member(nvar,nrens,nx,ny,variable,ne,pvec1,var2d,var2d_ens,var_std)
+              call make_member_2D1(nvar,nrens,nx,ny,variable,ne,pvec1,var2d,var2d_ens,var_std)
 
 	      ! write file
               fid = iunit + 10 + ne
               call fem_file_write_header(iformat,fid,dtime,nvers,np,lmax &
                      ,nvar,ntype,nlvddi,hlv,datetime,regpar)
               do i = 1,nvar
+	         do iy = 1,ny
+	          do ix = 1,nx
+	             femdata(1,ix*iy,i) = var2d_ens(i,ix,iy)
+	          end do
+                 end do
                  call fem_file_write_data(iformat,fid,nvers,np,lmax &
-                       ,vstring(i),ilhkv,hd,nlvddi,var2d_ens(i,:,:))
+                       ,vstring(i),ilhkv,hd,nlvddi,femdata(:,:,i))
               end do
 	    end do
 
@@ -248,7 +271,7 @@ program perturbeBC
 	    if (n==1) write(*,*) 'Warning: check pressure parameters inside the code'
 
 	    ! set parameters
-	    verbose = .true.
+	    verbose = .false.
 	    samp_fix = .true.
 	    theta = 0.
 	    fmult = 8
@@ -276,7 +299,7 @@ program perturbeBC
 	      if (.not.allocated(var2d_ens)) allocate(var2d_ens(nvar,nx,ny))
 
 	      if (pert_type == 2) then
-                 call make_member_2D(nvar,nrens,nx,ny,variable,ne,pmat,var2d,var2d_ens,var_std)
+                 call make_member_2D2(nvar,nrens,nx,ny,variable,ne,pmat,var2d,var2d_ens,var_std)
 
 	      else if (pert_type == 3) then
 	         if (trim(variable) /= 'wind') error stop 'Bad varable. Use just wind.'
@@ -305,8 +328,13 @@ program perturbeBC
               call fem_file_write_header(iformat,fid,dtime,nvers,np,lmax &
                      ,nvar,ntype,nlvddi,hlv,datetime,regpar)
               do i = 1,nvar
+	         do iy = 1,ny
+	          do ix = 1,nx
+	             femdata(1,ix*iy,i) = var2d_ens(i,ix,iy)
+	          end do
+                 end do
                  call fem_file_write_data(iformat,fid,nvers,np,lmax &
-                       ,vstring(i),ilhkv,hd,nlvddi,var2d_ens(i,:,:))
+                       ,vstring(i),ilhkv,hd,nlvddi,femdata(:,:,i))
               end do
 	    end do
 
@@ -314,8 +342,61 @@ program perturbeBC
 
     case(3)	! 3D variable
 
-        print*, 'todo'
-        !call perturbe_3d
+	if (trim(filety) /= 'fem') error stop 'Bad file format'
+
+	! save control in a 3D matrix
+	if (lmax < 2) error stop 'Dimension error'
+	if (.not. allocated(var3d)) allocate(var3d(nvar,nx,ny,lmax))
+	do i = 1,nvar
+	do l = 1,lmax
+	  do iy = 1,ny
+	     do ix = 1,nx
+	        var3d(i,ix,iy,l) = femdata(l,ix*iy,i)
+	     end do
+          end do
+	end do
+	end do
+
+	select case(pert_type)
+	case(1)
+
+            if (n==1) write(*,*) 'Case 1: spatially constant perturbations'
+
+	    allocate(pvec0(nrens-1),pvec0_old(nrens-1))
+	    do i=1,nvar
+	       if (.not.allocated(pvec1)) allocate(pvec1(nvar,nrens-1))
+	       if (.not.allocated(pvec1_old)) allocate(pvec1_old(nvar,nrens-1))
+	       pvec0 = pvec1(i,:)
+	       pvec0_old = pvec1_old(i,:)
+               call perturbe_0d(nrens-1,pvec0)
+               call red_noise_0d(told,pvec0_old,tnew,pvec0,nrens-1,mem_time)
+	       pvec1(i,:) = pvec0
+	       pvec1_old(i,:) = pvec0_old
+	    end do
+	    deallocate(pvec0,pvec0_old)
+
+	    do ne=1,nrens
+	      ! create member
+	      if (.not.allocated(var3d_ens)) allocate(var3d_ens(nvar,nx,ny,lmax))
+              call make_member_3D1(nvar,nrens,nx,ny,lmax,variable,ne,pvec1,var3d,var3d_ens,var_std)
+
+	      ! write file
+              fid = iunit + 10 + ne
+              call fem_file_write_header(iformat,fid,dtime,nvers,np,lmax &
+                     ,nvar,ntype,nlvddi,hlv,datetime,regpar)
+              do i = 1,nvar
+	         do l = 1,lmax
+	            do iy = 1,ny
+	              do ix = 1,nx
+		         femdata(l,ix*iy,i) = var3d_ens(i,ix,iy,l)
+	              end do
+                    end do
+		 end do
+                 call fem_file_write_data(iformat,fid,nvers,np,lmax &
+                       ,vstring(i),ilhkv,hd,nlvddi,femdata(:,:,i))
+              end do
+	    end do
+        end select
 
     end select
 
@@ -324,7 +405,7 @@ program perturbeBC
   end do
 
   ! close files
-  call close_files(iunit,nrens)
+  call close_and_rename(filety,iunit,nrens,inbname)
 
 end program perturbeBC
 
@@ -394,18 +475,19 @@ end program perturbeBC
 
 
 !-----------------------------------------------
-  subroutine open_files(iunit,nrens,fin,ftype)
+  subroutine open_files(iunit,nrens,fin,ftype,bname)
 !-----------------------------------------------
   implicit none
 
   integer, intent(in) :: nrens,iunit
   character(len=80), intent(in) :: fin
   character(len=3), intent(in) :: ftype
+  character(len=80),intent(out) :: bname
 
   integer n
   integer fid
   integer :: ppos
-  character(len=80) :: bname,fname
+  character(len=80) :: fname
   character(len=3) :: nlab
 
   ! find basename
@@ -419,25 +501,41 @@ end program perturbeBC
         fname = trim(bname)//'_'//nlab//'.dat'
         open(fid,file=fname,status='unknown')
      end do
-  !else
-  !   error stop 'open file error'
   end if
 
   end subroutine open_files
 
 !-----------------------------------------------
-  subroutine close_files(iunit,nrens)
+  subroutine close_and_rename(filety,iunit,nrens,bname)
 !-----------------------------------------------
   implicit none
+  character(len=3), intent(in) :: filety
   integer, intent(in) :: iunit
   integer, intent(in) :: nrens
+  character(len=80), intent(in) :: bname
+
+  character(len=90) :: filein,fileout
+  character(len=3) :: nlab,lfid
   integer n
 
+  ! close files
   do n = 1,nrens
      close(iunit + 10 + n)
   end do
 
-  end subroutine close_files
+  ! rename fem files
+  if (trim(filety) == 'fem') then
+	  do n = 1,nrens
+	     write(nlab,'(i3.3)') n-1
+	     write(lfid,'(i3)') (iunit + 10 + n)
+
+	     filein = 'fort.'//adjustl(trim(lfid))
+	     fileout = trim(bname)//'_'//nlab//'.fem'
+	     call rename(trim(filein),trim(fileout))
+	  end do
+  end if
+
+  end subroutine close_and_rename
 
 !-----------------------------------------------
   subroutine perturbe_0d(nrensp,pvec0)
@@ -555,7 +653,7 @@ end program perturbeBC
   end subroutine write_record_0d
 
 !-----------------------------------------------
-  subroutine make_member(nvar,nrens,nx,ny,variable,ne,vec1,var2d,var2d_ens,var_std)
+  subroutine make_member_2D1(nvar,nrens,nx,ny,variable,ne,vec1,var2d,var2d_ens,var_std)
 !-----------------------------------------------
   implicit none
   integer, intent(in) :: nvar,nrens,nx,ny,ne
@@ -577,10 +675,10 @@ end program perturbeBC
      var2d_ens(i,:,:) = var2d(i,:,:) + var_std * vec11(i,ne)
   end do
 
-  end subroutine make_member
+  end subroutine make_member_2D1
 
 !-----------------------------------------------
-  subroutine make_member_2D(nvar,nrens,nx,ny,variable,ne,pmat,var2d,var2d_ens,var_std)
+  subroutine make_member_2D2(nvar,nrens,nx,ny,variable,ne,pmat,var2d,var2d_ens,var_std)
 !-----------------------------------------------
   implicit none
   integer, intent(in) :: nvar,nrens,nx,ny,ne
@@ -602,7 +700,32 @@ end program perturbeBC
      var2d_ens(i,:,:) = var2d(i,:,:) + var_std * pmat1(i,:,:,ne)
   end do
 
-  end subroutine make_member_2D
+  end subroutine make_member_2D2
+
+!-----------------------------------------------
+  subroutine make_member_3D1(nvar,nrens,nx,ny,lmax,variable,ne,vec1,var3d,var3d_ens,var_std)
+!-----------------------------------------------
+  implicit none
+  integer, intent(in) :: nvar,nrens,nx,ny,lmax,ne
+  character(len=80), intent(in) :: variable
+  real, intent(in) :: vec1(nvar,nrens-1),var_std
+  real*4, intent(in) :: var3d(nvar,nx,ny,lmax)
+  real*4, intent(out) :: var3d_ens(nvar,nx,ny,lmax)
+
+  integer i
+  real vec11(nvar,nrens)
+
+  vec11(:,1) = 0.
+  vec11(:,2:-1) = vec1
+
+  ! does not perturbe the pressure (3rd variable)
+  if (trim(variable) == 'wind') vec11(3,:) = 0.
+
+  do i=1,nvar
+     var3d_ens(i,:,:,:) = var3d(i,:,:,:) + var_std * vec11(i,ne)
+  end do
+
+  end subroutine make_member_3D1
 
 !-----------------------------------------------
   subroutine set_decorrelation(ntot,delta,lrange)
