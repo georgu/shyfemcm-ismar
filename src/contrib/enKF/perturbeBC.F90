@@ -17,7 +17,9 @@ program perturbeBC
   character(len=3) :: arg5
   character(len=12) :: arg6
   character(len=12) :: arg7
-  character(len=80) :: arg8
+  character(len=12) :: arg8
+  character(len=12) :: arg9
+  character(len=80) :: arg10
 
   integer nrens, var_dim
   character(len=80) :: filein
@@ -53,6 +55,7 @@ program perturbeBC
   real              :: var
   double precision  :: tnew,told,dtime
   character(len=80) :: dstring
+  real              :: var_min,var_max
 
   real, allocatable :: pvec0(:),pvec0_old(:)
   real, allocatable :: pvec1(:,:),pvec1_old(:,:)
@@ -69,10 +72,14 @@ program perturbeBC
   logical, parameter :: bpress = .false.
   real, parameter    :: sigmaP = 100.	!press std in Pa
 
+  real, allocatable :: var2d(:,:,:),var2d_ens(:,:,:)
+  real, allocatable :: var3d(:,:,:,:),var3d_ens(:,:,:,:)
+
   ! SHYFEM single precision variables
-  real*4, allocatable :: var2d(:,:,:),var2d_ens(:,:,:)
-  real*4, allocatable :: var3d(:,:,:,:),var3d_ens(:,:,:,:)
   real*4, allocatable :: femdata(:,:,:)
+
+  logical :: bwind
+  real :: wsmax
 
   integer n,i,ne,l,ix,iy
   integer fid
@@ -86,32 +93,36 @@ program perturbeBC
   call get_command_argument(6, arg6)
   call get_command_argument(7, arg7)
   call get_command_argument(8, arg8)
+  call get_command_argument(9, arg9)
+  call get_command_argument(10, arg10)
 
-  if (trim(arg8) .eq. '') then
-          write(*,*) ''
-          write(*,*) 'Usage:'
-          write(*,*) ''
-          write(*,*) 'perturbeBC [nrens] [file_type] [pert_type] [variable] [var_dim] [var_std] [mem_time] [input]'
-          write(*,*) ''
-          write(*,*) '[nrens] is the n. of ens members, control included.'
-          write(*,*) '[file_type] can be fem or ts (timeseries).'
-	  write(*,*) '[pert_type] type of 2D perturbations. See below.'
-          write(*,*) '[variable] name of the dynamic variable.'
-          write(*,*) '[var_dim] spatial dimension of the variable (0->3).'
-          write(*,*) '[var_std] standard deviation of the ensemble distribution (same units of the var).'
-          write(*,*) '[mem_time] time correlation of the perturbations (red noise) in seconds.'
-          write(*,*) '[input] is the name of the input unperturbed BC file.'
-          write(*,*) ''
-          write(*,*) 'pert_type can be:'
-          write(*,*) ''
-          write(*,*) '1- Spatially constant perturbation of each variable (no pressure).'
-	  write(*,*) '2- 2D pseudo Gaussian perturbation of each variable (no pressure).'
-          write(*,*) '3- 2D pseudo Gaussian geostrophic perturbation of wind and pressure.'
-          write(*,*) '4- Same as 3, but using two perturbation fields. Pressure not perturbed.'
-          write(*,*) '5- Only the wind speed is perturbed (same directions). Pressure not perturbed.'
-	  write(*,*) '6- Honestly I do not remember.. but it is not working.'
-          write(*,*) ''
-          stop
+  if (trim(arg10) .eq. '') then
+      write(*,*) ''
+      write(*,*) 'Usage:'
+      write(*,*) ''
+      write(*,*) 'perturbeBC [nrens] [file_type] [pert_type] [variable] [var_dim] [var_std] [var_min] [var_max] [mem_time] [input]'
+      write(*,*) ''
+      write(*,*) '[nrens] is the n. of ens members, control included.'
+      write(*,*) '[file_type] can be fem or ts (timeseries).'
+      write(*,*) '[pert_type] type of 2D perturbations. See below.'
+      write(*,*) '[variable] name of the dynamic variable.'
+      write(*,*) '[var_dim] spatial dimension of the variable (0->3).'
+      write(*,*) '[var_std] standard deviation of the ensemble distribution (same units of the var).'
+      write(*,*) '[var_min] minimum value for the variable (-999 to disable, not used for wind).'
+      write(*,*) '[var_max] maximum value for the variable (-999 to disable, if wind it is the max speed).'
+      write(*,*) '[mem_time] time correlation of the perturbations (red noise) in seconds.'
+      write(*,*) '[input] is the name of the input unperturbed BC file.'
+      write(*,*) ''
+      write(*,*) 'pert_type can be:'
+      write(*,*) ''
+      write(*,*) '1- Spatially constant perturbation of each variable (no pressure).'
+      write(*,*) '2- 2D pseudo Gaussian perturbation of each variable (no pressure).'
+      write(*,*) '3- 2D pseudo Gaussian geostrophic perturbation of wind and pressure.'
+      write(*,*) '4- Same as 3, but using two perturbation fields. Pressure not perturbed.'
+      write(*,*) '5- Only the wind speed is perturbed (same directions). Pressure not perturbed.'
+      write(*,*) '6- Honestly I do not remember.. but it is not working.'
+      write(*,*) ''
+      stop
   end if
 
   read(arg1,*) nrens
@@ -120,15 +131,28 @@ program perturbeBC
   variable = arg4
   read(arg5,*) var_dim
   read(arg6,*) var_std
-  read(arg7,*) mem_time
-  filein = arg8
+  read(arg7,*) var_min
+  read(arg8,*) var_max
+  read(arg9,*) mem_time
+  filein = arg10
+
+  bwind = .false.
 
   ! some checks on inputs
   if (( nrens < 3 ) .or. (mod(nrens,2) == 0) .or. (nrens > 1000)) error stop 'perturbeBC: bad nrens'
   if (( var_dim > 3 ) .or. ( var_dim < 0 )) error stop 'perturbeBC: bad dimension'
   if (( trim(filety) /= 'ts' ) .and. ( trim(filety) /= 'fem' )) error stop 'perturbeBC: bad file_type'
+  if (( trim(filety) == 'ts' ) .and. ( var_dim /= 0 )) error stop 'perturbeBC: file_type and dimension not compatible'
+  if (( trim(filety) == 'fem' ) .and. ( var_dim < 1 )) error stop 'perturbeBC: file_type and dimension not compatible'
   if (mem_time <= 0) write(*,*) 'Warning: zero or negative mem_time. Setting to 0 (white noise).'
   if ( pert_type > 6 ) error stop 'perturbeBC: bad pert_type'
+  if ( var_std <= 0 ) error stop 'perturbeBC: bad var_std'
+  if (trim(variable) == 'wind') then
+     bwind = .true.
+     wsmax = var_max
+     var_min = -999.
+     var_max = -999.
+  end if
 
   ! open and close to read informations
   select case(trim(filety))
@@ -205,7 +229,7 @@ program perturbeBC
 	if (.not.allocated(pvec0_old)) allocate(pvec0_old(nrens-1))
         call perturbe_0d(nrens-1,pvec0)
         call red_noise_0d(told,pvec0_old,tnew,pvec0,nrens-1,mem_time)
-        call write_record_0d(iunit,told,nrens,dstring,var,var_std,pvec0)
+        call write_record_0d(iunit,told,nrens,dstring,var,var_std,var_min,var_max,pvec0)
 
     case(1)	! 1D variable
 
@@ -250,6 +274,8 @@ program perturbeBC
 	      if (.not.allocated(var2d_ens)) allocate(var2d_ens(nvar,nx,ny))
               call make_member_2D1(nvar,nrens,nx,ny,variable,ne,pvec1,var2d,var2d_ens,var_std)
 
+	      if (bwind) call limit_wind(nvar,nx,ny,var2d_ens,wsmax)
+
 	      ! write file
               fid = iunit + 10 + ne
               call fem_file_write_header(iformat,fid,dtime,nvers,np,lmax &
@@ -257,7 +283,10 @@ program perturbeBC
               do i = 1,nvar
 	         do iy = 1,ny
 	          do ix = 1,nx
-	             femdata(1,ix*iy,i) = var2d_ens(i,ix,iy)
+		     var = var2d_ens(i,ix,iy)
+		     if (nint(var_min) /= -999) call var_limit_min(var,var_min)
+		     if (nint(var_max) /= -999) call var_limit_max(var,var_max)
+	             femdata(1,ix*iy,i) = var
 	          end do
                  end do
                  call fem_file_write_data(iformat,fid,nvers,np,lmax &
@@ -302,26 +331,26 @@ program perturbeBC
                  call make_member_2D2(nvar,nrens,nx,ny,variable,ne,pmat,var2d,var2d_ens,var_std)
 
 	      else if (pert_type == 3) then
-	         if (trim(variable) /= 'wind') error stop 'Bad varable. Use just wind.'
+	         if (.not. bwind) error stop 'Bad varable. Use just wind.'
 	         call make_geo_field(nvar,ne,nrens,nx,ny,dx,dy,pmat,var2d,var2d_ens,flag,var_std, &
                                 sigmaP,flat,bpress)
 
 	      else if (pert_type == 4) then
-	         if (trim(variable) /= 'wind') error stop 'Bad varable. Use just wind.'
+	         if (.not. bwind) error stop 'Bad varable. Use just wind.'
 	         call make_2geo_field(nvar,ne,nrens,nx,ny,dx,dy,pmat,var2d,var2d_ens,flag,var_std, &
                                 sigmaP,flat)
 
 	      else if (pert_type == 5) then
-	         if (trim(variable) /= 'wind') error stop 'Bad varable. Use just wind.'
+	         if (.not. bwind) error stop 'Bad varable. Use just wind.'
 		 call make_ws_pert(nvar,ne,nrens,nx,ny,pmat,var2d,var2d_ens,flag,var_std)
 
 	      else if (pert_type == 6) then
-	         if (trim(variable) /= 'wind') error stop 'Bad varable. Use just wind.'
+	         if (.not. bwind) error stop 'Bad varable. Use just wind.'
 		 call make_ind_field_ws(nvar,ne,nrens,nx,ny,pmat,var2d,var2d_ens,flag,var_std)
 
 	      end if
 
-	      !if (trim(variable) == 'wind') call moderate_max_wind
+	      if (bwind) call limit_wind(nvar,nx,ny,var2d_ens,wsmax)
 
 	      ! write file
               fid = iunit + 10 + ne
@@ -330,7 +359,10 @@ program perturbeBC
               do i = 1,nvar
 	         do iy = 1,ny
 	          do ix = 1,nx
-	             femdata(1,ix*iy,i) = var2d_ens(i,ix,iy)
+		     var = var2d_ens(i,ix,iy)
+		     if (nint(var_min) /= -999) call var_limit_min(var,var_min)
+		     if (nint(var_max) /= -999) call var_limit_max(var,var_max)
+	             femdata(1,ix*iy,i) = var
 	          end do
                  end do
                  call fem_file_write_data(iformat,fid,nvers,np,lmax &
@@ -388,6 +420,9 @@ program perturbeBC
 	         do l = 1,lmax
 	            do iy = 1,ny
 	              do ix = 1,nx
+		         var = var2d_ens(i,ix,iy)
+		         if (nint(var_min) /= -999) call var_limit_min(var,var_min)
+		         if (nint(var_max) /= -999) call var_limit_max(var,var_max)
 		         femdata(l,ix*iy,i) = var3d_ens(i,ix,iy,l)
 	              end do
                     end do
@@ -623,13 +658,13 @@ end program perturbeBC
 
 
 !-----------------------------------------------
-  subroutine write_record_0d(iunit,told,nrens,dstring,var0,var_std,pvec0)
+  subroutine write_record_0d(iunit,told,nrens,dstring,var0,var_std,var_min,var_max,pvec0)
 !-----------------------------------------------
   implicit none
   double precision, intent(in) :: told
   integer, intent(in) :: nrens,iunit
   character(len=80), intent(in) :: dstring
-  real, intent(in) :: var0,var_std
+  real, intent(in) :: var0,var_std,var_min,var_max
   real, intent(in) :: pvec0(nrens-1)
 
   integer n,fid
@@ -647,6 +682,9 @@ end program perturbeBC
 
      if (told < 0) var = var0
 
+     if (nint(var_min) /= -999) call var_limit_min(var,var_min)
+     if (nint(var_max) /= -999) call var_limit_max(var,var_max)
+
      write(fid,*) trim(dstring),var
   end do
 
@@ -659,8 +697,8 @@ end program perturbeBC
   integer, intent(in) :: nvar,nrens,nx,ny,ne
   character(len=80), intent(in) :: variable
   real, intent(in) :: vec1(nvar,nrens-1),var_std
-  real*4, intent(in) :: var2d(nvar,nx,ny)
-  real*4, intent(out) :: var2d_ens(nvar,nx,ny)
+  real, intent(in) :: var2d(nvar,nx,ny)
+  real, intent(out) :: var2d_ens(nvar,nx,ny)
 
   integer i
   real vec11(nvar,nrens)
@@ -684,8 +722,8 @@ end program perturbeBC
   integer, intent(in) :: nvar,nrens,nx,ny,ne
   character(len=80), intent(in) :: variable
   real, intent(in) :: pmat(nvar,nx,ny,nrens-1),var_std
-  real*4, intent(in) :: var2d(nvar,nx,ny)
-  real*4, intent(out) :: var2d_ens(nvar,nx,ny)
+  real, intent(in) :: var2d(nvar,nx,ny)
+  real, intent(out) :: var2d_ens(nvar,nx,ny)
 
   integer i
   real pmat1(nvar,nx,ny,nrens)
@@ -709,8 +747,8 @@ end program perturbeBC
   integer, intent(in) :: nvar,nrens,nx,ny,lmax,ne
   character(len=80), intent(in) :: variable
   real, intent(in) :: vec1(nvar,nrens-1),var_std
-  real*4, intent(in) :: var3d(nvar,nx,ny,lmax)
-  real*4, intent(out) :: var3d_ens(nvar,nx,ny,lmax)
+  real, intent(in) :: var3d(nvar,nx,ny,lmax)
+  real, intent(out) :: var3d_ens(nvar,nx,ny,lmax)
 
   integer i
   real vec11(nvar,nrens)
@@ -766,8 +804,8 @@ end program perturbeBC
 	real,intent(in) :: flat
         logical,intent(in) :: bpress
 	real,intent(in) :: pmat(nvar,nx,ny,nrens-1)
-	real*4,intent(in) :: datain(nvar,nx,ny)
-	real*4,intent(out) :: dataout(nvar,nx,ny)
+	real,intent(in) :: datain(nvar,nx,ny)
+	real,intent(out) :: dataout(nvar,nx,ny)
 
 	real :: mat(nvar,nx,ny,nrens)
 
@@ -884,8 +922,8 @@ end program perturbeBC
 	real,intent(in) :: err,sigmaP,flag
 	real,intent(in) :: flat
 	real,intent(in) :: pmat(nvar,nx,ny,nrens-1)
-	real*4,intent(in) :: datain(nvar,nx,ny)
-	real*4,intent(out) :: dataout(nvar,nx,ny)
+	real,intent(in) :: datain(nvar,nx,ny)
+	real,intent(out) :: dataout(nvar,nx,ny)
 
 	real :: mat(nvar,nx,ny,nrens)
 
@@ -986,8 +1024,8 @@ end program perturbeBC
         integer,intent(in) :: nvar,iens
         integer,intent(in) :: nrens,nx,ny
         real,intent(in) :: pmat(nvar,nx,ny,nrens-1)
-        real*4,intent(in) :: datain(nvar,nx,ny)
-        real*4,intent(out) :: dataout(nvar,nx,ny)
+        real,intent(in) :: datain(nvar,nx,ny)
+        real,intent(out) :: dataout(nvar,nx,ny)
         real,intent(in) :: err,flag
 
 	real :: mat(nvar,nx,ny,nrens)
@@ -1038,8 +1076,8 @@ end program perturbeBC
 	integer,intent(in) :: nrens,nx,ny
 	real,intent(in) :: err1,flag
 	real,intent(in) :: pmat(nvar,nx,ny,nrens-1)
-	real*4,intent(in) :: datain(nvar,nx,ny)
-	real*4,intent(out) :: dataout(nvar,nx,ny)
+	real,intent(in) :: datain(nvar,nx,ny)
+	real,intent(out) :: dataout(nvar,nx,ny)
         real, allocatable :: u(:,:),du(:,:),v(:,:),dv1(:,:),k(:,:), &
                             ws(:,:),uu(:,:),vv(:,:),b(:,:),c(:,:), &
                             dv2(:,:)
@@ -1086,80 +1124,55 @@ end program perturbeBC
 
 	end subroutine make_ind_field_ws
 
-
 !--------------------------------------------------
-	subroutine check_wind(nx,ny,wind,ierr,flag)
+  subroutine var_limit_min(var,var_min)
 !--------------------------------------------------
-        implicit none
-        integer,intent(in) :: nx,ny
-        real,intent(in) :: wind(2,nx,ny)
-        integer,intent(out) :: ierr
-	real,intent(in) :: flag
-        real,parameter :: wsmax = 45.
-        real ws
-        integer ix,iy
+  implicit none
+  real,intent(in) :: var_min
+  real,intent(inout) :: var
 
-        ierr = 0
-        do ix = 1,nx
-        do iy = 1,ny
-	   if ((wind(1,ix,iy) == flag) .or. &
-              (wind(2,ix,iy) == flag)) cycle
-
-           ws = sqrt(wind(1,ix,iy)**2 + wind(2,ix,iy)**2)
-           if (ws > wsmax) then
-              write(*,*) 'wind too high (ix,iy,ws): ',ix,iy,ws
-              ierr = 1
-           end if
-        end do
-        end do
-              
-	end subroutine check_wind
+  if (var < var_min) var = var_min
+    
+  end subroutine var_limit_min
 
 
 !--------------------------------------------------
-	subroutine correct_wind(bcorr,ne,nvar,nx,ny,err,omet,emet,flag)
+  subroutine var_limit_max(var,var_max)
 !--------------------------------------------------
-        implicit none
-	logical, intent(in) :: bcorr
-	integer,intent(in) :: ne
-        integer,intent(in) :: nx,ny,nvar
-        real,intent(in) :: err
-        real,intent(in) :: omet(nvar,nx,ny)
-        real,intent(inout) :: emet(nvar,nx,ny)
-	real,intent(in) :: flag
-        real ws,u,v
-        real ws0,u0,v0,wsmax
-        integer ix,iy
-	real wmax
+  implicit none
+  real,intent(in) :: var_max
+  real,intent(inout) :: var
 
-	if (.not.bcorr) return
+  if (var > var_max) var = var_max
+    
+  end subroutine var_limit_max
 
-        wmax = 30.
-        do ix = 1,nx
-        do iy = 1,ny
-           if ((emet(1,ix,iy) == flag) .or.(emet(2,ix,iy) == flag)) cycle
+!--------------------------------------------------
+  subroutine limit_wind(nv,nx,ny,wdata,wsmax)
+!--------------------------------------------------
+  implicit none
+  integer, intent(in) :: nv,nx,ny
+  real, intent(inout) ::  wdata(nv,nx,ny)
+  real, intent(in)    :: wsmax
+  real u,v,ws,k
+  integer ix,iy
 
-           ! Reduce ws of 5%
-           emet(1,ix,iy) = 0.95 * emet(1,ix,iy)
-           emet(2,ix,iy) = 0.95 * emet(2,ix,iy)
+  if (nint(wsmax) == -999) return
+  if ((nv /= 3).or.(wsmax < 1.)) error stop 'Wrong wind speed limit'
 
-           u = emet(1,ix,iy)
-           v = emet(2,ix,iy)
-           ws = sqrt(u**2 + v**2)
-           u0 = omet(1,ix,iy)
-           v0 = omet(2,ix,iy)
-           ws0 = sqrt(u0**2 + v0**2)
-           wsmax = ws0 + err * ws0
-	   if (wsmax > wmax) wsmax = wmax
-           if (ws > wsmax) then
-	      write(*,*) 'Limiting max wind speed: ',ws,wsmax
-              emet(1,ix,iy) = u/ws * wsmax
-              emet(2,ix,iy) = v/ws * wsmax
-              !write(*,*) 'moderating wind. Ens member:',ne
-              !write(*,*) 'u->um v->vm: ',u,emet(1,ix,iy),v,emet(2,ix,iy)
-              !write(*,*) 'ws->wsm: ',ws,ws0,wsmax
-           end if
-        end do
-        end do
-              
-	end subroutine correct_wind
+  do ix = 1,nx
+  do iy = 1,ny
+     u = wdata(1,ix,iy)
+     v = wdata(2,ix,iy)
+     ws = sqrt(u**2 + v**2)
+     if (ws > wsmax) then
+        k = wsmax/ws
+	u = u * k
+	v = v * k
+     end if
+     wdata(1,ix,iy) = u
+     wdata(2,ix,iy) = v
+  end do
+  end do
+  
+  end subroutine limit_wind
