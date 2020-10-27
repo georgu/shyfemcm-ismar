@@ -420,10 +420,10 @@ program perturbeBC
 	         do l = 1,lmax
 	            do iy = 1,ny
 	              do ix = 1,nx
-		         var = var2d_ens(i,ix,iy)
+		         var = var3d_ens(i,ix,iy,l)
 		         if (nint(var_min) /= -999) call var_limit_min(var,var_min)
 		         if (nint(var_max) /= -999) call var_limit_max(var,var_max)
-		         femdata(l,ix*iy,i) = var3d_ens(i,ix,iy,l)
+		         femdata(l,ix*iy,i) = var
 	              end do
                     end do
 		 end do
