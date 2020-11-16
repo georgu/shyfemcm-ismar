@@ -69,6 +69,8 @@ contains
    if (tau_er < dt_er) error stop 'make_aug: parameter error'
  
    alpha = 1. - (dt_er/tau_er)
+   if (alpha < 0.) alpha = 0.
+
    rho=sqrt( (1.0-alpha)**2 /&
      (dt_er*(float(nst) - 2.0*alpha - float(nst)*alpha**2 + 2.0*alpha**(nst+1))) )
  

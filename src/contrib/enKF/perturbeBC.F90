@@ -57,10 +57,9 @@ program perturbeBC
   character(len=80) :: dstring
   real              :: var_min,var_max
 
-  real, allocatable :: pvec0(:),pvec0_old(:)
-  real, allocatable :: pvec1(:,:),pvec1_old(:,:)
-  real, allocatable :: pmat(:,:,:,:),pmat_old(:,:,:,:)
+  real, allocatable :: pvec(:),pvec1(:,:)
   real, allocatable :: amat(:,:,:)
+  real, allocatable :: pmat(:,:,:,:)
 
   ! 2D perturbation parameters
   real rx,ry,theta
@@ -179,6 +178,10 @@ program perturbeBC
 
     n = n + 1
 
+    !write(*,*) "---------------------------"
+    !write(*,*) "Timestep: ",n
+    !write(*,*) "---------------------------"
+
     ! read record
     select case(trim(filety))
     case('ts')
@@ -222,14 +225,13 @@ program perturbeBC
     end select
 
     ! generate perturbations and write the files
+    if (.not.allocated(pvec)) allocate(pvec(nrens-1))
     select case(var_dim)
     case(0)	! 0D variable
 
-	if (.not.allocated(pvec0)) allocate(pvec0(nrens-1))
-	if (.not.allocated(pvec0_old)) allocate(pvec0_old(nrens-1))
-        call perturbe_0d(nrens-1,pvec0)
-        call red_noise_0d(told,pvec0_old,tnew,pvec0,nrens-1,mem_time)
-        call write_record_0d(iunit,told,nrens,dstring,var,var_std,var_min,var_max,pvec0)
+        call perturbe_0d(nrens-1,pvec)
+        call red_noise_0d(told,tnew,pvec,nrens-1,mem_time,1,1)
+        call write_record_0d(iunit,told,nrens,dstring,var,var_std,var_min,var_max,pvec)
 
     case(1)	! 1D variable
 
@@ -256,18 +258,12 @@ program perturbeBC
 
             if (n==1) write(*,*) 'Case 1: spatially constant perturbations'
 
-	    allocate(pvec0(nrens-1),pvec0_old(nrens-1))
+            if (.not.allocated(pvec1)) allocate(pvec1(nvar,nrens-1))
 	    do i=1,nvar
-	       if (.not.allocated(pvec1)) allocate(pvec1(nvar,nrens-1))
-	       if (.not.allocated(pvec1_old)) allocate(pvec1_old(nvar,nrens-1))
-	       pvec0 = pvec1(i,:)
-	       pvec0_old = pvec1_old(i,:)
-               call perturbe_0d(nrens-1,pvec0)
-               call red_noise_0d(told,pvec0_old,tnew,pvec0,nrens-1,mem_time)
-	       pvec1(i,:) = pvec0
-	       pvec1_old(i,:) = pvec0_old
+               call perturbe_0d(nrens-1,pvec)
+               call red_noise_0d(told,tnew,pvec,nrens-1,mem_time,i,nvar)
+               pvec1(i,:) = pvec
 	    end do
-	    deallocate(pvec0,pvec0_old)
 
 	    do ne=1,nrens
 	      ! create member
@@ -303,7 +299,7 @@ program perturbeBC
 	    verbose = .false.
 	    samp_fix = .true.
 	    theta = 0.
-	    fmult = 8
+	    fmult = 4
 	    call set_decorrelation(nx,dx,rx)
 	    call set_decorrelation(ny,dy,ry)
 	    flat = y0 + (ny/2 * dy)
@@ -311,17 +307,20 @@ program perturbeBC
 	    if (n==1) write(*,*) 'dx,dy,rx,ry,theta,samp_fix: ',dx,dy,rx,ry,theta,samp_fix
 
             ! Make the random fields
-            allocate(amat(nx,ny,nrens-1))
+            allocate(amat(nx,ny,nrens-1),pmat(nvar,nx,ny,nrens-1))
 	    do i=1,nvar
-               if(.not.allocated(pmat)) allocate(pmat(nvar,nx,ny,nrens-1))
-               call sample2D(amat,nx,ny,nrens-1,fmult,dx,dy,rx,ry,theta &
+               if ( trim(vstring(i)) .eq. 'atmospheric pressure' ) then
+                  print*, "Pressure field, no perturbation"
+                  amat = 0.
+               else
+                  call sample2D(amat,nx,ny,nrens-1,fmult,dx,dy,rx,ry,theta &
                     ,samp_fix,verbose)
+               end if
                pmat(i,:,:,:) = amat
 	    end do
             deallocate(amat)
 
-            if(.not.allocated(pmat_old)) allocate(pmat_old(nvar,nx,ny,nrens-1))
-            call red_noise_2d(nx,ny,nvar,told,pmat_old,tnew,pmat,nrens-1,mem_time)
+            call red_noise_2d(nx,ny,nvar,told,tnew,pmat,nrens-1,mem_time)
 
 	    do ne=1,nrens
 
@@ -394,18 +393,12 @@ program perturbeBC
 
             if (n==1) write(*,*) 'Case 1: spatially constant perturbations'
 
-	    allocate(pvec0(nrens-1),pvec0_old(nrens-1))
+            if (.not.allocated(pvec1)) allocate(pvec1(nvar,nrens-1))
 	    do i=1,nvar
-	       if (.not.allocated(pvec1)) allocate(pvec1(nvar,nrens-1))
-	       if (.not.allocated(pvec1_old)) allocate(pvec1_old(nvar,nrens-1))
-	       pvec0 = pvec1(i,:)
-	       pvec0_old = pvec1_old(i,:)
-               call perturbe_0d(nrens-1,pvec0)
-               call red_noise_0d(told,pvec0_old,tnew,pvec0,nrens-1,mem_time)
-	       pvec1(i,:) = pvec0
-	       pvec1_old(i,:) = pvec0_old
+               call perturbe_0d(nrens-1,pvec)
+               call red_noise_0d(told,tnew,pvec,nrens-1,mem_time,i,nvar)
+               pvec1(i,:) = pvec
 	    end do
-	    deallocate(pvec0,pvec0_old)
 
 	    do ne=1,nrens
 	      ! create member
@@ -573,45 +566,49 @@ end program perturbeBC
   end subroutine close_and_rename
 
 !-----------------------------------------------
-  subroutine perturbe_0d(nrensp,pvec0)
+  subroutine perturbe_0d(nrensp,pvec)
 !-----------------------------------------------
   use m_random
   implicit none
   integer, intent(in) :: nrensp
-  real, intent(out) :: pvec0(nrensp)
+  real, intent(out) :: pvec(nrensp)
 
   integer n
   real aaux,ave
 
-  call random(pvec0,nrensp)
+  call random(pvec,nrensp)
 
   ! remove outlayers
   do n = 1,nrensp
-     aaux = pvec0(n)
+     aaux = pvec(n)
      if( abs(aaux).ge.3. ) then
         aaux = sign(1.,aaux) * (abs(aaux)-floor(abs(aaux)) + 1.)
      end if
-     pvec0(n) = aaux
+     pvec(n) = aaux
   end do
   ! set mean eq to zero
-  ave = sum(pvec0)/float(nrensp)
-  pvec0 = pvec0 - ave
+  ave = sum(pvec)/float(nrensp)
+  pvec = pvec - ave
 
   end subroutine perturbe_0d
 
 !-----------------------------------------------
-  subroutine red_noise_0d(told,pvec0_old,tnew,pvec0,nrensp,tau)
+  subroutine red_noise_0d(told,tnew,pvec,nrensp,tau,n,nvar)
 !-----------------------------------------------
   implicit none
   double precision, intent(in) :: tnew,tau
   double precision, intent(inout) :: told
-  integer, intent(in) :: nrensp
-  real, intent(inout) :: pvec0(nrensp),pvec0_old(nrensp)
-  integer n
+  integer, intent(in) :: nrensp,nvar,n
+  real, intent(inout) :: pvec(nrensp)
+  real, allocatable, save :: pveco(:,:)
 
   double precision alpha
 
-  if (told < 0) return
+  if (told < 0) then
+     if (.not. allocated(pveco)) allocate(pveco(nrensp,nvar))
+     pveco = 0.
+     return
+  end if
 
   if (tau > 0) then
      alpha = 1. -  (tnew - told)/tau
@@ -619,29 +616,36 @@ end program perturbeBC
      alpha = 0.
   end if
 
-  do n=1,nrensp
-     pvec0(n) = alpha * pvec0_old(n) + sqrt(1 - alpha**2) * pvec0(n)
-  end do
+  if (alpha < 0.) alpha = 0.
+
+  if (n > nvar) error stop 'Dimension error.'
+
+  pveco(:,n) = alpha * pveco(:,n) + sqrt(1 - alpha**2) * pvec
 
   told = tnew
-  pvec0_old = pvec0
-  
+  pvec = pveco(:,n)
+
   end subroutine red_noise_0d
 
 !-----------------------------------------------
-  subroutine red_noise_2d(nx,ny,nvar,told,pmat_old,tnew,pmat,nrensp,tau)
+  subroutine red_noise_2d(nx,ny,nvar,told,tnew,pmat,nrensp,tau)
 !-----------------------------------------------
   implicit none
   integer, intent(in) :: nx,ny,nvar
   double precision, intent(in) :: tnew,tau
   double precision, intent(inout) :: told
   integer, intent(in) :: nrensp
-  real, intent(inout) :: pmat(nvar,nx,ny,nrensp),pmat_old(nvar,nx,ny,nrensp)
+  real, intent(inout) :: pmat(nvar,nx,ny,nrensp)
+  real, allocatable, save :: pmato(:,:,:,:)
   integer n
 
   double precision alpha
 
-  if (told < 0) return
+  if (told < 0) then
+     if (.not. allocated(pmato)) allocate(pmato(nvar,nx,ny,nrensp))
+     pmato = 0.
+     return
+  end if
 
   if (tau > 0) then
      alpha = 1. -  (tnew - told)/tau
@@ -649,23 +653,25 @@ end program perturbeBC
      alpha = 0.
   end if
 
-  pmat = alpha * pmat_old + sqrt(1 - alpha**2) * pmat
+  if (alpha < 0.) alpha = 0.
+
+  pmato = alpha * pmato + sqrt(1 - alpha**2) * pmat
 
   told = tnew
-  pmat_old = pmat
+  pmat = pmato
   
   end subroutine red_noise_2d
 
 
 !-----------------------------------------------
-  subroutine write_record_0d(iunit,told,nrens,dstring,var0,var_std,var_min,var_max,pvec0)
+  subroutine write_record_0d(iunit,told,nrens,dstring,var0,var_std,var_min,var_max,pvec)
 !-----------------------------------------------
   implicit none
   double precision, intent(in) :: told
   integer, intent(in) :: nrens,iunit
   character(len=80), intent(in) :: dstring
   real, intent(in) :: var0,var_std,var_min,var_max
-  real, intent(in) :: pvec0(nrens-1)
+  real, intent(in) :: pvec(nrens-1)
 
   integer n,fid
   real var
@@ -675,7 +681,7 @@ end program perturbeBC
      fid = iunit + 10 + n
 
      if (n > 1) then
-        var = (pvec0(n-1) * var_std) + var0
+        var = (pvec(n-1) * var_std) + var0
      else
         var = var0
      end if
@@ -706,9 +712,6 @@ end program perturbeBC
   vec11(:,1) = 0.
   vec11(:,2:-1) = vec1
 
-  ! does not perturbe the pressure (3rd variable)
-  if (trim(variable) == 'wind') vec11(3,:) = 0.
-
   do i=1,nvar
      var2d_ens(i,:,:) = var2d(i,:,:) + var_std * vec11(i,ne)
   end do
@@ -731,9 +734,6 @@ end program perturbeBC
   pmat1(:,:,:,1) = 0.
   pmat1(:,:,:,2:-1) = pmat
 
-  ! does not perturbe the pressure (3rd variable)
-  if (trim(variable) == 'wind') pmat1(3,:,:,:) = 0.
-
   do i=1,nvar
      var2d_ens(i,:,:) = var2d(i,:,:) + var_std * pmat1(i,:,:,ne)
   end do
@@ -755,9 +755,6 @@ end program perturbeBC
 
   vec11(:,1) = 0.
   vec11(:,2:-1) = vec1
-
-  ! does not perturbe the pressure (3rd variable)
-  if (trim(variable) == 'wind') vec11(3,:) = 0.
 
   do i=1,nvar
      var3d_ens(i,:,:,:) = var3d(i,:,:,:) + var_std * vec11(i,ne)

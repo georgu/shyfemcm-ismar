@@ -283,6 +283,10 @@
 
      dt = t - t_old
      alpha = 1. - (dt/tau) 
+
+     ! when the old time is far compared to tau
+     if (alpha < 0.) alpha = 0.
+
      vec = alpha * vec_old + sqrt(1 - alpha**2) * vec
   else
      !write(*,*) 'No old file with perturbations: ',pfile
