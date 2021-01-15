@@ -607,85 +607,19 @@ contains
   ! Compute the innovation vectors and change the std if
   ! it is too low
   !
-  subroutine check_obs_inn(ty,x,y,z,v1,v2,stdv,d1,d2,stat)
+  subroutine check_spread(d,stdv,mval,mvalm)
 
   use levels
   use mod_ens_state
 
   implicit none
 
-  character(len=5), intent(in) :: ty
-  real, intent(in) :: x,y,z
-  integer, intent(in) :: stat
-  real, intent(in) :: v1,v2
+  real, intent(in) :: d
+  real, intent(in) :: mvalm,mval(nrens)
   real, intent(inout) :: stdv
-  real, intent(out) :: d1,d2
+  integer ne
 
-  real vmod,vmod_ens(nrens)
-  real v
-  integer ie,ik,ne
-  real h_1st_layer
   real ens_std,stdv_new
-  real inn
-
-  ! Exit if it is a bad obs, not to be assimilated
-  !
-  if (stat /= 0) return
-
-  ! Find the nearest node/element
-  !
-  call find_el_node(x,y,ie,ik)
-
-  select case (trim(ty))
-
-    case default
-     write(*,*) 'Observation not implemented yet'
-     error stop
-
-    case ('0DLEV')
-
-     vmod = Abk_m%z(ik)
-     vmod_ens = Abk(:)%z(ik)
-     v = v1
-     d1 = v - vmod
-     d2 = v - vmod
-     inn = d1
-
-    case ('0DTEM')
-
-     vmod = Abk_m%t(1,ik)
-     vmod_ens = Abk(:)%t(1,ik)
-     v = v1
-     d1 = v - vmod
-     d2 = v - vmod
-     inn = d1
-
-    case ('0DSAL')
-
-     vmod = Abk_m%s(1,ik)
-     vmod_ens = Abk(:)%s(1,ik)
-     v = v1
-     d1 = v - vmod
-     d2 = v - vmod
-     inn = d1
-
-    case ('2DVEL')
-
-     if (size(hlv) <= 1)&
-     error stop 'check_obs_inn: a 3D sim is necessary to assimilate surface currents'
-
-     vmod = sqrt(Abk_m%u(1,ie)**2 + Abk_m%v(1,ie)**2)
-     vmod_ens = sqrt(Abk(:)%u(1,ie)**2 + Abk(:)%v(1,ie)**2)
-     h_1st_layer = hlv(1) + Abk_m%z(ik)
-
-     v = sqrt(v1**2 + v2**2)
-     d1 = v1*h_1st_layer - Abk_m%u(1,ie)
-     d2 = v2*h_1st_layer - Abk_m%v(1,ie)
-     !d1 = v1 - Abk_m%u(1,ie)
-     !d2 = v2 - Abk_m%v(1,ie)
-     inn = sqrt(d1**2 + d2**2)
-
-  end select
 
   ! if lower than zero do not modify the std
   !
@@ -695,9 +629,57 @@ contains
   !
   ens_std = 0.0d0
   do ne = 1,nrens
-     ens_std = ens_std + (vmod_ens(ne) - vmod)**2
+     ens_std = ens_std + (mval(ne) - mvalm)**2
   end do
   ens_std = sqrt(ens_std/float(nrens-1))
+
+  ! Formula from: Sakov, 2012 (topaz)
+  !
+  if (abs(d) > KSTD * ens_std) then
+     stdv_new = sqrt( sqrt( (ens_std**2 + stdv**2)**2 +&
+                 (1/KSTD * ens_std * d)**2 ) - ens_std**2 )
+
+     if (verbose)&
+     write(*,'(a18,2f8.4)') ' changing obs std ',&
+             stdv,stdv_new
+
+     stdv = stdv_new
+  end if
+
+  end subroutine check_spread
+
+
+!********************************************************
+
+ subroutine check_spread_speed(d1,d2,stdv,um,vm,umm,vmm)
+
+  use mod_ens_state
+
+  implicit none
+
+  real, intent(in) :: d1,d2
+  real, intent(inout) :: stdv
+  real, intent(in) :: um(nrens),vm(nrens),umm,vmm
+  real cs(nrens),csm
+  real inn
+  integer ne
+
+  real ens_std,stdv_new
+
+  ! if lower than zero do not modify the std
+  !
+  if (KSTD <= 0) return
+
+  cs  = sqrt(um**2 + vm**2)
+  csm  = sqrt(umm**2 + vmm**2)
+  ! Compute the ensemble spread (std)
+  !
+  ens_std = 0.0d0
+  do ne = 1,nrens
+     ens_std = ens_std + (cs(ne) - csm)**2
+  end do
+  ens_std = sqrt(ens_std/float(nrens-1))
+  inn = sqrt(d1**2 + d2**2)
 
   ! Formula from: Sakov, 2012 (topaz)
   !
@@ -712,6 +694,7 @@ contains
      stdv = stdv_new
   end if
 
-  end subroutine check_obs_inn
+ end subroutine check_spread_speed
+
 
 end module mod_manage_obs

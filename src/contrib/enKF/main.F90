@@ -95,10 +95,6 @@ program main
 ! Call the analysis routine
 !--------------------------------
   
-    
-!--------------------------------
-! Do after... 
-!--------------------------------
   select case(mode_an)
 
    case(0) !normal call

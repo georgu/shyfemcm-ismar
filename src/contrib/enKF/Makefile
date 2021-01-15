@@ -29,7 +29,7 @@ SHYOBJ = $(FEM3D)/subrst.o $(FEM3D)/subbas.o $(FEM3D)/subdts.o $(FEM3D)/mod_bnd.
 	$(FEM3D)/newlevels.o $(FEM3D)/mod_conz.o $(FEM3D)/mod_hydro_vel.o \
 	$(FEM3D)/ecological_dummy.o $(FEM3D)/subdef.o $(FEM3D)/subnev.o \
 	$(FEM3D)/mod_geom.o $(FEM3D)/subscn.o $(FEM3D)/suboutputd.o \
-	$(FEM3D)/subiso8601.o
+	$(FEM3D)/subiso8601.o $(FEM3D)/mercury_dummy.o
 
 #-------------------- ens objects
 # Ensemble analysis objects

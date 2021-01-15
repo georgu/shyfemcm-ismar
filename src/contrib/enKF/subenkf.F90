@@ -20,7 +20,7 @@
   call mod_hydro_init(nk,ne,nl)
   call mod_hydro_vel_init(nk,ne,nl)
   call mod_ts_init(nk,nl)  
-  if (iconz_rst > 0) call mod_conz_init(iconz_rst,nk,nl)
+  if (id_conz_rst > 0) call mod_conz_init(id_conz_rst,nk,nl)
   call levels_init(nk,ne,nl)
 
   nlvdi = nl
@@ -35,17 +35,19 @@
   use mod_restart
 
   implicit none
-  real*4 :: zero = 0.
-  double precision :: zzero = 0.
-  real*4 :: apar
+  real*4 :: svar
+  double precision :: dvar
   
-  apar = ibarcl_rst
-  call addpar('ibarcl',apar)
-  apar = iconz_rst
-  call addpar('iconz',apar)
-  call addpar('ibfm',zero)
-  call daddpar('date',zzero)
-  call daddpar('time',zzero)
+  svar = 1.
+  call addpar('ibarcl',svar)
+  svar = 0.
+  call addpar('iconz',svar)
+  call addpar('ibfm',svar)
+  call addpar('imerc',svar)
+  call addpar('ibio',svar)
+  dvar = 0.
+  call daddpar('date',dvar)
+  call daddpar('time',dvar)
 
   end subroutine add_rst_params
 
@@ -53,23 +55,28 @@
 
   subroutine rst_read(rstname,atimea)
 
+  use mod_restart
+  use levels
   implicit none
 
   character(len=*), intent(in) :: rstname
   double precision, intent(in) :: atimea
 
-  integer ierr
+  integer ierr,iflag
   double precision atimef
 
 
   open(24,file=trim(rstname),status='old',form='unformatted',iostat=ierr)
   if (ierr /= 0) error stop 'rst_read: Error opening file'
 
- 89  call rst_read_record(24,atimef,ierr)
+  89  call rst_read_record(24,atimef,iflag,ierr)
      if (ierr /= 0) goto 90
      if (atimef /= atimea) goto 89
-
   close(24)
+
+  hlv = hlvrst
+  ilhv = ilhrst
+  ilhkv = ilhkrst
 
   return
 
@@ -95,16 +102,14 @@
 
   ! adds parameters
   !
-  svar = real(ibarcl_rst)
+  svar = 1.
   call putpar('ibarcl',svar)
-  svar = real(iconz_rst)
-  call putpar('iconz',svar)
   svar = 0.
+  call putpar('iconz',svar)
   call putpar('ibfm',svar)
+  call putpar('imerc',svar)
+  call putpar('ibio',svar)
 
-  ! In 2D barotropic hlv is set to 10000.
-  !
-  if (size(hlv) == 1) hlv = 10000.
 
   open(34,file=rstname,form='unformatted')
   call rst_write_record(atimea,34)

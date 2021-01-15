@@ -313,12 +313,13 @@ subroutine rst_write_rec(atimea,fid)
 
   ! adds parameters
   !
-  svar = real(ibarcl_rst)
+  svar = 1.
   call putpar('ibarcl',svar)
-  svar = real(iconz_rst)
-  call putpar('iconz',svar)
   svar = 0.
+  call putpar('iconz',svar)
   call putpar('ibfm',svar)
+  call putpar('imerc',svar)
+  call putpar('ibio',svar)
 
   ! In 2D barotropic hlv is set to 10000.
   !
@@ -371,17 +372,20 @@ end subroutine init_shyfem
   use mod_restart
 
   implicit none
-  real*4 :: zero = 0.
-  double precision :: zzero = 0.
-  real*4 :: apar
+  real*4 :: svar
+  double precision :: dvar
 
-  apar = ibarcl_rst
-  call addpar('ibarcl',apar)
-  apar = iconz_rst
-  call addpar('iconz',apar)
-  call addpar('ibfm',zero)
-  call daddpar('date',zzero)
-  call daddpar('time',zzero)
+  svar = 1.
+  call addpar('ibarcl',svar)
+  svar = 0.
+  call addpar('iconz',svar)
+  call addpar('ibfm',svar)
+  call addpar('imerc',svar)
+  call addpar('ibio',svar)
+
+  dvar = 0.
+  call daddpar('date',dvar)
+  call daddpar('time',dvar)
 
   end subroutine add_rst_params
 

@@ -86,8 +86,7 @@ contains
   real x,y
   integer iemin,kmin
   real oval,stdv
-  integer ostatus
-  real inn1,inn2
+  real inn1,inn2,mval(nrens),mvalm
   real pvec(nrens)
   character(len=5) :: nal
 
@@ -115,47 +114,36 @@ contains
      ! Remember for enKF: Aa = Af + Abk' [HA']^t [ U L^-1 U^t ] D' and D' = D-HA
      !
      select case (olabel)
-
        case ('0DLEV')
-        do ne = 1,nrens
-           S(nook,ne) = Abk(ne)%z(kmin) - Abk_m%z(kmin)
-           HA(nook,ne) = Abk(ne)%z(kmin)
-        end do
-
+	mval = Abk(:)%z(kmin)
+	mvalm = Abk_m%z(kmin)
        case ('0DTEM')
-        if (ostate(nf)%z /= 0) error stop 'fill_scalar_0d: deep temperature not implemented yet'
-        do ne = 1,nrens
-           S(nook,ne) = Abk(ne)%t(1,kmin) - Abk_m%t(1,kmin)
-           HA(nook,ne) = Abk(ne)%t(1,kmin)
-        end do
-
+	mval = Abk(:)%t(1,kmin)
+        mvalm = Abk_m%t(1,kmin)
        case ('0DSAL')
-        if (ostate(nf)%z /= 0) error stop 'fill_scalar_0d: deep salinity not implemented yet'
-        do ne = 1,nrens
-           S(nook,ne) = Abk(ne)%s(1,kmin) - Abk_m%s(1,kmin)
-           HA(nook,ne) = Abk(ne)%s(1,kmin)
-        end do
-
+	mval = Abk(:)%s(1,kmin)
+        mvalm = Abk_m%s(1,kmin)
      end select
 
-     ! check the obs std and compute the innovation vector
-     !
+     S(nook,:) = mval - mvalm
+     HA(nook,:) = mval
+
      oval = ostate(nf)%val
-     ostatus = ostate(nf)%stat
-     stdv = ostate(nf)%std
-     call check_obs_inn(olabel,x,y,0.,oval,oval,stdv,inn1,inn2,ostatus)
-     ostate(nf)%std = stdv
+     inn1 = oval - mvalm
      innov(nook) = inn1
+     stdv = ostate(nf)%std
+
+     call check_spread(inn1,stdv,mval,mvalm)
 
      if (verbose)&
      write(*,'(a25,2x,i4,3f8.4)') 'nobs, vobs, vmod, innov:',&
-              nf,ostate(nf)%val,Abk_m%z(kmin),inn1
+              nf,oval,mvalm,inn1
  
      ! compute the perturbations E, the perturbed observations D
      ! and the innovation vectors D1
      !
-     E(nook,:) = ostate(nf)%std * pvec
-     D(nook,:) = ostate(nf)%val + (ostate(nf)%std * pvec)
+     E(nook,:) = stdv * pvec
+     D(nook,:) = oval + (stdv * pvec)
      D1(nook,:) = D(nook,:) - HA(nook,:)
  
   end do
@@ -166,6 +154,7 @@ contains
 
   subroutine fill_scurrents(nfile,nook)
 
+  use levels
   implicit none
 
   integer, intent(in) :: nfile
@@ -175,8 +164,12 @@ contains
   real x,y
   integer iemin,kmin
   real uu,vv,stdv
-  integer ostatus
   real inn1,inn2
+  real mvalu(nrens),mvalv(nrens),mvalum,mvalvm
+  real h_1st_layer
+
+  if (size(hlv) <= 1)&
+     error stop 'fill_scurrents: a 3D sim is necessary to assimilate surface currents'
 
   do nf = 1,nfile 
      
@@ -198,6 +191,8 @@ contains
      y = o2dvel(nf)%y(ix,iy)
      call find_el_node(x,y,iemin,kmin)
 
+     h_1st_layer = hlv(1) + Abk_m%z(kmin)
+
      ! compute the observation errors R
      !
      R(nook-1,nook-1) = o2dvel(nf)%std(ix,iy)**2
@@ -206,37 +201,40 @@ contains
      ! compute the model perturbed values, S = HA' and HA
      ! Remember for enKF: Aa = Af + Abk' [HA']^t [ U L^-1 U^t ] D' and D' = D-HA
      !
-     do ne = 1,nrens
-        S(nook-1,ne) = Abk(ne)%u(1,iemin) - Abk_m%u(1,iemin)
-        S(nook,ne) = Abk(ne)%v(1,iemin) - Abk_m%v(1,iemin)
-        HA(nook-1,ne) = Abk(ne)%u(1,iemin)
-        HA(nook,ne) = Abk(ne)%v(1,iemin)
-     end do
+     mvalu = Abk(:)%u(1,iemin)
+     mvalv = Abk(:)%v(1,iemin)
+     mvalum = Abk_m%u(1,iemin)
+     mvalvm = Abk_m%v(1,iemin)
+     S(nook-1,:) = mvalu - mvalum
+     S(nook,:) = mvalv - mvalvm
+     HA(nook-1,:) = mvalu
+     HA(nook,:) = mvalv
 
      ! compute the innovation vector
      !
-     ostatus = o2dvel(nf)%stat(ix,iy)
-     uu = o2dvel(nf)%u(ix,iy)
-     vv = o2dvel(nf)%v(ix,iy)
+     uu = o2dvel(nf)%u(ix,iy) * h_1st_layer
+     vv = o2dvel(nf)%v(ix,iy) * h_1st_layer
      stdv = o2dvel(nf)%std(ix,iy)
-     call check_obs_inn('2DVEL',x,y,0.,uu,vv,stdv,inn1,inn2,ostatus)
-     o2dvel(nf)%std(ix,iy) = stdv
 
+     inn1 = uu - mvalum
+     inn2 = vv - mvalvm
      innov(nook-1) = inn1
      innov(nook) = inn2
- 
+
+     call check_spread_speed(inn1,inn2,stdv,mvalu,mvalv,mvalum,mvalvm)
+
      ! compute the perturbations E, the perturbed observations D
      ! and the innovation vectors D1
      !
      ! u component
      !
-     E(nook-1,:) = o2dvel(nf)%std(ix,iy) * pvec1
-     D(nook-1,:) = o2dvel(nf)%u(ix,iy) + (o2dvel(nf)%std(ix,iy) * pvec1)
+     E(nook-1,:) = stdv * pvec1
+     D(nook-1,:) = uu + (stdv * pvec1)
      D1(nook-1,:) = D(nook-1,:) - HA(nook-1,:)
      ! v component
      !
-     E(nook,:) = o2dvel(nf)%std(ix,iy) * pvec2
-     D(nook,:) = o2dvel(nf)%v(ix,iy) + (o2dvel(nf)%std(ix,iy) * pvec2)
+     E(nook,:) = stdv * pvec2
+     D(nook,:) = vv + (stdv * pvec2)
      D1(nook,:) = D(nook,:) - HA(nook,:)
  
     end do
