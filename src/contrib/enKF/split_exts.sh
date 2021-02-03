@@ -30,29 +30,16 @@ fi
 for efile in $(ls ${fbase}*.ext); do
     echo "file: $efile"
     basefile=$(basename $efile .ext)
+    vars='zeta.2d velx.2d vely.2d velx.3d vely.3d speed.2d speed.3d dir.2d dir.3d all.2d temp.2d temp.3d salt.2d salt.3d'
 
-    rm -f zeta.2d.* velx.2d.* vely.2d.* temp.2d.* salt.2d.*
     $FEMDIR/fembin/shyelab -split $efile > ext.log
-
-    for fl in $(ls zeta.2d.*); do
-        mv -f $fl ${basefile}_${fl}
+    rm -f ${basefile}_*.ts
+    for vv in $vars; do
+	if [ -e "$vv.1" ]; then
+           for fl in $(ls $vv.*); do
+               mv -f $fl ${basefile}_${fl}.ts
+           done
+	fi
     done
-    for fl in $(ls velx.2d.*); do
-        mv -f $fl ${basefile}_${fl}
-    done
-    for fl in $(ls vely.2d.*); do
-        mv -f $fl ${basefile}_${fl}
-    done
-    if [ -e temp.2d.1 ]; then
-     for fl in $(ls temp.2d.*); do
-        mv -f $fl ${basefile}_${fl}
-     done
-    fi
-    if [ -e salt.2d.1 ]; then
-     for fl in $(ls salt.2d.*); do
-        mv -f $fl ${basefile}_${fl}
-     done
-    fi
 done
 rm -f ext.log
-rm -f zeta.2d.* velx.2d.* vely.2d.* temp.2d.* salt.2d.* all.2d.* dir.2d.* speed.2d.*

@@ -19,7 +19,8 @@ program perturbeBC
   character(len=12) :: arg7
   character(len=12) :: arg8
   character(len=12) :: arg9
-  character(len=80) :: arg10
+  character(len=12) :: arg10
+  character(len=80) :: arg11
 
   integer nrens, var_dim
   character(len=80) :: filein
@@ -27,6 +28,7 @@ program perturbeBC
   character(len=80) :: variable
   real var_std
   double precision mem_time
+  double precision time_std	
   integer pert_type
 
   character(len=80) :: inbname
@@ -54,6 +56,11 @@ program perturbeBC
 
   real              :: var
   double precision  :: tnew,told,dtime
+  double precision  :: tramp,tfact,enstime
+  logical	    :: blast
+  real, parameter   :: dt = 60.   		!time step for rounding time in secs
+  real, parameter   :: time_ramp = 43200.  	!extension of time ramp for temporal shift
+  double precision, allocatable  :: tens(:)	!in seconds
   character(len=80) :: dstring
   real              :: var_min,var_max
 
@@ -94,12 +101,14 @@ program perturbeBC
   call get_command_argument(8, arg8)
   call get_command_argument(9, arg9)
   call get_command_argument(10, arg10)
+  call get_command_argument(11, arg11)
 
-  if (trim(arg10) .eq. '') then
+  if (trim(arg11) .eq. '') then
       write(*,*) ''
       write(*,*) 'Usage:'
       write(*,*) ''
-      write(*,*) 'perturbeBC [nrens] [file_type] [pert_type] [variable] [var_dim] [var_std] [var_min] [var_max] [mem_time] [input]'
+      write(*,*) 'perturbeBC [nrens] [file_type] [pert_type] [variable] [var_dim]' // &
+                           ' [var_std] [var_min] [var_max] [mem_time] [time_std] [input]'
       write(*,*) ''
       write(*,*) '[nrens] is the n. of ens members, control included.'
       write(*,*) '[file_type] can be fem or ts (timeseries).'
@@ -110,6 +119,7 @@ program perturbeBC
       write(*,*) '[var_min] minimum value for the variable (-999 to disable, not used for wind).'
       write(*,*) '[var_max] maximum value for the variable (-999 to disable, if wind it is the max speed).'
       write(*,*) '[mem_time] time correlation of the perturbations (red noise) in seconds.'
+      write(*,*) '[time_std] standard deviation for perturbation in time [in seconds].'
       write(*,*) '[input] is the name of the input unperturbed BC file.'
       write(*,*) ''
       write(*,*) 'pert_type can be:'
@@ -120,6 +130,13 @@ program perturbeBC
       write(*,*) '4- Same as 3, but using two perturbation fields. Pressure not perturbed.'
       write(*,*) '5- Only the wind speed is perturbed (same directions). Pressure not perturbed.'
       write(*,*) '6- Honestly I do not remember.. but it is not working.'
+      write(*,*) ''
+      write(*,*) 'Use var_std = 0 to disable this type of perturbations'
+      write(*,*) 'Use time_std = 0 to disable the time-shift perturbations'
+      write(*,*) ''
+      write(*,*) 'The time-shift perturbations shift the ens members in time, according to a Gaussian'
+      write(*,*) 'distribution (time_std). A time-ramp of half a day is used in order to have all the'
+      write(*,*) 'members at the initial times.'
       write(*,*) ''
       stop
   end if
@@ -133,7 +150,8 @@ program perturbeBC
   read(arg7,*) var_min
   read(arg8,*) var_max
   read(arg9,*) mem_time
-  filein = arg10
+  read(arg10,*) time_std
+  filein = arg11
 
   bwind = .false.
 
@@ -145,13 +163,19 @@ program perturbeBC
   if (( trim(filety) == 'fem' ) .and. ( var_dim < 1 )) error stop 'perturbeBC: file_type and dimension not compatible'
   if (mem_time <= 0) write(*,*) 'Warning: zero or negative mem_time. Setting to 0 (white noise).'
   if ( pert_type > 6 ) error stop 'perturbeBC: bad pert_type'
-  if ( var_std <= 0 ) error stop 'perturbeBC: bad var_std'
+  if (( var_std < 0 ) .or. ( time_std < 0 )) error stop 'perturbeBC: bad var_std and time_std'
+  if (( var_std == 0 ) .and. ( time_std == 0 )) error stop 'perturbeBC: bad var_std and time_std'
   if (trim(variable) == 'wind') then
      bwind = .true.
      wsmax = var_max
      var_min = -999.
      var_max = -999.
   end if
+
+  ! Compute time perturbations. tens(1) = 0.
+  tramp = 0.
+  if (.not.allocated(tens)) allocate(tens(nrens))
+  call perturbe_time(nrens,time_std,tens)
 
   ! open and close to read informations
   select case(trim(filety))
@@ -195,6 +219,7 @@ program perturbeBC
 	call fem_file_read_params(iformat,iunit,dtime &
                ,nvers,np,lmax,nvar,ntype,datetime,ierr)
         if( ierr .lt. 0 ) exit
+
 	call dts_convert_to_atime(datetime,dtime,tnew)
 
 	! read 2nd header
@@ -219,10 +244,15 @@ program perturbeBC
 	   if (.not.allocated(femdata)) allocate(femdata(lmax,nx*ny,nvar))
            call fem_file_read_data(iformat,iunit,nvers,np,lmax, &
 		   vstring(i),ilhkv,hd,nlvddi,femdata(:,:,i),ierr)
-	   if (n==1) write(*,*) 'Reading: ',vstring(i)
+	   if (n==1) write(*,*) '  Reading: ',vstring(i)
         end do
 
     end select
+
+    !smooth ramp [0-1] for time perturbation
+    if (n > 1 ) tramp = (tramp + (tnew-told))
+    tfact = min(tramp/time_ramp,1.)
+    call fem_check_last(iformat,iunit,blast)
 
     ! generate perturbations and write the files
     if (.not.allocated(pvec)) allocate(pvec(nrens-1))
@@ -256,7 +286,7 @@ program perturbeBC
 	select case(pert_type)
 	case(1)
 
-            if (n==1) write(*,*) 'Case 1: spatially constant perturbations'
+            if (n==1 .and. var_std > 0.) write(*,*) '  Case 1: spatially constant perturbations'
 
             if (.not.allocated(pvec1)) allocate(pvec1(nvar,nrens-1))
 	    do i=1,nvar
@@ -274,7 +304,9 @@ program perturbeBC
 
 	      ! write file
               fid = iunit + 10 + ne
-              call fem_file_write_header(iformat,fid,dtime,nvers,np,lmax &
+	      enstime = dtime + nint(tens(ne)*tfact/dt)*dt
+              if (blast) enstime = max(enstime,dtime)
+              call fem_file_write_header(iformat,fid,enstime,nvers,np,lmax &
                      ,nvar,ntype,nlvddi,hlv,datetime,regpar)
               do i = 1,nvar
 	         do iy = 1,ny
@@ -292,8 +324,8 @@ program perturbeBC
 
 	case(2,3,4,5,6)
 
-	    if (n==1) write(*,*) 'Case 2: 2D perturbations'
-	    if (n==1) write(*,*) 'Warning: check pressure parameters inside the code'
+	    if (n==1) write(*,*) '  Case 2: 2D perturbations'
+	    if (n==1) write(*,*) '  Warning: check pressure parameters inside the code'
 
 	    ! set parameters
 	    verbose = .false.
@@ -353,7 +385,8 @@ program perturbeBC
 
 	      ! write file
               fid = iunit + 10 + ne
-              call fem_file_write_header(iformat,fid,dtime,nvers,np,lmax &
+	      enstime = dtime + nint(tens(ne)*tfact/dt)*dt	
+              call fem_file_write_header(iformat,fid,enstime,nvers,np,lmax &
                      ,nvar,ntype,nlvddi,hlv,datetime,regpar)
               do i = 1,nvar
 	         do iy = 1,ny
@@ -391,7 +424,7 @@ program perturbeBC
 	select case(pert_type)
 	case(1)
 
-            if (n==1) write(*,*) 'Case 1: spatially constant perturbations'
+            if (n==1) write(*,*) '  Case 1: spatially constant perturbations'
 
             if (.not.allocated(pvec1)) allocate(pvec1(nvar,nrens-1))
 	    do i=1,nvar
@@ -407,7 +440,8 @@ program perturbeBC
 
 	      ! write file
               fid = iunit + 10 + ne
-              call fem_file_write_header(iformat,fid,dtime,nvers,np,lmax &
+	      enstime = dtime + nint(tens(ne)*tfact/dt)*dt	
+              call fem_file_write_header(iformat,fid,enstime,nvers,np,lmax &
                      ,nvar,ntype,nlvddi,hlv,datetime,regpar)
               do i = 1,nvar
 	         do l = 1,lmax
@@ -662,6 +696,43 @@ end program perturbeBC
   
   end subroutine red_noise_2d
 
+
+!-----------------------------------------------
+  subroutine perturbe_time(nrens,time_std,tens)
+!-----------------------------------------------
+  use m_random
+  implicit none
+  integer, intent(in) :: nrens
+  double precision, intent(in) :: time_std
+  double precision, intent(out) :: tens(nrens)
+
+  real tmpv(nrens)
+  integer n
+  real aaux,ave
+
+  tens = 0.d0
+  if ( nrens == 1) return
+  if ( time_std <= 0. ) return
+  write(*,*)'  Perturbing forcing in time'
+
+  call random(tmpv,nrens)
+
+  ! remove outlayers
+  do n = 1,nrens
+     aaux = tmpv(n)
+     if( abs(aaux).ge.3. ) then
+        aaux = sign(1.,aaux) * (abs(aaux)-floor(abs(aaux)) + 1.)
+     end if
+     tmpv(n) = aaux
+  end do
+  ! set mean eq to zero
+  ave = sum(tmpv)/float(nrens)
+  tmpv = tmpv - ave
+  tmpv(1) = 0.
+
+  tens = tmpv * time_std
+
+  end subroutine perturbe_time
 
 !-----------------------------------------------
   subroutine write_record_0d(iunit,told,nrens,dstring,var0,var_std,var_min,var_max,pvec)
@@ -1173,3 +1244,24 @@ end program perturbeBC
   end do
   
   end subroutine limit_wind
+
+!--------------------------------------------------
+  subroutine fem_check_last(iformat,iunit,blast)
+!--------------------------------------------------
+  implicit none
+  integer, intent(in) :: iformat,iunit
+  logical, intent(inout) ::  blast
+
+  double precision dtime
+  integer nvers,np,lmax,nvar,ntype,ierr
+  integer datetime(2)     !date and time information
+
+  blast = .false.
+
+  call fem_file_peek_params(iformat,iunit,dtime &
+         ,nvers,np,lmax,nvar,ntype,datetime,ierr)
+
+  if( ierr /= 0 ) blast = .true.
+
+  end subroutine fem_check_last
+

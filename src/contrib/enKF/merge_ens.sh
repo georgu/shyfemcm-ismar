@@ -31,22 +31,22 @@ Merge_timeseries()
    nen=$1
    ftype=$2
    files=$(ls an*_en${nen}b.${ftype})
-   rm -f zeta.2d.* velx.2d.* vely.2d.* speed.2d.* dir.2d.* all.2d.* merged_en${nen}_*
+   vars='zeta.2d velx.2d vely.2d velx.3d vely.3d speed.2d speed.3d dir.2d dir.3d all.2d temp.2d temp.3d salt.2d salt.3d'
+   rm -f *_st*_en${nen}.ts
    for fil in $files; do
       echo "Processing file: $fil"
       $FEMDIR/fembin/shyelab -split ${fil} > log
        
-      for flev in $(ls zeta.2d.*); do
-          cat $flev |head -n -1 >> merged_en${nen}_$flev
-      done
-      for flev in $(ls velx.2d.*); do
-          cat $flev |head -n -1 >> merged_en${nen}_$flev
-      done
-      for flev in $(ls vely.2d.*); do
-          cat $flev |head -n -1 >> merged_en${nen}_$flev
+      for vv in $vars; do
+	if [ -e "$vv.1" ]; then
+          for flev in $(ls $vv.*); do
+	    idst=$(echo $flev | cut -d '.' -f 3)
+            cat $flev |head -n -1|tail -n +2 >> ${vv}_st${idst}_en${nen}.ts
+	    rm $flev
+          done
+	fi
       done
    done
-   rm -f zeta.2d.* velx.2d.* vely.2d.* speed.2d.* dir.2d.* all.2d.*
 }
 
 #----------------------------------------------------------
