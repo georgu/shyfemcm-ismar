@@ -67,7 +67,7 @@ contains
   n_0dvel = 0
   n_2dvel = 0
 
-  write(*,*) 'reading observations...'
+  write(*,*) 'Reading observations...'
   !-------------------------------
   ! Read a list of obs files
   !-------------------------------
@@ -176,6 +176,7 @@ contains
                   kinit,kend,tobs,xobs,yobs,zobs,&
                   vobs,stdobs,statobs)
              if (kend > kinit) then 
+		if (verbose) write(*,*) 'Station n. ',n
                 o0dlev(kend)%t = tobs
                 o0dlev(kend)%x = xobs
                 o0dlev(kend)%y = yobs
@@ -194,6 +195,7 @@ contains
                   kinit,kend,tobs,xobs,yobs,zobs,&
                   vobs,stdobs,statobs)
              if (kend > kinit) then 
+		if (verbose) write(*,*) 'Station n. ',n
                 o0dtemp(kend)%t = tobs
                 o0dtemp(kend)%x = xobs
                 o0dtemp(kend)%y = yobs
@@ -213,6 +215,7 @@ contains
                   kinit,kend,tobs,xobs,yobs,zobs,&
                   vobs,stdobs,statobs)
              if (kend > kinit) then 
+		if (verbose) write(*,*) 'Station n. ',n
                 o0dsalt(kend)%t = tobs
                 o0dsalt(kend)%x = xobs
                 o0dsalt(kend)%y = yobs
@@ -404,6 +407,7 @@ contains
   ! open fem file
   !
   np = 0
+  write(*,*) 'Opening velocity fem-file: ',trim(filin)
   call fem_file_read_open(trim(filin),np,iformat,iunit)
 
   irec = 0
@@ -518,8 +522,7 @@ contains
   real, intent(in) :: flag
   integer, intent(out) :: stat
 
-  real vmin,vmax,v
-
+  real vmin,vmax
 
   stat = 0
 
@@ -531,25 +534,24 @@ contains
   if (trim(ty) == '0DLEV') then
      vmin = SSH_MIN
      vmax = SSH_MAX
-     v = v1
   else if (trim(ty) == '0DTEM') then
      vmin = TEM_MIN
      vmax = TEM_MAX
-     v = v1
   else if (trim(ty) == '0DSAL') then
      vmin = SAL_MIN
      vmax = SAL_MAX
-     v = v1
   else if (trim(ty) == '2DVEL') then
      vmin = VEL_MIN
      vmax = VEL_MAX
-     v = sqrt(v1**2 + v2**2)
   else
      write(*,*) 'Observation not implemented yet'
      error stop
   end if
 
-  if (v < vmin .or. v > vmax) then
+  if (v1 < vmin .or. v1 > vmax) then
+     stat = 3
+  end if
+  if (v2 < vmin .or. v2 > vmax) then
      stat = 3
   end if
 

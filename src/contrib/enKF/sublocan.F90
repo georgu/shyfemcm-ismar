@@ -48,49 +48,52 @@
   ! are allowed
   do no = 1,nobs_tot
      if (islev /= 0) then
-	  if (no <= n_0dlev) then
+	  if (no <= n_0dlev) then		!e.g. form timeseries
 		  xobs(no) = o0dlev(no)%x
 		  yobs(no) = o0dlev(no)%y
-	  else if ((no > n_0dlev).and.(no <= n_0dlev+n_1dlev)) then
+	  else if ((no > n_0dlev).and. &
+		  (no <= n_0dlev+n_1dlev)) then	!e.g. altimeter track
 	          write(*,*) 'Do it!'
 	          stop
 		  !xobs(no) = o1dlev(no)%x
 		  !yobs(no) = o1dlev(no)%y
-	  else if (no > n_0dlev+n_1dlev) then
+	  else if (no > n_0dlev+n_1dlev) then	!e.g. altimeter map
 	          write(*,*) 'Do it!'
 	          stop
 		  !xobs(no) = o2dlev(no)%x
-		  !yobs(no) = o3dlev(no)%y
+		  !yobs(no) = o2dlev(no)%y
 	  end if
      else if (istemp /= 0) then
-	  if (no <= n_0dtemp) then
+	  if (no <= n_0dtemp) then			!e.g. form timeseries
 		  xobs(no) = o0dtemp(no)%x
 		  yobs(no) = o0dtemp(no)%y
-	  else if ((no > n_0dtemp).and.(no <= n_0dtemp+n_1dtemp)) then
+	  else if ((no > n_0dtemp).and. &
+		  (no <= n_0dtemp+n_1dtemp)) then	!e.g. from profiles
 	          write(*,*) 'Do it!'
 	          stop
 		  !xobs(no) = o1dtemp(no)%x
 		  !yobs(no) = o1dtemp(no)%y
-	  else if (no > n_0dtemp+n_1dtemp) then
+	  else if (no > n_0dtemp+n_1dtemp) then		!e.g. from sst maps
 	          write(*,*) 'Do it!'
 	          stop
 		  !xobs(no) = o2dtemp(no)%x
-		  !yobs(no) = o3dtemp(no)%y
+		  !yobs(no) = o2dtemp(no)%y
 	  end if
      else if (issalt /= 0) then
-	  if (no <= n_0dsalt) then
+	  if (no <= n_0dsalt) then			!e.g. from timeseries
 		  xobs(no) = o0dsalt(no)%x
 		  yobs(no) = o0dsalt(no)%y
-	  else if ((no > n_0dsalt).and.(no <= n_0dsalt+n_1dsalt)) then
+	  else if ((no > n_0dsalt).and. &		!e.g. from profiles
+		  (no <= n_0dsalt+n_1dsalt)) then
 	          write(*,*) 'Do it!'
 	          stop
 		  !xobs(no) = o1dsalt(no)%x
 		  !yobs(no) = o1dsalt(no)%y
-	  else if (no > n_0dsalt+n_1dsalt) then
+	  else if (no > n_0dsalt+n_1dsalt) then		!e.g. from surface maps
 	          write(*,*) 'Do it!'
 	          stop
 		  !xobs(no) = o2dsalt(no)%x
-		  !yobs(no) = o3dsalt(no)%y
+		  !yobs(no) = o2dsalt(no)%y
 	  end if
      else if (isvel /= 0) then
 	  write(*,*) 'Do it!'
@@ -169,7 +172,7 @@
   !----------------------end nodes-------------------------
 
   !----------------------elements-------------------------
-  ne_l = 0 	! number of nodes corrected
+  ne_l = 0 	! number of elements corrected
   do ne = 1,nnel
 
      call type_to_emat(Ane_bk,ne,lnedim)

@@ -32,7 +32,7 @@ contains
 
   integer nook
 
-  write(*,*) 'preparing the observations for the assimilation...'
+  write(*,*) 'Building the assimilation arrays...'
 
   allocate(D(nobs_tot,nrens),E(nobs_tot,nrens),&
            R(nobs_tot,nobs_tot))
@@ -105,6 +105,7 @@ contains
      x = ostate(nf)%x
      y = ostate(nf)%y
      call find_el_node(x,y,iemin,kmin)
+     if (verbose) write(*,*) 'Internal node nearest to obs: ',kmin
 
      ! compute the observation errors R
      !
@@ -190,6 +191,7 @@ contains
      x = o2dvel(nf)%x(ix,iy)
      y = o2dvel(nf)%y(ix,iy)
      call find_el_node(x,y,iemin,kmin)
+     if (verbose) write(*,*) 'Internal element nearest to obs: ',iemin
 
      h_1st_layer = hlv(1) + Abk_m%z(kmin)
 

@@ -138,6 +138,11 @@ program main
   end select
 
 !--------------------------------
+!  check and correct all the out-of-range and nans in analysis
+!--------------------------------
+  call check_and_correct(Abk,Aan)
+
+!--------------------------------
 !  compute the posterior mean and std. This is needed for inflation
 !--------------------------------
   call make_mean_std('a')

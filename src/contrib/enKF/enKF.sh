@@ -327,7 +327,7 @@ Read_ens_list
 Read_an_time_list
 
 # Assimilation cycle for every analysis time step
-rm -f X5*.uf backKF_en*.rst analKF_en*.rst	# old files
+rm -f X5*.uf backKF_*.rst analKF_*.rst 	# old files
 for (( na = 1; na <= $nran; na++ )); do
 
    # make the analysis
@@ -350,9 +350,9 @@ for (( na = 1; na <= $nran; na++ )); do
    fi
 
    # merge the rst files
+   nanl=$(printf "%05d" $na)
    for (( ne = 0; ne < $nrens; ne++ )); do
         nel=$(printf "%05d" $ne)
-	nanl=$(printf "%05d" $na)
         filename1="an${nanl}_en${nel}b.rst"
         filename2="an${nanl}_en${nel}a.rst"
         Check_file $filename1
@@ -361,6 +361,12 @@ for (( na = 1; na <= $nran; na++ )); do
 	cat $filename2 >> analKF_en$nel.rst
 	rm -f $filename1 $filename2
    done
+   filename1="an${nanl}_mean_a.rst"
+   filename2="an${nanl}_std_a.rst"
+   Check_file $filename1
+   Check_file $filename2
+   cat $filename1 >> analKF_mean.rst
+   cat $filename2 >> analKF_std.rst
 
 done
 

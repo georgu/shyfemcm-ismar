@@ -82,7 +82,7 @@ contains
    character(len=80) rstname
    integer ne
 
-   write(*,*) 'writing the analysis restart files...'
+   write(*,*) 'writing the restart files...'
    call num2str(nanal,nal)
    do ne = 1,nrens
       call num2str(ne-1,nrel)
@@ -93,6 +93,12 @@ contains
       rstname='an'//nal//'_'//'en'//nrel//'a.rst'
       call write_state(Aan(ne),rstname)
    end do
+
+   rstname='an'//nal//'_mean_a.rst'
+   call write_state(Aan_m,rstname)
+   rstname='an'//nal//'_std_a.rst'
+   call write_state(Aan_std,rstname)
+
   end subroutine write_ensemble
 
 !********************************************************
@@ -138,6 +144,168 @@ contains
    end do
 
   end subroutine make_init_ens
+
+!********************************************************
+
+  subroutine check_and_correct(Abkg,Aanl)
+   implicit none
+   type(states),intent(in) :: Abkg(nrens)
+   type(states),intent(inout) :: Aanl(nrens)
+
+   real vala,valb,vala2,valb2
+
+   integer ne,k,ie,nl
+
+   integer zout,uvout,sout,tout,otot
+   integer znan,uvnan,snan,tnan,ntot
+
+   write(*,*) 'Checking the analysis values of the variables...'
+
+   otot = 0
+   ntot = 0
+   do ne = 1,nrens
+
+    zout = 0
+    uvout = 0
+    sout = 0
+    tout = 0
+
+    znan = 0
+    uvnan = 0
+    snan = 0
+    tnan = 0
+
+    do k = 1,nnkn
+
+      !---
+      ! level
+      valb = Abkg(ne)%z(k)
+      vala = Aanl(ne)%z(k)
+
+      ! isnan and bk is a number
+      if ( isnan(vala) .and. (.not. isnan(valb) ) ) then
+        !if (verbose) write(*,*) 'Warning: nan in water level. Node: ',k
+        vala = valb
+        znan = znan + 1
+      end if
+
+      ! out of range
+      if (( vala > SSH_MAX ) .or. ( vala < SSH_MIN )) then
+	vala = valb
+	zout = zout + 1
+      end if
+
+      Aanl(ne)%z(k) = vala
+      !---
+
+      do nl = 1,nnlv
+
+        !---
+        ! salinity
+	valb = Abkg(ne)%s(nl,k)
+	vala = Aanl(ne)%s(nl,k)
+
+        ! isnan and bk is a number
+        if ( isnan(vala) .and. (.not. isnan(valb) ) ) then
+           !if (verbose) write(*,*) 'Warning: nan in salility. Node, level: ',k,nl
+	   vala = valb
+	   snan = snan + 1
+	end if
+	! out of range
+        if (( vala > SAL_MAX ) .or. ( vala < SAL_MIN )) then
+          vala = valb
+	  sout = sout + 1
+	end if
+
+	Aanl(ne)%s(nl,k) = vala
+        !---
+
+        !---
+	! temperature
+	valb = Abkg(ne)%t(nl,k)
+	vala = Aanl(ne)%t(nl,k)
+	
+        ! isnan and bk is a number
+        if ( isnan(vala) .and. (.not. isnan(valb)) ) then
+           !if (verbose) write(*,*) 'Warning: nan in temperature. Node, level: ',k,nl
+	   vala = valb
+	   tnan = tnan + 1
+	end if
+	! out of range
+        if (( vala > TEM_MAX ) .or. ( vala < TEM_MIN )) then
+          vala = valb
+	  tout = tout + 1
+	end if
+
+	Aanl(ne)%t(nl,k) = vala
+        !---
+
+      end do
+
+    end do
+
+
+    do ie = 1,nnel
+      do nl = 1,nnlv
+	
+        !---
+        ! current
+	valb = Abkg(ne)%u(nl,ie)
+	vala = Aanl(ne)%u(nl,ie)
+
+	valb2 = Abkg(ne)%v(nl,ie)
+	vala2 = Aanl(ne)%v(nl,ie)
+
+	! isnan and bk is a number
+        if ( isnan(vala) .and. (.not. isnan(valb)) ) then
+	   !if (verbose) write(*,*) 'Warning: nan in velocity. El., level: ',ie,nl
+	   vala = valb
+	   uvnan = uvnan + 1
+	end if
+        if ( isnan(vala2) .and. (.not. isnan(valb2)) ) then
+	   !if (verbose) write(*,*) 'Warning: nan in velocity. El., level: ',ie,nl
+	   vala2 = valb2
+	   uvnan = uvnan + 1
+	end if
+
+	if (( vala > VEL_MAX ) .or. ( vala < VEL_MIN )) then
+	   vala = valb
+	   uvout = uvout + 1
+	end if
+	if (( vala2 > VEL_MAX ) .or. ( vala2 < VEL_MIN )) then
+	   vala2 = valb2
+	   uvout = uvout + 1
+	end if
+
+	Aanl(ne)%u(nl,ie) = vala
+	Aanl(ne)%v(nl,ie) = vala2
+        !---
+
+      end do
+    end do
+
+    otot = zout + tout + sout + uvout
+    ntot = znan + tnan + snan + uvnan
+
+    if ((verbose).and.(otot > 0)) write(*,*) 'Ensemble member: ',ne
+    if ((verbose).and.(zout > 0)) write(*,*) 'Number of levels out of range: ', zout
+    if ((verbose).and.(tout > 0)) write(*,*) 'Number of temperatures out of range: ', tout
+    if ((verbose).and.(sout > 0)) write(*,*) 'Number of salinities out of range: ', sout
+    if ((verbose).and.(uvout > 0)) write(*,*) 'Number of velocities out of range: ', uvout
+
+    if ((verbose).and.(ntot > 0)) write(*,*) 'Ensemble member: ',ne
+    if ((verbose).and.(znan > 0)) write(*,*) 'Number of nan levels: ', znan
+    if ((verbose).and.(tnan > 0)) write(*,*) 'Number of nan temperatures: ', tnan
+    if ((verbose).and.(snan > 0)) write(*,*) 'Number of nan salinities: ', snan
+    if ((verbose).and.(uvnan > 0)) write(*,*) 'Number of nan velocities: ', uvnan
+
+   end do
+
+   if (otot > 0) write(*,*) 'Number of variables out of range: ', otot
+   if (ntot > 0) write(*,*) 'Number of nan variables: ', ntot
+
+  end subroutine check_and_correct
+
 
 !********************************************************
 

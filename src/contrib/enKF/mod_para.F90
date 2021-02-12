@@ -3,9 +3,9 @@
 !
 module mod_para
 
-  integer :: rmode = 13 ! Ensemble Kalman Filter with SVD pseudo inversion of SS'+ EE'
+  !integer :: rmode = 13 ! Ensemble Kalman Filter with SVD pseudo inversion of SS'+ EE'
   !integer :: rmode = 22 ! Square root algorithm with SVD pseudo inversion of SS'+(N-1)R
-  !integer :: rmode = 23 ! Square root algorithm with SVD pseudo inversion of SS'+ EE'
+  integer :: rmode = 23 ! Square root algorithm with SVD pseudo inversion of SS'+ EE'
   !integer :: rmode = 10 ! exact update scheme for diagonal obs-err-cov-mat
 
   logical :: verbose = .true. ! Prints diagnostic output
@@ -22,8 +22,8 @@ module mod_para
 
   ! Set these parameters for local analysis. Important.				       
   !
-  integer, parameter :: is_local = 0 !Local analysis. 0 disable, 1 local analysis
-  real, parameter :: rho_loc = 1.   !Radius for local analysis (use the same coords of the grid)
+  integer, parameter :: is_local = 1 !Local analysis. 0 disable, 1 local analysis
+  real, parameter :: rho_loc = 0.1   !Radius for local analysis (use the same coords of the grid)
 
   ! set this to 1 to include the model errors in the analysis (to test) or equal 2 to
   ! include model parameters (todo)
@@ -66,13 +66,13 @@ module mod_para
 
   ! min-max values for the observation and model check
   !
-  real, parameter :: TEM_MIN = -5.0d0
-  real, parameter :: TEM_MAX = 50.0d0
-  real, parameter :: SAL_MIN = 0.0d0
-  real, parameter :: SAL_MAX = 40.0d0
-  real, parameter :: SSH_MIN = -3.0d0
-  real, parameter :: SSH_MAX = 3.0d0
-  real, parameter :: VEL_MIN = 0.0d0
-  real, parameter :: VEL_MAX = 4.0d0	!used also for u and v, min with -
+  real, parameter :: TEM_MIN = -30.0d0
+  real, parameter :: TEM_MAX = 70.0d0
+  real, parameter :: SAL_MIN = -1.0d0
+  real, parameter :: SAL_MAX = 60.0d0
+  real, parameter :: SSH_MIN = -10.0d0
+  real, parameter :: SSH_MAX = 10.0d0
+  real, parameter :: VEL_MIN = -10000.0d0
+  real, parameter :: VEL_MAX = 10000.0d0	!used also for u and v, min with -
 
 end module mod_para
