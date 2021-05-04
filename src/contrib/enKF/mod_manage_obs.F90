@@ -105,8 +105,10 @@ contains
              call read_scalar_0d('0DLEV',linit,trim(ofile(n)%name),TEPS,&
                   kinit,kend,tobs,xobs,yobs,zobs,&
                   vobs,stdobs,statobs)
-             if (kend > kinit) n_0dlev = n_0dlev + 1
-             islev = 1
+             if (kend > kinit) then
+		n_0dlev = n_0dlev + 1
+		islev = 1
+	     endif
 
         ! Temperature timeseries
         !
@@ -116,8 +118,10 @@ contains
              call read_scalar_0d('0DTEM',linit,trim(ofile(n)%name),TEPS,&
                   kinit,kend,tobs,xobs,yobs,zobs,&
                   vobs,stdobs,statobs)
-             if (kend > kinit) n_0dtemp = n_0dtemp + 1
-             istemp = 1
+             if (kend > kinit) then
+		n_0dtemp = n_0dtemp + 1
+                istemp = 1
+	     endif
 
         ! Salinity timeseries
         !
@@ -127,8 +131,10 @@ contains
              call read_scalar_0d('0DSAL',linit,trim(ofile(n)%name),TEPS,&
                   kinit,kend,tobs,xobs,yobs,zobs,&
                   vobs,stdobs,statobs)
-             if (kend > kinit) n_0dsalt = n_0dsalt + 1
-             issalt = 1
+             if (kend > kinit) then
+		n_0dsalt = n_0dsalt + 1
+                issalt = 1
+	     endif
 
         ! 2d current fem files
         !

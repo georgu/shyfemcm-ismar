@@ -69,7 +69,7 @@ module mod_para
   real, parameter :: TEM_MIN = -30.0d0
   real, parameter :: TEM_MAX = 70.0d0
   real, parameter :: SAL_MIN = -1.0d0
-  real, parameter :: SAL_MAX = 60.0d0
+  real, parameter :: SAL_MAX = 50.0d0
   real, parameter :: SSH_MIN = -10.0d0
   real, parameter :: SSH_MAX = 10.0d0
   real, parameter :: VEL_MIN = -10000.0d0

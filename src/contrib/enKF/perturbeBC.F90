@@ -156,7 +156,7 @@ program perturbeBC
   bwind = .false.
 
   ! some checks on inputs
-  if (( nrens < 3 ) .or. (mod(nrens,2) == 0) .or. (nrens > 1000)) error stop 'perturbeBC: bad nrens'
+  if (( nrens < 3 ) .or. (nrens > 1000)) error stop 'perturbeBC: bad nrens'
   if (( var_dim > 3 ) .or. ( var_dim < 0 )) error stop 'perturbeBC: bad dimension'
   if (( trim(filety) /= 'ts' ) .and. ( trim(filety) /= 'fem' )) error stop 'perturbeBC: bad file_type'
   if (( trim(filety) == 'ts' ) .and. ( var_dim /= 0 )) error stop 'perturbeBC: file_type and dimension not compatible'
@@ -170,6 +170,11 @@ program perturbeBC
      wsmax = var_max
      var_min = -999.
      var_max = -999.
+  end if
+
+  if (mod(nrens,2) == 0) then
+     write(*,*) 'Warning: an even number of ensemble members. Making an odd ensemble with an unperturbed member (0)'
+     nrens = nrens + 1
   end if
 
   ! Compute time perturbations. tens(1) = 0.

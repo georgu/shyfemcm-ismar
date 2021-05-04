@@ -42,4 +42,3 @@ for efile in $(ls ${fbase}*.ext); do
 	fi
     done
 done
-rm -f ext.log
