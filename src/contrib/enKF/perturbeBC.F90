@@ -78,7 +78,6 @@ program perturbeBC
   logical, parameter :: bpress = .false.
   real, parameter    :: sigmaP = 100.	!press std in Pa
 
-  real, allocatable :: var2d(:,:,:),var2d_ens(:,:,:)
   real, allocatable :: var3d(:,:,:,:),var3d_ens(:,:,:,:)
 
   ! SHYFEM single precision variables
@@ -154,9 +153,10 @@ program perturbeBC
   filein = arg11
 
   bwind = .false.
+  flag = -999.
 
   ! some checks on inputs
-  if (( nrens < 3 ) .or. (nrens > 1000)) error stop 'perturbeBC: bad nrens'
+  if (( nrens < 3 ) .or. (mod(nrens,2) == 0) .or. (nrens > 1000)) error stop 'perturbeBC: bad nrens'
   if (( var_dim > 3 ) .or. ( var_dim < 0 )) error stop 'perturbeBC: bad dimension'
   if (( trim(filety) /= 'ts' ) .and. ( trim(filety) /= 'fem' )) error stop 'perturbeBC: bad file_type'
   if (( trim(filety) == 'ts' ) .and. ( var_dim /= 0 )) error stop 'perturbeBC: file_type and dimension not compatible'
@@ -168,13 +168,8 @@ program perturbeBC
   if (trim(variable) == 'wind') then
      bwind = .true.
      wsmax = var_max
-     var_min = -999.
-     var_max = -999.
-  end if
-
-  if (mod(nrens,2) == 0) then
-     write(*,*) 'Warning: an even number of ensemble members. Making an odd ensemble with an unperturbed member (0)'
-     nrens = nrens + 1
+     var_min = flag
+     var_max = flag
   end if
 
   ! Compute time perturbations. tens(1) = 0.
@@ -200,6 +195,7 @@ program perturbeBC
   iunit = 20
   call open_files(iunit,nrens,filein,filety,inbname)
 
+  lmax = 1
   told = -999.
   ! time loop
   n = 0
@@ -245,10 +241,21 @@ program perturbeBC
         flag = regpar(7)
 
 	! read variables
+	if (.not.allocated(femdata)) allocate(femdata(lmax,nx,ny))
+	if (.not. allocated(var3d)) allocate(var3d(nvar,nx,ny,lmax))
 	do i = 1,nvar
-	   if (.not.allocated(femdata)) allocate(femdata(lmax,nx*ny,nvar))
+
+	   femdata = flag
            call fem_file_read_data(iformat,iunit,nvers,np,lmax, &
-		   vstring(i),ilhkv,hd,nlvddi,femdata(:,:,i),ierr)
+		   vstring(i),ilhkv,hd,nlvddi,femdata,ierr)
+	   do l = 1,lmax
+	    do iy = 1,ny
+	    do ix = 1,nx
+	       var3d(i,ix,iy,l) = femdata(l,ix,iy) 
+	    end do
+	    end do
+	   end do
+
 	   if (n==1) write(*,*) '  Reading: ',vstring(i)
         end do
 
@@ -266,27 +273,18 @@ program perturbeBC
 
         call perturbe_0d(nrens-1,pvec)
         call red_noise_0d(told,tnew,pvec,nrens-1,mem_time,1,1)
-        call write_record_0d(iunit,told,nrens,dstring,var,var_std,var_min,var_max,pvec)
+        call write_record_0d(iunit,told,nrens,dstring,var,var_std,var_min,var_max,pvec,flag)
 
     case(1)	! 1D variable
 
         print*, 'todo'
+	stop
         !call perturbe_1d
 
     case(2)	! 2D variable
 
 	if (trim(filety) /= 'fem') error stop 'Bad file format'
-
-	! save control in a 2D matrix
-	if (lmax /= 1) error stop 'Dimension error'
-	if (.not. allocated(var2d)) allocate(var2d(nvar,nx,ny))
-	do i = 1,nvar
-	  do iy = 1,ny
-	     do ix = 1,nx
-	        var2d(i,ix,iy) = femdata(1,ix*iy,i)
-	     end do
-          end do
-	end do
+	if ( lmax /= 1 ) error stop 'Bad vertical dimensions'
 
 	select case(pert_type)
 	case(1)
@@ -302,10 +300,11 @@ program perturbeBC
 
 	    do ne=1,nrens
 	      ! create member
-	      if (.not.allocated(var2d_ens)) allocate(var2d_ens(nvar,nx,ny))
-              call make_member_2D1(nvar,nrens,nx,ny,variable,ne,pvec1,var2d,var2d_ens,var_std)
+	      if (.not.allocated(var3d_ens)) allocate(var3d_ens(nvar,nx,ny,lmax))
+	      var3d_ens = flag
+              call make_member_2D1(nvar,nrens,nx,ny,lmax,variable,ne,pvec1,var3d,var3d_ens,var_std,flag)
 
-	      if (bwind) call limit_wind(nvar,nx,ny,var2d_ens,wsmax)
+	      if (bwind) call limit_wind(nvar,nx,ny,lmax,var3d_ens,wsmax,flag)
 
 	      ! write file
               fid = iunit + 10 + ne
@@ -314,26 +313,26 @@ program perturbeBC
               call fem_file_write_header(iformat,fid,enstime,nvers,np,lmax &
                      ,nvar,ntype,nlvddi,hlv,datetime,regpar)
               do i = 1,nvar
+	         femdata = flag
 	         do iy = 1,ny
 	          do ix = 1,nx
-		     var = var2d_ens(i,ix,iy)
-		     if (nint(var_min) /= -999) call var_limit_min(var,var_min)
-		     if (nint(var_max) /= -999) call var_limit_max(var,var_max)
-	             femdata(1,ix*iy,i) = var
+		     var = var3d_ens(i,ix,iy,1)
+		     if (nint(var_min) /= nint(flag)) call var_limit_min(var,var_min,flag)
+		     if (nint(var_max) /= nint(flag)) call var_limit_max(var,var_max,flag)
+	             femdata(1,ix,iy) = var
 	          end do
                  end do
                  call fem_file_write_data(iformat,fid,nvers,np,lmax &
-                       ,vstring(i),ilhkv,hd,nlvddi,femdata(:,:,i))
+                       ,vstring(i),ilhkv,hd,nlvddi,femdata)
               end do
 	    end do
 
 	case(2,3,4,5,6)
 
 	    if (n==1) write(*,*) '  Case 2: 2D perturbations'
-	    if (n==1) write(*,*) '  Warning: check pressure parameters inside the code'
 
 	    ! set parameters
-	    verbose = .false.
+	    verbose = .true.
 	    samp_fix = .true.
 	    theta = 0.
 	    fmult = 4
@@ -341,7 +340,7 @@ program perturbeBC
 	    call set_decorrelation(ny,dy,ry)
 	    flat = y0 + (ny/2 * dy)
 
-	    if (n==1) write(*,*) 'dx,dy,rx,ry,theta,samp_fix: ',dx,dy,rx,ry,theta,samp_fix
+	    if (n==1) write(*,*) 'nx,ny,dx,dy,rx,ry,theta,samp_fix: ',nx,ny,dx,dy,rx,ry,theta,samp_fix
 
             ! Make the random fields
             allocate(amat(nx,ny,nrens-1),pmat(nvar,nx,ny,nrens-1))
@@ -359,34 +358,34 @@ program perturbeBC
 
             call red_noise_2d(nx,ny,nvar,told,tnew,pmat,nrens-1,mem_time)
 
-	    do ne=1,nrens
+	    do ne = 1,nrens
 
-	      if (.not.allocated(var2d_ens)) allocate(var2d_ens(nvar,nx,ny))
+	      if (.not.allocated(var3d_ens)) allocate(var3d_ens(nvar,nx,ny,lmax))
 
 	      if (pert_type == 2) then
-                 call make_member_2D2(nvar,nrens,nx,ny,variable,ne,pmat,var2d,var2d_ens,var_std)
+                 call make_member_2D2(nvar,nrens,nx,ny,lmax,variable,ne,pmat,var3d,var3d_ens,var_std,flag)
 
 	      else if (pert_type == 3) then
 	         if (.not. bwind) error stop 'Bad varable. Use just wind.'
-	         call make_geo_field(nvar,ne,nrens,nx,ny,dx,dy,pmat,var2d,var2d_ens,flag,var_std, &
+	         call make_geo_field(nvar,ne,nrens,nx,ny,lmax,dx,dy,pmat,var3d,var3d_ens,flag,var_std, &
                                 sigmaP,flat,bpress)
 
 	      else if (pert_type == 4) then
 	         if (.not. bwind) error stop 'Bad varable. Use just wind.'
-	         call make_2geo_field(nvar,ne,nrens,nx,ny,dx,dy,pmat,var2d,var2d_ens,flag,var_std, &
+	         call make_2geo_field(nvar,ne,nrens,nx,ny,lmax,dx,dy,pmat,var3d,var3d_ens,flag,var_std, &
                                 sigmaP,flat)
 
 	      else if (pert_type == 5) then
 	         if (.not. bwind) error stop 'Bad varable. Use just wind.'
-		 call make_ws_pert(nvar,ne,nrens,nx,ny,pmat,var2d,var2d_ens,flag,var_std)
+		 call make_ws_pert(nvar,ne,nrens,nx,ny,lmax,pmat,var3d,var3d_ens,flag,var_std)
 
 	      else if (pert_type == 6) then
 	         if (.not. bwind) error stop 'Bad varable. Use just wind.'
-		 call make_ind_field_ws(nvar,ne,nrens,nx,ny,pmat,var2d,var2d_ens,flag,var_std)
+		 call make_ind_field_ws(nvar,ne,nrens,nx,ny,lmax,pmat,var3d,var3d_ens,flag,var_std)
 
 	      end if
 
-	      if (bwind) call limit_wind(nvar,nx,ny,var2d_ens,wsmax)
+	      if (bwind) call limit_wind(nvar,nx,ny,lmax,var3d_ens,wsmax,flag)
 
 	      ! write file
               fid = iunit + 10 + ne
@@ -394,17 +393,19 @@ program perturbeBC
               call fem_file_write_header(iformat,fid,enstime,nvers,np,lmax &
                      ,nvar,ntype,nlvddi,hlv,datetime,regpar)
               do i = 1,nvar
+	         femdata = flag
 	         do iy = 1,ny
 	          do ix = 1,nx
-		     var = var2d_ens(i,ix,iy)
-		     if (nint(var_min) /= -999) call var_limit_min(var,var_min)
-		     if (nint(var_max) /= -999) call var_limit_max(var,var_max)
-	             femdata(1,ix*iy,i) = var
+		     var = var3d_ens(i,ix,iy,1)
+		     if (nint(var_min) /= nint(flag)) call var_limit_min(var,var_min,flag)
+		     if (nint(var_max) /= nint(flag)) call var_limit_max(var,var_max,flag)
+	             femdata(1,ix,iy) = var
 	          end do
                  end do
                  call fem_file_write_data(iformat,fid,nvers,np,lmax &
-                       ,vstring(i),ilhkv,hd,nlvddi,femdata(:,:,i))
+                       ,vstring(i),ilhkv,hd,nlvddi,femdata)
               end do
+
 	    end do
 
 	end select
@@ -412,19 +413,7 @@ program perturbeBC
     case(3)	! 3D variable
 
 	if (trim(filety) /= 'fem') error stop 'Bad file format'
-
-	! save control in a 3D matrix
-	if (lmax < 2) error stop 'Dimension error'
-	if (.not. allocated(var3d)) allocate(var3d(nvar,nx,ny,lmax))
-	do i = 1,nvar
-	do l = 1,lmax
-	  do iy = 1,ny
-	     do ix = 1,nx
-	        var3d(i,ix,iy,l) = femdata(l,ix*iy,i)
-	     end do
-          end do
-	end do
-	end do
+	if ( lmax < 2 ) error stop 'Bad vertical dimensions'
 
 	select case(pert_type)
 	case(1)
@@ -438,10 +427,10 @@ program perturbeBC
                pvec1(i,:) = pvec
 	    end do
 
-	    do ne=1,nrens
+	    do ne = 1,nrens
 	      ! create member
 	      if (.not.allocated(var3d_ens)) allocate(var3d_ens(nvar,nx,ny,lmax))
-              call make_member_3D1(nvar,nrens,nx,ny,lmax,variable,ne,pvec1,var3d,var3d_ens,var_std)
+              call make_member_3D1(nvar,nrens,nx,ny,lmax,variable,ne,pvec1,var3d,var3d_ens,var_std,flag)
 
 	      ! write file
               fid = iunit + 10 + ne
@@ -449,19 +438,21 @@ program perturbeBC
               call fem_file_write_header(iformat,fid,enstime,nvers,np,lmax &
                      ,nvar,ntype,nlvddi,hlv,datetime,regpar)
               do i = 1,nvar
+	         femdata = flag
 	         do l = 1,lmax
 	            do iy = 1,ny
 	              do ix = 1,nx
 		         var = var3d_ens(i,ix,iy,l)
-		         if (nint(var_min) /= -999) call var_limit_min(var,var_min)
-		         if (nint(var_max) /= -999) call var_limit_max(var,var_max)
-		         femdata(l,ix*iy,i) = var
+		         if (nint(var_min) /= nint(flag)) call var_limit_min(var,var_min,flag)
+		         if (nint(var_max) /= nint(flag)) call var_limit_max(var,var_max,flag)
+		         femdata(l,ix,iy) = var
 	              end do
                     end do
 		 end do
                  call fem_file_write_data(iformat,fid,nvers,np,lmax &
-                       ,vstring(i),ilhkv,hd,nlvddi,femdata(:,:,i))
+                       ,vstring(i),ilhkv,hd,nlvddi,femdata)
               end do
+	      
 	    end do
         end select
 
@@ -740,7 +731,7 @@ end program perturbeBC
   end subroutine perturbe_time
 
 !-----------------------------------------------
-  subroutine write_record_0d(iunit,told,nrens,dstring,var0,var_std,var_min,var_max,pvec)
+  subroutine write_record_0d(iunit,told,nrens,dstring,var0,var_std,var_min,var_max,pvec,flag)
 !-----------------------------------------------
   implicit none
   double precision, intent(in) :: told
@@ -748,6 +739,7 @@ end program perturbeBC
   character(len=80), intent(in) :: dstring
   real, intent(in) :: var0,var_std,var_min,var_max
   real, intent(in) :: pvec(nrens-1)
+  real, intent(in) :: flag
 
   integer n,fid
   real var
@@ -764,8 +756,8 @@ end program perturbeBC
 
      if (told < 0) var = var0
 
-     if (nint(var_min) /= -999) call var_limit_min(var,var_min)
-     if (nint(var_max) /= -999) call var_limit_max(var,var_max)
+     if (nint(var_min) /= nint(flag)) call var_limit_min(var,var_min,flag)
+     if (nint(var_max) /= nint(flag)) call var_limit_max(var,var_max,flag)
 
      write(fid,*) trim(dstring),var
   end do
@@ -773,51 +765,7 @@ end program perturbeBC
   end subroutine write_record_0d
 
 !-----------------------------------------------
-  subroutine make_member_2D1(nvar,nrens,nx,ny,variable,ne,vec1,var2d,var2d_ens,var_std)
-!-----------------------------------------------
-  implicit none
-  integer, intent(in) :: nvar,nrens,nx,ny,ne
-  character(len=80), intent(in) :: variable
-  real, intent(in) :: vec1(nvar,nrens-1),var_std
-  real, intent(in) :: var2d(nvar,nx,ny)
-  real, intent(out) :: var2d_ens(nvar,nx,ny)
-
-  integer i
-  real vec11(nvar,nrens)
-
-  vec11(:,1) = 0.
-  vec11(:,2:-1) = vec1
-
-  do i=1,nvar
-     var2d_ens(i,:,:) = var2d(i,:,:) + var_std * vec11(i,ne)
-  end do
-
-  end subroutine make_member_2D1
-
-!-----------------------------------------------
-  subroutine make_member_2D2(nvar,nrens,nx,ny,variable,ne,pmat,var2d,var2d_ens,var_std)
-!-----------------------------------------------
-  implicit none
-  integer, intent(in) :: nvar,nrens,nx,ny,ne
-  character(len=80), intent(in) :: variable
-  real, intent(in) :: pmat(nvar,nx,ny,nrens-1),var_std
-  real, intent(in) :: var2d(nvar,nx,ny)
-  real, intent(out) :: var2d_ens(nvar,nx,ny)
-
-  integer i
-  real pmat1(nvar,nx,ny,nrens)
-
-  pmat1(:,:,:,1) = 0.
-  pmat1(:,:,:,2:-1) = pmat
-
-  do i=1,nvar
-     var2d_ens(i,:,:) = var2d(i,:,:) + var_std * pmat1(i,:,:,ne)
-  end do
-
-  end subroutine make_member_2D2
-
-!-----------------------------------------------
-  subroutine make_member_3D1(nvar,nrens,nx,ny,lmax,variable,ne,vec1,var3d,var3d_ens,var_std)
+  subroutine make_member_2D1(nvar,nrens,nx,ny,lmax,variable,ne,vec1,var3d,var3d_ens,var_std,flag)
 !-----------------------------------------------
   implicit none
   integer, intent(in) :: nvar,nrens,nx,ny,lmax,ne
@@ -825,15 +773,77 @@ end program perturbeBC
   real, intent(in) :: vec1(nvar,nrens-1),var_std
   real, intent(in) :: var3d(nvar,nx,ny,lmax)
   real, intent(out) :: var3d_ens(nvar,nx,ny,lmax)
+  real, intent(in) :: flag
 
   integer i
   real vec11(nvar,nrens)
 
+  if ( lmax /= 1 ) error stop 'Bad vertical dimension'
+
   vec11(:,1) = 0.
-  vec11(:,2:-1) = vec1
+  vec11(:,2:nrens) = vec1
+  var3d_ens = flag
+
+  do i = 1,nvar
+     where (nint(var3d(i,:,:,1)).ne.nint(flag))
+	  var3d_ens(i,:,:,1) = var3d(i,:,:,1) + var_std * vec11(i,ne)
+     end where
+  end do
+
+  end subroutine make_member_2D1
+
+!-----------------------------------------------
+  subroutine make_member_2D2(nvar,nrens,nx,ny,lmax,variable,ne,pmat,var3d,var3d_ens,var_std,flag)
+!-----------------------------------------------
+  implicit none
+  integer, intent(in) :: nvar,nrens,nx,ny,lmax,ne
+  character(len=80), intent(in) :: variable
+  real, intent(in) :: pmat(nvar,nx,ny,nrens-1),var_std
+  real, intent(in) :: var3d(nvar,nx,ny,lmax)
+  real, intent(out) :: var3d_ens(nvar,nx,ny,lmax)
+  real, intent(in) :: flag
+
+  integer i,ix,iy
+  real pmat1(nvar,nx,ny,nrens),v
+
+  if ( lmax /= 1 ) error stop 'Bad vertical levels'
+
+  pmat1(:,:,:,1) = 0.
+  pmat1(:,:,:,2:nrens) = pmat
+  var3d_ens = flag
 
   do i=1,nvar
-     var3d_ens(i,:,:,:) = var3d(i,:,:,:) + var_std * vec11(i,ne)
+    where (nint(var3d(i,:,:,1)).ne.nint(flag))
+	    var3d_ens(i,:,:,1) = var3d(i,:,:,1) + var_std * pmat1(i,:,:,ne)
+    end where
+  end do
+
+  end subroutine make_member_2D2
+
+!-----------------------------------------------
+  subroutine make_member_3D1(nvar,nrens,nx,ny,lmax,variable,ne,vec1,var3d,var3d_ens,var_std,flag)
+!-----------------------------------------------
+  implicit none
+  integer, intent(in) :: nvar,nrens,nx,ny,lmax,ne
+  character(len=80), intent(in) :: variable
+  real, intent(in) :: vec1(nvar,nrens-1),var_std
+  real, intent(in) :: var3d(nvar,nx,ny,lmax)
+  real, intent(out) :: var3d_ens(nvar,nx,ny,lmax)
+  real, intent(in) :: flag
+
+  integer i,ix,iy,l
+  real vec11(nvar,nrens),v
+
+  vec11(:,1) = 0.
+  vec11(:,2:nrens) = vec1
+  var3d_ens = flag
+
+  do i=1,nvar
+    do l = 1,lmax
+       where (nint(var3d(i,:,:,l)).ne.nint(flag))
+	       var3d_ens(i,:,:,l) = var3d(i,:,:,l) + var_std * vec11(i,ne)
+       end where
+    end do
   end do
 
   end subroutine make_member_3D1
@@ -865,20 +875,20 @@ end program perturbeBC
 
 
 !--------------------------------------------------
-	subroutine make_geo_field(nvar,iens,nrens,nx,ny,dx,dy, &
+	subroutine make_geo_field(nvar,iens,nrens,nx,ny,lmax,dx,dy, &
      		pmat,datain,dataout,flag,err,sigmaP,flat,bpress)
 !--------------------------------------------------
 	implicit none
 
 	integer,intent(in) :: nvar,iens
-	integer,intent(in) :: nrens,nx,ny
+	integer,intent(in) :: nrens,nx,ny,lmax
 	real,intent(in) :: dx,dy
 	real,intent(in) :: err,sigmaP,flag
 	real,intent(in) :: flat
         logical,intent(in) :: bpress
 	real,intent(in) :: pmat(nvar,nx,ny,nrens-1)
-	real,intent(in) :: datain(nvar,nx,ny)
-	real,intent(out) :: dataout(nvar,nx,ny)
+	real,intent(in) :: datain(nvar,nx,ny,lmax)
+	real,intent(out) :: dataout(nvar,nx,ny,lmax)
 
 	real :: mat(nvar,nx,ny,nrens)
 
@@ -893,8 +903,10 @@ end program perturbeBC
 	real, parameter :: er2 = 63567523. !min earth radius
 	real fcor,er,theta
 
+	if ( lmax /= 1 ) error stop 'Bad vertical levels'
+
         mat(:,:,:,1) = 0.
-        mat(:,:,:,2:-1) = pmat
+        mat(:,:,:,2:nrens) = pmat
   
 	theta = flat * pi/180.
 	fcor = 2. * sin(theta) * (2.* pi / 86400.)
@@ -918,22 +930,22 @@ end program perturbeBC
 		  Fp2 = mat(1,ix,iy,iens)
 		  Fp1 = mat(1,ix,iy-1,iens)
 		  ! if err is relative use this
-		  !sigmaU = err * abs(datain(ivar,ix,iy))
+		  !sigmaU = err * abs(datain(ivar,ix,iy,1))
 		  sigmaU = err
 
 		  !Up = - (((Fp2 - Fp1)/dym) * sigmaP) / (rhoa * fcor)
 		  Up = - (Fp2 - Fp1) * sigmaU
 
-		  !dataout(ivar,ix,iy) = Up
-		  dataout(ivar,ix,iy) = datain(ivar,ix,iy) + Up
+		  !dataout(ivar,ix,iy,1) = Up
+		  dataout(ivar,ix,iy,1) = datain(ivar,ix,iy,1) + Up
 
-		  if (datain(ivar,ix,iy) == flag) dataout(ivar,ix,iy) = flag
+		  if (datain(ivar,ix,iy,1) == flag) dataout(ivar,ix,iy,1) = flag
 
 		end do
 		end do
 
 		! First row unchanged
-		dataout(ivar,:,1) = datain(ivar,:,1)
+		dataout(ivar,:,1,1) = datain(ivar,:,1,1)
 		
 	    case(2)	!v-wind
 
@@ -943,33 +955,33 @@ end program perturbeBC
 		  Fp2 = mat(1,ix,iy,iens)
 		  Fp1 = mat(1,ix-1,iy,iens)
 		  ! if err is relative use this
-		  !sigmaV = err * abs(datain(ivar,ix,iy))
+		  !sigmaV = err * abs(datain(ivar,ix,iy,1))
 		  sigmaV = err
 
 		  !Vp = (((Fp2 - Fp1)/dxm) * sigmaP) / (rhoa * fcor)
 		  Vp = (Fp2 - Fp1) * sigmaV
 
-		  !dataout(ivar,ix,iy) =  Vp
-		  dataout(ivar,ix,iy) = datain(ivar,ix,iy) + Vp
+		  !dataout(ivar,ix,iy,1) =  Vp
+		  dataout(ivar,ix,iy,1) = datain(ivar,ix,iy,1) + Vp
 
-		  if (datain(ivar,ix,iy) == flag) &
-     			dataout(ivar,ix,iy) = flag
+		  if (datain(ivar,ix,iy,1) == flag) &
+     			dataout(ivar,ix,iy,1) = flag
 
 		end do
 		end do
 
 		! First row unchanged
-		dataout(ivar,1,:) = datain(ivar,1,:)
+		dataout(ivar,1,:,1) = datain(ivar,1,:,1)
 
 	    case(3)	!pressure
 
 	      if (bpress) then
 		do iy = 1,ny
 		do ix = 1,nx
-		     dataout(ivar,ix,iy) = datain(ivar,ix,iy) + sigmaP &
+		     dataout(ivar,ix,iy,1) = datain(ivar,ix,iy,1) + sigmaP &
      					* mat(1,ix,iy,iens)
-!		  dataout(ivar,ix,iy) = sigmaP * mat(1,ix,iy,iens)
-		  if (datain(ivar,ix,iy) == flag) dataout(ivar,ix,iy) = flag
+!		  dataout(ivar,ix,iy,1) = sigmaP * mat(1,ix,iy,iens)
+		  if (datain(ivar,ix,iy,1) == flag) dataout(ivar,ix,iy,1) = flag
 		end do
 		end do
               else
@@ -984,19 +996,19 @@ end program perturbeBC
 
 
 !--------------------------------------------------
-	subroutine make_2geo_field(nvar,iens,nrens,nx,ny,dx,dy, &
+	subroutine make_2geo_field(nvar,iens,nrens,nx,ny,lmax,dx,dy, &
      		pmat,datain,dataout,flag,err,sigmaP,flat)
 !--------------------------------------------------
 	implicit none
 
 	integer,intent(in) :: nvar,iens
-	integer,intent(in) :: nrens,nx,ny
+	integer,intent(in) :: nrens,nx,ny,lmax
 	real,intent(in) :: dx,dy
 	real,intent(in) :: err,sigmaP,flag
 	real,intent(in) :: flat
 	real,intent(in) :: pmat(nvar,nx,ny,nrens-1)
-	real,intent(in) :: datain(nvar,nx,ny)
-	real,intent(out) :: dataout(nvar,nx,ny)
+	real,intent(in) :: datain(nvar,nx,ny,lmax)
+	real,intent(out) :: dataout(nvar,nx,ny,lmax)
 
 	real :: mat(nvar,nx,ny,nrens)
 
@@ -1011,8 +1023,10 @@ end program perturbeBC
 	real, parameter :: er2 = 63567523. !min earth radius
 	real fcor,er,theta
 
+	if ( lmax /= 1 ) error stop 'Bad vertical dimensions'
+
         mat(:,:,:,1) = 0.
-        mat(:,:,:,2:-1) = pmat
+        mat(:,:,:,2:nrens) = pmat
 
 	theta = flat * pi/180.
 	fcor = 2. * sin(theta) * (2.* pi / 86400.)
@@ -1037,22 +1051,22 @@ end program perturbeBC
 		  F2p = (mat(2,ix,iy,iens) - mat(2,ix,iy-1,iens))
 
 		  ! if err is relative use this
-		  !sigmaU = err * abs(datain(ivar,ix,iy))
+		  !sigmaU = err * abs(datain(ivar,ix,iy,1))
 		  sigmaU = err
 
 		  !Up = - (((F1p2 - F1p1)/dym) * sigmaP) / (rhoa * fcor)
 		  Up = (F1p + F2p) * sigmaU
 
-		  !dataout(ivar,ix,iy) = Up
-		  dataout(ivar,ix,iy) = datain(ivar,ix,iy) + Up
+		  !dataout(ivar,ix,iy,1) = Up
+		  dataout(ivar,ix,iy,1) = datain(ivar,ix,iy,1) + Up
 
-		  if( datain(ivar,ix,iy).eq.flag ) dataout(ivar,ix,iy) = flag
+		  if( datain(ivar,ix,iy,1).eq.flag ) dataout(ivar,ix,iy,1) = flag
 
 		end do
 		end do
 
 		! First row unchanged
-		dataout(ivar,:,1) = datain(ivar,:,1)
+		dataout(ivar,:,1,1) = datain(ivar,:,1,1)
 		
 	    case(2)	!v-wind
 
@@ -1062,26 +1076,26 @@ end program perturbeBC
 		  F1p = mat(1,ix,iy,iens) - mat(1,ix-1,iy,iens)
 		  F2p = - (mat(2,ix,iy,iens) - mat(2,ix-1,iy,iens))
 		  ! if err is relative use this
-		  !sigmaV = err * abs(datain(ivar,ix,iy))
+		  !sigmaV = err * abs(datain(ivar,ix,iy,1))
 		  sigmaV = err
 
 		  !Vp = (((F1p2 - F1p1)/dxm) * sigmaP) / (rhoa * fcor)
 		  Vp = (F1p + F2p) * sigmaV
 
-		  !dataout(ivar,ix,iy) =  Vp
-		  dataout(ivar,ix,iy) = datain(ivar,ix,iy) + Vp
+		  !dataout(ivar,ix,iy,1) =  Vp
+		  dataout(ivar,ix,iy,1) = datain(ivar,ix,iy,1) + Vp
 
-		  if( datain(ivar,ix,iy).eq.flag ) dataout(ivar,ix,iy) = flag
+		  if( datain(ivar,ix,iy,1).eq.flag ) dataout(ivar,ix,iy,1) = flag
 
 		end do
 		end do
 
 		! First row unchanged
-		dataout(ivar,1,:) = datain(ivar,1,:)
+		dataout(ivar,1,:,1) = datain(ivar,1,:,1)
 
 	    case(3)	!pressure
 
-		dataout(ivar,:,:) = datain(ivar,:,:) ! no perturbation
+		dataout(ivar,:,:,1) = datain(ivar,:,:,1) ! no perturbation
 
 	  end select
 	end do
@@ -1090,15 +1104,15 @@ end program perturbeBC
 
 
 !--------------------------------------------------
-	subroutine make_ws_pert(nvar,iens,nrens,nx,ny,pmat, &
+	subroutine make_ws_pert(nvar,iens,nrens,nx,ny,lmax,pmat, &
 		datain,dataout,flag,err)
 !--------------------------------------------------
 	implicit none
         integer,intent(in) :: nvar,iens
-        integer,intent(in) :: nrens,nx,ny
+        integer,intent(in) :: nrens,nx,ny,lmax
         real,intent(in) :: pmat(nvar,nx,ny,nrens-1)
-        real,intent(in) :: datain(nvar,nx,ny)
-        real,intent(out) :: dataout(nvar,nx,ny)
+        real,intent(in) :: datain(nvar,nx,ny,lmax)
+        real,intent(out) :: dataout(nvar,nx,ny,lmax)
         real,intent(in) :: err,flag
 
 	real :: mat(nvar,nx,ny,nrens)
@@ -1106,10 +1120,12 @@ end program perturbeBC
 	real wso(nx,ny),wse(nx,ny)
 	integer ivar,ix,iy
 
-        mat(:,:,:,1) = 0.
-        mat(:,:,:,2:-1) = pmat
+	if ( lmax /= 1 ) error stop 'Bad vertical dimensions'
 
-	wso = sqrt(datain(1,:,:)**2 + datain(2,:,:)**2)
+        mat(:,:,:,1) = 0.
+        mat(:,:,:,2:nrens) = pmat
+
+	wso = sqrt(datain(1,:,:,1)**2 + datain(2,:,:,1)**2)
 	wse = wso + err * mat(1,:,:,iens)
 
 	do ivar = 1,nvar
@@ -1117,13 +1133,13 @@ end program perturbeBC
 	     case default	!wind
 		do ix = 1,nx
 		do iy = 1,ny
-	     	  dataout(ivar,ix,iy) = datain(ivar,ix,iy) + &
+	     	  dataout(ivar,ix,iy,1) = datain(ivar,ix,iy,1) + &
                                     wse(ix,iy)/wso(ix,iy)
-		  if (datain(ivar,ix,iy) == flag) dataout(ivar,ix,iy) = flag
+		  if (datain(ivar,ix,iy,1) == flag) dataout(ivar,ix,iy,1) = flag
 		end do
 		end do
 	     case (3)	!pressure
-	       dataout(ivar,:,:) = datain(ivar,:,:)
+	       dataout(ivar,:,:,1) = datain(ivar,:,:,1)
 	   end select
 	end do
 
@@ -1132,7 +1148,7 @@ end program perturbeBC
 
 
 !--------------------------------------------------
-	subroutine make_ind_field_ws(nvar,iens,nrens,nx,ny,pmat, &
+	subroutine make_ind_field_ws(nvar,iens,nrens,nx,ny,lmax,pmat, &
      				datain,dataout,flag,err1)
 !--------------------------------------------------
 ! The idea was to perturb u and to use a coefficient k around 1
@@ -1146,19 +1162,21 @@ end program perturbeBC
 	implicit none
 
 	integer,intent(in) :: nvar,iens
-	integer,intent(in) :: nrens,nx,ny
+	integer,intent(in) :: nrens,nx,ny,lmax
 	real,intent(in) :: err1,flag
 	real,intent(in) :: pmat(nvar,nx,ny,nrens-1)
-	real,intent(in) :: datain(nvar,nx,ny)
-	real,intent(out) :: dataout(nvar,nx,ny)
+	real,intent(in) :: datain(nvar,nx,ny,lmax)
+	real,intent(out) :: dataout(nvar,nx,ny,lmax)
         real, allocatable :: u(:,:),du(:,:),v(:,:),dv1(:,:),k(:,:), &
                             ws(:,:),uu(:,:),vv(:,:),b(:,:),c(:,:), &
                             dv2(:,:)
 	real :: mat(nvar,nx,ny,nrens)
         real k0
 
+	if ( lmax /= 1 ) error stop 'Bad vertical dimensions'
+
         mat(:,:,:,1) = 0.
-        mat(:,:,:,2:-1) = pmat
+        mat(:,:,:,2:nrens) = pmat
 
         if (nvar /= 3) error stop 'dimension error'
 
@@ -1166,8 +1184,8 @@ end program perturbeBC
                 ws(nx,ny),uu(nx,ny),vv(nx,ny),b(nx,ny),c(nx,ny), &
                 dv2(nx,ny))
 
-        u = datain(1,:,:)
-        v = datain(2,:,:)
+        u = datain(1,:,:,1)
+        v = datain(2,:,:,1)
         ws = sqrt(u**2 + v**2)
         du = mat(1,:,:,iens) * (err1 * abs(u))
 
@@ -1179,7 +1197,7 @@ end program perturbeBC
         where (u /= flag)
           uu = u + du
         end where
-        dataout(1,:,:) = uu
+        dataout(1,:,:,1) = uu
 
 	! v component
         b = 2. * v
@@ -1190,61 +1208,68 @@ end program perturbeBC
         where (v /= flag)
           vv = v + dv2
         end where
-        dataout(2,:,:) = vv
+        dataout(2,:,:,1) = vv
 
 	! pressure
-	dataout(3,:,:) = datain(3,:,:)
+	dataout(3,:,:,1) = datain(3,:,:,1)
 
 	end subroutine make_ind_field_ws
 
 !--------------------------------------------------
-  subroutine var_limit_min(var,var_min)
+  subroutine var_limit_min(var,var_min,flag)
 !--------------------------------------------------
   implicit none
-  real,intent(in) :: var_min
   real,intent(inout) :: var
+  real,intent(in) :: var_min
+  real,intent(in) :: flag
 
-  if (var < var_min) var = var_min
+  if ((var < var_min).and.(nint(var).ne.nint(flag))) then
+	  var = var_min
+  end if
     
   end subroutine var_limit_min
 
 
 !--------------------------------------------------
-  subroutine var_limit_max(var,var_max)
+  subroutine var_limit_max(var,var_max,flag)
 !--------------------------------------------------
   implicit none
-  real,intent(in) :: var_max
   real,intent(inout) :: var
+  real,intent(in) :: var_max
+  real,intent(in) :: flag
 
-  if (var > var_max) var = var_max
+  if ((var > var_max).and.(nint(var).ne.nint(flag))) var = var_max
     
   end subroutine var_limit_max
 
 !--------------------------------------------------
-  subroutine limit_wind(nv,nx,ny,wdata,wsmax)
+  subroutine limit_wind(nv,nx,ny,lmax,wdata,wsmax,flag)
 !--------------------------------------------------
   implicit none
-  integer, intent(in) :: nv,nx,ny
-  real, intent(inout) ::  wdata(nv,nx,ny)
+  integer, intent(in) :: nv,nx,ny,lmax
+  real, intent(inout) ::  wdata(nv,nx,ny,lmax)
   real, intent(in)    :: wsmax
+  real, intent(in)    :: flag
   real u,v,ws,k
   integer ix,iy
 
-  if (nint(wsmax) == -999) return
+  if (nint(wsmax) == nint(flag)) return
+
+  if ( lmax /= 1 ) error stop 'Bad vertical dimension'
   if ((nv /= 3).or.(wsmax < 1.)) error stop 'Wrong wind speed limit'
 
   do ix = 1,nx
   do iy = 1,ny
-     u = wdata(1,ix,iy)
-     v = wdata(2,ix,iy)
+     u = wdata(1,ix,iy,1)
+     v = wdata(2,ix,iy,1)
      ws = sqrt(u**2 + v**2)
      if (ws > wsmax) then
         k = wsmax/ws
 	u = u * k
 	v = v * k
      end if
-     wdata(1,ix,iy) = u
-     wdata(2,ix,iy) = v
+     wdata(1,ix,iy,1) = u
+     wdata(2,ix,iy,1) = v
   end do
   end do
   

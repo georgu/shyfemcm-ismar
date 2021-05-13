@@ -554,10 +554,10 @@ contains
      error stop
   end if
 
-  if (v1 < vmin .or. v1 > vmax) then
+  if (v1 <= vmin .or. v1 >= vmax) then
      stat = 3
   end if
-  if (v2 < vmin .or. v2 > vmax) then
+  if (v2 <= vmin .or. v2 >= vmax) then
      stat = 3
   end if
 
