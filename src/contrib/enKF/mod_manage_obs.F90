@@ -393,7 +393,7 @@ contains
   real flag,dx,dy,x0,y0
   integer,allocatable :: ilhkv(:)
   real*4,allocatable :: hd(:)
-  real*4,allocatable :: data(:,:),dataens(:,:)
+  real*4,allocatable :: idata(:,:,:)
   character(len=50) :: string
   integer ostatus
   logical bdata
@@ -450,25 +450,26 @@ contains
        cycle
     end if
 
-    allocate(ilhkv(np),hd(np),data(nx,ny))
+    allocate(ilhkv(np),hd(np),idata(1,nx,ny))
     allocate(o2dvel(nrec)%x(nx,ny),o2dvel(nrec)%y(nx,ny),&
              o2dvel(nrec)%u(nx,ny),o2dvel(nrec)%v(nx,ny),&
              o2dvel(nrec)%std(nx,ny),o2dvel(nrec)%stat(nx,ny))
 
     do i = 1,nvar
+       idata = flag
        call fem_file_read_data(iformat,iunit,nvers,np,lmax,string,ilhkv,hd,nlvddi,&
-                               data,ierr)
+                               idata,ierr)
 
        select case (i)
               case default
                    error stop 'read_2dvel: too many variables'
               case (1)
-                   o2dvel(nrec)%u = data
+                   o2dvel(nrec)%u = idata(1,:,:)
               case (2)
-                   o2dvel(nrec)%v = data
+                   o2dvel(nrec)%v = idata(1,:,:)
        end select
     end do
-    deallocate(ilhkv,hd,data)
+    deallocate(ilhkv,hd,idata)
 
     ! find and assign the coords
     !

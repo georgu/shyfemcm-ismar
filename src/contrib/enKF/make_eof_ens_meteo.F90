@@ -26,7 +26,7 @@ program make_eof_ens_meteo
  integer,allocatable :: ilhkv(:)
  real*4,allocatable :: hd(:)
  integer nlvddi
- real*4,allocatable :: idata(:,:)
+ real*4,allocatable :: idata(:,:,:)
 
  integer nx,ny
  real dx,dy
@@ -114,7 +114,7 @@ program make_eof_ens_meteo
    if (.not. allocated(string)) allocate(string(nvar))
    if (.not. allocated(A)) allocate(A(nrec,2*nx*ny))
    if (.not. allocated(press)) allocate(press(nrec,nx*ny))
-   allocate(idata(nx,ny))
+   allocate(idata(1,nx,ny))
    allocate(ddata(nx,ny))
  
    ! Read variables
@@ -122,7 +122,7 @@ program make_eof_ens_meteo
  
       call fem_file_read_data(iformat,iunit,nvers,np,lmax,&
                       string(i),ilhkv,hd,nlvddi,idata,ierr)
-      ddata = idata
+      ddata = idata(1,:,:)
  
       write(*,*) 'Reading: ',string(i)
       
@@ -306,11 +306,11 @@ program make_eof_ens_meteo
   
       ! U
       k = 0
-      allocate(idata(nx,ny))
+      allocate(idata(1,nx,ny))
       do ix = 1,nx
       do iy = 1,ny
          k = k + 1
-         idata(ix,iy) = A(irec,k)
+         idata(1,ix,iy) = A(irec,k)
       end do
       end do
       call fem_file_write_data(iformat,ounit,nvers,np,lmax,&
@@ -319,11 +319,11 @@ program make_eof_ens_meteo
 
       ! V
       k = 0
-      allocate(idata(nx,ny))
+      allocate(idata(1,nx,ny))
       do ix = 1,nx
       do iy = 1,ny
          k = k + 1
-         idata(ix,iy) = A(irec,nx*ny + k)
+         idata(1,ix,iy) = A(irec,nx*ny + k)
       end do
       end do
       call fem_file_write_data(iformat,ounit,nvers,np,lmax,&
@@ -332,11 +332,11 @@ program make_eof_ens_meteo
 
       ! pressure
       k = 0
-      allocate(idata(nx,ny))
+      allocate(idata(1,nx,ny))
       do ix = 1,nx
       do iy = 1,ny
          k = k + 1
-         idata(ix,iy) = press(irec,k)
+         idata(1,ix,iy) = press(irec,k)
       end do
       end do
       call fem_file_write_data(iformat,ounit,nvers,np,lmax,&
