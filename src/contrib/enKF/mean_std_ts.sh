@@ -40,5 +40,5 @@ echo "Number of ensemble member: $k"
 [[ "$k" -lt "3" ]] && echo "Stopping, too few ens members." && exit 1
 
 awk -v nr=$k '{T[FNR]=$1; v1[FNR]+=$2; v2[FNR]+=$2^2} jmax<FNR {jmax=FNR} END {for (j=1; j<=jmax; j++) 
-{df=v2[j]/nr-(v1[j]/nr)^2; print T[j],v1[j]/nr,sqrt(df+0.000000000001)}}' ${bfile}* > ${bfile}_mean_std.dat
+{df=v2[j]/nr-(v1[j]/nr)^2; print T[j],v1[j]/nr,sqrt(df+0.000000000001)}}' ${bfile}* > ${bfile}mean_std.dat
 

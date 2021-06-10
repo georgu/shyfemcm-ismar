@@ -31,20 +31,25 @@ Merge_timeseries()
    nen=$1
    ftype=$2
    files=$(ls an*_en${nen}b.${ftype})
-   vars='zeta.2d velx.2d vely.2d velx.3d vely.3d speed.2d speed.3d dir.2d dir.3d all.2d temp.2d temp.3d salt.2d salt.3d'
-   rm -f *_st*_en${nen}.ts
+
+   # not working!
+   #$FEMDIR/fembin/shyelab -catmode +1 -out an*_en${nen}b.${ftype}
+   #mv -f out.ext analysis_en${nen}.${ftype}
+
+   rm -f *_st*_en${nen}.ts *.2d.* *.3d.*
    for fil in $files; do
+      [[ ! -s "$fil" ]] && echo "Error in file: $fil" && exit 1
       echo "Processing file: $fil"
-      $FEMDIR/fembin/shyelab -split ${fil} > log
-       
-      for vv in $vars; do
-	if [ -e "$vv.1" ]; then
-          for flev in $(ls $vv.*); do
+      $FEMDIR/fembin/shyelab -split ${fil} &> /dev/null
+
+      var2d=$(ls *.2d.1 2>/dev/null |cut -d '.' -f 1,2)
+      var3d=$(ls *.3d.1 2>/dev/null |cut -d '.' -f 1,2)
+      for vv in $(echo "$var2d $var3d"); do
+         for flev in $(ls $vv.*); do
 	    idst=$(echo $flev | cut -d '.' -f 3)
             cat $flev |head -n -1|tail -n +2 >> ${vv}_st${idst}_en${nen}.ts
 	    rm $flev
-          done
-	fi
+         done
       done
    done
 }
