@@ -302,8 +302,8 @@ else
    Usage
 fi
 
-# number of forecast days in the last str files
-nfor=5
+# Verbose output, save the rst files of all the members
+out_verb=0
 
 # Compiles the enKF code with the right total dimensions
 Compile_enkf $sdim
@@ -348,8 +348,13 @@ for (( na = 1; na <= $nran; na++ )); do
         filename2="an${nanl}_en${nel}a.rst"
         Check_file $filename1
         Check_file $filename2
-	[[ "$na" -gt "1" ]] && cat $filename1 >> backKF_en$nel.rst
-	cat $filename2 >> analKF_en$nel.rst
+	# If not verbose, saves only the last rst for each member
+	if [ "$out_verb" -eq "1" ]; then
+		[[ "$na" -gt "1" ]] && cat $filename1 >> backKF_en$nel.rst
+		cat $filename2 >> analKF_en$nel.rst
+	else
+	        [[ "$na" -eq "$nran" ]] && mv -f $filename2 analKF_en$nel.rst
+	fi
 	rm -f $filename1 $filename2
    done
    filename1="an${nanl}_mean_a.rst"
@@ -358,10 +363,10 @@ for (( na = 1; na <= $nran; na++ )); do
    Check_file $filename2
    cat $filename1 >> analKF_mean.rst
    cat $filename2 >> analKF_std.rst
+   rm -f $filename1 $filename2
+   rm -f an*_en*b.inf an*_en*.log an*_en*b.str 
 
 done
-
-# remove some files
-rm -f an*_en*b.str an*_en*.inf an*_en*.log X5col.dat X5row.dat X5.uf make.log
+rm -f X5col.dat X5row.dat X5.uf make.log
 
 exit 0

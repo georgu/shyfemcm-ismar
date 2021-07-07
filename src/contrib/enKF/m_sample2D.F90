@@ -45,7 +45,7 @@ subroutine sample2D(A2,nx,ny,nrens,nre,dx,dy,rx,ry,theta,samp_fix,verbose)
    if (mod(n2,2) == 1 ) n2=n2+1
 #endif
 
-#if defined(IBM) || defined(LINUX)
+!#if defined(IBM) || defined(LINUX)
    do i=1,100
       if (2**i >= n1) then
          n1=2**i
@@ -58,7 +58,7 @@ subroutine sample2D(A2,nx,ny,nrens,nre,dx,dy,rx,ry,theta,samp_fix,verbose)
          exit
       endif
    enddo
-#endif
+!#endif
 
    if (verbose) then
       print *,'n1=',n1

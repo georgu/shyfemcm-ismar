@@ -13,19 +13,17 @@ program perturbeBC
   character(len=6) :: arg1
   character(len=3) :: arg2
   character(len=3) :: arg3
-  character(len=80) :: arg4
-  character(len=3) :: arg5
+  character(len=3) :: arg4
+  character(len=12) :: arg5
   character(len=12) :: arg6
   character(len=12) :: arg7
   character(len=12) :: arg8
   character(len=12) :: arg9
-  character(len=12) :: arg10
-  character(len=80) :: arg11
+  character(len=80) :: arg10
 
   integer nrens, var_dim
   character(len=80) :: filein
   character(len=3) :: filety
-  character(len=80) :: variable
   real var_std
   double precision mem_time
   double precision time_std	
@@ -75,20 +73,19 @@ program perturbeBC
 
   ! geostrophic vars
   real               :: flat
-  logical, parameter :: bpress = .false.
-  real, parameter    :: sigmaP = 100.	!press std in Pa
+  logical, parameter :: bpress = .true.
 
   real, allocatable :: var3d(:,:,:,:),var3d_ens(:,:,:,:)
 
   ! SHYFEM single precision variables
   real*4, allocatable :: femdata(:,:,:)
 
-  logical :: bwind
-  real :: wsmax
-
   integer n,i,ne,l,ix,iy
   integer fid
 
+!********************************
+! Get input from stdin
+!********************************
   ! read input
   call get_command_argument(1, arg1)
   call get_command_argument(2, arg2)
@@ -100,35 +97,31 @@ program perturbeBC
   call get_command_argument(8, arg8)
   call get_command_argument(9, arg9)
   call get_command_argument(10, arg10)
-  call get_command_argument(11, arg11)
 
-  if (trim(arg11) .eq. '') then
+  if (trim(arg10) .eq. '') then
       write(*,*) ''
       write(*,*) 'Usage:'
       write(*,*) ''
-      write(*,*) 'perturbeBC [nrens] [file_type] [pert_type] [variable] [var_dim]' // &
+      write(*,*) 'perturbeBC [nrens] [file_type] [pert_type] [var_dim]' // &
                            ' [var_std] [var_min] [var_max] [mem_time] [time_std] [input]'
       write(*,*) ''
       write(*,*) '[nrens] is the n. of ens members, control included.'
       write(*,*) '[file_type] can be fem or ts (timeseries).'
-      write(*,*) '[pert_type] type of 2D perturbations. See below.'
-      write(*,*) '[variable] name of the dynamic variable.'
+      write(*,*) '[pert_type] type of perturbation, see below.'
       write(*,*) '[var_dim] spatial dimension of the variable (0->3).'
-      write(*,*) '[var_std] standard deviation of the ensemble distribution (same units of the var).'
+      write(*,*) '[var_std] standard deviation of the ensemble distribution.'
       write(*,*) '[var_min] minimum value for the variable (-999 to disable, not used for wind).'
-      write(*,*) '[var_max] maximum value for the variable (-999 to disable, if wind it is the max speed).'
+      write(*,*) '[var_max] maximum value for the variable (-999 to disable, if wind this is wind speed).'
       write(*,*) '[mem_time] time correlation of the perturbations (red noise) in seconds.'
       write(*,*) '[time_std] standard deviation for perturbation in time [in seconds].'
       write(*,*) '[input] is the name of the input unperturbed BC file.'
       write(*,*) ''
       write(*,*) 'pert_type can be:'
       write(*,*) ''
-      write(*,*) '1- Spatially constant perturbation of each variable (no pressure).'
-      write(*,*) '2- 2D pseudo Gaussian perturbation of each variable (no pressure).'
-      write(*,*) '3- 2D pseudo Gaussian geostrophic perturbation of wind and pressure.'
-      write(*,*) '4- Same as 3, but using two perturbation fields. Pressure not perturbed.'
-      write(*,*) '5- Only the wind speed is perturbed (same directions). Pressure not perturbed.'
-      write(*,*) '6- Honestly I do not remember.. but it is not working.'
+      write(*,*) '1- Spatially constant perturbation of each variable (1D, 2D, 3D)'
+      write(*,*) '2- 2D wind pseudo Gaussian perturbation of u and v, no press.'
+      write(*,*) '3- 2D wind pseudo Gaussian perturbation of press, geostrophic u and v (press var_std).'
+      write(*,*) '4- 2D wind-speed pseudo Gaussian perturbation, no press.'
       write(*,*) ''
       write(*,*) 'Use var_std = 0 to disable this type of perturbations'
       write(*,*) 'Use time_std = 0 to disable the time-shift perturbations'
@@ -143,19 +136,19 @@ program perturbeBC
   read(arg1,*) nrens
   filety = arg2
   read(arg3,*) pert_type
-  variable = arg4
-  read(arg5,*) var_dim
-  read(arg6,*) var_std
-  read(arg7,*) var_min
-  read(arg8,*) var_max
-  read(arg9,*) mem_time
-  read(arg10,*) time_std
-  filein = arg11
+  read(arg4,*) var_dim
+  read(arg5,*) var_std
+  read(arg6,*) var_min
+  read(arg7,*) var_max
+  read(arg8,*) mem_time
+  read(arg9,*) time_std
+  filein = arg10
 
-  bwind = .false.
   flag = -999.
 
-  ! some checks on inputs
+!********************************
+! some checks on inputs
+!********************************
   if (( nrens < 3 ) .or. (mod(nrens,2) == 0) .or. (nrens > 1000)) error stop 'perturbeBC: bad nrens'
   if (( var_dim > 3 ) .or. ( var_dim < 0 )) error stop 'perturbeBC: bad dimension'
   if (( trim(filety) /= 'ts' ) .and. ( trim(filety) /= 'fem' )) error stop 'perturbeBC: bad file_type'
@@ -165,19 +158,17 @@ program perturbeBC
   if ( pert_type > 6 ) error stop 'perturbeBC: bad pert_type'
   if (( var_std < 0 ) .or. ( time_std < 0 )) error stop 'perturbeBC: bad var_std and time_std'
   if (( var_std == 0 ) .and. ( time_std == 0 )) error stop 'perturbeBC: bad var_std and time_std'
-  if (trim(variable) == 'wind') then
-     bwind = .true.
-     wsmax = var_max
-     var_min = flag
-     var_max = flag
-  end if
 
-  ! Compute time perturbations. tens(1) = 0.
+!********************************
+! Compute time perturbations. tens(1) = 0.
+!********************************
   tramp = 0.
   if (.not.allocated(tens)) allocate(tens(nrens))
   call perturbe_time(nrens,time_std,tens)
 
-  ! open and close to read informations
+!********************************
+! open and close to read informations
+!********************************
   select case(trim(filety))
   case('ts')
      call read_ts(.true.,filein,nrec_file,var,tnew,dstring)
@@ -197,24 +188,29 @@ program perturbeBC
 
   lmax = 1
   told = -999.
-  ! time loop
+
+!********************************
+! time loop start
+!********************************
   n = 0
   do
 
     n = n + 1
 
-    !write(*,*) "---------------------------"
-    !write(*,*) "Timestep: ",n
-    !write(*,*) "---------------------------"
-
-    ! read record
+!********************************
+! read record
+!********************************
     select case(trim(filety))
+!----------------------------------------------
     case('ts')
+!----------------------------------------------
 
 	if (n > nrec_file) exit
         call read_ts(.false.,filein,nrec_file,var,tnew,dstring)
 
+!----------------------------------------------
     case('fem')
+!----------------------------------------------
 
 	! read 1st header
 	call fem_file_read_params(iformat,iunit,dtime &
@@ -258,38 +254,58 @@ program perturbeBC
 
 	   if (n==1) write(*,*) '  Reading: ',vstring(i)
         end do
+	
+	! check if it is the last record
+        call fem_check_last(iformat,iunit,blast)
 
     end select
 
+!----------------------------------------------
     !smooth ramp [0-1] for time perturbation
+!----------------------------------------------
     if (n > 1 ) tramp = (tramp + (tnew-told))
     tfact = min(tramp/time_ramp,1.)
-    call fem_check_last(iformat,iunit,blast)
+    
 
-    ! generate perturbations and write the files
+!********************************
+! generate perturbations and write the files
+!********************************
+
     if (.not.allocated(pvec)) allocate(pvec(nrens-1))
     select case(var_dim)
+!----------------------------------------------
     case(0)	! 0D variable
+!----------------------------------------------
 
         call perturbe_0d(nrens-1,pvec)
         call red_noise_0d(told,tnew,pvec,nrens-1,mem_time,1,1)
         call write_record_0d(iunit,told,nrens,dstring,var,var_std,var_min,var_max,pvec,flag)
 
+!----------------------------------------------
     case(1)	! 1D variable
+!----------------------------------------------
 
         print*, 'todo'
 	stop
         !call perturbe_1d
 
+!----------------------------------------------
     case(2)	! 2D variable
+!----------------------------------------------
 
 	if (trim(filety) /= 'fem') error stop 'Bad file format'
 	if ( lmax /= 1 ) error stop 'Bad vertical dimensions'
 
-	select case(pert_type)
-	case(1)
+        write(*,*) "**********************"
+        write(*,*) "  Field n. ",n
+        write(*,*) "**********************"
 
-            if (n==1 .and. var_std > 0.) write(*,*) '  Case 1: spatially constant perturbations'
+	select case(pert_type)
+	!-----------------------
+	case(1)
+	!-----------------------
+
+            if (var_std > 0.) write(*,*) '  Case 1: spatially constant perturbations'
 
             if (.not.allocated(pvec1)) allocate(pvec1(nvar,nrens-1))
 	    do i=1,nvar
@@ -302,14 +318,13 @@ program perturbeBC
 	      ! create member
 	      if (.not.allocated(var3d_ens)) allocate(var3d_ens(nvar,nx,ny,lmax))
 	      var3d_ens = flag
-              call make_member_2D1(nvar,nrens,nx,ny,lmax,variable,ne,pvec1,var3d,var3d_ens,var_std,flag)
-
-	      if (bwind) call limit_wind(nvar,nx,ny,lmax,var3d_ens,wsmax,flag)
+              call make_member_2D1(nvar,nrens,nx,ny,lmax,ne,pvec1,var3d,var3d_ens,var_std,flag)
 
 	      ! write file
               fid = iunit + 10 + ne
 	      enstime = dtime + nint(tens(ne)*tfact/dt)*dt
               if (blast) enstime = max(enstime,dtime)
+
               call fem_file_write_header(iformat,fid,enstime,nvers,np,lmax &
                      ,nvar,ntype,nlvddi,hlv,datetime,regpar)
               do i = 1,nvar
@@ -327,69 +342,50 @@ program perturbeBC
               end do
 	    end do
 
-	case(2,3,4,5,6)
+	!-----------------------
+	case(2)
+	!-----------------------
 
-	    if (n==1) write(*,*) '  Case 2: 2D perturbations'
+	    if (var_std > 0.) write(*,*) '  Case 2: 2D wind pseudo-Gaussian perturbations'
+
+	    if (nvar /= 3) error stop 'Dimension error'
+	    if (trim(vstring(1)) /= 'wind velocity - x') error stop 'Invalid variables'
 
 	    ! set parameters
-	    verbose = .true.
+	    verbose = .false.
 	    samp_fix = .true.
 	    theta = 0.
-	    fmult = 4
+	    fmult = 5
 	    call set_decorrelation(nx,dx,rx)
 	    call set_decorrelation(ny,dy,ry)
 	    flat = y0 + (ny/2 * dy)
 
-	    if (n==1) write(*,*) 'nx,ny,dx,dy,rx,ry,theta,samp_fix: ',nx,ny,dx,dy,rx,ry,theta,samp_fix
+	    write(*,*) 'nx,ny,dx,dy,rx,ry,theta,samp_fix: ',nx,ny,dx,dy,rx,ry,theta,samp_fix
 
             ! Make the random fields
-            allocate(amat(nx,ny,nrens-1),pmat(nvar,nx,ny,nrens-1))
-	    do i=1,nvar
-               if ( trim(vstring(i)) .eq. 'atmospheric pressure' ) then
-                  print*, "Pressure field, no perturbation"
-                  amat = 0.
-               else
-                  call sample2D(amat,nx,ny,nrens-1,fmult,dx,dy,rx,ry,theta &
+            allocate(amat(nx,ny,nrens-1),pmat(nvar-1,nx,ny,nrens-1))
+	    do i=1,nvar-1
+               call sample2D(amat,nx,ny,nrens-1,fmult,dx,dy,rx,ry,theta &
                     ,samp_fix,verbose)
-               end if
                pmat(i,:,:,:) = amat
 	    end do
             deallocate(amat)
 
-            call red_noise_2d(nx,ny,nvar,told,tnew,pmat,nrens-1,mem_time)
+            call red_noise_2d(nx,ny,nvar-1,told,tnew,pmat,nrens-1,mem_time)
 
 	    do ne = 1,nrens
 
 	      if (.not.allocated(var3d_ens)) allocate(var3d_ens(nvar,nx,ny,lmax))
 
-	      if (pert_type == 2) then
-                 call make_member_2D2(nvar,nrens,nx,ny,lmax,variable,ne,pmat,var3d,var3d_ens,var_std,flag)
+              call make_member_2D2(nvar,nrens,nx,ny,lmax,ne,pmat,var3d,var3d_ens,var_std,flag)
 
-	      else if (pert_type == 3) then
-	         if (.not. bwind) error stop 'Bad varable. Use just wind.'
-	         call make_geo_field(nvar,ne,nrens,nx,ny,lmax,dx,dy,pmat,var3d,var3d_ens,flag,var_std, &
-                                sigmaP,flat,bpress)
-
-	      else if (pert_type == 4) then
-	         if (.not. bwind) error stop 'Bad varable. Use just wind.'
-	         call make_2geo_field(nvar,ne,nrens,nx,ny,lmax,dx,dy,pmat,var3d,var3d_ens,flag,var_std, &
-                                sigmaP,flat)
-
-	      else if (pert_type == 5) then
-	         if (.not. bwind) error stop 'Bad varable. Use just wind.'
-		 call make_ws_pert(nvar,ne,nrens,nx,ny,lmax,pmat,var3d,var3d_ens,flag,var_std)
-
-	      else if (pert_type == 6) then
-	         if (.not. bwind) error stop 'Bad varable. Use just wind.'
-		 call make_ind_field_ws(nvar,ne,nrens,nx,ny,lmax,pmat,var3d,var3d_ens,flag,var_std)
-
-	      end if
-
-	      if (bwind) call limit_wind(nvar,nx,ny,lmax,var3d_ens,wsmax,flag)
+	      call limit_wind(nvar,nx,ny,lmax,var3d_ens,var_max,flag)
 
 	      ! write file
               fid = iunit + 10 + ne
 	      enstime = dtime + nint(tens(ne)*tfact/dt)*dt	
+              if (blast) enstime = max(enstime,dtime)
+
               call fem_file_write_header(iformat,fid,enstime,nvers,np,lmax &
                      ,nvar,ntype,nlvddi,hlv,datetime,regpar)
               do i = 1,nvar
@@ -397,8 +393,6 @@ program perturbeBC
 	         do iy = 1,ny
 	          do ix = 1,nx
 		     var = var3d_ens(i,ix,iy,1)
-		     if (nint(var_min) /= nint(flag)) call var_limit_min(var,var_min,flag)
-		     if (nint(var_max) /= nint(flag)) call var_limit_max(var,var_max,flag)
 	             femdata(1,ix,iy) = var
 	          end do
                  end do
@@ -407,10 +401,131 @@ program perturbeBC
               end do
 
 	    end do
+	    deallocate(pmat)
+
+	!-----------------------
+	case(3)
+	!-----------------------
+
+	    if (var_std > 0.) write(*,*) '  Case 2: 2D wind-press pseudo-Gaussian geostrophic perturbations'
+
+	    if (nvar /= 3) error stop 'Dimension error'
+	    if (trim(vstring(1)) /= 'wind velocity - x') error stop 'Invalid variables'
+
+	    ! set parameters
+	    verbose = .false.
+	    samp_fix = .true.
+	    theta = 0.
+	    fmult = 5
+	    call set_decorrelation(nx,dx,rx)
+	    call set_decorrelation(ny,dy,ry)
+	    flat = y0 + (ny/2 * dy)
+
+	    write(*,*) 'nx,ny,dx,dy,rx,ry,theta,samp_fix: ',nx,ny,dx,dy,rx,ry,theta,samp_fix
+
+            ! Make the random fields
+            allocate(amat(nx,ny,nrens-1),pmat(1,nx,ny,nrens-1))
+            call sample2D(amat,nx,ny,nrens-1,fmult,dx,dy,rx,ry,theta &
+                    ,samp_fix,verbose)
+            pmat(1,:,:,:) = amat
+            deallocate(amat)
+
+            call red_noise_2d(nx,ny,1,told,tnew,pmat,nrens-1,mem_time)
+
+	    do ne = 1,nrens
+
+	      if (.not.allocated(var3d_ens)) allocate(var3d_ens(nvar,nx,ny,lmax))
+
+	      call make_geo_field(nvar,ne,nrens,nx,ny,lmax,dx,dy,pmat,var3d,var3d_ens,flag,var_std, &
+                                flat,bpress)
+
+	      call limit_wind(nvar,nx,ny,lmax,var3d_ens,var_max,flag)
+
+	      ! write file
+              fid = iunit + 10 + ne
+	      enstime = dtime + nint(tens(ne)*tfact/dt)*dt	
+              if (blast) enstime = max(enstime,dtime)
+
+              call fem_file_write_header(iformat,fid,enstime,nvers,np,lmax &
+                     ,nvar,ntype,nlvddi,hlv,datetime,regpar)
+              do i = 1,nvar
+	         femdata = flag
+	         do iy = 1,ny
+	          do ix = 1,nx
+		     var = var3d_ens(i,ix,iy,1)
+	             femdata(1,ix,iy) = var
+	          end do
+                 end do
+                 call fem_file_write_data(iformat,fid,nvers,np,lmax &
+                       ,vstring(i),ilhkv,hd,nlvddi,femdata)
+              end do
+
+	    end do
+	    deallocate(pmat)
+
+	!-----------------------
+	case(4)
+	!-----------------------
+
+	    if (var_std > 0.) write(*,*) '  Case 2: 2D wind speed pseudo-Gaussian perturbations'
+
+	    if (nvar /= 3) error stop 'Dimension error'
+	    if (trim(vstring(1)) /= 'wind velocity - x') error stop 'Invalid variables'
+
+	    ! set parameters
+	    verbose = .false.
+	    samp_fix = .true.
+	    theta = 0.
+	    fmult = 5
+	    call set_decorrelation(nx,dx,rx)
+	    call set_decorrelation(ny,dy,ry)
+	    flat = y0 + (ny/2 * dy)
+
+	    write(*,*) 'nx,ny,dx,dy,rx,ry,theta,samp_fix: ',nx,ny,dx,dy,rx,ry,theta,samp_fix
+
+            ! Make the random fields
+            allocate(amat(nx,ny,nrens-1),pmat(1,nx,ny,nrens-1))
+            call sample2D(amat,nx,ny,nrens-1,fmult,dx,dy,rx,ry,theta &
+                    ,samp_fix,verbose)
+            pmat(1,:,:,:) = amat
+            deallocate(amat)
+
+            call red_noise_2d(nx,ny,1,told,tnew,pmat,nrens-1,mem_time)
+
+	    do ne = 1,nrens
+
+	      if (.not.allocated(var3d_ens)) allocate(var3d_ens(nvar,nx,ny,lmax))
+
+	      call make_ws_pert(nvar,ne,nrens,nx,ny,lmax,pmat,var3d,var3d_ens,flag,var_std)
+
+	      call limit_wind(nvar,nx,ny,lmax,var3d_ens,var_max,flag)
+
+	      ! write file
+              fid = iunit + 10 + ne
+	      enstime = dtime + nint(tens(ne)*tfact/dt)*dt	
+              if (blast) enstime = max(enstime,dtime)
+
+              call fem_file_write_header(iformat,fid,enstime,nvers,np,lmax &
+                     ,nvar,ntype,nlvddi,hlv,datetime,regpar)
+              do i = 1,nvar
+	         femdata = flag
+	         do iy = 1,ny
+	          do ix = 1,nx
+		     var = var3d_ens(i,ix,iy,1)
+	             femdata(1,ix,iy) = var
+	          end do
+                 end do
+                 call fem_file_write_data(iformat,fid,nvers,np,lmax &
+                       ,vstring(i),ilhkv,hd,nlvddi,femdata)
+              end do
+
+	    end do
+	    deallocate(pmat)
 
 	end select
-
+!----------------------------------------------
     case(3)	! 3D variable
+!----------------------------------------------
 
 	if (trim(filety) /= 'fem') error stop 'Bad file format'
 	if ( lmax < 2 ) error stop 'Bad vertical dimensions'
@@ -430,11 +545,13 @@ program perturbeBC
 	    do ne = 1,nrens
 	      ! create member
 	      if (.not.allocated(var3d_ens)) allocate(var3d_ens(nvar,nx,ny,lmax))
-              call make_member_3D1(nvar,nrens,nx,ny,lmax,variable,ne,pvec1,var3d,var3d_ens,var_std,flag)
+              call make_member_3D1(nvar,nrens,nx,ny,lmax,ne,pvec1,var3d,var3d_ens,var_std,flag)
 
 	      ! write file
               fid = iunit + 10 + ne
 	      enstime = dtime + nint(tens(ne)*tfact/dt)*dt	
+              if (blast) enstime = max(enstime,dtime)
+
               call fem_file_write_header(iformat,fid,enstime,nvers,np,lmax &
                      ,nvar,ntype,nlvddi,hlv,datetime,regpar)
               do i = 1,nvar
@@ -459,17 +576,23 @@ program perturbeBC
     end select
 
     told = tnew
-  ! end loop
+
+!********************************
+! time loop end
+!********************************
   end do
 
-  ! close files
+!********************************
+! close and rename files
+!********************************
   call close_and_rename(filety,iunit,nrens,inbname)
 
 end program perturbeBC
 
-!------------------------------------------------------------------
-! subroutines
-!------------------------------------------------------------------
+!********************************************************************************************
+!********************************************************************************************
+!********************************************************************************************
+!********************************************************************************************
 
 !-----------------------------------------------
   subroutine read_ts(linit,filein,kdim,v,vtime,dstring)
@@ -634,26 +757,25 @@ end program perturbeBC
 
   double precision alpha
 
-  if (told < 0) then
-     if (.not. allocated(pveco)) allocate(pveco(nrensp,nvar))
-     pveco = 0.
-     return
-  end if
-
-  if (tau > 0) then
-     alpha = 1. -  (tnew - told)/tau
-  else
-     alpha = 0.
-  end if
-
-  if (alpha < 0.) alpha = 0.
-
   if (n > nvar) error stop 'Dimension error.'
 
-  pveco(:,n) = alpha * pveco(:,n) + sqrt(1 - alpha**2) * pvec
+  if (told < 0) then
+     if (.not. allocated(pveco)) allocate(pveco(nrensp,nvar))
+     pveco(:,n) = pvec
+  else
+     if (tau > 0) then
+        alpha = 1. -  (tnew - told)/tau
+     else
+        alpha = 0.
+     end if
+     if (alpha < 0.) alpha = 0.
 
-  told = tnew
+     pveco(:,n) = alpha * pveco(:,n) + sqrt(1 - alpha**2) * pvec
+  end if
+
   pvec = pveco(:,n)
+
+  if (n == nvar) told = tnew
 
   end subroutine red_noise_0d
 
@@ -667,28 +789,26 @@ end program perturbeBC
   integer, intent(in) :: nrensp
   real, intent(inout) :: pmat(nvar,nx,ny,nrensp)
   real, allocatable, save :: pmato(:,:,:,:)
-  integer n
 
   double precision alpha
 
   if (told < 0) then
      if (.not. allocated(pmato)) allocate(pmato(nvar,nx,ny,nrensp))
-     pmato = 0.
-     return
-  end if
-
-  if (tau > 0) then
-     alpha = 1. -  (tnew - told)/tau
+     pmato = pmat
   else
-     alpha = 0.
+    if (tau > 0) then
+       alpha = 1. -  (tnew - told)/tau
+    else
+       alpha = 0.
+    end if
+    if (alpha < 0.) alpha = 0.
+
+    pmato = alpha * pmato + sqrt(1 - alpha**2) * pmat
   end if
 
-  if (alpha < 0.) alpha = 0.
-
-  pmato = alpha * pmato + sqrt(1 - alpha**2) * pmat
+  pmat = pmato
 
   told = tnew
-  pmat = pmato
   
   end subroutine red_noise_2d
 
@@ -765,11 +885,10 @@ end program perturbeBC
   end subroutine write_record_0d
 
 !-----------------------------------------------
-  subroutine make_member_2D1(nvar,nrens,nx,ny,lmax,variable,ne,vec1,var3d,var3d_ens,var_std,flag)
+  subroutine make_member_2D1(nvar,nrens,nx,ny,lmax,ne,vec1,var3d,var3d_ens,var_std,flag)
 !-----------------------------------------------
   implicit none
   integer, intent(in) :: nvar,nrens,nx,ny,lmax,ne
-  character(len=80), intent(in) :: variable
   real, intent(in) :: vec1(nvar,nrens-1),var_std
   real, intent(in) :: var3d(nvar,nx,ny,lmax)
   real, intent(out) :: var3d_ens(nvar,nx,ny,lmax)
@@ -793,18 +912,17 @@ end program perturbeBC
   end subroutine make_member_2D1
 
 !-----------------------------------------------
-  subroutine make_member_2D2(nvar,nrens,nx,ny,lmax,variable,ne,pmat,var3d,var3d_ens,var_std,flag)
+  subroutine make_member_2D2(nvar,nrens,nx,ny,lmax,ne,pmat,var3d,var3d_ens,var_std,flag)
 !-----------------------------------------------
   implicit none
   integer, intent(in) :: nvar,nrens,nx,ny,lmax,ne
-  character(len=80), intent(in) :: variable
-  real, intent(in) :: pmat(nvar,nx,ny,nrens-1),var_std
+  real, intent(in) :: pmat(nvar-1,nx,ny,nrens-1),var_std
   real, intent(in) :: var3d(nvar,nx,ny,lmax)
   real, intent(out) :: var3d_ens(nvar,nx,ny,lmax)
   real, intent(in) :: flag
 
   integer i,ix,iy
-  real pmat1(nvar,nx,ny,nrens),v
+  real pmat1(nvar-1,nx,ny,nrens),v
 
   if ( lmax /= 1 ) error stop 'Bad vertical levels'
 
@@ -812,20 +930,23 @@ end program perturbeBC
   pmat1(:,:,:,2:nrens) = pmat
   var3d_ens = flag
 
-  do i=1,nvar
+  ! u,v wind perturbed
+  do i=1,nvar-1
     where (nint(var3d(i,:,:,1)).ne.nint(flag))
 	    var3d_ens(i,:,:,1) = var3d(i,:,:,1) + var_std * pmat1(i,:,:,ne)
     end where
   end do
 
+  ! pressure unperturbed
+  var3d_ens(nvar,:,:,1) = var3d(nvar,:,:,1)
+
   end subroutine make_member_2D2
 
 !-----------------------------------------------
-  subroutine make_member_3D1(nvar,nrens,nx,ny,lmax,variable,ne,vec1,var3d,var3d_ens,var_std,flag)
+  subroutine make_member_3D1(nvar,nrens,nx,ny,lmax,ne,vec1,var3d,var3d_ens,var_std,flag)
 !-----------------------------------------------
   implicit none
   integer, intent(in) :: nvar,nrens,nx,ny,lmax,ne
-  character(len=80), intent(in) :: variable
   real, intent(in) :: vec1(nvar,nrens-1),var_std
   real, intent(in) :: var3d(nvar,nx,ny,lmax)
   real, intent(out) :: var3d_ens(nvar,nx,ny,lmax)
@@ -855,53 +976,47 @@ end program perturbeBC
   implicit none
   real delta,lrange,lrange_low
   integer ntot
-  real ltot
   integer ires
-  integer, parameter :: nmin = 12	!minimum delta to resolve the range
+  integer, parameter :: nmin = 12	!minimum number of deltas to resolve the range
 
-  ! total length
-  ltot = delta * (ntot-1)
+  if ( ntot < nmin ) error stop 'Field too small'
 
   ! minimum range allowed
   lrange_low = delta * nmin
 
-  if (lrange_low < 4. ) then
-	  lrange = 4.
-  else 
-	  lrange = lrange_low
-  end if
+  ! range of 3 degrees
+  lrange = 4.
 
   end subroutine set_decorrelation
 
 
 !--------------------------------------------------
 	subroutine make_geo_field(nvar,iens,nrens,nx,ny,lmax,dx,dy, &
-     		pmat,datain,dataout,flag,err,sigmaP,flat,bpress)
+     		pmat,datain,dataout,flag,sigmaP,flat,bpress)
 !--------------------------------------------------
 	implicit none
 
 	integer,intent(in) :: nvar,iens
 	integer,intent(in) :: nrens,nx,ny,lmax
 	real,intent(in) :: dx,dy
-	real,intent(in) :: err,sigmaP,flag
+	real,intent(in) :: sigmaP,flag
 	real,intent(in) :: flat
         logical,intent(in) :: bpress
-	real,intent(in) :: pmat(nvar,nx,ny,nrens-1)
+	real,intent(in) :: pmat(1,nx,ny,nrens-1)
 	real,intent(in) :: datain(nvar,nx,ny,lmax)
 	real,intent(out) :: dataout(nvar,nx,ny,lmax)
 
-	real :: mat(nvar,nx,ny,nrens)
+	real :: mat(1,nx,ny,nrens)
 
 	integer ix,iy,ivar
-	real Fp1,Fp2,Up,Vp
-	real sigmaU, sigmaV
+	real Up,Vp
 	real dxm,dym
 
 	real, parameter :: pi = acos(-1.)
 	real, parameter :: rhoa = 1.2041
-	real, parameter :: er1 = 63781370. !max earth radius
-	real, parameter :: er2 = 63567523. !min earth radius
-	real fcor,er,theta
+	real, parameter :: er1 = 6378137. !max earth radius
+	real, parameter :: er2 = 6356752. !min earth radius
+	real fcor,er,theta,DPY,DPX
 
 	if ( lmax /= 1 ) error stop 'Bad vertical levels'
 
@@ -909,7 +1024,7 @@ end program perturbeBC
         mat(:,:,:,2:nrens) = pmat
   
 	theta = flat * pi/180.
-	fcor = 2. * sin(theta) * (2.* pi / 86400.)
+	fcor = 2. * sin(theta) * (2.* pi / 86164.)
 	! earth radius with latitude
 	er = sqrt( ( (er1**2 * cos(theta))**2 + &
      			(er2**2 * sin(theta))**2 ) / &
@@ -927,14 +1042,9 @@ end program perturbeBC
 		do ix = 1,nx
 		do iy = 2,ny
 
-		  Fp2 = mat(1,ix,iy,iens)
-		  Fp1 = mat(1,ix,iy-1,iens)
-		  ! if err is relative use this
-		  !sigmaU = err * abs(datain(ivar,ix,iy,1))
-		  sigmaU = err
+		  DPY = sigmaP * (mat(1,ix,iy,iens) - mat(1,ix,iy-1,iens))
 
-		  !Up = - (((Fp2 - Fp1)/dym) * sigmaP) / (rhoa * fcor)
-		  Up = - (Fp2 - Fp1) * sigmaU
+		  Up = - (DPY/dym) * 1./(rhoa * fcor)
 
 		  !dataout(ivar,ix,iy,1) = Up
 		  dataout(ivar,ix,iy,1) = datain(ivar,ix,iy,1) + Up
@@ -952,20 +1062,14 @@ end program perturbeBC
 		do iy = 1,ny
 		do ix = 2,nx
 
-		  Fp2 = mat(1,ix,iy,iens)
-		  Fp1 = mat(1,ix-1,iy,iens)
-		  ! if err is relative use this
-		  !sigmaV = err * abs(datain(ivar,ix,iy,1))
-		  sigmaV = err
+		  DPX = sigmaP * (mat(1,ix,iy,iens) - mat(1,ix-1,iy,iens))
 
-		  !Vp = (((Fp2 - Fp1)/dxm) * sigmaP) / (rhoa * fcor)
-		  Vp = (Fp2 - Fp1) * sigmaV
+		  Vp = (DPX/dxm) * 1./(rhoa * fcor)
 
 		  !dataout(ivar,ix,iy,1) =  Vp
 		  dataout(ivar,ix,iy,1) = datain(ivar,ix,iy,1) + Vp
 
-		  if (datain(ivar,ix,iy,1) == flag) &
-     			dataout(ivar,ix,iy,1) = flag
+		  if (datain(ivar,ix,iy,1) == flag) dataout(ivar,ix,iy,1) = flag
 
 		end do
 		end do
@@ -980,12 +1084,11 @@ end program perturbeBC
 		do ix = 1,nx
 		     dataout(ivar,ix,iy,1) = datain(ivar,ix,iy,1) + sigmaP &
      					* mat(1,ix,iy,iens)
-!		  dataout(ivar,ix,iy,1) = sigmaP * mat(1,ix,iy,iens)
 		  if (datain(ivar,ix,iy,1) == flag) dataout(ivar,ix,iy,1) = flag
 		end do
 		end do
               else
-		write(*,*) 'pressure not perturbed'
+		!write(*,*) 'pressure not perturbed'
 		dataout = datain ! no perturbation
               end if
 
@@ -996,126 +1099,18 @@ end program perturbeBC
 
 
 !--------------------------------------------------
-	subroutine make_2geo_field(nvar,iens,nrens,nx,ny,lmax,dx,dy, &
-     		pmat,datain,dataout,flag,err,sigmaP,flat)
-!--------------------------------------------------
-	implicit none
-
-	integer,intent(in) :: nvar,iens
-	integer,intent(in) :: nrens,nx,ny,lmax
-	real,intent(in) :: dx,dy
-	real,intent(in) :: err,sigmaP,flag
-	real,intent(in) :: flat
-	real,intent(in) :: pmat(nvar,nx,ny,nrens-1)
-	real,intent(in) :: datain(nvar,nx,ny,lmax)
-	real,intent(out) :: dataout(nvar,nx,ny,lmax)
-
-	real :: mat(nvar,nx,ny,nrens)
-
-	integer ix,iy,ivar
-	real F1p,F2p,Up,Vp
-	real sigmaU, sigmaV
-	real dxm,dym
-
-	real, parameter :: pi = acos(-1.)
-	real, parameter :: rhoa = 1.2041
-	real, parameter :: er1 = 63781370. !max earth radius
-	real, parameter :: er2 = 63567523. !min earth radius
-	real fcor,er,theta
-
-	if ( lmax /= 1 ) error stop 'Bad vertical dimensions'
-
-        mat(:,:,:,1) = 0.
-        mat(:,:,:,2:nrens) = pmat
-
-	theta = flat * pi/180.
-	fcor = 2. * sin(theta) * (2.* pi / 86400.)
-	! earth radius with latitude
-	er = sqrt( ( (er1**2 * cos(theta))**2 + &
-     			(er2**2 * sin(theta))**2 ) / &
-     			( (er1 * cos(theta))**2 + &
-     			(er2 * sin(theta))**2 ) ) 
-
-	dxm = dx * pi/180. * er
-	dym = dy * pi/180. * er
-
-	do ivar = 1,nvar
-
-          select case(ivar)
-	      case(1)	!u-wind
-
-		do ix = 1,nx
-		do iy = 2,ny
-
-		  F1p = - (mat(1,ix,iy,iens) - mat(1,ix,iy-1,iens))
-		  F2p = (mat(2,ix,iy,iens) - mat(2,ix,iy-1,iens))
-
-		  ! if err is relative use this
-		  !sigmaU = err * abs(datain(ivar,ix,iy,1))
-		  sigmaU = err
-
-		  !Up = - (((F1p2 - F1p1)/dym) * sigmaP) / (rhoa * fcor)
-		  Up = (F1p + F2p) * sigmaU
-
-		  !dataout(ivar,ix,iy,1) = Up
-		  dataout(ivar,ix,iy,1) = datain(ivar,ix,iy,1) + Up
-
-		  if( datain(ivar,ix,iy,1).eq.flag ) dataout(ivar,ix,iy,1) = flag
-
-		end do
-		end do
-
-		! First row unchanged
-		dataout(ivar,:,1,1) = datain(ivar,:,1,1)
-		
-	    case(2)	!v-wind
-
-		do iy = 1,ny
-		do ix = 2,nx
-
-		  F1p = mat(1,ix,iy,iens) - mat(1,ix-1,iy,iens)
-		  F2p = - (mat(2,ix,iy,iens) - mat(2,ix-1,iy,iens))
-		  ! if err is relative use this
-		  !sigmaV = err * abs(datain(ivar,ix,iy,1))
-		  sigmaV = err
-
-		  !Vp = (((F1p2 - F1p1)/dxm) * sigmaP) / (rhoa * fcor)
-		  Vp = (F1p + F2p) * sigmaV
-
-		  !dataout(ivar,ix,iy,1) =  Vp
-		  dataout(ivar,ix,iy,1) = datain(ivar,ix,iy,1) + Vp
-
-		  if( datain(ivar,ix,iy,1).eq.flag ) dataout(ivar,ix,iy,1) = flag
-
-		end do
-		end do
-
-		! First row unchanged
-		dataout(ivar,1,:,1) = datain(ivar,1,:,1)
-
-	    case(3)	!pressure
-
-		dataout(ivar,:,:,1) = datain(ivar,:,:,1) ! no perturbation
-
-	  end select
-	end do
-	
-	end subroutine make_2geo_field
-
-
-!--------------------------------------------------
 	subroutine make_ws_pert(nvar,iens,nrens,nx,ny,lmax,pmat, &
 		datain,dataout,flag,err)
 !--------------------------------------------------
 	implicit none
         integer,intent(in) :: nvar,iens
         integer,intent(in) :: nrens,nx,ny,lmax
-        real,intent(in) :: pmat(nvar,nx,ny,nrens-1)
+        real,intent(in) :: pmat(1,nx,ny,nrens-1)
         real,intent(in) :: datain(nvar,nx,ny,lmax)
         real,intent(out) :: dataout(nvar,nx,ny,lmax)
         real,intent(in) :: err,flag
 
-	real :: mat(nvar,nx,ny,nrens)
+	real :: mat(1,nx,ny,nrens)
 
 	real wso(nx,ny),wse(nx,ny)
 	integer ivar,ix,iy
@@ -1127,14 +1122,16 @@ end program perturbeBC
 
 	wso = sqrt(datain(1,:,:,1)**2 + datain(2,:,:,1)**2)
 	wse = wso + err * mat(1,:,:,iens)
+	where (wse < 0)
+		wse = 0
+	end where
 
 	do ivar = 1,nvar
 	   select case (ivar)
 	     case default	!wind
 		do ix = 1,nx
 		do iy = 1,ny
-	     	  dataout(ivar,ix,iy,1) = datain(ivar,ix,iy,1) + &
-                                    wse(ix,iy)/wso(ix,iy)
+	     	  dataout(ivar,ix,iy,1) = datain(ivar,ix,iy,1) * wse(ix,iy)/wso(ix,iy)
 		  if (datain(ivar,ix,iy,1) == flag) dataout(ivar,ix,iy,1) = flag
 		end do
 		end do
@@ -1145,75 +1142,6 @@ end program perturbeBC
 
 
 	end subroutine make_ws_pert
-
-
-!--------------------------------------------------
-	subroutine make_ind_field_ws(nvar,iens,nrens,nx,ny,lmax,pmat, &
-     				datain,dataout,flag,err1)
-!--------------------------------------------------
-! The idea was to perturb u and to use a coefficient k around 1
-! k = wsp/ws
-! With these conditions the perturbation for v is:
-! dv=(-b +/- sqrt(b**2 - 4.*c))/2.
-! with b=2.*v and c=-(k**2 - 1.)*ws**2 + du**2 + 2.*u*du
-! but the sqrt must be positive so:
-! k>=k0==sqrt((du**2 + 2.*u*du -v**2)/ws**2 + 1.)
-! Anyway there is something wrong... NaNs and other..
-	implicit none
-
-	integer,intent(in) :: nvar,iens
-	integer,intent(in) :: nrens,nx,ny,lmax
-	real,intent(in) :: err1,flag
-	real,intent(in) :: pmat(nvar,nx,ny,nrens-1)
-	real,intent(in) :: datain(nvar,nx,ny,lmax)
-	real,intent(out) :: dataout(nvar,nx,ny,lmax)
-        real, allocatable :: u(:,:),du(:,:),v(:,:),dv1(:,:),k(:,:), &
-                            ws(:,:),uu(:,:),vv(:,:),b(:,:),c(:,:), &
-                            dv2(:,:)
-	real :: mat(nvar,nx,ny,nrens)
-        real k0
-
-	if ( lmax /= 1 ) error stop 'Bad vertical dimensions'
-
-        mat(:,:,:,1) = 0.
-        mat(:,:,:,2:nrens) = pmat
-
-        if (nvar /= 3) error stop 'dimension error'
-
-        allocate(u(nx,ny),du(nx,ny),v(nx,ny),dv1(nx,ny),k(nx,ny), &
-                ws(nx,ny),uu(nx,ny),vv(nx,ny),b(nx,ny),c(nx,ny), &
-                dv2(nx,ny))
-
-        u = datain(1,:,:,1)
-        v = datain(2,:,:,1)
-        ws = sqrt(u**2 + v**2)
-        du = mat(1,:,:,iens) * (err1 * abs(u))
-
-        k0 = maxval(sqrt((du**2 + 2.*u*du -v**2)/ws**2 + 1.))
-        k = k0 + mat(2,:,:,iens)/3. !Gaussian with av 1 and 0 and 2 as limits
-
-        ! u component
-        uu = flag
-        where (u /= flag)
-          uu = u + du
-        end where
-        dataout(1,:,:,1) = uu
-
-	! v component
-        b = 2. * v
-        c = -(k**2 - 1.)*ws**2 + du**2 + 2.*u*du
-        dv1 = (-b + sqrt(b**2 - 4.*c))/2.
-        dv2 = (-b - sqrt(b**2 - 4.*c))/2.
-        vv = flag
-        where (v /= flag)
-          vv = v + dv2
-        end where
-        dataout(2,:,:,1) = vv
-
-	! pressure
-	dataout(3,:,:,1) = datain(3,:,:,1)
-
-	end subroutine make_ind_field_ws
 
 !--------------------------------------------------
   subroutine var_limit_min(var,var_min,flag)

@@ -3,9 +3,9 @@ contains
 subroutine pseudo1D(A,nx,nrfields,rx,dx,n1)
    use m_random
    use m_newton1D
-#ifdef LINUX
+!#ifdef LINUX
    use mod_fftw3
-#endif
+!#endif
    implicit none
    integer, intent(in) :: nx                ! Dimension of random vector
    integer, intent(in) :: nrfields          ! Number of random vectors
@@ -36,29 +36,29 @@ subroutine pseudo1D(A,nx,nrfields,rx,dx,n1)
    real y(n1+2)
 #endif
 
-#ifdef LINUX
+!#ifdef LINUX
    integer(kind=8) plan
    complex arrayC(n1/2+1)
    real y(n1)
-#endif
+!#endif
 
-#ifndef SGI
-#ifndef LINUX
-   print *,'ranfield is only running on the following machines:'
-   print *,'   SGI'
-   print *,'   LINUX having FFTW3'
-   stop
-#endif
-#endif
+!#ifndef SGI
+!#ifndef LINUX
+!   print *,'ranfield is only running on the following machines:'
+!   print *,'   SGI'
+!   print *,'   LINUX having FFTW3'
+!   stop
+!#endif
+!#endif
 
    pi2=2.0*pi
    deltak=pi2/(real(n1)*dx)
    kappa=pi2/(real(n1)*dx)
    kappa2=kappa**2
 
-#ifdef LINUX
+!#ifdef LINUX
    call dfftw_plan_dft_c2r_1d(plan,n1,arrayC,y,FFTW_ESTIMATE)
-#endif
+!#endif
 
 #ifdef SGI
    call dzfft1dui(n1,coeff)
@@ -113,16 +113,16 @@ subroutine pseudo1D(A,nx,nrfields,rx,dx,n1)
       endif
 #endif
 
-#ifdef LINUX
+!#ifdef LINUX
       call dfftw_execute(plan)
-#endif
+!#endif
       A(1:nx,i)=y(1:nx)
 
    enddo
 
-#ifdef LINUX
+!#ifdef LINUX
    call dfftw_destroy_plan(plan)
-#endif
+!#endif
 
 end subroutine pseudo1D
 end module m_pseudo1D
