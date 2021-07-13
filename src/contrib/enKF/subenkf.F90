@@ -39,12 +39,13 @@
   double precision :: dvar
   
   svar = 1.
-  call addpar('ibarcl',svar)
   svar = 0.
+  call addpar('ibarcl',svar)
   call addpar('iconz',svar)
   call addpar('ibfm',svar)
   call addpar('imerc',svar)
   call addpar('ibio',svar)
+  call addpar('iturb',svar)
   dvar = 0.
   call daddpar('date',dvar)
   call daddpar('time',dvar)
@@ -91,25 +92,11 @@
 
   subroutine rst_write(rstname,atimea)
 
-  use mod_restart
-  use levels, only : hlv
-
   implicit none
 
   character(len=*), intent(in) :: rstname
   double precision, intent(in) :: atimea
   real*4 :: svar
-
-  ! adds parameters
-  !
-  svar = 1.
-  call putpar('ibarcl',svar)
-  svar = 0.
-  call putpar('iconz',svar)
-  call putpar('ibfm',svar)
-  call putpar('imerc',svar)
-  call putpar('ibio',svar)
-
 
   open(34,file=rstname,form='unformatted')
   call rst_write_record(atimea,34)
