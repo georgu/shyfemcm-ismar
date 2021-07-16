@@ -20,11 +20,41 @@ contains
 
   subroutine read_ensemble
 
+   use basin
+   use levels
+   use mod_geom_dynamic
+   use mod_hydro
+   use mod_hydro_vel
+   use mod_ts
+   use mod_conz
+
+   use mod_restart
+
    implicit none
 
    character(len=5) :: nrel,nal
    character(len=80) rstname
    integer ne
+
+   ! read basin and check dimensions
+   open(21, file=basfile, status='old', form='unformatted')
+   call basin_read_by_unit(21)
+   close(21)
+   if ((nkn /= nnkn).or.(nel /= nnel)) error stop "read_basin: dim error"
+
+   ! set vertical levels
+   nlv = nnlv
+   nlvdi = nnlv
+
+   ! init some shyfem vars
+   call mod_geom_dynamic_init(nkn,nel)
+   call mod_hydro_init(nkn,nel,nlv)
+   call mod_hydro_vel_init(nkn,nel,nlv)
+   call mod_ts_init(nkn,nlv)  
+   call levels_init(nkn,nel,nlv)
+   ! init concentration, this is a issue
+   !call mod_conz_init(1,nkn,nlvdi)
+
 
    ! Allocates the state Abk to store the ens states
    if (.not. allocated(Abk)) allocate(Abk(nrens))
@@ -86,10 +116,6 @@ contains
    call num2str(nanal,nal)
    do ne = 1,nrens
       call num2str(ne-1,nrel)
-      rstname='an'//nal//'_'//'en'//nrel//'b.rst'
-      call rst_read(rstname,atime_an) !This is to load var not present 
-                                   ! in the ens state. It should be removed.
-
       rstname='an'//nal//'_'//'en'//nrel//'a.rst'
       call write_state(Aan(ne),rstname)
    end do

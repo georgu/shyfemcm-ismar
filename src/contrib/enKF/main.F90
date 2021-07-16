@@ -37,11 +37,6 @@ program main
   call read_info
 
 !----------------------------------------------------
-! Set shyfem variables and init modules
-!----------------------------------------------------
-  call set_model_params
-
-!----------------------------------------------------
 ! Read the ensemble of model states
 !----------------------------------------------------
   call read_ensemble

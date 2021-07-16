@@ -163,20 +163,20 @@ main.o: ../femlib/mod/mod_enkf.mod ../femlib/mod/mod_ens_state.mod \
 		../femlib/mod/mod_mod_err.mod \
 		../femlib/mod/mod_mod_states.mod \
 		../femlib/mod/mod_para.mod 
-perturbeBC.o: ../femlib/mod/m_random.mod \
-		../femlib/mod/m_sample2d.mod 
 make_eof_ens_meteo.o: ../femlib/mod/m_random.mod
 mod_anafunc.o: ../femlib/mod/m_ensmean.mod \
 		../femlib/mod/m_mean_preserving_rotation.mod \
 		../femlib/mod/m_multa.mod \
 		../femlib/mod/m_random.mod \
 		../femlib/mod/m_randrot.mod 
-mod_enkf.o: ../femlib/mod/mod_ens_state.mod \
+mod_enkf.o: ../femlib/mod/levels.mod \
+		../femlib/mod/mod_ens_state.mod \
 		../femlib/mod/mod_manage_obs.mod \
 		../femlib/mod/mod_para.mod 
-mod_ens_state.o: ../femlib/mod/basin.mod \
+mod_ens_state.o: ../femlib/mod/basin.mod ../femlib/mod/levels.mod \
 		../femlib/mod/mod_conz.mod \
 		../femlib/mod/mod_dimensions.mod \
+		../femlib/mod/mod_geom_dynamic.mod \
 		../femlib/mod/mod_hydro.mod \
 		../femlib/mod/mod_hydro_vel.mod \
 		../femlib/mod/mod_init_enkf.mod \
@@ -195,6 +195,8 @@ mod_mod_err.o: ../femlib/mod/mod_ens_state.mod \
 		../femlib/mod/mod_init_enkf.mod \
 		../femlib/mod/mod_mod_states.mod 
 mod_mod_states.o: ../femlib/mod/mod_dimensions.mod
+perturbeBC.o: ../femlib/mod/iso8601.mod ../femlib/mod/m_random.mod \
+		../femlib/mod/m_sample2d.mod 
 subenkf.o: ../femlib/mod/basin.mod ../femlib/mod/levels.mod \
 		../femlib/mod/m_random.mod \
 		../femlib/mod/m_sample2d.mod \

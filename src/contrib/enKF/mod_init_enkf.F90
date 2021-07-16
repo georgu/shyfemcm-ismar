@@ -46,28 +46,4 @@ contains
   
   end subroutine read_info
 
-!***************************************************************
-
-  subroutine set_model_params
-  use mod_dimensions
-  use basin
-  implicit none
-
-  open(21, file=basfile, status='old', form='unformatted')
-  call basin_read_by_unit(21)
-  close(21)
-
-  if ((nkn /= nnkn).or.(nel /= nnel)) error stop "read_basin: dim error"
-
-  ! init modules
-  !
-  call init_shyfem_vars(nnkn,nnel,nnlv)
-
-  ! addpar for restart
-  !
-  call add_rst_params
-
-  end subroutine set_model_params
-
-
 end module mod_init_enkf

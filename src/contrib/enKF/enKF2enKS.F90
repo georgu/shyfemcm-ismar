@@ -11,6 +11,7 @@ program enKF2enKS
 
   use basin
   use levels, only : nlv
+  use mod_restart
   implicit none
 
   character(len=4) :: arg1
@@ -53,7 +54,6 @@ program enKF2enKS
 
   !--- init variables
   call init_shyfem
-  call add_rst_params
 
   !--- open rst files  
   do nre = 1,nrens
@@ -109,16 +109,29 @@ program enKF2enKS
 
      call push_matrix(sdim,nrens,nre,Astate)
   end do
+  
+  ! add param 
+  if ( rrec == 0 ) then
+     call addpar('ibarcl',ibarcl_rst)
+     call addpar('iconz',iconz_rst)
+     call addpar('iwvert',iwvert_rst) !maybe not
+     call addpar('ieco',ieco_rst) !maybe not
+     call addpar('ibio',0)
+     call addpar('ibfm',0)
+     call addpar('imerc',imerc_rst)
+     call addpar('iturb',iturb_rst)
 
-
+     call daddpar('date',0.)
+     call daddpar('time',0.)
+  end if
 
   !--- make mean and std of the ensemble Kalman Filter
   call make_mn_std(sdim,nrens,Astate,AmeanKF,AstdKF)
 
   call pull_state(sdim,AmeanKF)
-  call rst_write_rec(atime,16)
+  call rst_write_record(atime,16)
   call pull_state(sdim,AstdKF)
-  call rst_write_rec(atime,17)
+  call rst_write_record(atime,17)
  
   if (trim(arg5) == 'ks') then
 
@@ -131,16 +144,16 @@ program enKF2enKS
     call make_mn_std(sdim,nrens,Astate,AmeanKS,AstdKS)
 
     call pull_state(sdim,AmeanKS)
-    call rst_write_rec(atime,18)
+    call rst_write_record(atime,18)
     call pull_state(sdim,AstdKS)
-    call rst_write_rec(atime,19)
+    call rst_write_record(atime,19)
 
     !--- write ensemble 
     if (trim(arg2) == 'full') then
       do nre = 1,nrens
          fid = 20 + nrens + nre
          call pull_matrix(sdim,nrens,nre,Astate)
-         call rst_write_rec(atime,fid)
+         call rst_write_record(atime,fid)
       end do
     end if
 
@@ -300,37 +313,6 @@ end subroutine pull_state
 
 !********************************************************
 
-subroutine rst_write_rec(atimea,fid)
-
-  use mod_restart
-  use levels, only : hlv
-
-  implicit none
-
-  integer, intent(in) :: fid
-  double precision, intent(in) :: atimea
-  real*4 :: svar
-
-  ! adds parameters
-  !
-  svar = 1.
-  call putpar('ibarcl',svar)
-  svar = 0.
-  call putpar('iconz',svar)
-  call putpar('ibfm',svar)
-  call putpar('imerc',svar)
-  call putpar('ibio',svar)
-
-  ! In 2D barotropic hlv is set to 10000.
-  !
-  if (size(hlv) == 1) hlv = 10000.
-
-  call rst_write_record(atimea,fid)
-
-end subroutine rst_write_rec
-
-!********************************************************
-
 subroutine init_shyfem
 
   use basin
@@ -364,30 +346,6 @@ subroutine init_shyfem
   call levels_init(nkn,nel,nlv)
 
 end subroutine init_shyfem
-
-!********************************************************
-
-  subroutine add_rst_params
-
-  use mod_restart
-
-  implicit none
-  real*4 :: svar
-  double precision :: dvar
-
-  svar = 1.
-  call addpar('ibarcl',svar)
-  svar = 0.
-  call addpar('iconz',svar)
-  call addpar('ibfm',svar)
-  call addpar('imerc',svar)
-  call addpar('ibio',svar)
-
-  dvar = 0.
-  call daddpar('date',dvar)
-  call daddpar('time',dvar)
-
-  end subroutine add_rst_params
 
 !********************************************************
 

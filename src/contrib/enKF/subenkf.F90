@@ -1,57 +1,6 @@
 !
 ! Copyright (C) 2017, Marco Bajo, CNR-ISMAR Venice, All rights reserved.
 !
-  subroutine init_shyfem_vars(nk,ne,nl)
-
-  use basin
-  use mod_restart
-  use mod_geom_dynamic
-  use levels
-  use mod_hydro
-  use mod_hydro_vel
-  use mod_ts
-  use mod_conz
-
-  implicit none
-
-  integer, intent(in) :: nk,ne,nl
-
-  call mod_geom_dynamic_init(nk,ne)
-  call mod_hydro_init(nk,ne,nl)
-  call mod_hydro_vel_init(nk,ne,nl)
-  call mod_ts_init(nk,nl)  
-  if (id_conz_rst > 0) call mod_conz_init(id_conz_rst,nk,nl)
-  call levels_init(nk,ne,nl)
-
-  nlvdi = nl
-  nlv = nl
-
-  end subroutine init_shyfem_vars
-
-!********************************************************
-
-  subroutine add_rst_params
-
-  use mod_restart
-
-  implicit none
-  real*4 :: svar
-  double precision :: dvar
-  
-  svar = 1.
-  svar = 0.
-  call addpar('ibarcl',svar)
-  call addpar('iconz',svar)
-  call addpar('ibfm',svar)
-  call addpar('imerc',svar)
-  call addpar('ibio',svar)
-  call addpar('iturb',svar)
-  dvar = 0.
-  call daddpar('date',dvar)
-  call daddpar('time',dvar)
-
-  end subroutine add_rst_params
-
 !********************************************************
 
   subroutine rst_read(rstname,atimea)
@@ -66,6 +15,7 @@
   integer ierr,iflag
   double precision atimef
 
+  integer, save :: icall = 0
 
   open(24,file=trim(rstname),status='old',form='unformatted',iostat=ierr)
   if (ierr /= 0) error stop 'rst_read: Error opening file'
@@ -75,9 +25,29 @@
      if (atimef /= atimea) goto 89
   close(24)
 
-  hlv = hlvrst
-  ilhv = ilhrst
-  ilhkv = ilhkrst
+  if ( icall == 0 ) then
+     call addpar('ibarcl',ibarcl_rst)
+     call addpar('iconz',iconz_rst)
+     call addpar('iwvert',iwvert_rst) !maybe not
+     call addpar('ieco',ieco_rst) !maybe not
+     call addpar('ibio',0)
+     call addpar('ibfm',0)
+     call addpar('imerc',imerc_rst)
+     call addpar('iturb',iturb_rst)
+
+     call daddpar('date',0.)
+     call daddpar('time',0.)
+
+     write(*,*) 'SHYFEM flags from restart:'
+     write(*,*) 'ibarcl	= ',ibarcl_rst
+     write(*,*) 'iconz	= ',iconz_rst
+     write(*,*) 'iwvert	= ',iwvert_rst
+     write(*,*) 'ieco	= ',ieco_rst
+     write(*,*) 'imerc	= ',imerc_rst
+     write(*,*) 'iturb	= ',iturb_rst
+  end if
+
+  icall = icall + 1
 
   return
 
