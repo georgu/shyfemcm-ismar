@@ -3,7 +3,7 @@ This is the README file for the ensemble
 Kalman Filter for the SHYFEM model
 ============================================
 
-    Copyright (c) 2017 by 
+    Copyright (c) 2017-2021 by 
 
     Marco Bajo
     Oceanography, ISMAR-CNR
@@ -21,105 +21,74 @@ Kalman Filter for the SHYFEM model
     See <http://www.gnu.org/licenses/>.
 
 
-
-Directory structure
+Programs
 ===================
 
-.		Main code and utilities
-EvKF		Original Evenseen's code used for the analysis and
-		for generating perturbations.
-
-
-How it works
-===================
-Data assimilation (DA) use observations to improve the model results.
-The final state, called "analysis" minimises the errors of the model
-state, called "background", considering the observations with their
-errors.
-The period with observations is defined as "assimilation window".
-This program needs an ensemble of restart files at the begin of the
-assimilation window (first observation). 
-A good idea is also to keep each member of the ensemble separated using
-different forcings and/or boundary conditions.
-The spread of the forcing and of the boundary condition should represent
-their errors. 
-To create an ensemble of forcing and/or BC consider the programs:
-make_ens_meteo.F90 and make_eof_meteo.F90
+- enKF.sh : main script to execute the assimilation;
+- shyfem_ens.sh : run many shyfem simulations using different str files with a
+  common basename;
+- split_exts.sh : split many ext files with a common basename;
+- merge_ens.sh : post-process ext and shy files in analysis, merging them;
+- mean_std_ts.sh : compute mean and std timeseries of an ensemble of
+  timeseries with a common basename;
+- perturbeBC : makes an ensemble of perturbed boundary conditions (lateral,
+  surface, fem-files, timeseries);
+- make_eof_ens_meteo : makes an ensemble of perturbed winds with PCA (to
+  check);
+- make_antime_list : make the antime_list.txt, checking all the observations;
+- enKF2enKS : Kalman Smoother from the output of Kalman Filter. Do not use
+  with localisation.
 
 
 Before running the code
 ===================
 
-In order to run the enKF.sh script you need a program named parallel 
-and the libraries: liblapack-dev, libfftw3-dev. You should find them 
-in your Linux distribution.
-
-Installation with a Debian OS from root:
-apt-get update && apt-get install parallel liblapack-dev libfftw3-dev
-
-Several options of the DA can be changed in mod_para.F90.
-
-You need to make the following files:
-
-- assconf.dat
-- ens_list.txt
-- antime_list.txt
-- obs_list.txt
-- nrens restart files
-- nrens skel files
-- nrobs observation files
-- nrobs observation info files
+Install all the packages needed to compile SHYFEM, compile it and then
+install also the following software:
+- parallel;
+- liblapack-dev;
+- libfftw3-dev.
 
 
 Running the code
 ===================
-
-In order to run the DA execute:
-
-./enKF.sh [n. of threads]
-
-At the end of this process you can run the Kalman Smoother analysis
-with (no with local analysis at the moment):
-
-./enKF2enKS [nrens] [output]
-
 
 Some files must be prepared before running enKF.sh:
 
 ----------
 assconf.dat
 ----------
-This file must contain the following information in different lines:
-- Name of the bas-file with the bas extension;
-- Dimension of the model state (nkn nel nlv);
-- Time step for the restart files (remember rst files can be converted into shy
-  files). Use -1 to set the minimum number of steps or use a value in seconds.
-  However, you must have a restart record at every analysis times, so if you are in
-  doubt use -1;
-- Initial ensemble: 0 for an ensemble loaded from files (suggested), 1 to
-  create an ensemble from a state (to be tested - just z level is perturbed).
-  With 1 make also a file named "init_ens.info", as described below;
+File with 4 lines with:
+- basin (e.g., medit_73830.bas);
+- nkn,nel,nlv (e.g., 40717 73829 1);
+- Timestep of restart files (use -1 if you don't know);
+- Loading an ensemble of restart files for the initial states (0,
+  recommended) or creation of an initial ensemble of restart files from one file (1);
 
 ----------
 ens_list.txt
 ----------
-This is a list of skel and rst files of the ensemble. Starting from member 0,
-each row must contain the name of a skel and a rst files, separated by space.
-The ensemble size is the number of rows of this file.
+List of skel (to make the str) and restart initial files. For example:
 
-----------
-antime_list.txt
-----------
-A list of the times, in string format, of the analysis steps. It is advisable to have analysis steps
-at least of one hour. At least an observation must be present at each step.
-String format has the same convention used in SHYFEM model (e.g., YYYY-MM-DD::HH:MM:SS)
+medit_73830_S6_000.skel restart_000.rst
+medit_73830_S6_001.skel restart_001.rst
+medit_73830_S6_002.skel restart_002.rst
+...
 
 ----------
 obs_list.txt
 ----------
-A list of files containing in each line:
+A list of observation files containing in each line:
 - a flag of the type of observation;
 - the name of the file.
+
+example:
+
+0DLEV Ancona_obs_ass.dat
+0DLEV Bari_obs_ass.dat
+0DLEV Cagliari_obs_ass.dat
+0DLEV Catania_obs_ass.dat
+...
 
 Possible flag for the observations are:
 - 0DLEV : sea level timeseries;
@@ -127,14 +96,18 @@ Possible flag for the observations are:
 - 0DSAL : surface salinity timeseries;
 - 2DVEL : FEM-file with 2D surface current fields (e.g., HFR radar).
 
-The structure of the observation files is described below.
+----------
+antime_list.txt
+----------
+A list of the times, in SHYFEM string format, of the analysis steps. Use
+make_antime_list to do it.
+
 
 ----------
 init_ens.info (optional)
 ----------
-
-Set the initial ensemble to 1 in the configuration file.
-This file sets the white noise parameters to make an initial ensemble of
+Make this file only if you choose to make the initial ensemble of
+states This file sets the white noise parameters to make an initial ensemble of
 states. Only the sea level is perturbed.
 
 init_ens.info must contain a row with:
@@ -149,7 +122,6 @@ init_ens.info must contain a row with:
 ----------
 mod_err.info (optional)
 ----------
-
 Set mode_an = 1 in mod_para.F90 to activate the model errors.
 This file is used to set the red noise parameters to propagate the model error,
 by using an augmented state.
@@ -171,33 +143,33 @@ mod_err.info must contain a row with:
 ----------
 skel files
 ----------
-These are the files to make the str files of the ensemble members during the
-assimilation. If you made a previous ensemble you can use those str files to
-create these. 
-It's extremely important that you set the following strings in the skel files:
+These are files used to make the str files of the ensemble members during all
+the steps of the data assimilation. They should have the same settings of the
+initial enseble restart files.
+It is extremely important that you write exactly the following linee:
 
-- Section title:
-  NAMESIM
+- In the section $title the second line must contain the string: NAMESIM
 
-- Section para: 
+- In the section $para the following strings must be copied exectly:
   itanf = 'ITANF'
   itend = 'ITEND'
   itrst = 'ITANF'
   idtrst = IDTRST	(no quotation marks)
 
-- Section name:
+- In the section $name the following string must be copied exectly:
   restrt = 'RESTRT'
 
-If you want to save the results during the analysis add:
+If you want to save the results during the analysis add the following strings
+in $para:
 
-- Section para:
   itrst = 'ITANF'
   itout = 'ITANF'
   itext = 'ITANF'
   itcon = 'ITANF'
   itmflx = 'ITANF'
 
-All the other parameters can be set as you like.
+You can also use the SHYFEM program rst2shy to obtain shy files from the
+restarts.
 
 ----------
 Initial restart files
@@ -231,34 +203,5 @@ for the standard deviation.
 
 Parameters of the assimilation
 ===================
+
 See the file mod_para.F90 to set some more assimilation parameters.
-
-
-Utilities
-===================
-
-shyfem_ens.sh:
-Executes normal shyfem runs in parallel by using an ensemble of str files.
-
-merge_ens.sh:
-Merges ext or shy files produced during the analysis period
-(i.e., anXXXXX_enYYYYY.ZZZ) in nrens files.
-Timeseries are extracted in text files, with both the background and
-the analysis values at the analysis times. Shy files are merged keeping
-the analysis fields at the analysis times.
-Anyway, it's better to use the rst files and then use rst2shy.
-
-split_ext.sh:
-Splits an ensemble of ext files with a common basename.
-
-make_ens_wind:
-Makes an ensemble from a deterministic wind. FEM file format. Works also for HFR radar fem files
-and can be used also for the boundary condition with some adaptations.
-
-make_eof_wind:
-The same of the previous one, but using a EOF analysis of the wind and varying
-the PCs.
-
-enKF2enKS:
-Makes the Kalman Smoother analysis after the Kalman Filter run.
-

@@ -23,7 +23,11 @@ SIMDIR=$(pwd)		# current dir
 
 Usage()
 {
-  echo "Usage: enKF.sh [n. of threads]"
+  echo "Usage: enKF.sh [n] [out]"
+  echo
+  echo "n = n. of threads"
+  echo "out = 0 only mean and std, 1 all members (for enKS)"
+  echo
   exit 0
 }
 
@@ -295,15 +299,13 @@ done
 #----------------------------------------------------------
 #----------------------------------------------------------
 
-if [ $1 ]; then
+if [ $2 ]; then
    nthreads=$1
    Read_conf
+   out_verb=$2
 else
    Usage
 fi
-
-# Verbose output, save the rst files of all the members
-out_verb=0
 
 # Compiles the enKF code with the right total dimensions
 Compile_enkf $sdim
