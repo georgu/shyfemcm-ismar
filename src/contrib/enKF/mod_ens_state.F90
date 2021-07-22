@@ -397,6 +397,7 @@ contains
     use mod_hydro_vel
     use mod_ts
     use mod_conz
+    use mod_restart
     implicit none
  
     type(states4),intent(inout) :: A4
@@ -405,8 +406,13 @@ contains
     A4%u = utlnv
     A4%v = vtlnv
     A4%z = znv
-    A4%t = tempv
-    A4%s = saltv
+    if (ibarcl_rst /= 0) then
+       A4%t = tempv
+       A4%s = saltv
+    else
+       A4%t = 0.
+       A4%s = 0.
+    end if
    
    end subroutine push_state
 
@@ -417,6 +423,7 @@ contains
     use mod_hydro_vel
     use mod_ts
     use mod_conz
+    use mod_restart
     implicit none
  
     type(states4),intent(in) :: A4
@@ -425,8 +432,13 @@ contains
     utlnv = A4%u
     vtlnv = A4%v
     znv = A4%z
-    tempv = A4%t
-    saltv = A4%s
+    if (ibarcl_rst /= 0) then
+       tempv = A4%t
+       saltv = A4%s
+    else
+       tempv = 0.
+       saltv = 0.
+    end if
 
     ! make zenv
     call layer_thick

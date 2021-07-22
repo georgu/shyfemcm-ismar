@@ -48,7 +48,7 @@
   ! are allowed
   do no = 1,nobs_tot
      if (islev /= 0) then
-	  if (no <= n_0dlev) then		!e.g. form timeseries
+	  if (no <= n_0dlev) then		!e.g. from timeseries
 		  xobs(no) = o0dlev(no)%x
 		  yobs(no) = o0dlev(no)%y
 	  else if ((no > n_0dlev).and. &
@@ -64,7 +64,7 @@
 		  !yobs(no) = o2dlev(no)%y
 	  end if
      else if (istemp /= 0) then
-	  if (no <= n_0dtemp) then			!e.g. form timeseries
+	  if (no <= n_0dtemp) then			!e.g. from timeseries
 		  xobs(no) = o0dtemp(no)%x
 		  yobs(no) = o0dtemp(no)%y
 	  else if ((no > n_0dtemp).and. &
