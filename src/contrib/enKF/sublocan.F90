@@ -28,7 +28,7 @@
   integer ::  lnedim 
   integer :: nobs_tot_k,nobs_tot_e
 
-  real, allocatable :: xobs(:),yobs(:)
+  real, allocatable :: xobs(:),yobs(:),rho_loc(:)
   real, allocatable :: Ak_loc(:,:),Ak_an(:,:),Ak_bk(:,:)
   real, allocatable :: Ane_loc(:,:),Ane_an(:,:),Ane_bk(:,:)
 
@@ -47,19 +47,21 @@
 	  lnedim = 2*nnlv
   end if
   
-  allocate(xobs(nobs_tot),yobs(nobs_tot))
+  allocate(xobs(nobs_tot),yobs(nobs_tot),rho_loc(nobs_tot))
   allocate(Ak_loc(lkdim,nrens),Ak_an(lkdim,nrens),Ak_bk(lkdim,nrens))
   allocate(Ane_loc(lnedim,nrens),Ane_an(lnedim,nrens),Ane_bk(lnedim,nrens))
   allocate(ido(nobs_tot),wo(nobs_tot))
 
   ! find the coordinates of the measurements
   ! note that in read_obs only obs of the same type
-  ! are allowed
+  ! are allowed, otherwise this is wrong.
+  if (verbose) write(*,*) 'Observations in local analysis:'
   do no = 1,nobs_tot
      if (islev /= 0) then
 	  if (no <= n_0dlev) then		!e.g. from timeseries
 		  xobs(no) = o0dlev(no)%x
 		  yobs(no) = o0dlev(no)%y
+		  rho_loc(no) = o0dlev(no)%rhol
 	  else if ((no > n_0dlev).and. &
 		  (no <= n_0dlev+n_1dlev)) then	!e.g. altimeter track
 	          write(*,*) 'Do it!'
@@ -76,6 +78,7 @@
 	  if (no <= n_0dtemp) then			!e.g. from timeseries
 		  xobs(no) = o0dtemp(no)%x
 		  yobs(no) = o0dtemp(no)%y
+		  rho_loc(no) = o0dlev(no)%rhol
 	  else if ((no > n_0dtemp).and. &
 		  (no <= n_0dtemp+n_1dtemp)) then	!e.g. from profiles
 	          write(*,*) 'Do it!'
@@ -92,6 +95,7 @@
 	  if (no <= n_0dsalt) then			!e.g. from timeseries
 		  xobs(no) = o0dsalt(no)%x
 		  yobs(no) = o0dsalt(no)%y
+		  rho_loc(no) = o0dlev(no)%rhol
 	  else if ((no > n_0dsalt).and. &		!e.g. from profiles
 		  (no <= n_0dsalt+n_1dsalt)) then
 	          write(*,*) 'Do it!'
@@ -108,6 +112,8 @@
 	  write(*,*) 'Do it!'
 	  stop
      end if
+
+     if (verbose) write(*,*) 'x,y,rho = ',xobs(no),yobs(no),rho_loc(no)
 
   end do
 
@@ -126,7 +132,7 @@
      do no = 1,nobs_tot
 
 	dist = sqrt( (xgv(k)-xobs(no))**2 + (ygv(k)-yobs(no))**2 )
-	call find_weight(rho_loc,dist,w)
+	call find_weight(rho_loc(no),dist,w)
 
 	if ( w > eps_la ) then
            nno = nno + 1
@@ -204,7 +210,7 @@
 	ye = ye/3.
 	dist = sqrt( (xe-xobs(no))**2 + (ye-yobs(no))**2 )
 
-	call find_weight(rho_loc,dist,w)
+	call find_weight(rho_loc(no),dist,w)
 
 	if ( w > eps_la ) then
            nno = nno + 1

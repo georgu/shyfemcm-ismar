@@ -190,18 +190,21 @@ string-time1 value1
 string-time2 value2 
 ...
 
-For each timeseries file a info file is needed, with the same name added of an
-extension '.info'. This file must contain in 1 row: x y z std
-x, y, z = Coordinate of the observation, in the same reference system of the bas file. 
-std = standard deviation (estimated error) of the observations
-
 2)
 Fem file with a surface current field. Bad values should be flagged with a -999.
 As for the sea level timeseries, an info file is needed, containing a value
 for the standard deviation.
 
+For each observation file you need a file [obsfile.info] (add a string .info
+to the obsfile).
+This file must contain in 1 row: x y z std rho_loc
+x, y, z = Coordinate of the observation, in the same reference system of the bas file
+std = standard deviation (estimated error) of the observations
+rho_loc = geographical radius for the local analysis (not used if isloc = 0 in
+mod_para.F90).
 
 Parameters of the assimilation
 ===================
 
-See the file mod_para.F90 to set some more assimilation parameters.
+See the file mod_para.F90 to set some more assimilation parameters, like the
+method of data assimilation, the use of the local analysis and more.

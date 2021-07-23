@@ -114,7 +114,7 @@ program main
 
      elseif (is_local == 1) then
 
-	write(*,*) 'Running local analysis. rho_loc: ',rho_loc
+	write(*,*) 'Running local analysis...'
         allocate(Aan(nrens))
         call matrix_to_tystate(ibarcl_rst,nrens,ndim,Amat,Aan)
         deallocate(Amat)

@@ -28,6 +28,7 @@ module mod_obs_states
       real :: std                    ! std value
       integer :: stat		     ! = 0,1,2,3,4
       integer  :: id                 ! id number of the file
+      real  :: rhol                  ! radius for local analysis (if used)
    end type scalar_0d
 
 ! vector variable in a field (2D)

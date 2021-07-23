@@ -45,7 +45,7 @@ contains
   logical linit
   integer nobs
   double precision tobs
-  real xobs,yobs,zobs,vobs,stdobs
+  real xobs,yobs,zobs,vobs,stdobs,rho
   integer statobs
 
   ! flag for the presence of obs
@@ -104,7 +104,7 @@ contains
              kinit = n_0dlev
              call read_scalar_0d('0DLEV',linit,trim(ofile(n)%name),TEPS,&
                   kinit,kend,tobs,xobs,yobs,zobs,&
-                  vobs,stdobs,statobs)
+                  vobs,stdobs,statobs,rho)
              if (kend > kinit) then
 		n_0dlev = n_0dlev + 1
 		islev = 1
@@ -117,7 +117,7 @@ contains
              kinit = n_0dtemp
              call read_scalar_0d('0DTEM',linit,trim(ofile(n)%name),TEPS,&
                   kinit,kend,tobs,xobs,yobs,zobs,&
-                  vobs,stdobs,statobs)
+                  vobs,stdobs,statobs,rho)
              if (kend > kinit) then
 		n_0dtemp = n_0dtemp + 1
                 istemp = 1
@@ -130,7 +130,7 @@ contains
              kinit = n_0dsalt
              call read_scalar_0d('0DSAL',linit,trim(ofile(n)%name),TEPS,&
                   kinit,kend,tobs,xobs,yobs,zobs,&
-                  vobs,stdobs,statobs)
+                  vobs,stdobs,statobs,rho)
              if (kend > kinit) then
 		n_0dsalt = n_0dsalt + 1
                 issalt = 1
@@ -180,7 +180,7 @@ contains
              linit = .false.
              call read_scalar_0d('0DLEV',linit,trim(ofile(n)%name),TEPS,&
                   kinit,kend,tobs,xobs,yobs,zobs,&
-                  vobs,stdobs,statobs)
+                  vobs,stdobs,statobs,rho)
              if ((kend > kinit).and.(statobs == 0)) then 
 		if (verbose) write(*,*) 'Station n. ',n
                 o0dlev(kend)%t = tobs
@@ -191,6 +191,7 @@ contains
                 o0dlev(kend)%std = stdobs
                 o0dlev(kend)%stat = statobs
                 o0dlev(kend)%id = n
+                o0dlev(kend)%rhol = rho
 
                 nobs_tot = nobs_tot + 1
              end if
@@ -199,7 +200,7 @@ contains
              linit = .false.
              call read_scalar_0d('0DTEM',linit,trim(ofile(n)%name),TEPS,&
                   kinit,kend,tobs,xobs,yobs,zobs,&
-                  vobs,stdobs,statobs)
+                  vobs,stdobs,statobs,rho)
              if ((kend > kinit).and.(statobs == 0)) then 
 		if (verbose) write(*,*) 'Station n. ',n
                 o0dtemp(kend)%t = tobs
@@ -210,6 +211,7 @@ contains
                 o0dtemp(kend)%std = stdobs
                 o0dtemp(kend)%stat = statobs
                 o0dtemp(kend)%id = n
+                o0dlev(kend)%rhol = rho
 
                 nobs_tot = nobs_tot + 1
              end if
@@ -219,7 +221,7 @@ contains
              linit = .false.
              call read_scalar_0d('0DSAL',linit,trim(ofile(n)%name),TEPS,&
                   kinit,kend,tobs,xobs,yobs,zobs,&
-                  vobs,stdobs,statobs)
+                  vobs,stdobs,statobs,rho)
              if ((kend > kinit).and.(statobs == 0)) then 
 		if (verbose) write(*,*) 'Station n. ',n
                 o0dsalt(kend)%t = tobs
@@ -230,6 +232,7 @@ contains
                 o0dsalt(kend)%std = stdobs
                 o0dsalt(kend)%stat = statobs
                 o0dsalt(kend)%id = n
+                o0dlev(kend)%rhol = rho
 
                 nobs_tot = nobs_tot + 1
              end if
@@ -259,7 +262,8 @@ contains
 
 !******************************************************
 
-  subroutine read_scalar_0d(olabel,linit,filin,eps,kinit,kend,atime_obs,xv,yv,zv,vv,stdvv,ostatusv)
+  subroutine read_scalar_0d(olabel,linit,filin,eps,kinit,kend,atime_obs,xv,yv,zv,vv,stdvv, &
+		  ostatusv,rho)
 
   use iso8601
   implicit none
@@ -271,7 +275,7 @@ contains
   integer, intent(in)          :: kinit
   integer, intent(out)         :: kend
   double precision, intent(out):: atime_obs
-  real, intent(out)            :: xv,yv,zv,vv,stdvv
+  real, intent(out)            :: xv,yv,zv,vv,stdvv,rho
   integer, intent(out)         :: ostatusv
   integer ios
   real x,y,z,v,stdv
@@ -293,7 +297,7 @@ contains
   !
   open(27,file=trim(filin)//'.info', status = 'old', form = 'formatted', iostat = ios)
   if (ios /= 0) error stop 'read_scalar_0d: error opening info file'
-  read(27,*) x,y,z,stdv
+  read(27,*) x,y,z,stdv,rho
   close(27)
 
   ! read obs file
@@ -399,7 +403,7 @@ contains
   character(len=50) :: string
   integer ostatus
   logical bdata
-  real x,y,uu,vv,ostd
+  real x,y,uu,vv,ostd,rho
   integer ix,iy
   double precision atime_obs
 
@@ -409,7 +413,7 @@ contains
   !
   open(27,file=trim(filin)//'.info', status = 'old', form = 'formatted', iostat = ios)
   if (ios /= 0) error stop 'read_2dvel: error opening file'
-  read(27,*) ostd
+  read(27,*) ostd,rho
   close(27)
 
   ! open fem file
