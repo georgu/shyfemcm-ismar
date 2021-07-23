@@ -14,6 +14,7 @@
   use mod_ens_state
   use mod_manage_obs
   use basin
+  use mod_restart , only : ibarcl_rst
 
   implicit none
 
@@ -23,8 +24,8 @@
   real dist,w
   real xe,ye
 
-  integer, parameter ::  lkdim = 2*nnlv+1
-  integer, parameter ::  lnedim = 2*nnlv
+  integer ::  lkdim 
+  integer ::  lnedim 
   integer :: nobs_tot_k,nobs_tot_e
 
   real, allocatable :: xobs(:),yobs(:)
@@ -37,6 +38,14 @@
   real, allocatable :: innovl(:),D1l(:,:),Sl(:,:),El(:,:),Rl(:,:)
 
   real, parameter :: eps_la = 1e-4   !Minimum value to limit the local analysis window
+
+  if (ibarcl_rst == 0) then
+	  lkdim = 1
+	  lnedim = 2*nnlv
+  else
+	  lkdim = 1 + 2*nnlv
+	  lnedim = 2*nnlv
+  end if
   
   allocate(xobs(nobs_tot),yobs(nobs_tot))
   allocate(Ak_loc(lkdim,nrens),Ak_an(lkdim,nrens),Ak_bk(lkdim,nrens))
@@ -107,7 +116,7 @@
   lupdate_randrot = .true.
   do k = 1,nnkn
 
-     call type_to_kmat(Ak_bk,k,lkdim)
+     call type_to_kmat(ibarcl_rst,Ak_bk,k,lkdim)
 
      Ak_loc = Ak_bk	! set the local analysis equal to the global
 
@@ -165,7 +174,7 @@
 
      Ak_an = Ak_bk + (Ak_loc - Ak_bk)
 
-     call kmat_to_type(Ak_an,k,lkdim)
+     call kmat_to_type(ibarcl_rst,Ak_an,k,lkdim)
 
   end do
   write(*,*) 'Number of nodes with local analysis: ',nk_l
@@ -275,18 +284,24 @@
 
 !*************************************************************
 
-  subroutine type_to_kmat(Ak_bk,k,kdim)
+  subroutine type_to_kmat(ibrcl,Ak_bk,k,kdim)
   use mod_ens_state
   implicit none
+  integer, intent(in) :: ibrcl
   integer, intent(in) :: k,kdim
   real, intent(out) :: Ak_bk(kdim,nrens)
   integer n
 
   do n = 1,nrens
     Ak_bk(1,n) = Abk(n)%z(k)
-    Ak_bk(2:nnlv+1,n) = Abk(n)%t(:,k)
-    Ak_bk(nnlv+2:2*nnlv+1,n) = Abk(n)%s(:,k)
   end do
+
+  if (ibrcl > 0) then
+     do n = 1,nrens
+        Ak_bk(2:nnlv+1,n) = Abk(n)%t(:,k)
+        Ak_bk(nnlv+2:2*nnlv+1,n) = Abk(n)%s(:,k)
+     end do
+  end if
 
   end subroutine type_to_kmat
 
@@ -308,18 +323,24 @@
 
 !*************************************************************
 
-  subroutine kmat_to_type(Ak_an,k,kdim)
+  subroutine kmat_to_type(ibrcl,Ak_an,k,kdim)
   use mod_ens_state
   implicit none
+  integer, intent(in) :: ibrcl
   integer, intent(in) :: k,kdim
   real, intent(in) :: Ak_an(kdim,nrens)
   integer n
 
   do n = 1,nrens
     Aan(n)%z(k) = Ak_an(1,n)
-    Aan(n)%t(:,k) = Ak_an(2:nnlv+1,n)
-    Aan(n)%s(:,k) = Ak_an(nnlv+2:2*nnlv+1,n)
   end do
+
+  if (ibrcl > 0) then
+     do n = 1,nrens
+        Aan(n)%t(:,k) = Ak_an(2:nnlv+1,n)
+        Aan(n)%s(:,k) = Ak_an(nnlv+2:2*nnlv+1,n)
+     end do
+  end if
 
   end subroutine kmat_to_type
 

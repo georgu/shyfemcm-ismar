@@ -15,7 +15,6 @@ module mod_mod_states
       real t(nnlv,nnkn)                      ! 3-D Temperature
       real s(nnlv,nnkn)                      ! 3-D Salinity 
    end type states
-   integer, save ::  global_ndim = 2*nnlv*nnel + nnkn + 2*nnlv*nnkn
 
 ! single precision model state (used for read and write to files)
    type states4
@@ -388,96 +387,133 @@ contains
 ! subroutines to switch between type and matrix formats
 !-------------------------------------------------------------------
 
-   subroutine tystate_to_matrix(n,A,Amat)
+   subroutine tystate_to_matrix(ibrcl,nens,ndim,A,Amat)
       implicit none
-      integer, intent(in) :: n
-      type(states), intent(in) :: A(n)
-      real, intent(out) :: Amat(global_ndim,n)
+      integer, intent(in) :: ibrcl
+      integer, intent(in) :: nens
+      integer, intent(in) :: ndim
+      type(states), intent(in) :: A(nens)
+      real, intent(out) :: Amat(ndim,nens)
 
       integer i,dimuv,dimts,dimz
 
       dimz = nnkn
       dimuv = nnlv*nnel
       dimts = nnlv*nnkn
-      do i = 1,n
+      do i = 1,nens
          Amat(1:dimuv,i) = reshape(A(i)%u,(/dimuv/))
          Amat(dimuv+1:2*dimuv,i) = reshape(A(i)%v,(/dimuv/))
          Amat(2*dimuv+1:2*dimuv+dimz,i) = A(i)%z
-         Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,i) = reshape(A(i)%t,(/dimts/))
-         Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,i) = reshape(A(i)%s,(/dimts/))
       end do
+      if (ibrcl > 0) then
+         do i = 1,nens
+            Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,i) = reshape(A(i)%t,(/dimts/))
+            Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,i) = reshape(A(i)%s,(/dimts/))
+	 end do
+      end if
    end subroutine tystate_to_matrix
 
-   subroutine matrix_to_tystate(n,Amat,A)
+   subroutine matrix_to_tystate(ibrcl,nens,ndim,Amat,A)
       implicit none
-      integer, intent(in) :: n
-      real, intent(in) :: Amat(global_ndim,n)
-      type(states), intent(out) :: A(n)
+      integer, intent(in) :: ibrcl
+      integer, intent(in) :: nens
+      integer, intent(in) :: ndim
+      real, intent(in) :: Amat(ndim,nens)
+      type(states), intent(out) :: A(nens)
 
       integer i,dimuv,dimts,dimz
 
       dimz = nnkn
       dimuv = nnlv*nnel
       dimts = nnlv*nnkn
-      do i = 1,n
+      do i = 1,nens
          A(i)%u = reshape(Amat(1:dimuv,i),(/nnlv,nnel/))
          A(i)%v = reshape(Amat(dimuv+1:2*dimuv,i),(/nnlv,nnel/))
          A(i)%z = Amat(2*dimuv+1:2*dimuv+dimz,i)
-         A(i)%t = reshape(Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,i),(/nnlv,nnkn/))
-         A(i)%s = reshape(Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,i),(/nnlv,nnkn/))
       end do
+      if (ibrcl > 0) then
+         do i = 1,nens
+            A(i)%t = reshape(Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,i),(/nnlv,nnkn/))
+            A(i)%s = reshape(Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,i),(/nnlv,nnkn/))
+	 end do
+      end if
    end subroutine matrix_to_tystate
 
-   subroutine tyqstate_to_matrix(n,A,Amat)
+   subroutine tyqstate_to_matrix(ibrcl,nens,ndim,A,Amat)
       implicit none
-      integer, intent(in) :: n
-      type(qstates), intent(in) :: A(n)
-      real, intent(out) :: Amat(2*global_ndim,n)
+      integer, intent(in) :: ibrcl
+      integer, intent(in) :: nens
+      integer, intent(in) :: ndim
+      type(qstates), intent(in) :: A(nens)
+      real, intent(out) :: Amat(2*ndim,nens)
 
       integer i,dimuv,dimts,dimz
 
       dimz = nnkn
       dimuv = nnlv*nnel
       dimts = nnlv*nnkn
-      do i = 1,n
+      do i = 1,nens
          Amat(1:dimuv,i) = reshape(A(i)%qu,(/dimuv/))
          Amat(dimuv+1:2*dimuv,i) = reshape(A(i)%qv,(/dimuv/))
          Amat(2*dimuv+1:2*dimuv+dimz,i) = A(i)%qz
-         Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,i) = reshape(A(i)%qt,(/dimts/))
-         Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,i) = reshape(A(i)%qs,(/dimts/))
-
-         Amat(global_ndim+1:global_ndim+dimuv,i) = reshape(A(i)%u,(/dimuv/))
-         Amat(global_ndim+dimuv+1:global_ndim+2*dimuv,i) = reshape(A(i)%v,(/dimuv/))
-         Amat(global_ndim+2*dimuv+1:global_ndim+2*dimuv+dimz,i) = A(i)%z
-         Amat(global_ndim+2*dimuv+dimz+1:global_ndim+2*dimuv+dimz+dimts,i) = reshape(A(i)%t,(/dimts/))
-         Amat(global_ndim+2*dimuv+dimz+dimts+1:global_ndim+2*dimuv+dimz+2*dimts,i) = reshape(A(i)%s,(/dimts/))
       end do
+      if (ibrcl > 0) then
+         do i = 1,nens
+            Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,i) = reshape(A(i)%qt,(/dimts/))
+            Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,i) = reshape(A(i)%qs,(/dimts/))
+	 end do
+      end if
+
+      do i = 1,nens
+         Amat(ndim+1:ndim+dimuv,i) = reshape(A(i)%u,(/dimuv/))
+         Amat(ndim+dimuv+1:ndim+2*dimuv,i) = reshape(A(i)%v,(/dimuv/))
+         Amat(ndim+2*dimuv+1:ndim+2*dimuv+dimz,i) = A(i)%z
+      end do
+
+      if (ibrcl > 0) then
+         do i = 1,nens
+            Amat(ndim+2*dimuv+dimz+1:ndim+2*dimuv+dimz+dimts,i) = reshape(A(i)%t,(/dimts/))
+            Amat(ndim+2*dimuv+dimz+dimts+1:ndim+2*dimuv+dimz+2*dimts,i) = reshape(A(i)%s,(/dimts/))
+	 end do
+      end if
    end subroutine tyqstate_to_matrix
 
-   subroutine matrix_to_tyqstate(n,Amat,A)
+   subroutine matrix_to_tyqstate(ibrcl,nens,ndim,Amat,A)
       implicit none
-      integer, intent(in) :: n
-      real, intent(in) :: Amat(2*global_ndim,n)
-      type(qstates), intent(out) :: A(n)
+      integer, intent(in) :: ibrcl
+      integer, intent(in) :: nens
+      integer, intent(in) :: ndim
+      real, intent(in) :: Amat(2*ndim,nens)
+      type(qstates), intent(out) :: A(nens)
 
       integer i,dimuv,dimts,dimz
 
       dimz = nnkn
       dimuv = nnlv*nnel
       dimts = nnlv*nnkn
-      do i = 1,n
+      do i = 1,nens
          A(i)%qu = reshape(Amat(1:dimuv,i),(/nnlv,nnel/))
          A(i)%qv = reshape(Amat(dimuv+1:2*dimuv,i),(/nnlv,nnel/))
          A(i)%qz = Amat(2*dimuv+1:2*dimuv+dimz,i)
-         A(i)%qt = reshape(Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,i),(/nnlv,nnkn/))
-         A(i)%qs = reshape(Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,i),(/nnlv,nnkn/))
-
-         A(i)%u = reshape(Amat(global_ndim+1:global_ndim+dimuv,i),(/nnlv,nnel/))
-         A(i)%v = reshape(Amat(global_ndim+dimuv+1:global_ndim+2*dimuv,i),(/nnlv,nnel/))
-         A(i)%z = Amat(global_ndim+2*dimuv+1:global_ndim+2*dimuv+dimz,i)
-         A(i)%t = reshape(Amat(global_ndim+2*dimuv+dimz+1:global_ndim+2*dimuv+dimz+dimts,i),(/nnlv,nnkn/))
-         A(i)%s = reshape(Amat(global_ndim+2*dimuv+dimz+dimts+1:global_ndim+2*dimuv+dimz+2*dimts,i),(/nnlv,nnkn/))
       end do
+      if (ibrcl > 0) then
+         do i = 1,nens
+            A(i)%qt = reshape(Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,i),(/nnlv,nnkn/))
+            A(i)%qs = reshape(Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,i),(/nnlv,nnkn/))
+	 end do
+      end if
+
+      do i = 1,nens
+         A(i)%u = reshape(Amat(ndim+1:ndim+dimuv,i),(/nnlv,nnel/))
+         A(i)%v = reshape(Amat(ndim+dimuv+1:ndim+2*dimuv,i),(/nnlv,nnel/))
+         A(i)%z = Amat(ndim+2*dimuv+1:ndim+2*dimuv+dimz,i)
+      end do
+      if (ibrcl > 0) then
+         do i = 1,nens
+            A(i)%t = reshape(Amat(ndim+2*dimuv+dimz+1:ndim+2*dimuv+dimz+dimts,i),(/nnlv,nnkn/))
+            A(i)%s = reshape(Amat(ndim+2*dimuv+dimz+dimts+1:ndim+2*dimuv+dimz+2*dimts,i),(/nnlv,nnkn/))
+         end do
+      end if
    end subroutine matrix_to_tyqstate
 
 end module mod_mod_states

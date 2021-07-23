@@ -125,6 +125,7 @@ Compile_enkf(){
   cat mod_dimensions.skel | sed -e "s/NKN/$nkn/" | sed -e "s/NEL/$nel/" | \
 	sed -e "s/NLV/$nlv/" > mod_dimensions.F90
 
+  make clean > $SIMDIR/make.log
   make main >> $SIMDIR/make.log
 
   cd $SIMDIR

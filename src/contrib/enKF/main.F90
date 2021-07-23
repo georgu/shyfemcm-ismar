@@ -22,9 +22,10 @@ program main
   use mod_enkf
   use mod_ens_state
   use mod_mod_err
+  use mod_restart , only : ibarcl_rst
 
   implicit none
-  integer :: dim_tot
+  integer :: ndim
   real, allocatable :: Amat(:,:)
 
   write(*,*) "***"
@@ -59,30 +60,34 @@ program main
 !--------------------------------
 ! Make the state for the analysis (model error, parameters)
 !--------------------------------
+  ! define the dimension of the state
+  if (ibarcl_rst == 0) then
+     ndim = nnkn + 2*nnel*nnlv
+  else
+     ndim = nnkn + 2*nnel*nnlv + 2*nnkn*nnlv
+  end if
+
   select case(mode_an)
 
    case(0) !normal call
- 
-     allocate(Amat(global_ndim,nrens))
-     call tystate_to_matrix(nrens,Abk,Amat)
-     dim_tot = global_ndim
+
+     allocate(Amat(ndim,nrens))
+     call tystate_to_matrix(ibarcl_rst,nrens,ndim,Abk,Amat)
 
    case(1) !state with model error
 
      call info_moderr
      call push_aug
-     allocate(Amat(2*global_ndim,nrens))
-     call tyqstate_to_matrix(nrens,Abk_aug,Amat)
-     dim_tot = 2*global_ndim
+     allocate(Amat(2*ndim,nrens))
+     call tyqstate_to_matrix(ibarcl_rst,nrens,2*ndim,Abk_aug,Amat)
 
     case(2) !state with model parameter
 
      error stop 'TODO'
      ! call load_model_params(npar,nrens_p,pars)
      ! if (nrens_p /= nrens) stop error 'bad parameter ensemble'
-     ! allocate(Amat(global_ndim+npar,nrens))
-     ! call typstate_to_matrix(nrens,npar,pars,Abk,Amat)
-     ! dim_tot = global_ndim + npar
+     ! allocate(Amat(ndim+npar,nrens))
+     ! call typstate_to_matrix(ibarcl_rst,nrens,ndim+npar,pars,Abk,Amat)
 
   end select
 
@@ -96,12 +101,12 @@ program main
 
      if (is_local == 0) then
 
-        call analysis(Amat,R,E,S,D1,innov,dim_tot,nrens,nobs_tot,verbose,&
+        call analysis(Amat,R,E,S,D1,innov,ndim,nrens,nobs_tot,verbose,&
                   truncation,rmode,lrandrot,lupdate_randrot,lsymsqrt,&
 		  inflate,infmult)
 	  
         allocate(Aan(nrens))
-        call matrix_to_tystate(nrens,Amat,Aan)
+        call matrix_to_tystate(ibarcl_rst,nrens,ndim,Amat,Aan)
         deallocate(Amat)
 
         ! save a total X5 for enKS
@@ -111,7 +116,7 @@ program main
 
 	write(*,*) 'Running local analysis. rho_loc: ',rho_loc
         allocate(Aan(nrens))
-        call matrix_to_tystate(nrens,Amat,Aan)
+        call matrix_to_tystate(ibarcl_rst,nrens,ndim,Amat,Aan)
         deallocate(Amat)
 
 	call local_analysis
@@ -120,13 +125,13 @@ program main
    
    case(1) !state with model error
 
-     call matrix_to_tyqstate(nrens,Amat,Abk_aug)
+     call matrix_to_tyqstate(ibarcl_rst,nrens,2*ndim,Amat,Abk_aug)
      deallocate(Amat)
      call pull_aug
 
    case(2) !state with model parameter
      
-     !call matrix_to_typstate(nrens,npar,Amat,pars,Aan)
+     !call matrix_to_typstate(ibarcl_rst,nrens,ndim+npar,Amat,pars,Aan)
      !call save_model_params(npar,nrens,pars)
      !deallocate(Amat)
 
