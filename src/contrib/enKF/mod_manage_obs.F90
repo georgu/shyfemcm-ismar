@@ -181,7 +181,7 @@ contains
              call read_scalar_0d('0DLEV',linit,trim(ofile(n)%name),TEPS,&
                   kinit,kend,tobs,xobs,yobs,zobs,&
                   vobs,stdobs,statobs,rho)
-             if ((kend > kinit).and.(statobs == 0)) then 
+             if (kend > kinit) then 
 		if (verbose) write(*,*) 'Station n. ',n
                 o0dlev(kend)%t = tobs
                 o0dlev(kend)%x = xobs
@@ -201,7 +201,7 @@ contains
              call read_scalar_0d('0DTEM',linit,trim(ofile(n)%name),TEPS,&
                   kinit,kend,tobs,xobs,yobs,zobs,&
                   vobs,stdobs,statobs,rho)
-             if ((kend > kinit).and.(statobs == 0)) then 
+             if (kend > kinit) then 
 		if (verbose) write(*,*) 'Station n. ',n
                 o0dtemp(kend)%t = tobs
                 o0dtemp(kend)%x = xobs
@@ -222,7 +222,7 @@ contains
              call read_scalar_0d('0DSAL',linit,trim(ofile(n)%name),TEPS,&
                   kinit,kend,tobs,xobs,yobs,zobs,&
                   vobs,stdobs,statobs,rho)
-             if ((kend > kinit).and.(statobs == 0)) then 
+             if (kend > kinit) then 
 		if (verbose) write(*,*) 'Station n. ',n
                 o0dsalt(kend)%t = tobs
                 o0dsalt(kend)%x = xobs
@@ -539,7 +539,7 @@ contains
 
   stat = 0
 
-  if (v1 == flag .or. v2 == flag) then
+  if (nint(v1-flag) == 0 .or. nint(v2-flag) == 0) then
      stat = 4
      return
   end if
