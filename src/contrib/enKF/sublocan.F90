@@ -8,12 +8,8 @@
 
   subroutine local_analysis
 
-  use mod_mod_states	  
-  use mod_para
-  use mod_enkf
   use mod_ens_state
   use mod_manage_obs
-  use basin
   use mod_restart , only : ibarcl_rst
 
   implicit none
@@ -24,20 +20,14 @@
   real dist,w
   real xe,ye
 
+  logical :: local_upd_rand = .true.
+
   integer ::  lkdim 
   integer ::  lnedim 
-  integer :: nobs_tot_k,nobs_tot_e
 
   real, allocatable :: xobs(:),yobs(:),rho_loc(:)
-  real, allocatable :: Ak_loc(:,:),Ak_an(:,:),Ak_bk(:,:)
-  real, allocatable :: Ane_loc(:,:),Ane_an(:,:),Ane_bk(:,:)
-
-  integer, allocatable :: ido(:)
-  real, allocatable :: wo(:)
-
-  real, allocatable :: innovl(:),D1l(:,:),Sl(:,:),El(:,:),Rl(:,:)
-
-  real, parameter :: eps_la = 1e-4   !Minimum value to limit the local analysis window
+  real, allocatable :: Ak_an(:,:),Ak_bk(:,:)
+  real, allocatable :: Ane_an(:,:),Ane_bk(:,:)
 
   if (ibarcl_rst == 0) then
 	  lkdim = 1
@@ -48,9 +38,8 @@
   end if
   
   allocate(xobs(nobs_tot),yobs(nobs_tot),rho_loc(nobs_tot))
-  allocate(Ak_loc(lkdim,nrens),Ak_an(lkdim,nrens),Ak_bk(lkdim,nrens))
-  allocate(Ane_loc(lnedim,nrens),Ane_an(lnedim,nrens),Ane_bk(lnedim,nrens))
-  allocate(ido(nobs_tot),wo(nobs_tot))
+  allocate(Ak_an(lkdim,nrens),Ak_bk(lkdim,nrens))
+  allocate(Ane_an(lnedim,nrens),Ane_bk(lnedim,nrens))
 
   ! find the coordinates of the measurements
   ! note that in read_obs only obs of the same type
@@ -119,20 +108,80 @@
 
   !----------------------nodes-------------------------
   nk_l = 0 	! number of nodes corrected
-  lupdate_randrot = .true.
+!$OMP PARALLEL PRIVATE(k,Ak_bk,Ak_an),SHARED(ibarcl_rst,lkdim,nrens,nobs_tot,local_upd_rand,xobs,yobs,rho_loc)
+!$OMP DO
   do k = 1,nnkn
 
-     call type_to_kmat(ibarcl_rst,Ak_bk,k,lkdim)
+     call type_to_kmat(ibarcl_rst,Ak_bk,k,lkdim,nrens)
+
+     call locan_k(k,lkdim,nrens,nobs_tot,xobs,yobs,rho_loc,Ak_bk,local_upd_rand,nk_l,Ak_an)
+
+     call kmat_to_type(ibarcl_rst,Ak_an,k,lkdim,nrens)
+
+  end do
+!$OMP ENDDO
+!$OMP END PARALLEL
+  write(*,*) 'Number of nodes with local analysis: ',nk_l
+  !----------------------end nodes-------------------------
+
+  !----------------------elements-------------------------
+  ne_l = 0 	! number of elements corrected
+!$OMP PARALLEL PRIVATE(ne,Ane_bk,Ane_an),SHARED(ibarcl_rst,lnedim,nrens,nobs_tot,local_upd_rand,xobs,yobs,rho_loc)
+!$OMP DO
+  do ne = 1,nnel
+
+     call type_to_emat(Ane_bk,ne,lnedim,nrens)
+
+     call locan_e(ne,lnedim,nrens,nobs_tot,xobs,yobs,rho_loc,Ane_bk,local_upd_rand,ne_l,Ane_an)
+
+     call emat_to_type(Ane_an,ne,lnedim,nrens)
+
+  end do
+!$OMP ENDDO
+!$OMP END PARALLEL 
+  write(*,*) 'Number of elements with local analysis: ',ne_l
+  !----------------------end elements-------------------------
+
+  end subroutine local_analysis
+
+
+!*************************************************************
+
+     subroutine locan_k(nk,lkdim,nren,no_tot,xo,yo,rhoo,Ak_bk,local_upd_rand,nk_l,Ak_an)
+     use basin
+     use mod_enkf
+     use mod_para
+     implicit none
+     integer, intent(in) :: nk,lkdim,nren,no_tot
+     real, intent(in) :: Ak_bk(lkdim,nren)
+     real, intent(in) :: xo(no_tot),yo(no_tot),rhoo(no_tot)
+     logical, intent(inout) :: local_upd_rand
+     integer, intent(inout) :: nk_l
+     real, intent(out) :: Ak_an(lkdim,nren)
+
+     real :: Ak_loc(lkdim,nren)
+     integer :: no,nno,no_k
+     integer, allocatable :: ido(:)
+     real, allocatable :: wo(:)
+
+     real dist,w
+     real, allocatable :: innovl(:),D1l(:,:),Sl(:,:),El(:,:),Rl(:,:)
+     
+     real, parameter :: eps_la = 1e-4   !Minimum value to limit the local analysis window
+
+     integer, save :: icall = 0
+
+     allocate(ido(no_tot),wo(no_tot))
 
      Ak_loc = Ak_bk	! set the local analysis equal to the global
 
      ido = 0
      wo = 0
      nno = 0	! number of local observations
-     do no = 1,nobs_tot
+     do no = 1,no_tot
 
-	dist = sqrt( (xgv(k)-xobs(no))**2 + (ygv(k)-yobs(no))**2 )
-	call find_weight(rho_loc(no),dist,w)
+	dist = sqrt( (xgv(nk)-xo(no))**2 + (ygv(nk)-yo(no))**2 )
+	call find_weight(rhoo(no),dist,w)
 
 	if ( w > eps_la ) then
            nno = nno + 1
@@ -142,13 +191,14 @@
 
      end do
 
-     nobs_tot_k = nno
-     if (nobs_tot_k > 0) then
+     no_k = nno
+     if (no_k > 0) then
 	     
-        allocate(innovl(nobs_tot_k),D1l(nobs_tot_k,nrens),Sl(nobs_tot_k,nrens))
-        allocate(El(nobs_tot_k,nrens),Rl(nobs_tot_k,nobs_tot_k))
+        allocate(innovl(no_k),D1l(no_k,nren),Sl(no_k,nren))
+        allocate(El(no_k,nren),Rl(no_k,no_k))
+	!write(*,*) 'Analysis of node: ',nk
 
-        do no = 1,nobs_tot_k
+        do no = 1,no_k
 
 	     ! tapering of the innovations and of the ens anomalies
 	     innovl(no) = innov(ido(no)) * wo(no)
@@ -161,36 +211,64 @@
 
 	end do
 
-	nk_l = nk_l + 1
-
-	call analysis(Ak_loc,Rl,El,Sl,D1l,innovl,lkdim,nrens,nobs_tot_k,.false.,&
-		           truncation,rmode,lrandrot,lupdate_randrot,lsymsqrt,&
+	call analysis(Ak_loc,Rl,El,Sl,D1l,innovl,lkdim,nren,no_k,.false.,&
+		           truncation,rmode,lrandrot,local_upd_rand,lsymsqrt,&
 			   inflate,infmult)
-
-	lupdate_randrot = .false.	! true just the first time. Beware in OMP
 
         !call save_X5('local',atime_an)
 
         deallocate(innovl,D1l,Sl,El,Rl)
 
 	! This is to check the position
-	!write(120,*) '1',nk_l,'7',xgv(k),ygv(k)
+	!write(120,*) '1',nk_l,'7',xgv(nk),ygv(nk)
+
+	! true just for the first call to analysis
+	if (icall == 0) then
+		write(*,*) 'Setting the update rand rot to false...'
+		local_upd_rand = .false.
+		icall = 1
+	end if
+
+!$OMP CRITICAL
+        nk_l = nk_l + 1
+!$OMP END CRITICAL
 
      end if
 
      Ak_an = Ak_bk + (Ak_loc - Ak_bk)
 
-     call kmat_to_type(ibarcl_rst,Ak_an,k,lkdim)
+     end subroutine locan_k
 
-  end do
-  write(*,*) 'Number of nodes with local analysis: ',nk_l
-  !----------------------end nodes-------------------------
 
-  !----------------------elements-------------------------
-  ne_l = 0 	! number of elements corrected
-  do ne = 1,nnel
+!*************************************************************
 
-     call type_to_emat(Ane_bk,ne,lnedim)
+     subroutine locan_e(ne,lnedim,nren,no_tot,xo,yo,rhoo,Ane_bk,local_upd_rand,ne_l,Ane_an)
+     use basin
+     use mod_enkf
+     use mod_para
+     implicit none
+     integer, intent(in) :: ne,lnedim,nren,no_tot
+     real, intent(in) :: Ane_bk(lnedim,nren)
+     real, intent(in) :: xo(no_tot),yo(no_tot),rhoo(no_tot)
+     logical, intent(in) :: local_upd_rand
+     integer, intent(inout) :: ne_l
+     real, intent(out) :: Ane_an(lnedim,nren)
+
+     integer  :: i,k
+     real :: xe,ye
+     real :: Ane_loc(lnedim,nren)
+     integer :: no,nno,no_e
+     integer, allocatable :: ido(:)
+     real, allocatable :: wo(:)
+
+     real dist,w
+     real, allocatable :: innovl(:),D1l(:,:),Sl(:,:),El(:,:),Rl(:,:)
+     
+     real, parameter :: eps_la = 1e-4   !Minimum value to limit the local analysis window
+
+     integer, save :: icall = 0
+
+     allocate(ido(no_tot),wo(no_tot))
 
      Ane_loc = Ane_bk	! set the local analysis equal to the global
 
@@ -208,9 +286,9 @@
 	end do
 	xe = xe/3.
 	ye = ye/3.
-	dist = sqrt( (xe-xobs(no))**2 + (ye-yobs(no))**2 )
+	dist = sqrt( (xe-xo(no))**2 + (ye-yo(no))**2 )
 
-	call find_weight(rho_loc(no),dist,w)
+	call find_weight(rhoo(no),dist,w)
 
 	if ( w > eps_la ) then
            nno = nno + 1
@@ -220,13 +298,14 @@
 
      end do
 
-     nobs_tot_e = nno
-     if (nobs_tot_e > 0) then
+     no_e = nno
+     if (no_e > 0) then
 
-        allocate(innovl(nobs_tot_e),D1l(nobs_tot_e,nrens),Sl(nobs_tot_e,nrens))
-        allocate(El(nobs_tot_e,nrens),Rl(nobs_tot_e,nobs_tot_e))
+        allocate(innovl(no_e),D1l(no_e,nrens),Sl(no_e,nrens))
+        allocate(El(no_e,nrens),Rl(no_e,no_e))
+	!write(*,*) 'Analysis of element: ',ne
 
-        do no = 1,nobs_tot_e
+        do no = 1,no_e
 
 	     ! tapering of the innovations and of the ens anomalies
 	     innovl(no) = innov(ido(no)) * wo(no)
@@ -239,10 +318,8 @@
 
 	end do
 
-	ne_l = ne_l + 1
-
-	call analysis(Ane_loc,Rl,El,Sl,D1l,innovl,lnedim,nrens,nobs_tot_e,.false.,&
-	           truncation,rmode,lrandrot,lupdate_randrot,lsymsqrt,&
+	call analysis(Ane_loc,Rl,El,Sl,D1l,innovl,lnedim,nrens,no_e,.false.,&
+	           truncation,rmode,lrandrot,local_upd_rand,lsymsqrt,&
 		   inflate,infmult)
 
         !call save_X5('local',atime_an)
@@ -252,17 +329,16 @@
 	! This is to check the position
 	!write(121,*) '1',ne_l,'8',xe,ye
 
+!$OMP CRITICAL
+	ne_l = ne_l + 1
+!$OMP END CRITICAL
+
      end if
 
      Ane_an = Ane_bk + (Ane_loc - Ane_bk)
 
-     call emat_to_type(Ane_an,ne,lnedim)
 
-  end do
-  write(*,*) 'Number of elements with local analysis: ',ne_l
-  !----------------------end elements-------------------------
-
-  end subroutine local_analysis
+     end subroutine locan_e
 
 
 !*************************************************************
@@ -290,20 +366,20 @@
 
 !*************************************************************
 
-  subroutine type_to_kmat(ibrcl,Ak_bk,k,kdim)
+  subroutine type_to_kmat(ibrcl,Ak_bk,k,kdim,nre)
   use mod_ens_state
   implicit none
   integer, intent(in) :: ibrcl
-  integer, intent(in) :: k,kdim
-  real, intent(out) :: Ak_bk(kdim,nrens)
+  integer, intent(in) :: k,kdim,nre
+  real, intent(out) :: Ak_bk(kdim,nre)
   integer n
 
-  do n = 1,nrens
+  do n = 1,nre
     Ak_bk(1,n) = Abk(n)%z(k)
   end do
 
   if (ibrcl > 0) then
-     do n = 1,nrens
+     do n = 1,nre
         Ak_bk(2:nnlv+1,n) = Abk(n)%t(:,k)
         Ak_bk(nnlv+2:2*nnlv+1,n) = Abk(n)%s(:,k)
      end do
@@ -313,14 +389,14 @@
 
 !*************************************************************
 
-  subroutine type_to_emat(Ane_bk,ne,nedim)
+  subroutine type_to_emat(Ane_bk,ne,nedim,nre)
   use mod_ens_state
   implicit none
-  integer, intent(in) :: ne,nedim
-  real, intent(out) :: Ane_bk(nedim,nrens)
+  integer, intent(in) :: ne,nedim,nre
+  real, intent(out) :: Ane_bk(nedim,nre)
   integer n
 
-  do n = 1,nrens
+  do n = 1,nre
     Ane_bk(1:nnlv,n) = Abk(n)%u(:,ne)
     Ane_bk(nnlv+1:2*nnlv,n) = Abk(n)%v(:,ne)
   end do
@@ -329,20 +405,20 @@
 
 !*************************************************************
 
-  subroutine kmat_to_type(ibrcl,Ak_an,k,kdim)
+  subroutine kmat_to_type(ibrcl,Ak_an,k,kdim,nre)
   use mod_ens_state
   implicit none
   integer, intent(in) :: ibrcl
-  integer, intent(in) :: k,kdim
-  real, intent(in) :: Ak_an(kdim,nrens)
+  integer, intent(in) :: k,kdim,nre
+  real, intent(in) :: Ak_an(kdim,nre)
   integer n
 
-  do n = 1,nrens
+  do n = 1,nre
     Aan(n)%z(k) = Ak_an(1,n)
   end do
 
   if (ibrcl > 0) then
-     do n = 1,nrens
+     do n = 1,nre
         Aan(n)%t(:,k) = Ak_an(2:nnlv+1,n)
         Aan(n)%s(:,k) = Ak_an(nnlv+2:2*nnlv+1,n)
      end do
@@ -352,14 +428,14 @@
 
 !*************************************************************
 
-  subroutine emat_to_type(Ane_an,ne,nedim)
+  subroutine emat_to_type(Ane_an,ne,nedim,nre)
   use mod_ens_state
   implicit none
-  integer, intent(in) :: ne,nedim
-  real, intent(in) :: Ane_an(nedim,nrens)
+  integer, intent(in) :: ne,nedim,nre
+  real, intent(in) :: Ane_an(nedim,nre)
   integer n
   
-  do n = 1,nrens
+  do n = 1,nre
     Aan(n)%u(:,ne) = Ane_an(1:nnlv,n)
     Aan(n)%v(:,ne) = Ane_an(nnlv+1:2*nnlv,n)
   end do

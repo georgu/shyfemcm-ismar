@@ -152,11 +152,11 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
    if (lreps) then
       !     A=A+matmul(Reps,X3)
       call dgemm('n','n',ndim,nrens,nrobs,1.0,Reps,ndim,X3,nrobs,1.0,A,ndim)
-      call dumpX3(X3,S,nrobs,nrens)
+      if (ndim > 1000) call dumpX3(X3,S,nrobs,nrens)	!no write for local analysis (omp) - mbj
    else
       iblkmax=min(ndim,200)
       call multa(A, X5, ndim, nrens, iblkmax )
-      call dumpX5(X5,nrens)
+      if (ndim > 1000) call dumpX5(X5,nrens)	!no write for local analysis (omp) - mbj
    endif
 
    if (verbose) print '(a)' ,'   analysis: final update done'
