@@ -308,6 +308,9 @@ else
    Usage
 fi
 
+# Export num of threads for main. Warning! Use the max num of cpu, not threads.
+export OMP_NUM_THREADS=$nthreads
+
 # Compiles the enKF code with the right total dimensions
 Compile_enkf $sdim
 
