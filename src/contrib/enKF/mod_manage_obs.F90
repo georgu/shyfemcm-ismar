@@ -211,7 +211,7 @@ contains
                 o0dtemp(kend)%std = stdobs
                 o0dtemp(kend)%stat = statobs
                 o0dtemp(kend)%id = n
-                o0dlev(kend)%rhol = rho
+                o0dtemp(kend)%rhol = rho
 
                 nobs_tot = nobs_tot + 1
              end if
@@ -232,7 +232,7 @@ contains
                 o0dsalt(kend)%std = stdobs
                 o0dsalt(kend)%stat = statobs
                 o0dsalt(kend)%id = n
-                o0dlev(kend)%rhol = rho
+                o0dsalt(kend)%rhol = rho
 
                 nobs_tot = nobs_tot + 1
              end if

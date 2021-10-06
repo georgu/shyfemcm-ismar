@@ -67,7 +67,7 @@
 	  if (no <= n_0dtemp) then			!e.g. from timeseries
 		  xobs(no) = o0dtemp(no)%x
 		  yobs(no) = o0dtemp(no)%y
-		  rho_loc(no) = o0dlev(no)%rhol
+		  rho_loc(no) = o0dtemp(no)%rhol
 	  else if ((no > n_0dtemp).and. &
 		  (no <= n_0dtemp+n_1dtemp)) then	!e.g. from profiles
 	          write(*,*) 'Do it!'
@@ -84,7 +84,7 @@
 	  if (no <= n_0dsalt) then			!e.g. from timeseries
 		  xobs(no) = o0dsalt(no)%x
 		  yobs(no) = o0dsalt(no)%y
-		  rho_loc(no) = o0dlev(no)%rhol
+		  rho_loc(no) = o0dsalt(no)%rhol
 	  else if ((no > n_0dsalt).and. &		!e.g. from profiles
 		  (no <= n_0dsalt+n_1dsalt)) then
 	          write(*,*) 'Do it!'
