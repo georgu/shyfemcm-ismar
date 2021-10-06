@@ -222,6 +222,7 @@
 	! This is to check the position
 	!write(120,*) '1',nk_l,'7',xgv(nk),ygv(nk)
 
+!$OMP CRITICAL
 	! true just for the first call to analysis
 	if (icall == 0) then
 		write(*,*) 'Setting the update rand rot to false...'
@@ -229,7 +230,6 @@
 		icall = 1
 	end if
 
-!$OMP CRITICAL
         nk_l = nk_l + 1
 !$OMP END CRITICAL
 
