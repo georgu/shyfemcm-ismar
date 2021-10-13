@@ -101,7 +101,7 @@ program main
 
      if (is_local == 0) then
 
-        call analysis(Amat,R,E,S,D1,innov,ndim,nrens,nobs_tot,verbose,&
+        call analysis(Amat,R,E,S,D1,innov,ndim,nrens,nobs_ok,verbose,&
                   truncation,rmode,lrandrot,lupdate_randrot,lsymsqrt,&
 		  inflate,infmult)
 	  

@@ -16,7 +16,7 @@
 
   integer k,ne,i
   integer nk_l,ne_l
-  integer no,nno
+  integer no,nook
   real dist,w
   real xe,ye
 
@@ -36,8 +36,8 @@
 	  lkdim = 1 + 2*nnlv
 	  lnedim = 2*nnlv
   end if
-  
-  allocate(xobs(nobs_tot),yobs(nobs_tot),rho_loc(nobs_tot))
+
+  allocate(xobs(nobs_ok),yobs(nobs_ok),rho_loc(nobs_ok))
   allocate(Ak_an(lkdim,nrens),Ak_bk(lkdim,nrens))
   allocate(Ane_an(lnedim,nrens),Ane_bk(lnedim,nrens))
 
@@ -45,76 +45,82 @@
   ! note that in read_obs only obs of the same type
   ! are allowed, otherwise this is wrong.
   if (verbose) write(*,*) 'Observations in local analysis:'
+  nook = 0 
   do no = 1,nobs_tot
-     if (islev /= 0) then
+     if ((islev /= 0).and.(o0dlev(no)%stat == 0)) then
+	  nook = nook + 1
 	  if (no <= n_0dlev) then		!e.g. from timeseries
-		  xobs(no) = o0dlev(no)%x
-		  yobs(no) = o0dlev(no)%y
-		  rho_loc(no) = o0dlev(no)%rhol
-	  else if ((no > n_0dlev).and. &
-		  (no <= n_0dlev+n_1dlev)) then	!e.g. altimeter track
-	          write(*,*) 'Do it!'
-	          stop
-		  !xobs(no) = o1dlev(no)%x
-		  !yobs(no) = o1dlev(no)%y
-	  else if (no > n_0dlev+n_1dlev) then	!e.g. altimeter map
-	          write(*,*) 'Do it!'
-	          stop
-		  !xobs(no) = o2dlev(no)%x
-		  !yobs(no) = o2dlev(no)%y
+		  xobs(nook) = o0dlev(no)%x
+		  yobs(nook) = o0dlev(no)%y
+		  rho_loc(nook) = o0dlev(no)%rhol
+	  !else if ((no > n_0dlev).and. &
+	!	  (no <= n_0dlev+n_1dlev).and.(o1dlev(no)%stat == 0)) then	!e.g. altimeter track
+	!          write(*,*) 'Do it!'
+	!          stop
+	!	  !xobs(no) = o1dlev(no)%x
+	!	  !yobs(no) = o1dlev(no)%y
+	!  else if ((no > n_0dlev+n_1dlev).and.(o2dlev(no)%stat == 0)) then	!e.g. altimeter map
+	!          write(*,*) 'Do it!'
+	!          stop
+	!	  !xobs(no) = o2dlev(no)%x
+	!	  !yobs(no) = o2dlev(no)%y
 	  end if
-     else if (istemp /= 0) then
+     else if ((istemp /= 0).and.(o0dtemp(no)%stat == 0)) then
+	  nook = nook + 1
 	  if (no <= n_0dtemp) then			!e.g. from timeseries
-		  xobs(no) = o0dtemp(no)%x
-		  yobs(no) = o0dtemp(no)%y
-		  rho_loc(no) = o0dtemp(no)%rhol
-	  else if ((no > n_0dtemp).and. &
-		  (no <= n_0dtemp+n_1dtemp)) then	!e.g. from profiles
-	          write(*,*) 'Do it!'
-	          stop
-		  !xobs(no) = o1dtemp(no)%x
-		  !yobs(no) = o1dtemp(no)%y
-	  else if (no > n_0dtemp+n_1dtemp) then		!e.g. from sst maps
-	          write(*,*) 'Do it!'
-	          stop
-		  !xobs(no) = o2dtemp(no)%x
-		  !yobs(no) = o2dtemp(no)%y
+		  xobs(nook) = o0dtemp(no)%x
+		  yobs(nook) = o0dtemp(no)%y
+		  rho_loc(nook) = o0dlev(no)%rhol
+	!  else if ((no > n_0dtemp).and. &
+	!	  (no <= n_0dtemp+n_1dtemp)) then	!e.g. from profiles
+	!          write(*,*) 'Do it!'
+	!          stop
+	!	  !xobs(no) = o1dtemp(no)%x
+	!	  !yobs(no) = o1dtemp(no)%y
+	!  else if (no > n_0dtemp+n_1dtemp) then		!e.g. from sst maps
+	!          write(*,*) 'Do it!'
+	!          stop
+	!	  !xobs(no) = o2dtemp(no)%x
+	!	  !yobs(no) = o2dtemp(no)%y
 	  end if
-     else if (issalt /= 0) then
+     else if ((issalt /= 0).and.(o0dsalt(no)%stat == 0)) then
+	  nook = nook + 1
 	  if (no <= n_0dsalt) then			!e.g. from timeseries
-		  xobs(no) = o0dsalt(no)%x
-		  yobs(no) = o0dsalt(no)%y
-		  rho_loc(no) = o0dsalt(no)%rhol
-	  else if ((no > n_0dsalt).and. &		!e.g. from profiles
-		  (no <= n_0dsalt+n_1dsalt)) then
-	          write(*,*) 'Do it!'
-	          stop
-		  !xobs(no) = o1dsalt(no)%x
-		  !yobs(no) = o1dsalt(no)%y
-	  else if (no > n_0dsalt+n_1dsalt) then		!e.g. from surface maps
-	          write(*,*) 'Do it!'
-	          stop
-		  !xobs(no) = o2dsalt(no)%x
-		  !yobs(no) = o2dsalt(no)%y
+		  xobs(nook) = o0dsalt(no)%x
+		  yobs(nook) = o0dsalt(no)%y
+		  rho_loc(nook) = o0dlev(no)%rhol
+	!  else if ((no > n_0dsalt).and. &		!e.g. from profiles
+	!	  (no <= n_0dsalt+n_1dsalt)) then
+	!          write(*,*) 'Do it!'
+	!          stop
+	!	  !xobs(no) = o1dsalt(no)%x
+	!	  !yobs(no) = o1dsalt(no)%y
+	!  else if (no > n_0dsalt+n_1dsalt) then		!e.g. from surface maps
+	!          write(*,*) 'Do it!'
+	!          stop
+	!	  !xobs(no) = o2dsalt(no)%x
+	!	  !yobs(no) = o2dsalt(no)%y
 	  end if
      else if (isvel /= 0) then
 	  write(*,*) 'Do it!'
 	  stop
      end if
 
-     if (verbose) write(*,*) 'x,y,rho = ',xobs(no),yobs(no),rho_loc(no)
+     if (verbose) write(*,*) 'x,y,rho = ',xobs(nook),yobs(nook),rho_loc(nook)
 
   end do
 
+  if (nook /= nobs_ok) error stop 'The number of valid observations is wrong'
+
   !----------------------nodes-------------------------
   nk_l = 0 	! number of nodes corrected
-!$OMP PARALLEL PRIVATE(k,Ak_bk,Ak_an),SHARED(ibarcl_rst,lkdim,nrens,nobs_tot,local_upd_rand,xobs,yobs,rho_loc)
+!$OMP PARALLEL PRIVATE(k,Ak_bk,Ak_an),SHARED(ibarcl_rst,lkdim,nrens,nobs_ok,local_upd_rand,xobs,yobs,rho_loc)
 !$OMP DO
   do k = 1,nnkn
 
      call type_to_kmat(ibarcl_rst,Ak_bk,k,lkdim,nrens)
 
-     call locan_k(k,lkdim,nrens,nobs_tot,xobs,yobs,rho_loc,Ak_bk,local_upd_rand,nk_l,Ak_an)
+     call locan_k(k,lkdim,nrens,nobs_ok,xobs,yobs,rho_loc,Ak_bk,local_upd_rand,nk_l,Ak_an)
 
      call kmat_to_type(ibarcl_rst,Ak_an,k,lkdim,nrens)
 
@@ -126,13 +132,13 @@
 
   !----------------------elements-------------------------
   ne_l = 0 	! number of elements corrected
-!$OMP PARALLEL PRIVATE(ne,Ane_bk,Ane_an),SHARED(ibarcl_rst,lnedim,nrens,nobs_tot,local_upd_rand,xobs,yobs,rho_loc)
+!$OMP PARALLEL PRIVATE(ne,Ane_bk,Ane_an),SHARED(ibarcl_rst,lnedim,nrens,nobs_ok,local_upd_rand,xobs,yobs,rho_loc)
 !$OMP DO
   do ne = 1,nnel
 
      call type_to_emat(Ane_bk,ne,lnedim,nrens)
 
-     call locan_e(ne,lnedim,nrens,nobs_tot,xobs,yobs,rho_loc,Ane_bk,local_upd_rand,ne_l,Ane_an)
+     call locan_e(ne,lnedim,nrens,nobs_ok,xobs,yobs,rho_loc,Ane_bk,local_upd_rand,ne_l,Ane_an)
 
      call emat_to_type(Ane_an,ne,lnedim,nrens)
 
@@ -275,7 +281,7 @@
      ido = 0
      wo = 0
      nno = 0	! number of local observations
-     do no = 1,nobs_tot
+     do no = 1,no_tot
 
 	xe =   0.
 	ye =   0.

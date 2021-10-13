@@ -18,7 +18,8 @@ module mod_manage_obs
   integer :: n_0dvel,n_2dvel		! number of obs vel (gauge,field)
   integer :: n_0dtemp,n_1dtemp,n_2dtemp	! number of obs temp (gauge,profile,field)
   integer :: n_0dsalt,n_1dsalt,n_2dsalt	! number of obs salt (gauge,profile,field)
-  integer :: nobs_tot			! total number of good obs to be assimilated
+  integer :: nobs_tot			! total number of observations read in the files
+  integer :: nobs_ok			! total number of good observations
   type(scalar_0d), allocatable :: o0dlev(:),o0dtemp(:),o0dsalt(:)
   type(vector_2d), allocatable :: o2dvel(:)
 

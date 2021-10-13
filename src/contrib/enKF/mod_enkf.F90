@@ -30,57 +30,81 @@ contains
 
   implicit none
 
-  integer nook
+  integer n,ix,iy
 
   write(*,*) 'Building the assimilation arrays...'
 
-  allocate(D(nobs_tot,nrens),E(nobs_tot,nrens),&
-           R(nobs_tot,nobs_tot))
-  allocate(S(nobs_tot,nrens),innov(nobs_tot))
-  allocate(HA(nobs_tot,nrens),D1(nobs_tot,nrens))
+  nobs_ok = 0
+  if (islev /= 0) then
+     do n = 1,n_0dlev
+        if (o0dlev(n)%stat == 0) nobs_ok = nobs_ok + 1
+     end do 
+  else if (issalt /= 0) then
+     do n = 1,n_0dsalt
+        if (o0dsalt(n)%stat == 0) nobs_ok = nobs_ok + 1
+     end do 
+  else if (istemp /= 0) then
+     do n = 1,n_0dtemp
+        if (o0dtemp(n)%stat == 0) nobs_ok = nobs_ok + 1
+     end do 		
+  else if (isvel /= 0) then
+     do n = 1,n_2dvel
+       do iy = 1,o2dvel(n)%ny
+       do ix = 1,o2dvel(n)%nx
+         if (o2dvel(n)%stat(ix,iy) == 0) nobs_ok = nobs_ok + 2
+       end do
+       end do
+     end do
+  else
+     error stop 'Observation type not valid.'
+  end if
+
+  allocate(D(nobs_ok,nrens),E(nobs_ok,nrens),&
+           R(nobs_ok,nobs_ok))
+  allocate(S(nobs_ok,nrens),innov(nobs_ok))
+  allocate(HA(nobs_ok,nrens),D1(nobs_ok,nrens))
 
   R = 0.
-  nook = 0
   ! 0D Levels
   !
   if (n_0dlev > 0) then
      write(*,*) 'Assimilation of sea level'
-     call fill_scalar_0d('0DLEV',n_0dlev,nook,o0dlev)
+     call fill_scalar_0d('0DLEV',n_0dlev,o0dlev)
   end if
 
   ! 0D Temperature
   !
   if (n_0dtemp > 0) then
      write(*,*) 'Assimilation of temperature'
-     call fill_scalar_0d('0DTEM',n_0dtemp,nook,o0dtemp)
+     call fill_scalar_0d('0DTEM',n_0dtemp,o0dtemp)
   end if
 
   ! 0D Salinity
   !
   if (n_0dsalt > 0) then
      write(*,*) 'Assimilation of salinity'
-     call fill_scalar_0d('0DSAL',n_0dsalt,nook,o0dsalt)
+     call fill_scalar_0d('0DSAL',n_0dsalt,o0dsalt)
   end if
 
   ! 2D currents
   !
   if (n_2dvel > 0) then
      write(*,*) 'Assimilation of velocities'
-     call fill_scurrents(n_2dvel,nook)
+     call fill_scurrents(n_2dvel)
   end if
 
   end subroutine make_matrices
 
 !********************************************************
 
-  subroutine fill_scalar_0d(olabel,nfile,nook,ostate)
+  subroutine fill_scalar_0d(olabel,nfile,ostate)
 
   implicit none
 
   character(len=5), intent(in) :: olabel
   integer, intent(in) :: nfile
   type(scalar_0d), intent(inout) :: ostate(nfile)
-  integer, intent(inout) :: nook
+  integer :: nook
 
   integer nf,ne
   real x,y
@@ -90,6 +114,7 @@ contains
   real pvec(nrens)
   character(len=5) :: nal
 
+  nook = 0
   do nf = 1,nfile 
 
      ! create a white/red noise random vector with mean 0 and std 1
@@ -98,7 +123,7 @@ contains
 
      ! next if the observation is not good
      !
-     if (ostate(nf)%stat > 1) cycle
+     if (ostate(nf)%stat /= 0) cycle
 
      nook = nook + 1
 
@@ -149,17 +174,19 @@ contains
  
   end do
 
+  if (nook /= nobs_ok) error stop 'The nubmer of good observations is wrong.'
+
   end subroutine fill_scalar_0d
 
 !********************************************************
 
-  subroutine fill_scurrents(nfile,nook)
+  subroutine fill_scurrents(nfile)
 
   use levels
   implicit none
 
   integer, intent(in) :: nfile
-  integer, intent(inout) :: nook
+  integer :: nook
   integer nf,ix,iy,ne
   real pvec1(nrens),pvec2(nrens)
   real x,y
@@ -172,6 +199,7 @@ contains
   if (size(hlv) <= 1)&
      error stop 'fill_scurrents: a 3D sim is necessary to assimilate surface currents'
 
+  nook = 0
   do nf = 1,nfile 
      
     ! create a white/red noise random vector with mean 0 and std 1
@@ -243,6 +271,8 @@ contains
     end do
 
   end do
+
+  if (nook /= nobs_ok) error stop 'The nubmer of good observations is wrong.'
 
   end subroutine fill_scurrents
 
