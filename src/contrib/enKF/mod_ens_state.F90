@@ -27,6 +27,7 @@ contains
    use mod_hydro_vel
    use mod_ts
    use mod_conz
+   use mod_gotm_aux
 
    use mod_restart
 
@@ -52,6 +53,7 @@ contains
    call mod_hydro_vel_init(nkn,nel,nlv)
    call mod_ts_init(nkn,nlv)  
    call levels_init(nkn,nel,nlv)
+   call mod_gotm_aux_init(nkn,nlv)
    ! init concentration, this is a issue
    !call mod_conz_init(1,nkn,nlvdi)
 

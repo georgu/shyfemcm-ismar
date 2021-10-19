@@ -29,7 +29,7 @@ SHYOBJ = $(FEM3D)/subrst.o $(FEM3D)/subbas.o $(FEM3D)/subdts.o $(FEM3D)/mod_bnd.
 	$(FEM3D)/newlevels.o $(FEM3D)/mod_conz.o $(FEM3D)/mod_hydro_vel.o \
 	$(FEM3D)/ecological_dummy.o $(FEM3D)/subdef.o $(FEM3D)/subnev.o \
 	$(FEM3D)/mod_geom.o $(FEM3D)/subscn.o $(FEM3D)/suboutputd.o \
-	$(FEM3D)/subiso8601.o $(FEM3D)/mercury_dummy.o
+	$(FEM3D)/subiso8601.o $(FEM3D)/mercury_dummy.o $(FEM3D)/mod_gotm_aux.o
 
 #-------------------- ens objects
 # Ensemble analysis objects
@@ -165,7 +165,8 @@ m_sample2D.o: ../femlib/mod/m_fixsample2d.mod \
 main.o: ../femlib/mod/mod_enkf.mod ../femlib/mod/mod_ens_state.mod \
 		../femlib/mod/mod_mod_err.mod \
 		../femlib/mod/mod_mod_states.mod \
-		../femlib/mod/mod_para.mod 
+		../femlib/mod/mod_para.mod \
+		../femlib/mod/mod_restart.mod 
 make_antime_list.o: ../femlib/mod/iso8601.mod
 make_eof_ens_meteo.o: ../femlib/mod/m_random.mod
 mod_anafunc.o: ../femlib/mod/m_ensmean.mod \
@@ -186,9 +187,10 @@ mod_ens_state.o: ../femlib/mod/basin.mod ../femlib/mod/levels.mod \
 		../femlib/mod/mod_init_enkf.mod \
 		../femlib/mod/mod_mod_states.mod \
 		../femlib/mod/mod_para.mod \
-		../femlib/mod/mod_ts.mod 
-mod_init_enkf.o: ../femlib/mod/basin.mod ../femlib/mod/iso8601.mod \
-		../femlib/mod/mod_dimensions.mod 
+		../femlib/mod/mod_restart.mod \
+		../femlib/mod/mod_ts.mod \
+		../femlib/mod/mod_gotm_aux.mod
+mod_init_enkf.o: ../femlib/mod/iso8601.mod
 mod_manage_obs.o: ../femlib/mod/iso8601.mod \
 		../femlib/mod/levels.mod \
 		../femlib/mod/mod_ens_state.mod \
@@ -204,16 +206,13 @@ perturbeBC.o: ../femlib/mod/iso8601.mod ../femlib/mod/m_random.mod \
 subenkf.o: ../femlib/mod/basin.mod ../femlib/mod/levels.mod \
 		../femlib/mod/m_random.mod \
 		../femlib/mod/m_sample2d.mod \
-		../femlib/mod/mod_conz.mod \
 		../femlib/mod/mod_dimensions.mod \
-		../femlib/mod/mod_geom_dynamic.mod \
 		../femlib/mod/mod_hydro.mod \
-		../femlib/mod/mod_hydro_vel.mod \
 		../femlib/mod/mod_restart.mod \
-		../femlib/mod/mod_ts.mod ../femlib/mod/shyfile.mod 
+		../femlib/mod/shyfile.mod 
 sublocan.o: ../femlib/mod/basin.mod ../femlib/mod/mod_enkf.mod \
 		../femlib/mod/mod_ens_state.mod \
 		../femlib/mod/mod_manage_obs.mod \
-		../femlib/mod/mod_mod_states.mod \
-		../femlib/mod/mod_para.mod 
+		../femlib/mod/mod_para.mod \
+		../femlib/mod/mod_restart.mod 
 
