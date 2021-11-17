@@ -77,10 +77,6 @@ subroutine eigC(R,nrobs,Z,eig)
    real, intent(out) :: Z(nrobs,nrobs)
    real, intent(out)   :: eig(nrobs)
 
-#ifdef IBM
-   real, allocatable :: ap(:)
-   integer k
-#endif
    real  RR(nrobs,nrobs)
 
    real fwork(8*nrobs)  
@@ -92,19 +88,6 @@ subroutine eigC(R,nrobs,Z,eig)
 
    idum=1
 
-#ifdef IBM
-! Upper packed storage as in ESSL manual
-   allocate (ap(nrobs*(nrobs+1)/2) )
-   k=0
-   do j=1,nrobs
-   do i=1,j
-       k=k+1
-       ap(k)=R(i,j)
-   enddo
-   enddo
-   call dspev(21,ap,eig,Z,nrobs,nrobs,fwork,2*nrobs)
-   deallocate(ap)
-#else
    abstol=2.0*DLAMCH('S')
    RR=R
    call dsyevx('V', 'A', 'U', nrobs, RR, nrobs, ddum, ddum, idum, idum, abstol, &
@@ -113,8 +96,6 @@ subroutine eigC(R,nrobs,Z,eig)
       print *,'              EigC:  dsyevx ierr     = ',ierr
       stop
    endif
-#endif
-
 
 end subroutine
 

@@ -3,9 +3,7 @@ contains
 subroutine pseudo1D(A,nx,nrfields,rx,dx,n1)
    use m_random
    use m_newton1D
-!#ifdef LINUX
    use mod_fftw3
-!#endif
    implicit none
    integer, intent(in) :: nx                ! Dimension of random vector
    integer, intent(in) :: nrfields          ! Number of random vectors
@@ -29,40 +27,17 @@ subroutine pseudo1D(A,nx,nrfields,rx,dx,n1)
    logical, save :: diag=.false.
    real, parameter :: pi=3.141592653589
 
-#ifdef SGI
-   integer, parameter :: sign=-1 
-   real coeff(15+n1)
-   complex arrayC(0:n1/2)
-   real y(n1+2)
-#endif
-
-!#ifdef LINUX
    integer(kind=8) plan
    complex arrayC(n1/2+1)
    real y(n1)
-!#endif
 
-!#ifndef SGI
-!#ifndef LINUX
-!   print *,'ranfield is only running on the following machines:'
-!   print *,'   SGI'
-!   print *,'   LINUX having FFTW3'
-!   stop
-!#endif
-!#endif
 
    pi2=2.0*pi
    deltak=pi2/(real(n1)*dx)
    kappa=pi2/(real(n1)*dx)
    kappa2=kappa**2
 
-!#ifdef LINUX
    call dfftw_plan_dft_c2r_1d(plan,n1,arrayC,y,FFTW_ESTIMATE)
-!#endif
-
-#ifdef SGI
-   call dzfft1dui(n1,coeff)
-#endif
 
    r1=3.0/rx
    if (diag) print '(a,f13.5,i5,2f12.2)','Call newton1D with ',r1,n1,dx,rx
@@ -102,27 +77,13 @@ subroutine pseudo1D(A,nx,nrfields,rx,dx,n1)
       fampl(0,2)=0.0
 
       arrayC(:)=cmplx(fampl(:,1),fampl(:,2))
-#ifdef SGI
-      call zdfft1du(sign,n1,arrayC,1,coeff)
-      if ( (n1/2+1)*2 == n1+1) then
-         y(1:n1+1)=transfer(arrayC(0:n1/2),(/0.0/))
-      elseif ( (n1/2+1)*2 == n1+2) then
-         y(1:n1+2)=transfer(arrayC(0:n1/2),(/0.0/))
-      else
-         print *,'pseudo1D: n1 problem: ',n1,(n1/2+1)*2,n1+2
-      endif
-#endif
 
-!#ifdef LINUX
       call dfftw_execute(plan)
-!#endif
       A(1:nx,i)=y(1:nx)
 
    enddo
 
-!#ifdef LINUX
    call dfftw_destroy_plan(plan)
-!#endif
 
 end subroutine pseudo1D
 end module m_pseudo1D

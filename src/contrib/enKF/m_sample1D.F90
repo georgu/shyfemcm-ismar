@@ -32,18 +32,12 @@ subroutine sample1D(A2,n,nrens,nre,dx,rh,samp_fix,periodic)
       n1=nint(real(n)*1.2)
    endif
 
-#ifdef SGI
-   if (mod(n1,2) == 1 ) n1=n1+1
-#endif
-
-!#if defined(IBM) || defined(LINUX)
    do i=1,100
       if (2**i >= n1) then
          n1=2**i
          exit
       endif
    enddo
-!#endif
    if (periodic .and. n /= n1) then
       print '(a,i5,a,i5)','Modified:  n=',n,' n1=',n1
       stop 'm_sample1D: You have to change model grid size for periodic samples'

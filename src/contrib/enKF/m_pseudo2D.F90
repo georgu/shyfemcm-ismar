@@ -28,8 +28,6 @@ subroutine pseudo2D(Amat,nx,ny,lde,rx,ry,dx,dy,n1,n2,theta,verbose)
    real pi2,deltak,summ,scale
    real a11tmp,a22tmp,a11,a22,a12,torad
 
-   real, allocatable    :: fampl(:,:,:)
-   real, allocatable    :: phi(:,:)
    real, allocatable    :: y(:,:)   ! Physical field
    complex, allocatable :: x(:,:)   ! Fourier amplitudes
 
@@ -43,8 +41,6 @@ subroutine pseudo2D(Amat,nx,ny,lde,rx,ry,dx,dy,n1,n2,theta,verbose)
    if (n1 < nx)    stop 'pseudo2D: n1 < nx'
    if (n2 < ny)    stop 'pseudo2D: n2 < ny'
 
-   allocate(fampl(0:n1/2,-n2/2:n2/2,2))
-   allocate(phi(0:n1/2,-n2/2:n2/2))
    allocate(y(0:n1+1,0:n2-1))
    allocate(x(0:n1/2,0:n2-1))
 
@@ -96,12 +92,52 @@ subroutine pseudo2D(Amat,nx,ny,lde,rx,ry,dx,dy,n1,n2,theta,verbose)
    a22=a11tmp*sin(theta*torad)**2 + a22tmp*cos(theta*torad)**2
    a12=(a22tmp-a11tmp)*cos(theta*torad)*sin(theta*torad)
 
+!$OMP PARALLEL PRIVATE(j,m,i,x,y),SHARED(n1,n2,pi2,a11,a12,a22,kappa,kappa2,lambda,lambda2,deltak,c,Amat)
+!$OMP DO
    do j=1,lde
+
+      call wave_amp(n1,n2,pi2,a11,a12,a22,kappa,kappa2,lambda,lambda2,deltak,c,x)
+
+      call dfftw_execute_dft_c2r(plan,x,y)
+      !call dfftw_execute(plan)
+
+      do m=1,ny
+      do i=1,nx
+         Amat(i,m,j)=y(i-1,m-1)
+      enddo
+      enddo
+
+   enddo
+!$OMP ENDDO
+!$OMP END PARALLEL
+
+   call dfftw_destroy_plan(plan)
+
+   deallocate(y, x)
+
+end subroutine pseudo2D
+
+!--------------------------
+subroutine wave_amp(n1,n2,pi2,a11,a12,a22,kappa,kappa2,lambda,lambda2,deltak,c,x)
+
+  implicit none
+
+  integer, intent(in) :: n1,n2
+  real, intent(in) :: pi2,a11,a12,a22,kappa,kappa2,lambda,lambda2,deltak,c
+  complex, intent(inout) :: x(0:n1/2,0:n2-1)
+
+  real, allocatable    :: phi(:,:)
+  real, allocatable    :: fampl(:,:,:)
+  real :: e
+  integer :: p,l
+
+
+  allocate(phi(0:n1/2,-n2/2:n2/2))
+  allocate(fampl(0:n1/2,-n2/2:n2/2,2))
+
       ! Calculating the random wave phases
       call random_number(phi)
       phi=pi2*phi
-
-
 
       ! Calculating the wave amplitues
       do p=-n2/2,n2/2
@@ -123,19 +159,8 @@ subroutine pseudo2D(Amat,nx,ny,lde,rx,ry,dx,dy,n1,n2,theta,verbose)
          x(:,p)=cmplx(fampl(:,-n2+p,1),fampl(:,-n2+p,2))
       enddo
 
-      call dfftw_execute(plan)
+   deallocate(fampl, phi)
 
-      do m=1,ny
-      do i=1,nx
-         Amat(i,m,j)=y(i-1,m-1)
-      enddo
-      enddo
+end subroutine wave_amp
 
-   enddo
-
-   call dfftw_destroy_plan(plan)
-
-   deallocate(fampl, phi, y, x)
-
-end subroutine pseudo2D
 end module m_pseudo2D
