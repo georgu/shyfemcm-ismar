@@ -74,26 +74,26 @@ clean:
 cleanall:
 	rm -f $(EXES) *.o $(ENSMOD) $(CUSTF) tags *.dat *.uf fort.* *.bak
 
-main: main.o $(ENSOBJ)
-	$(LINKER) $(LFLAGS) $(LIBS) $(SHYOBJ) $@.o \
-        $(ENSOBJ) $(DIRLIB)/libfem.a -o $@
+main: main.o $(ENSOBJ) 
+	$(LINKER) $(SHYOBJ) $@.o \
+        $(ENSOBJ) $(DIRLIB)/libfem.a $(LFLAGS) $(LIBS) -o $@
 
 perturbeBC: perturbeBC.o m_sample2D.o m_pseudo2D.o m_newton2D.o \
 	m_randrot.o m_fixsample2D.o m_random.o m_newtonfunc2D.o
-	$(LINKER) $(LFLAGS) $@.o m_sample2D.o m_pseudo2D.o m_newton2D.o \
+	$(LINKER) $@.o m_sample2D.o m_pseudo2D.o m_newton2D.o \
 	m_randrot.o m_fixsample2D.o m_random.o m_newtonfunc2D.o \
-	$(LIBS) $(DIRLIB)/libfem.a -o $@
+	$(DIRLIB)/libfem.a $(LFLAGS) $(LIBS) -o $@
 
 make_antime_list: make_antime_list.o
 	$(LINKER) $(LFLAGS) $@.o $(DIRLIB)/libfem.a -o $@
 
 make_eof_ens_meteo: make_eof_ens_meteo.o m_random.o
-	$(LINKER) $(LFLAGS) $@.o m_random.o \
-	$(LIBS) $(DIRLIB)/libfem.a -llapack -lblas -o $@
+	$(LINKER) $@.o m_random.o \
+	$(DIRLIB)/libfem.a $(LFLAGS) $(LIBS) -o $@
 
 enKF2enKS: enKF2enKS.o 
-	$(LINKER) $(LFLAGS) $(LIBS) $(SHYOBJ) $@.o \
-	$(DIRLIB)/libfem.a -o $@
+	$(LINKER) $(SHYOBJ) $@.o \
+	$(DIRLIB)/libfem.a $(LFLAGS) $(LIBS) -o $@
 
 depend:
 	@$(MAKEDEPEND) -moddir=$(MODDIR) *.F90

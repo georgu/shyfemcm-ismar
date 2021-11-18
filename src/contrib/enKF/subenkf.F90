@@ -16,7 +16,9 @@
   double precision atimef
 
   integer, save :: icall = 0
-  real*4 ibarcl4,iconz4,imerc4,iturb4
+  real*4 ibarcl4,iconz4,imerc4,iturb4,iwvert_rst4,ieco_rst4,zero4
+
+  zero4 = 0.
 
   open(24,file=trim(rstname),status='old',form='unformatted',iostat=ierr)
   if (ierr /= 0) error stop 'rst_read: Error opening file'
@@ -27,20 +29,24 @@
   close(24)
 
   if ( icall == 0 ) then
+
      hlv = hlvrst
      ilhv = ilhrst
      ilhkv = ilhkrst
      ibarcl4 = ibarcl_rst
-     call addpar('ibarcl',ibarcl4)
+     iwvert_rst4 = iwvert_rst
+     ieco_rst4 = ieco_rst
      iconz4 = iconz_rst
-     call addpar('iconz',iconz4)
-     call addpar('iwvert',iwvert_rst) !maybe not
-     call addpar('ieco',ieco_rst) !maybe not
-     call addpar('ibio',0)
-     call addpar('ibfm',0)
      imerc4 = imerc_rst
-     call addpar('imerc',imerc4)
      iturb4 = iturb_rst
+
+     call addpar('ibarcl',ibarcl4)
+     call addpar('iconz',iconz4)
+     call addpar('iwvert',iwvert_rst4) !maybe not
+     call addpar('ieco',ieco_rst4) !maybe not
+     call addpar('ibio',zero4)
+     call addpar('ibfm',zero4)
+     call addpar('imerc',imerc4)
      call addpar('iturb',iturb4)
 
      call daddpar('date',0.)
