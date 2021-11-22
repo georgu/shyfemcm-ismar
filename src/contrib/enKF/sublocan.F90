@@ -187,7 +187,7 @@
      do no = 1,no_tot
 
 	dist = sqrt( (xgv(nk)-xo(no))**2 + (ygv(nk)-yo(no))**2 )
-	call find_weight(rhoo(no),dist,w)
+	call find_weight_GC(rhoo(no),dist,w)
 
 	if ( w > eps_la ) then
            nno = nno + 1
@@ -294,7 +294,7 @@
 	ye = ye/3.
 	dist = sqrt( (xe-xo(no))**2 + (ye-yo(no))**2 )
 
-	call find_weight(rhoo(no),dist,w)
+	call find_weight_GC(rhoo(no),dist,w)
 
 	if ( w > eps_la ) then
            nno = nno + 1
@@ -345,29 +345,6 @@
 
 
      end subroutine locan_e
-
-
-!*************************************************************
-
-  subroutine find_weight(rho,dst,w)
-  implicit none
-  real, intent(in) :: rho,dst
-  real, intent(out) :: w
-  real s
-
-  s = dst/rho
-
-  ! Taper function of Gaspari-Cohn
-  if ((s >=0) .and. (s<1)) then
-     w = 1 - (5./3. * s**2) + (5./8. * s**3)  + (1./2. * s**4) - (1./4. * s**5)
-  else if ((s>=1) .and. (s<2)) then
-     w = - (2./3. * s**-1) + 4 - (5. * s) + (5./3. * s**2) + (5./8. * s**3)& 
-         - (1./2. * s**4) + (1./12. * s**5)
-  else
-     w = 0.
-  end if
-
-  end subroutine find_weight
 
 
 !*************************************************************

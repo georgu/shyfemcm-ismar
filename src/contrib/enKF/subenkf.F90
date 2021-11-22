@@ -403,6 +403,29 @@
 
   end subroutine find_el_node
 
+!*************************************************************
+
+  subroutine find_weight_GC(rho,dst,w)
+  implicit none
+  real, intent(in) :: rho,dst
+  real, intent(out) :: w
+  real s
+
+  s = dst/rho
+
+  ! Taper function of Gaspari-Cohn
+  if ((s >=0) .and. (s<1)) then
+     w = 1 - (5./3. * s**2) + (5./8. * s**3)  + (1./2. * s**4) - (1./4. * s**5)
+  else if ((s>=1) .and. (s<2)) then
+     w = - (2./3. * s**-1) + 4 - (5. * s) + (5./3. * s**2) + (5./8. * s**3)& 
+         - (1./2. * s**4) + (1./12. * s**5)
+  else
+     w = 0.
+  end if
+
+  end subroutine find_weight_GC
+
+
 !********************************************************
   
   subroutine superobs_horiz_el(no,x,y,ostatus,val1,val2)

@@ -175,19 +175,41 @@ contains
 
 !********************************************************
 
-  subroutine check_and_correct(Abkg,Aanl)
+  subroutine bc_val_check_correct(Abkg,Aanl)
    implicit none
    type(states),intent(in) :: Abkg(nrens)
    type(states),intent(inout) :: Aanl(nrens)
 
-   real vala,valb,vala2,valb2
+   real vala,valb
 
    integer ne,k,ie,nl
 
    integer zout,uvout,sout,tout,otot
    integer znan,uvnan,snan,tnan,ntot
 
-   write(*,*) 'Checking the analysis values of the variables...'
+   character(len=80) :: bcfile = 'lbound.dat'
+   logical :: file_exists
+   integer :: nbc = 1
+   integer,allocatable :: bcid(:)
+   real,allocatable :: bcrho(:)
+
+
+   inquire(file=bcfile,exist=file_exists)
+   if (file_exists) then
+      ! read file
+      write(*,*) 'File to correct values near the boundaries found.'
+      allocate(bcid(nbc),bcrho(nbc))
+      call read_bc_file(1,bcfile,nbc,bcid,bcrho)
+      deallocate(bcid,bcrho)
+      allocate(bcid(nbc),bcrho(nbc))
+      call read_bc_file(0,bcfile,nbc,bcid,bcrho)
+      do k = 1,nnkn
+      end do
+   else
+      write(*,*) 'Warning: no file to correct values near the boundaries.'
+      write(*,*) 'Make a file lbound.dat. In the first line the n. of BC nodes.'
+      write(*,*) 'In the other lines, in each line, the external number and a damping radius.'
+   end if
 
    otot = 0
    ntot = 0
@@ -203,114 +225,67 @@ contains
     snan = 0
     tnan = 0
 
+!$OMP PARALLEL PRIVATE(k,nl,valb,vala,znan,zout,snan,sout,tnan,tout),SHARED(Abkg,Aanl,nbc,bcid,bcrho)
+!$OMP DO
     do k = 1,nnkn
 
-      !---
       ! level
       valb = Abkg(ne)%z(k)
       vala = Aanl(ne)%z(k)
-
-      ! isnan and bk is a number
-      if ( isnan(vala) .and. (.not. isnan(valb) ) ) then
-        !if (verbose) write(*,*) 'Warning: nan in water level. Node: ',k
-        vala = valb
-        znan = znan + 1
-      end if
-
-      ! out of range
-      if (( vala > SSH_MAX ) .or. ( vala < SSH_MIN )) then
-	vala = valb
-	zout = zout + 1
-      end if
-
+      ! BC correction
+      if (file_exists) call bc_correction('node',k,vala,valb,nbc,bcid,bcrho)
+      write(*,*) 'level BC correction: ',k,valb,vala
+      ! check val
+      call check_one_val(vala,valb,SSH_MAX,SSH_MIN,znan,zout)
       Aanl(ne)%z(k) = vala
-      !---
 
       do nl = 1,nnlv
-
-        !---
         ! salinity
 	valb = Abkg(ne)%s(nl,k)
 	vala = Aanl(ne)%s(nl,k)
-
-        ! isnan and bk is a number
-        if ( isnan(vala) .and. (.not. isnan(valb) ) ) then
-           !if (verbose) write(*,*) 'Warning: nan in salility. Node, level: ',k,nl
-	   vala = valb
-	   snan = snan + 1
-	end if
-	! out of range
-        if (( vala > SAL_MAX ) .or. ( vala < SAL_MIN )) then
-          vala = valb
-	  sout = sout + 1
-	end if
-
+        ! BC correction
+        if (file_exists) call bc_correction('node',k,vala,valb,nbc,bcid,bcrho)
+        ! check val
+	call check_one_val(vala,valb,SAL_MAX,SAL_MIN,snan,sout)
 	Aanl(ne)%s(nl,k) = vala
-        !---
 
-        !---
 	! temperature
 	valb = Abkg(ne)%t(nl,k)
 	vala = Aanl(ne)%t(nl,k)
-	
-        ! isnan and bk is a number
-        if ( isnan(vala) .and. (.not. isnan(valb)) ) then
-           !if (verbose) write(*,*) 'Warning: nan in temperature. Node, level: ',k,nl
-	   vala = valb
-	   tnan = tnan + 1
-	end if
-	! out of range
-        if (( vala > TEM_MAX ) .or. ( vala < TEM_MIN )) then
-          vala = valb
-	  tout = tout + 1
-	end if
-
+        ! BC correction
+        if (file_exists) call bc_correction('node',k,vala,valb,nbc,bcid,bcrho)
+        ! check val
+	call check_one_val(vala,valb,TEM_MAX,TEM_MIN,tnan,tout)
 	Aanl(ne)%t(nl,k) = vala
-        !---
-
       end do
-
     end do
+!$OMP ENDDO
+!$OMP END PARALLEL
 
-
+!$OMP PARALLEL PRIVATE(ie,nl,valb,vala,uvnan,uvout),SHARED(Abkg,Aanl,nbc,bcid,bcrho)
+!$OMP DO
     do ie = 1,nnel
       do nl = 1,nnlv
-	
-        !---
         ! current
 	valb = Abkg(ne)%u(nl,ie)
 	vala = Aanl(ne)%u(nl,ie)
-
-	valb2 = Abkg(ne)%v(nl,ie)
-	vala2 = Aanl(ne)%v(nl,ie)
-
-	! isnan and bk is a number
-        if ( isnan(vala) .and. (.not. isnan(valb)) ) then
-	   !if (verbose) write(*,*) 'Warning: nan in velocity. El., level: ',ie,nl
-	   vala = valb
-	   uvnan = uvnan + 1
-	end if
-        if ( isnan(vala2) .and. (.not. isnan(valb2)) ) then
-	   !if (verbose) write(*,*) 'Warning: nan in velocity. El., level: ',ie,nl
-	   vala2 = valb2
-	   uvnan = uvnan + 1
-	end if
-
-	if (( vala > VEL_MAX ) .or. ( vala < VEL_MIN )) then
-	   vala = valb
-	   uvout = uvout + 1
-	end if
-	if (( vala2 > VEL_MAX ) .or. ( vala2 < VEL_MIN )) then
-	   vala2 = valb2
-	   uvout = uvout + 1
-	end if
-
+        ! BC correction
+        if (file_exists) call bc_correction('elem',ie,vala,valb,nbc,bcid,bcrho)
+        ! check val
+	call check_one_val(vala,valb,VEL_MAX,VEL_MIN,uvnan,uvout)
 	Aanl(ne)%u(nl,ie) = vala
-	Aanl(ne)%v(nl,ie) = vala2
-        !---
 
+	valb = Abkg(ne)%v(nl,ie)
+	vala = Aanl(ne)%v(nl,ie)
+        ! BC correction
+        if (file_exists) call bc_correction('elem',ie,vala,valb,nbc,bcid,bcrho)
+        ! check val
+	call check_one_val(vala,valb,VEL_MAX,VEL_MIN,uvnan,uvout)
+	Aanl(ne)%v(nl,ie) = vala
       end do
     end do
+!$OMP ENDDO
+!$OMP END PARALLEL
 
     otot = zout + tout + sout + uvout
     ntot = znan + tnan + snan + uvnan
@@ -332,8 +307,106 @@ contains
    if (otot > 0) write(*,*) 'Number of variables out of range: ', otot
    if (ntot > 0) write(*,*) 'Number of nan variables: ', ntot
 
-  end subroutine check_and_correct
+  end subroutine bc_val_check_correct
 
+!********************************************************
+  subroutine read_bc_file(icall,bcfile,nbc,bcid,bcrho)
+  implicit none
+  character(len=*) :: bcfile
+  integer,intent(in) :: icall
+  integer,intent(inout) :: nbc
+  integer,intent(out) :: bcid(nbc)
+  real,intent(out) :: bcrho(nbc)
+  integer i
+
+  if (icall == 0) then
+     open(28,file=trim(bcfile),status='old',form='formatted')
+     read(28,*) nbc
+     return
+  end if
+
+  do i=1,nbc
+     read(28,*) bcid(i),bcrho(i)
+  end do
+  close(28)
+
+  end subroutine read_bc_file
+
+!********************************************************
+  subroutine bc_correction(stype,id,va,vb,nbc,bcid,bcrho)
+  use basin
+  implicit none
+  character(len=4),intent(in) :: stype
+  integer,intent(in) :: id
+  real,intent(inout) :: va
+  real,intent(in) :: vb
+  integer,intent(in) :: nbc
+  integer,intent(in) :: bcid(nbc)
+  real,intent(in) :: bcrho(nbc)
+  integer :: i,k,kbc
+  real :: bcx,bcy
+  real :: w = 1.
+  real :: x = 0., y = 0.
+  real :: d = 0., dmin = 1.e15, rho = 0.
+
+  if (stype == 'node') then
+     x = xgv(id)
+     y = ygv(id)
+  else
+     do i = 1,3
+        k = nen3v(i,id)
+        x = x + xgv(k)
+        y = y + ygv(k)
+     end do
+     x = x/3.
+     y = y/3.
+  end if
+
+  do i = 1,nbc
+     kbc = ipv(bcid(i))
+     bcx = xgv(kbc)
+     bcy = ygv(kbc)
+     d = sqrt((x-bcx)**2 + (y-bcy)**2)
+     if (d < dmin) then
+	dmin = d
+	rho = bcrho(i)
+     end if
+  end do
+
+  call find_weight_GC(rho,dmin,w)
+
+  va = w * vb + (1 - w) * va
+
+  write(*,*) 'bc_correction: ',rho,dmin,w,vb,va
+
+  end subroutine bc_correction
+
+
+!********************************************************
+  subroutine check_one_val(va,vb,vmax,vmin,vnan,vout)
+  implicit none
+  real,intent(inout) :: va
+  real,intent(in) :: vb
+  real,intent(in) :: vmin,vmax
+  integer,intent(inout) :: vnan,vout
+
+  ! isnan and bk is a number
+  if ( isnan(va) .and. (.not. isnan(vb) ) ) then
+     va = vb
+!$OMP CRITICAL
+     vnan = vnan + 1
+!$OMP END CRITICAL
+   end if
+
+   ! out of range
+   if (( va >= vmax ) .or. ( va <= vmin )) then
+      va = vb
+!$OMP CRITICAL
+      vout = vout + 1
+!$OMP END CRITICAL
+   end if
+
+  end subroutine check_one_val
 
 !********************************************************
 

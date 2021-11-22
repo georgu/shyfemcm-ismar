@@ -138,9 +138,9 @@ program main
   end select
 
 !--------------------------------
-!  check and correct all the out-of-range and nans in analysis
+!  Correct the analysis near the BC and check/correct out-of-range and nans
 !--------------------------------
-  call check_and_correct(Abk,Aan)
+  call bc_val_check_correct(Abk,Aan)
 
 !--------------------------------
 !  compute the posterior mean and std. This is needed for inflation
