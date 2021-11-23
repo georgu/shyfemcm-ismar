@@ -187,24 +187,24 @@ contains
    integer zout,uvout,sout,tout,otot
    integer znan,uvnan,snan,tnan,ntot
 
-   character(len=80) :: bcfile = 'lbound.dat'
+   character(len=80),parameter :: bcfile = 'lbound.dat'
    logical :: file_exists
-   integer :: nbc = 1
+   integer :: nbc
    integer,allocatable :: bcid(:)
    real,allocatable :: bcrho(:)
-
-
+   real :: w
+   
+   nbc = 1
+   w = 0.
    inquire(file=bcfile,exist=file_exists)
    if (file_exists) then
       ! read file
       write(*,*) 'File to correct values near the boundaries found.'
       allocate(bcid(nbc),bcrho(nbc))
-      call read_bc_file(1,bcfile,nbc,bcid,bcrho)
+      call read_bc_file(0,bcfile,nbc,bcid,bcrho)
       deallocate(bcid,bcrho)
       allocate(bcid(nbc),bcrho(nbc))
-      call read_bc_file(0,bcfile,nbc,bcid,bcrho)
-      do k = 1,nnkn
-      end do
+      call read_bc_file(1,bcfile,nbc,bcid,bcrho)
    else
       write(*,*) 'Warning: no file to correct values near the boundaries.'
       write(*,*) 'Make a file lbound.dat. In the first line the n. of BC nodes.'
@@ -225,16 +225,18 @@ contains
     snan = 0
     tnan = 0
 
-!$OMP PARALLEL PRIVATE(k,nl,valb,vala,znan,zout,snan,sout,tnan,tout),SHARED(Abkg,Aanl,nbc,bcid,bcrho)
+!$OMP PARALLEL PRIVATE(k,nl,valb,vala,znan,zout,snan,sout,tnan,tout,w),SHARED(Abkg,Aanl,nbc,bcid,bcrho)
 !$OMP DO
     do k = 1,nnkn
+
+      ! BC correction
+      if (file_exists) call bc_correction('node',k,nbc,bcid,bcrho,w)
 
       ! level
       valb = Abkg(ne)%z(k)
       vala = Aanl(ne)%z(k)
-      ! BC correction
-      if (file_exists) call bc_correction('node',k,vala,valb,nbc,bcid,bcrho)
-      write(*,*) 'level BC correction: ',k,valb,vala
+      vala = w * valb + (1. - w) * vala
+
       ! check val
       call check_one_val(vala,valb,SSH_MAX,SSH_MIN,znan,zout)
       Aanl(ne)%z(k) = vala
@@ -243,8 +245,7 @@ contains
         ! salinity
 	valb = Abkg(ne)%s(nl,k)
 	vala = Aanl(ne)%s(nl,k)
-        ! BC correction
-        if (file_exists) call bc_correction('node',k,vala,valb,nbc,bcid,bcrho)
+        vala = w * valb + (1. - w) * vala
         ! check val
 	call check_one_val(vala,valb,SAL_MAX,SAL_MIN,snan,sout)
 	Aanl(ne)%s(nl,k) = vala
@@ -252,8 +253,7 @@ contains
 	! temperature
 	valb = Abkg(ne)%t(nl,k)
 	vala = Aanl(ne)%t(nl,k)
-        ! BC correction
-        if (file_exists) call bc_correction('node',k,vala,valb,nbc,bcid,bcrho)
+        vala = w * valb + (1. - w) * vala
         ! check val
 	call check_one_val(vala,valb,TEM_MAX,TEM_MIN,tnan,tout)
 	Aanl(ne)%t(nl,k) = vala
@@ -262,23 +262,24 @@ contains
 !$OMP ENDDO
 !$OMP END PARALLEL
 
-!$OMP PARALLEL PRIVATE(ie,nl,valb,vala,uvnan,uvout),SHARED(Abkg,Aanl,nbc,bcid,bcrho)
+
+!$OMP PARALLEL PRIVATE(ie,nl,valb,vala,uvnan,uvout,w),SHARED(Abkg,Aanl,nbc,bcid,bcrho)
 !$OMP DO
     do ie = 1,nnel
+      ! BC correction
+      if (file_exists) call bc_correction('elem',ie,nbc,bcid,bcrho,w)
       do nl = 1,nnlv
         ! current
 	valb = Abkg(ne)%u(nl,ie)
 	vala = Aanl(ne)%u(nl,ie)
-        ! BC correction
-        if (file_exists) call bc_correction('elem',ie,vala,valb,nbc,bcid,bcrho)
+        vala = w * valb + (1. - w) * vala
         ! check val
 	call check_one_val(vala,valb,VEL_MAX,VEL_MIN,uvnan,uvout)
 	Aanl(ne)%u(nl,ie) = vala
 
 	valb = Abkg(ne)%v(nl,ie)
 	vala = Aanl(ne)%v(nl,ie)
-        ! BC correction
-        if (file_exists) call bc_correction('elem',ie,vala,valb,nbc,bcid,bcrho)
+        vala = w * valb + (1. - w) * vala
         ! check val
 	call check_one_val(vala,valb,VEL_MAX,VEL_MIN,uvnan,uvout)
 	Aanl(ne)%v(nl,ie) = vala
@@ -333,22 +334,25 @@ contains
   end subroutine read_bc_file
 
 !********************************************************
-  subroutine bc_correction(stype,id,va,vb,nbc,bcid,bcrho)
+  subroutine bc_correction(stype,id,nbc,bcid,bcrho,w)
   use basin
   implicit none
   character(len=4),intent(in) :: stype
   integer,intent(in) :: id
-  real,intent(inout) :: va
-  real,intent(in) :: vb
   integer,intent(in) :: nbc
   integer,intent(in) :: bcid(nbc)
   real,intent(in) :: bcrho(nbc)
+  real,intent(out) :: w
   integer :: i,k,kbc
   real :: bcx,bcy
-  real :: w = 1.
-  real :: x = 0., y = 0.
-  real :: d = 0., dmin = 1.e15, rho = 0.
+  real :: x,y,d,dmin,rho
+  integer :: ipint
 
+  x = 0.
+  y = 0.
+  d = 0.
+  dmin = 1.e15
+  rho = 0.
   if (stype == 'node') then
      x = xgv(id)
      y = ygv(id)
@@ -363,7 +367,7 @@ contains
   end if
 
   do i = 1,nbc
-     kbc = ipv(bcid(i))
+     kbc = ipint(bcid(i))
      bcx = xgv(kbc)
      bcy = ygv(kbc)
      d = sqrt((x-bcx)**2 + (y-bcy)**2)
@@ -375,9 +379,8 @@ contains
 
   call find_weight_GC(rho,dmin,w)
 
-  va = w * vb + (1 - w) * va
 
-  write(*,*) 'bc_correction: ',rho,dmin,w,vb,va
+  !write(*,*) 'bc_correction: ',rho,dmin,w
 
   end subroutine bc_correction
 

@@ -3,12 +3,12 @@
 !
 module mod_para
 
-  integer :: rmode = 13 ! Ensemble Kalman Filter with SVD pseudo inversion of SS'+ EE'
-  !integer :: rmode = 22 ! Square root algorithm with SVD pseudo inversion of SS'+(N-1)R
-  !integer :: rmode = 23 ! Square root algorithm with SVD pseudo inversion of SS'+ EE'
-  !integer :: rmode = 10 ! exact update scheme for diagonal obs-err-cov-mat
+  integer, parameter :: rmode = 13 ! Ensemble Kalman Filter with SVD pseudo inversion of SS'+ EE'
+  !integer, parameter :: rmode = 22 ! Square root algorithm with SVD pseudo inversion of SS'+(N-1)R
+  !integer, parameter :: rmode = 23 ! Square root algorithm with SVD pseudo inversion of SS'+ EE'
+  !integer, parameter :: rmode = 10 ! exact update scheme for diagonal obs-err-cov-mat
 
-  logical :: verbose = .true. ! Prints diagnostic output
+  logical, parameter :: verbose = .true. ! Prints diagnostic output
 
   integer, parameter :: inflate = 2  ! Inflation
                                      ! 0 = off
@@ -48,11 +48,11 @@ module mod_para
   real, parameter :: KSTD = 2
 
   ! parameters for the analysis
-  real :: truncation = 0.99 ! truncation of the SVD eigenvalues
-  logical :: lrandrot = .false. ! True if additional random rotation is used
-  logical :: lupdate_randrot = .true. 
-  !logical :: lupdate_randrot = .false. ! False to avoid randomness
-  logical :: lsymsqrt = .true. ! true if symmetrical square root of Sakov is used (should be used)
+  real, parameter :: truncation = 0.99 ! truncation of the SVD eigenvalues
+  logical, parameter :: lrandrot = .false. ! True if additional random rotation is used
+  logical, parameter :: lupdate_randrot = .true. 
+  !logical, parameter :: lupdate_randrot = .false. ! False to avoid randomness
+  logical, parameter :: lsymsqrt = .true. ! true if symmetrical square root of Sakov is used (should be used)
 
   ! time interval (sec) to select an observation
   ! with respect to the analysis time

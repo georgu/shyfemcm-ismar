@@ -20,7 +20,7 @@
   real dist,w
   real xe,ye
 
-  logical :: local_upd_rand = .true.
+  logical :: local_upd_rand
 
   integer ::  lkdim 
   integer ::  lnedim 
@@ -28,6 +28,8 @@
   real, allocatable :: xobs(:),yobs(:),rho_loc(:)
   real, allocatable :: Ak_an(:,:),Ak_bk(:,:)
   real, allocatable :: Ane_an(:,:),Ane_bk(:,:)
+
+  local_upd_rand = .true.
 
   if (ibarcl_rst == 0) then
 	  lkdim = 1
