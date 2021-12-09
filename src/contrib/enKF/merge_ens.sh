@@ -19,8 +19,11 @@ SIMDIR=$(pwd)           # current dir
 
 Usage()
 {
-  echo "Usage: merge_ens.sh [file_type]"
+  echo
+  echo "Usage: merge_ens.sh [file_type] [output]"
+  echo
   echo "file_type: ext shy"
+  echo "output: small (z), medium (z,t,s), full (all). Only for the ext files."
   exit 0
 }
 
@@ -30,11 +33,25 @@ Merge_timeseries()
 {
    nen=$1
    ftype=$2
+   outt=$3
+
    files=$(ls an*_en${nen}b.${ftype})
 
    # not working!
    #$FEMDIR/fembin/shyelab -catmode +1 -out an*_en${nen}b.${ftype}
    #mv -f out.ext analysis_en${nen}.${ftype}
+
+   allvars='all.2d dir.2d salt.2d speed.2d temp.2d velx.2d vely.2d zeta.2d dir.3d salt.3d speed.3d temp.3d velx.3d vely.3d'
+   if [ "$outt" = "small" ]; then
+	   vars='zeta.2d'
+   elif [ "$outt" = "medium" ]; then
+	   vars='zeta.2d temp.2d salt.2d temp.3d salt.3d'
+   elif [ "$outt" = "full" ]; then
+	   vars=$allvars
+   else
+	   echo "Bad input"
+	   exit 1
+   fi
 
    rm -f *_st*_en${nen}.ts *.2d.* *.3d.*
    for fil in $files; do
@@ -42,9 +59,7 @@ Merge_timeseries()
       echo "Processing file: $fil"
       $FEMDIR/fembin/shyelab -split ${fil} &> /dev/null
 
-      var2d=$(ls *.2d.1 2>/dev/null |cut -d '.' -f 1,2)
-      var3d=$(ls *.3d.1 2>/dev/null |cut -d '.' -f 1,2)
-      for vv in $(echo "$var2d $var3d"); do
+      for vv in $vars; do
          for flev in $(ls $vv.*); do
 	    idst=$(echo $flev | cut -d '.' -f 3)
             cat $flev |head -n -1|tail -n +2 >> ${vv}_st${idst}_en${nen}.ts
@@ -52,6 +67,7 @@ Merge_timeseries()
          done
       done
    done
+   rm -f *.2d.* *.3d.*
 }
 
 #----------------------------------------------------------
@@ -69,8 +85,9 @@ Merge_shy()
 #----------------------------------------------------------
 #----------------------------------------------------------
 
-if [ $1 ]; then
+if [ $2 ]; then
    file_type=$1
+   outt=$2
 else
    Usage
 fi
@@ -83,7 +100,7 @@ for efile in $(ls an00002_en*.${file_type}); do
 
     if [ ${file_type} = 'ext' ]; then
 
-       Merge_timeseries ${ens_member} ${file_type}
+       Merge_timeseries ${ens_member} ${file_type} $outt
 
     elif [ ${file_type} = 'shy' ]; then
 

@@ -30,6 +30,16 @@ module mod_para
   integer, parameter :: mode_an = 0
 
 !------------
+! Settings for the creation of the initial ensemble
+  integer,parameter :: fmult_init = 10             !mult factor to determine the supersampling
+  real, parameter :: theta_init = 0.              !rotation of the random fields (0 East, anticlockwise)
+  real, parameter :: sigma_init_z = 0.03               !standard deviation of zeta
+  real, parameter :: sigma_init_t = 1.                 !standard deviation of temperature
+  real, parameter :: sigma_init_s = 1.                 !standard deviation of salinity
+  logical, parameter ::  sample_fix_init = .true.
+
+!
+!------------
 ! Settings for the observation perturbations (mod_enkf)
 !
   ! decay time for the red noise of the observations (sec). 

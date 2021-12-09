@@ -161,8 +161,10 @@ Read_ens_list(){
 
      skel_file[$nrow]=$skelf
 
-     nel=$(printf "%05d" $nrow)
-     ln -fs $rstf an00001_en${nel}b.rst
+     if [ "$is_new_ens" -eq "0" ] || [ "$nrow" -eq "0" ]; then
+        nel=$(printf "%05d" $nrow)
+        ln -fs $rstf an00001_en${nel}b.rst
+     fi
 
      nrow=$((nrow + 1))
 
@@ -170,11 +172,6 @@ Read_ens_list(){
 
   nrens=$nrow
   echo ""; echo "Number of ensemble members: $nrens"; echo ""
-
-  if [ "$is_new_ens" -eq "1" ] && [ "$nrow" -ne "1" ]; then
-     echo "Error in the number of ens files: $nrow != 1"
-     exit 1
-  fi
 }
 
 #----------------------------------------------------------

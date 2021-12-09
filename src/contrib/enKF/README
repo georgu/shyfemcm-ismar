@@ -68,11 +68,20 @@ File with 4 lines with:
 ----------
 ens_list.txt
 ----------
-List of skel (to make the str) and restart initial files. For example:
+List of skel (to make the str) and restart initial files. Use the same name
+for the restart file in case of just one initial state and the generation 
+of the initial ensemble. For example:
 
 medit_73830_S6_000.skel restart_000.rst
 medit_73830_S6_001.skel restart_001.rst
 medit_73830_S6_002.skel restart_002.rst
+...
+
+or 
+
+medit_73830_S6_000.skel restart_000.rst
+medit_73830_S6_001.skel restart_000.rst
+medit_73830_S6_002.skel restart_000.rst
 ...
 
 ----------
@@ -102,22 +111,14 @@ antime_list.txt
 A list of the times, in SHYFEM string format, of the analysis steps. Use
 make_antime_list to do it.
 
-
 ----------
-init_ens.info (optional)
+lbound.dat (optional)
 ----------
-Make this file only if you choose to make the initial ensemble of
-states This file sets the white noise parameters to make an initial ensemble of
-states. Only the sea level is perturbed.
-
-init_ens.info must contain a row with:
-  - nx ny fmult theta sigma
-
-  where:
-  - nx,ny are the dimension of the grid of the pseudo random fields
-  - fmult is the mult factor to create a supersample from the initial ensemble
-  - theta is the rotation of the pseudo random fields (0 East, anticlockwise)
-  - sigma is the standard deviation of the water level
+This file is recommended and changes the analysis solution near the
+boundaries. Full background at the boundary nodes, full analysis at a
+determinate distance from the nodes (G-C function).
+Put the n. of nodes in the first row, then each row has the id of the node and a
+radius.
 
 ----------
 mod_err.info (optional)
@@ -145,7 +146,7 @@ skel files
 ----------
 These are files used to make the str files of the ensemble members during all
 the steps of the data assimilation. They should have the same settings of the
-initial enseble restart files.
+restart files.
 It is extremely important that you write exactly the following linee:
 
 - In the section $title the second line must contain the string: NAMESIM
@@ -192,19 +193,21 @@ string-time2 value2
 
 2)
 Fem file with a surface current field. Bad values should be flagged with a -999.
-As for the sea level timeseries, an info file is needed, containing a value
-for the standard deviation.
 
-For each observation file you need a file [obsfile.info] (add a string .info
-to the obsfile).
-This file must contain in 1 row: x y z std rho_loc
-x, y, z = Coordinate of the observation, in the same reference system of the bas file
-std = standard deviation (estimated error) of the observations
-rho_loc = geographical radius for the local analysis (not used if isloc = 0 in
+----------
+Info observation files
+----------
+For each observation file you need a file with some information about the
+observation. The filename must be [obsfile.info] (add the extention .info to the 
+obsfile).
+This file must contain in one row five numbers: x y z std rho_loc
+x, y, z = Coordinates of the observation, using the same coordinate system of the basin
+std = standard deviation (estimated error) of the observation
+rho_loc = radius for the local analysis (not used if isloc = 0 in
 mod_para.F90).
 
 Parameters of the assimilation
 ===================
 
-See the file mod_para.F90 to set some more assimilation parameters, like the
+See the file mod_para.F90 to set some assimilation parameters, like the
 method of data assimilation, the use of the local analysis and more.

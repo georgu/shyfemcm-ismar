@@ -133,43 +133,37 @@ contains
 
   subroutine make_init_ens(Ain)
    use basin
+   use mod_restart
+   use mod_para
 
    implicit none
 
    type(states),intent(in) :: Ain
 
-   ! parameters for the initial ensemble of states
-   !
-   integer nx_in,ny_in           !number of x and y grid points
-   integer fmult_in              !mult factor to determine the supersampling
-   real theta_in                 !rotation of the random fields (0 East, anticlockwise)
-   real sigma_in                 !standard deviation of the fields (level)
+   real kvec1(nnkn,nrens-1),kvec2(nnkn,nrens-1)
 
-   type(states), save :: Apert
-   real kvec(nnkn,nrens-1),evec(nnel,nrens-1)
+   integer ne,nl
 
-   integer ne,n,ie,k
+   ! this id for the level
+   call make_2Dpert(kvec1,nnkn,nrens-1)
 
-   open(21, file='init_ens.info', status='old')
-   read(21,*) nx_in,ny_in,fmult_in,theta_in,sigma_in
-   close(21)
-
-   ! perturbation for z
-   call make_2Dpert(kvec,nnkn,nrens-1,fmult_in,theta_in,nx_in,ny_in)
-
-   do ne = 1,nrens
-
-     if (ne == 1) then
-       Abk(ne) = Ain
-     else
-       Apert = 0.
-       do k = 1,nnkn
-          Apert%z(k) = kvec(k,ne-1) * sigma_in
-       end do
-       Abk(ne) = Ain + Apert
-     end if
-
+   Abk(1) = Ain
+   do ne = 2,nrens
+      Abk(ne) = Ain
+      Abk(ne)%z = Ain%z + (kvec1(:,ne-1) * sigma_init_z)
    end do
+
+   if (ibarcl_rst /= 0) then
+      call make_2Dpert(kvec1,nnkn,nrens-1)
+      call make_2Dpert(kvec2,nnkn,nrens-1)
+
+      do ne = 2,nrens
+        do nl = 1,nnlv
+         Abk(ne)%t(nl,:) = Ain%t(nl,:) + (kvec1(:,ne-1) * sigma_init_t)
+         Abk(ne)%s(nl,:) = Ain%s(nl,:) + (kvec2(:,ne-1) * sigma_init_s)
+	end do
+      end do
+   end if
 
   end subroutine make_init_ens
 
@@ -350,7 +344,7 @@ contains
 
   x = 0.
   y = 0.
-  d = 0.
+  d = 1.e15
   dmin = 1.e15
   rho = 0.
   if (stype == 'node') then

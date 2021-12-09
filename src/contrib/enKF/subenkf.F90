@@ -283,24 +283,22 @@
 
 !********************************************************
 
-  subroutine make_2Dpert(vec,n,nens,fmult,theta,nx,ny)
+  subroutine make_2Dpert(vec,n,nens)
 
   use basin
   use m_sample2D
+  use mod_para
 
   implicit none
 
   integer, intent(in) :: n,nens
   real, intent(out) :: vec(n,nens)
-  integer, intent(in) :: fmult	!Mult factor for the super-sampling
-  real, intent(in) :: theta	!Rotation of the random fields (theta=0 is east, rotation anticlocwise)
-  integer, intent(in) :: nx,ny	!number of grid points in x and y direction for the regular grid
 
-  real x1,x2,y1,y2,x0,y0,xlength,ylength
+  integer :: nx,ny	!number of grid points in x and y direction for the regular grid
+  real x1,x2,y1,y2,xlength,ylength
   real dx,dy,rx,ry
   real*4 sdx,sdy,sx0,sy0
   real*4 :: sflag = -999.
-  logical samp_fix,verbose
 
   real, allocatable :: mat(:,:,:)
   real*4, allocatable :: mat4(:,:),vec4fem(:)
@@ -314,35 +312,44 @@
   x2 = maxval(xgv)
   y1 = minval(ygv)
   y2 = maxval(ygv)
-  x0 = floor(x1)
-  y0 = floor(y1)
-  xlength = ceiling(x2) - floor(x1)
-  ylength = ceiling(y2) - floor(y1)
 
-  !dx = xlength / float(nx - 1)
-  !dy = ylength / float(ny - 1)
-  dx = 0.25
-  dy = 0.25
+  x1 = floor(x1)
+  y1 = floor(y1)
+  x2 = ceiling(x2)
+  y2 = ceiling(y2)
 
-  rx = 5
-  ry = 5
-  !rx = rx/sqrt(3.0) !?
-  !ry = ry/sqrt(3.0)
+  xlength = x2 - x1
+  ylength = y2 - y1
 
-  verbose = .false.
-  samp_fix = .true.	!keep true
+  if ((xlength > 180.).or.(ylength > 90.)) error stop 'Coordinates are not geographical'
+
+  if (xlength < 4) then
+     dx = 0.05
+     dy = 0.05
+     rx = 2
+     ry = 2
+     nx = xlength/dx + 1
+     ny = ylength/dy + 1
+  else
+     dx = 0.1
+     dy = 0.1
+     rx = 4
+     ry = 4
+     nx = xlength/dx + 1
+     ny = ylength/dy + 1
+  end if
 
   if (verbose) then
-    write(*,'(a20,2f8.4,i5,f8.4)') 'x0,xlength,nx,dx: ',x0,xlength,nx,dx
-    write(*,'(a20,2f8.4,i5,f8.4)') 'y0,ylength,ny,dy: ',y0,ylength,ny,dy
-    write(*,'(a14,2f10.4,1x,f5.1)') 'rx,ry,theta: ',rx,ry,theta
+    write(*,'(a20,2f8.4,i5,f8.4)') 'x1,xlength,nx,dx: ',x1,xlength,nx,dx
+    write(*,'(a20,2f8.4,i5,f8.4)') 'y1,ylength,ny,dy: ',y1,ylength,ny,dy
+    write(*,'(a14,2f10.4,1x,i3)') 'rx,ry,fmult: ',rx,ry,fmult_init
   end if
 
   !----------------------------------------------------
   ! creates the sample
   !----------------------------------------------------
   allocate(mat(nx,ny,nens))
-  call sample2D(mat,nx,ny,nens,fmult,dx,dy,rx,ry,theta,samp_fix,verbose)
+  call sample2D(mat,nx,ny,nens,fmult_init,dx,dy,rx,ry,theta_init,sample_fix_init,verbose)
 
   !----------------------------------------------------
   ! Interpolates over the FEM grid
@@ -350,8 +357,8 @@
   write(*,*) 'Interpolating 2D field over the FEM grid...'
   sdx = dx
   sdy = dy
-  sx0 = x0
-  sy0 = y0
+  sx0 = x1
+  sy0 = y1
   call setgeo(sx0,sy0,sdx,sdy,sflag)
 
   allocate(mat4(nx,ny),vec4fem(n))
