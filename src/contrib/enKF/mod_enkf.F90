@@ -109,10 +109,13 @@ contains
   integer nf,ne
   real x,y
   integer iemin,kmin
-  real oval,stdv
+  real oval,stdv,stdm
   real inn1,inn2,mval(nrens),mvalm
   real pvec(nrens)
   character(len=5) :: nal
+  ! this excludes innovations too high with respect to std of mod and obs
+  ! alpha should be around 3
+  real, parameter :: alpha = 100.
 
   nook = 0
   do nf = 1,nfile 
@@ -151,13 +154,23 @@ contains
         mvalm = Abk_m%s(1,kmin)
      end select
 
+     stdm = sqrt( sum(mval**2)/nrens - (sum(mval)/nrens)**2 )
+
      S(nook,:) = mval - mvalm
      HA(nook,:) = mval
 
      oval = ostate(nf)%val
-     inn1 = oval - mvalm
-     innov(nook) = inn1
      stdv = ostate(nf)%std
+
+     inn1 = oval - mvalm
+
+     ! check innovation value
+     if (inn1**2 > alpha*(stdv**2+stdm**2)) then
+        if (verbose) write(*,*) 'Innovation too high',inn1**2,alpha*(stdv**2+stdm**2)
+	inn1 = 0.
+     end if
+
+     innov(nook) = inn1
 
      call check_spread(inn1,stdv,mval,mvalm)
 
