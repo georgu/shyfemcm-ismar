@@ -23,7 +23,7 @@ MAKEDEPEND = $(FEMBIN)/mkdp.pl
 
 #-------------------- shyfem objects
 SHYOBJ = $(FEM3D)/subrst.o $(FEM3D)/subbas.o $(FEM3D)/subdts.o $(FEM3D)/mod_bnd.o \
-	$(FEM3D)/subreg.o $(FEM3D)/subfind.o $(FEM3D)/subpar3.o $(FEM3D)/suboutput.o \
+	$(FEM3D)/subreg.o $(FEM3D)/subfind.o $(FEM3D)/subpar3.o \
 	$(FEM3D)/subfil.o $(FEM3D)/mod_hydro.o $(FEM3D)/debug.o $(FEM3D)/subsss.o \
 	$(FEM3D)/subbit10.o $(FEM3D)/mod_geom_dynamic.o $(FEM3D)/mod_ts.o \
 	$(FEM3D)/newlevels.o $(FEM3D)/mod_conz.o $(FEM3D)/mod_hydro_vel.o \
