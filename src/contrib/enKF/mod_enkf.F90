@@ -110,12 +110,10 @@ contains
   real x,y
   integer iemin,kmin
   real oval,stdv,stdm
-  real inn1,inn2,mval(nrens),mvalm
+  real inn1,inn2,mval(nrens),mvalm,sinn
   real pvec(nrens)
   character(len=5) :: nal
-  ! this excludes innovations too high with respect to std of mod and obs
-  ! alpha should be around 3
-  real, parameter :: alpha = 100.
+  real maxinn
 
   nook = 0
   do nf = 1,nfile 
@@ -164,10 +162,13 @@ contains
 
      inn1 = oval - mvalm
 
+
      ! check innovation value
-     if (inn1**2 > alpha*(stdv**2+stdm**2)) then
-        if (verbose) write(*,*) 'Innovation too high',inn1**2,alpha*(stdv**2+stdm**2)
-	inn1 = 0.
+     maxinn = sqrt(inn_alpha*(stdv**2+stdm**2))
+     sinn = sign(1.,inn1)
+     if (inn1**2 > maxinn**2) then
+        if (verbose) write(*,*) 'Innovation too high (inn, max-inn): ',inn1,sinn*maxinn
+	inn1 = sinn*maxinn
      end if
 
      innov(nook) = inn1

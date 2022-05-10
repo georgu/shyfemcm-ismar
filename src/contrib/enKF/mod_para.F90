@@ -29,6 +29,9 @@ module mod_para
   !
   integer, parameter :: mode_an = 0
 
+  ! This coefficient limits the maximum for the innovations that are too large
+  real, parameter :: inn_alpha = 5.
+
 !------------
 ! Settings for the creation of the initial ensemble
   integer,parameter :: fmult_init = 10             !mult factor to determine the supersampling
