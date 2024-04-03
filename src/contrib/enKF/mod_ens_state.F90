@@ -28,6 +28,7 @@ contains
    use mod_ts
    use mod_conz
    use mod_gotm_aux
+   use shympi
 
    use mod_restart
 
@@ -54,6 +55,8 @@ contains
    call mod_ts_init(nkn,nlv)  
    call levels_init(nkn,nel,nlv)
    call mod_gotm_aux_init(nkn,nlv)
+   call shympi_set_hlv(nlv,hlv)
+   call shympi_init(.false.)
    ! init concentration, this is a issue
    !call mod_conz_init(1,nkn,nlvdi)
 

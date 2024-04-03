@@ -7,6 +7,7 @@
 
   use mod_restart
   use levels, only: nlvdi,nlv,hlv,ilhv,ilhkv
+  use shympi
   implicit none
 
   character(len=*), intent(in) :: rstname
