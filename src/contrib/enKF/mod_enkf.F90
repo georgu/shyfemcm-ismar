@@ -142,13 +142,19 @@ contains
      !
      select case (olabel)
        case ('0DLEV')
-	mval = Abk(:)%z(kmin)
+	do ne = 1,nrens
+	   mval(ne) = Abk(ne)%z(kmin)
+	end do
 	mvalm = Abk_m%z(kmin)
        case ('0DTEM')
-	mval = Abk(:)%t(1,kmin)
+	do ne = 1,nrens
+	   mval(ne) = Abk(ne)%t(1,kmin)
+	end do
         mvalm = Abk_m%t(1,kmin)
        case ('0DSAL')
-	mval = Abk(:)%s(1,kmin)
+	do ne = 1,nrens
+	   mval(ne) = Abk(ne)%s(1,kmin)
+	end do
         mvalm = Abk_m%s(1,kmin)
      end select
 
@@ -245,8 +251,10 @@ contains
      ! compute the model perturbed values, S = HA' and HA
      ! Remember for enKF: Aa = Af + Abk' [HA']^t [ U L^-1 U^t ] D' and D' = D-HA
      !
-     mvalu = Abk(:)%u(1,iemin)
-     mvalv = Abk(:)%v(1,iemin)
+     do ne = 1,nrens
+        mvalu(ne) = Abk(ne)%u(1,iemin)
+        mvalv(ne) = Abk(ne)%v(1,iemin)
+     end do
      mvalum = Abk_m%u(1,iemin)
      mvalvm = Abk_m%v(1,iemin)
      S(nook-1,:) = mvalu - mvalum

@@ -6,7 +6,7 @@
 module mod_init_enkf
   implicit none
 
-  integer :: nrens, nanal
+  integer :: nnlv, nrens, nanal
   character (len=80) :: basfile, obsfile
   character (len=80) :: ostring
   double precision :: atime_an
@@ -25,6 +25,7 @@ contains
 
   open(20, file='analysis.info', status='old')
 
+  read(20,*) nnlv	! number of vertical levels
   read(20,*) nrens	! number of ens members
   read(20,*) nanal	! analysis step
   read(20,*) basfile	! name of bas file (no extension)

@@ -121,21 +121,21 @@
 
 !********************************************************
 
-   subroutine layer_thick
+   subroutine layer_thick(nelem)
    ! Set zenv from znv
    ! A value bigger than the depth hm3v is set
-   use mod_dimensions
    use mod_hydro
    use basin
 
    implicit none
+   integer,intent(in) :: nelem
    integer ie,ii,k
    real*4 z,h
    real*4 hmin
 
    hmin = 0.03
    
-   do ie = 1,nnel 
+   do ie = 1,nelem 
      do ii = 1,3
         k = nen3v(ii,ie)
         zenv(ii,ie) = znv(k)

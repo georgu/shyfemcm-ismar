@@ -42,7 +42,7 @@ SAMPOBJ = m_pseudo2D.o m_fixsample2D.o m_newton2D.o m_newtonfunc2D.o \
           
 ENSOBJ = $(ENKOBJ) $(SAMPOBJ) subenkf.o mod_mod_err.o mod_enkf.o \
 	 mod_ens_state.o mod_init_enkf.o mod_manage_obs.o mod_mod_states.o \
-	 mod_obs_states.o mod_para.o sublocan.o mod_dimensions.o
+	 mod_obs_states.o mod_para.o sublocan.o
 
 #-------------------- external libraries
 LIBS = -llapack -lblas -lfftw3 -lpthread
@@ -54,10 +54,7 @@ ENSMOD = $(MODDIR)/m_random.mod $(MODDIR)/mod_mod_err.mod $(MODDIR)/mod_enkf.mod
 	 $(MODDIR)/m_mean_preserving_rotation.mod $(MODDIR)/m_multa.mod $(MODDIR)/m_sample2d.mod \
 	 $(MODDIR)/m_randrot.mod $(MODDIR)/m_pseudo2d.mod $(MODDIR)/mod_fftw3.mod \
 	 $(MODDIR)/m_newton2d.mod $(MODDIR)/m_newtonfunc2d.mod $(MODDIR)/m_fixsample2d.mod \
-	 $(MODDIR)/mod_obs_states.mod $(MODDIR)/mod_mod_states.mod $(MODDIR)/mod_dimensions.mod
-
-#-------------------- custom files (just to clean)
-CUSTF = mod_dimensions.F90
+	 $(MODDIR)/mod_obs_states.mod $(MODDIR)/mod_mod_states.mod
 
 #-------------------- all the exec files
 EXES = main make_eof_ens_meteo enKF2enKS perturbeBC make_antime_list
@@ -72,7 +69,7 @@ clean:
 	rm -f $(EXES) *.o $(ENSMOD)
 
 cleanall:
-	rm -f $(EXES) *.o $(ENSMOD) $(CUSTF) tags *.dat *.uf fort.* *.bak
+	rm -f $(EXES) *.o $(ENSMOD) tags *.dat *.uf fort.* *.bak
 
 main: main.o $(ENSOBJ) 
 	$(LINKER) $(SHYOBJ) $@.o \
@@ -128,7 +125,6 @@ depend:
 ../femlib/mod/m_sample2d.mod: m_sample2D.o
 ../femlib/mod/m_set_random_seed2.mod: m_set_random_seed2.o
 ../femlib/mod/mod_anafunc.mod: mod_anafunc.o
-../femlib/mod/mod_dimensions.mod: mod_dimensions.o
 ../femlib/mod/mod_enkf.mod: mod_enkf.o
 ../femlib/mod/mod_ens_state.mod: mod_ens_state.o
 ../femlib/mod/mod_fftw3.mod: mod_fftw3.o
@@ -180,7 +176,6 @@ mod_enkf.o: ../femlib/mod/levels.mod \
 		../femlib/mod/mod_para.mod 
 mod_ens_state.o: ../femlib/mod/basin.mod ../femlib/mod/levels.mod \
 		../femlib/mod/mod_conz.mod \
-		../femlib/mod/mod_dimensions.mod \
 		../femlib/mod/mod_geom_dynamic.mod \
 		../femlib/mod/mod_hydro.mod \
 		../femlib/mod/mod_hydro_vel.mod \
@@ -200,13 +195,11 @@ mod_manage_obs.o: ../femlib/mod/iso8601.mod \
 mod_mod_err.o: ../femlib/mod/mod_ens_state.mod \
 		../femlib/mod/mod_init_enkf.mod \
 		../femlib/mod/mod_mod_states.mod 
-mod_mod_states.o: ../femlib/mod/mod_dimensions.mod
 perturbeBC.o: ../femlib/mod/iso8601.mod ../femlib/mod/m_random.mod \
 		../femlib/mod/m_sample2d.mod 
 subenkf.o: ../femlib/mod/basin.mod ../femlib/mod/levels.mod \
 		../femlib/mod/m_random.mod \
 		../femlib/mod/m_sample2d.mod \
-		../femlib/mod/mod_dimensions.mod \
 		../femlib/mod/mod_hydro.mod \
 		../femlib/mod/mod_restart.mod \
 		../femlib/mod/shyfile.mod 

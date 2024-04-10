@@ -3,7 +3,7 @@ This is the README file for the ensemble
 Kalman Filter for the SHYFEM model
 ============================================
 
-    Copyright (c) 2017-2021 by 
+    Copyright (c) 2017-2024 by 
 
     Marco Bajo
     Oceanography, ISMAR-CNR
@@ -54,16 +54,6 @@ Running the code
 ===================
 
 Some files must be prepared before running enKF.sh:
-
-----------
-assconf.dat
-----------
-File with 4 lines with:
-- basin (e.g., medit_73830.bas);
-- nkn,nel,nlv (e.g., 40717 73829 1);
-- Timestep of restart files (use -1 if you don't know);
-- Loading an ensemble of restart files for the initial states (0,
-  recommended) or creation of an initial ensemble of restart files from one file (1);
 
 ----------
 ens_list.txt
@@ -121,7 +111,7 @@ Put the n. of nodes in the first row, then each row has the id of the node and a
 radius.
 
 ----------
-mod_err.info (optional)
+mod_err.info (optional - experimental, never used)
 ----------
 Set mode_an = 1 in mod_para.F90 to activate the model errors.
 This file is used to set the red noise parameters to propagate the model error,

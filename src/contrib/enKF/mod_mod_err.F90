@@ -81,6 +81,7 @@ contains
  
    allocate(qA(nrens))
    do ne = 1,nrens
+      call allocate_states(qA(ne),nnkn,nnel,nnlv)
       qA(ne) = 0.
       qA(ne)%z = kvec(:,ne)
    end do
@@ -110,6 +111,7 @@ contains
    !---------------------------------------
    allocate(Abk_aug(nrens))
    do ne = 1,nrens
+      call allocate_qstates(Abk_aug(ne),nnkn,nnel,nnlv)
       call push_qstate(Abk(ne),qA(ne),Abk_aug(ne))
    end do
    deallocate(qA)
@@ -132,13 +134,20 @@ contains
 
   allocate(Abk(nrens),qA(nrens))
   do ne = 1,nrens
+     call allocate_states(qA(ne),nnkn,nnel,nnlv)
      call pull_qstate(Abk(ne),qA(ne),Abk_aug(ne))
   end do
 
   call num2str(nanal,nal)
   fname='an'//nal//'_moderr.bin'
   open(33,file=fname,form='unformatted')
-  write(33) qA
+  do ne = 1,nrens
+     write(33) qA(ne)%u
+     write(33) qA(ne)%v
+     write(33) qA(ne)%z
+     write(33) qA(ne)%t
+     write(33) qA(ne)%s
+  end do
   close(33)
 
   deallocate(Abk_aug,qA)
@@ -177,7 +186,14 @@ contains
    ! Add the old error to the new one
    write(*,*) 'Loading model error from files'
    open(22,file=fname,status='old',form='unformatted')
-   read(22) qA1
+   do ne = 1,nrens
+     call allocate_states(qA1(ne),nnkn,nnel,nnlv)
+     read(22) qA1(ne)%u
+     read(22) qA1(ne)%v
+     read(22) qA1(ne)%z
+     read(22) qA1(ne)%t
+     read(22) qA1(ne)%s
+   end do
    close(22)
 
    do ne = 1,nrens

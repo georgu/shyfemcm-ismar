@@ -3,10 +3,9 @@
 !
 module mod_ens_state
 
-  use mod_dimensions
+  use mod_init_enkf
   use mod_mod_states
   use mod_para
-  use mod_init_enkf
 
   implicit none
 
@@ -15,6 +14,30 @@ module mod_ens_state
   type(states) :: Abk_std, Aan_std     ! standard deviation old and new
 
 contains
+
+
+!********************************************************
+
+  subroutine allocate_all
+  implicit none
+  integer ne
+
+   ! Allocates the state Abk to store the ens states
+   if (.not. allocated(Abk)) allocate(Abk(nrens))
+   if (.not. allocated(Aan)) allocate(Aan(nrens))
+
+   ! allocate and init to zero
+   call allocate_states(Abk_m,nnkn,nnel,nnlv)
+   call allocate_states(Aan_m,nnkn,nnel,nnlv)
+   call allocate_states(Abk_std,nnkn,nnel,nnlv)
+   call allocate_states(Aan_std,nnkn,nnel,nnlv)
+   do ne = 1,nrens
+      call allocate_states(Abk(ne),nnkn,nnel,nnlv)
+      call allocate_states(Aan(ne),nnkn,nnel,nnlv)
+   end do
+
+  end subroutine allocate_all
+
 
 !********************************************************
 
@@ -42,11 +65,12 @@ contains
    open(21, file=basfile, status='old', form='unformatted')
    call basin_read_by_unit(21)
    close(21)
-   if ((nkn /= nnkn).or.(nel /= nnel)) error stop "read_basin: dim error"
 
-   ! set vertical levels
+   ! set dimensions
+   nnkn = nkn
+   nnel = nel
    nlv = nnlv
-   nlvdi = nnlv
+   !nlvdi = nnlv
 
    ! init some shyfem vars
    call mod_geom_dynamic_init(nkn,nel)
@@ -60,17 +84,9 @@ contains
    ! init concentration, this is a issue
    !call mod_conz_init(1,nkn,nlvdi)
 
-
-   ! Allocates the state Abk to store the ens states
-   if (.not. allocated(Abk)) allocate(Abk(nrens))
-
-   ! init to zero
-   do ne = 1,nrens
-      Abk(ne) = 0.
-   end do
+   call allocate_all
 
    call num2str(nanal,nal)
-
    if ((bnew_ens == 0) .or. (nanal.gt.1)) then
 
      write(*,*) 'loading an ensemble of initial states...'
@@ -172,10 +188,8 @@ contains
 
 !********************************************************
 
-  subroutine bc_val_check_correct(Abkg,Aanl)
+  subroutine bc_val_check_correct
    implicit none
-   type(states),intent(in) :: Abkg(nrens)
-   type(states),intent(inout) :: Aanl(nrens)
 
    real vala,valb
 
@@ -208,6 +222,7 @@ contains
       write(*,*) 'In the other lines, in each line, the external number and a damping radius.'
    end if
 
+
    otot = 0
    ntot = 0
    do ne = 1,nrens
@@ -222,7 +237,8 @@ contains
     snan = 0
     tnan = 0
 
-!$OMP PARALLEL PRIVATE(k,nl,valb,vala,znan,zout,snan,sout,tnan,tout,w),SHARED(Abkg,Aanl,nbc,bcid,bcrho)
+
+!$OMP PARALLEL PRIVATE(k,nl,valb,vala,znan,zout,snan,sout,tnan,tout,w),SHARED(ne,Abk,Aan,nbc,bcid,bcrho)
 !$OMP DO
     do k = 1,nnkn
 
@@ -230,56 +246,56 @@ contains
       if (file_exists) call bc_correction('node',k,nbc,bcid,bcrho,w)
 
       ! level
-      valb = Abkg(ne)%z(k)
-      vala = Aanl(ne)%z(k)
+      valb = Abk(ne)%z(k)
+      vala = Aan(ne)%z(k)
       vala = w * valb + (1. - w) * vala
 
       ! check val
       call check_one_val(vala,valb,SSH_MAX,SSH_MIN,znan,zout)
-      Aanl(ne)%z(k) = vala
+      Aan(ne)%z(k) = vala
 
       do nl = 1,nnlv
         ! salinity
-	valb = Abkg(ne)%s(nl,k)
-	vala = Aanl(ne)%s(nl,k)
-        vala = w * valb + (1. - w) * vala
+	valb = Abk(ne)%s(nl,k)
+	vala = Aan(ne)%s(nl,k)
+	vala = w * valb + (1. - w) * vala
         ! check val
 	call check_one_val(vala,valb,SAL_MAX,SAL_MIN,snan,sout)
-	Aanl(ne)%s(nl,k) = vala
+	Aan(ne)%s(nl,k) = vala
 
 	! temperature
-	valb = Abkg(ne)%t(nl,k)
-	vala = Aanl(ne)%t(nl,k)
+	valb = Abk(ne)%t(nl,k)
+	vala = Aan(ne)%t(nl,k)
         vala = w * valb + (1. - w) * vala
         ! check val
 	call check_one_val(vala,valb,TEM_MAX,TEM_MIN,tnan,tout)
-	Aanl(ne)%t(nl,k) = vala
+	Aan(ne)%t(nl,k) = vala
       end do
     end do
 !$OMP ENDDO
 !$OMP END PARALLEL
 
 
-!$OMP PARALLEL PRIVATE(ie,nl,valb,vala,uvnan,uvout,w),SHARED(Abkg,Aanl,nbc,bcid,bcrho)
+!$OMP PARALLEL PRIVATE(ie,nl,valb,vala,uvnan,uvout,w),SHARED(ne,Abk,Aan,nbc,bcid,bcrho)
 !$OMP DO
     do ie = 1,nnel
       ! BC correction
       if (file_exists) call bc_correction('elem',ie,nbc,bcid,bcrho,w)
       do nl = 1,nnlv
         ! current
-	valb = Abkg(ne)%u(nl,ie)
-	vala = Aanl(ne)%u(nl,ie)
+	valb = Abk(ne)%u(nl,ie)
+	vala = Aan(ne)%u(nl,ie)
         vala = w * valb + (1. - w) * vala
         ! check val
 	call check_one_val(vala,valb,VEL_MAX,VEL_MIN,uvnan,uvout)
-	Aanl(ne)%u(nl,ie) = vala
+	Aan(ne)%u(nl,ie) = vala
 
-	valb = Abkg(ne)%v(nl,ie)
-	vala = Aanl(ne)%v(nl,ie)
+	valb = Abk(ne)%v(nl,ie)
+	vala = Aan(ne)%v(nl,ie)
         vala = w * valb + (1. - w) * vala
         ! check val
 	call check_one_val(vala,valb,VEL_MAX,VEL_MIN,uvnan,uvout)
-	Aanl(ne)%v(nl,ie) = vala
+	Aan(ne)%v(nl,ie) = vala
       end do
     end do
 !$OMP ENDDO
@@ -417,10 +433,10 @@ contains
 
   if (tflag == 'a') then
      call mean_state(nrens,Aan,Aan_m)
-     call std_state(nrens,Aan,Aan_std)
+     call std_state(nrens,nnkn,nnel,nnlv,Aan,Aan_std)
   else
      call mean_state(nrens,Abk,Abk_m)
-     call std_state(nrens,Abk,Abk_std)
+     call std_state(nrens,nnkn,nnel,nnlv,Abk,Abk_std)
   end if
 
   end subroutine make_mean_std
@@ -437,6 +453,8 @@ contains
   type(states4),allocatable :: A4
 
   allocate(A4)
+  call allocate_states4(A4,nnkn,nnel,nnlv)
+
   call states8to4(A4,Astate)
   call pull_state(A4)
   call rst_write(trim(filename),atime_an)
@@ -450,14 +468,13 @@ contains
 
   implicit none
 
-  type(states),intent(out) :: Astate
+  type(states),intent(inout) :: Astate
   character(len=*),intent(in) :: filename
 
   type(states4),allocatable :: A4
 
   allocate(A4)
-  Astate = 0.
-  call states8to4(A4,Astate)
+  call allocate_states4(A4,nnkn,nnel,nnlv)
   call rst_read(filename,atime_an)
   call push_state(A4)
   call states4to8(Astate,A4)
@@ -516,7 +533,141 @@ contains
     end if
 
     ! make zenv
-    call layer_thick
+    call layer_thick(nnel)
    end subroutine pull_state
+
+!-------------------------------------------------------------------
+! subroutines to switch between type and matrix formats
+!-------------------------------------------------------------------
+
+   subroutine tystate_to_matrix(ibrcl,nens,ndim,A,Amat)
+      implicit none
+      integer, intent(in) :: ibrcl
+      integer, intent(in) :: nens
+      integer, intent(in) :: ndim
+      type(states), intent(in) :: A(nens)
+      real, intent(out) :: Amat(ndim,nens)
+
+      integer i,dimuv,dimts,dimz
+
+      dimz = nnkn
+      dimuv = nnlv*nnel
+      dimts = nnlv*nnkn
+      do i = 1,nens
+         Amat(1:dimuv,i) = reshape(A(i)%u,(/dimuv/))
+         Amat(dimuv+1:2*dimuv,i) = reshape(A(i)%v,(/dimuv/))
+         Amat(2*dimuv+1:2*dimuv+dimz,i) = A(i)%z
+      end do
+      if (ibrcl > 0) then
+         do i = 1,nens
+            Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,i) = reshape(A(i)%t,(/dimts/))
+            Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,i) = reshape(A(i)%s,(/dimts/))
+	 end do
+      end if
+   end subroutine tystate_to_matrix
+
+   subroutine matrix_to_tystate(ibrcl,nens,ndim,Amat,A)
+      implicit none
+      integer, intent(in) :: ibrcl
+      integer, intent(in) :: nens
+      integer, intent(in) :: ndim
+      real, intent(in) :: Amat(ndim,nens)
+      type(states), intent(inout) :: A(nens)
+
+      integer i,dimuv,dimts,dimz
+
+      dimz = nnkn
+      dimuv = nnlv*nnel
+      dimts = nnlv*nnkn
+      do i = 1,nens
+         A(i)%u = reshape(Amat(1:dimuv,i),(/nnlv,nnel/))
+         A(i)%v = reshape(Amat(dimuv+1:2*dimuv,i),(/nnlv,nnel/))
+         A(i)%z = Amat(2*dimuv+1:2*dimuv+dimz,i)
+      end do
+      if (ibrcl > 0) then
+         do i = 1,nens
+            A(i)%t = reshape(Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,i),(/nnlv,nnkn/))
+            A(i)%s = reshape(Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,i),(/nnlv,nnkn/))
+	 end do
+      end if
+   end subroutine matrix_to_tystate
+
+   subroutine tyqstate_to_matrix(ibrcl,nens,ndim,A,Amat)
+      implicit none
+      integer, intent(in) :: ibrcl
+      integer, intent(in) :: nens
+      integer, intent(in) :: ndim
+      type(qstates), intent(in) :: A(nens)
+      real, intent(out) :: Amat(2*ndim,nens)
+
+      integer i,dimuv,dimts,dimz
+
+      dimz = nnkn
+      dimuv = nnlv*nnel
+      dimts = nnlv*nnkn
+      do i = 1,nens
+         Amat(1:dimuv,i) = reshape(A(i)%qu,(/dimuv/))
+         Amat(dimuv+1:2*dimuv,i) = reshape(A(i)%qv,(/dimuv/))
+         Amat(2*dimuv+1:2*dimuv+dimz,i) = A(i)%qz
+      end do
+      if (ibrcl > 0) then
+         do i = 1,nens
+            Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,i) = reshape(A(i)%qt,(/dimts/))
+            Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,i) = reshape(A(i)%qs,(/dimts/))
+	 end do
+      end if
+
+      do i = 1,nens
+         Amat(ndim+1:ndim+dimuv,i) = reshape(A(i)%u,(/dimuv/))
+         Amat(ndim+dimuv+1:ndim+2*dimuv,i) = reshape(A(i)%v,(/dimuv/))
+         Amat(ndim+2*dimuv+1:ndim+2*dimuv+dimz,i) = A(i)%z
+      end do
+
+      if (ibrcl > 0) then
+         do i = 1,nens
+            Amat(ndim+2*dimuv+dimz+1:ndim+2*dimuv+dimz+dimts,i) = reshape(A(i)%t,(/dimts/))
+            Amat(ndim+2*dimuv+dimz+dimts+1:ndim+2*dimuv+dimz+2*dimts,i) = reshape(A(i)%s,(/dimts/))
+	 end do
+      end if
+   end subroutine tyqstate_to_matrix
+
+   subroutine matrix_to_tyqstate(ibrcl,nens,ndim,Amat,A)
+      implicit none
+      integer, intent(in) :: ibrcl
+      integer, intent(in) :: nens
+      integer, intent(in) :: ndim
+      real, intent(in) :: Amat(2*ndim,nens)
+      type(qstates), intent(out) :: A(nens)
+
+      integer i,dimuv,dimts,dimz
+
+      dimz = nnkn
+      dimuv = nnlv*nnel
+      dimts = nnlv*nnkn
+      do i = 1,nens
+         A(i)%qu = reshape(Amat(1:dimuv,i),(/nnlv,nnel/))
+         A(i)%qv = reshape(Amat(dimuv+1:2*dimuv,i),(/nnlv,nnel/))
+         A(i)%qz = Amat(2*dimuv+1:2*dimuv+dimz,i)
+      end do
+      if (ibrcl > 0) then
+         do i = 1,nens
+            A(i)%qt = reshape(Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,i),(/nnlv,nnkn/))
+            A(i)%qs = reshape(Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,i),(/nnlv,nnkn/))
+	 end do
+      end if
+
+      do i = 1,nens
+         A(i)%u = reshape(Amat(ndim+1:ndim+dimuv,i),(/nnlv,nnel/))
+         A(i)%v = reshape(Amat(ndim+dimuv+1:ndim+2*dimuv,i),(/nnlv,nnel/))
+         A(i)%z = Amat(ndim+2*dimuv+1:ndim+2*dimuv+dimz,i)
+      end do
+      if (ibrcl > 0) then
+         do i = 1,nens
+            A(i)%t = reshape(Amat(ndim+2*dimuv+dimz+1:ndim+2*dimuv+dimz+dimts,i),(/nnlv,nnkn/))
+            A(i)%s = reshape(Amat(ndim+2*dimuv+dimz+dimts+1:ndim+2*dimuv+dimz+2*dimts,i),(/nnlv,nnkn/))
+         end do
+      end if
+   end subroutine matrix_to_tyqstate
+
 
 end module mod_ens_state

@@ -17,6 +17,7 @@
 !------------------------------------------------------------------------------
 program main
 
+  use mod_init_enkf
   use mod_mod_states
   use mod_para
   use mod_enkf
@@ -105,7 +106,6 @@ program main
                   truncation,rmode,lrandrot,lupdate_randrot,lsymsqrt,&
 		  inflate,infmult)
 	  
-        allocate(Aan(nrens))
         call matrix_to_tystate(ibarcl_rst,nrens,ndim,Amat,Aan)
         deallocate(Amat)
 
@@ -115,7 +115,6 @@ program main
      elseif (is_local == 1) then
 
 	write(*,*) 'Running local analysis...'
-        allocate(Aan(nrens))
         call matrix_to_tystate(ibarcl_rst,nrens,ndim,Amat,Aan)
         deallocate(Amat)
 
@@ -140,7 +139,7 @@ program main
 !--------------------------------
 !  Correct the analysis near the BC and check/correct out-of-range and nans
 !--------------------------------
-  call bc_val_check_correct(Abk,Aan)
+  call bc_val_check_correct
 
 !--------------------------------
 !  compute the posterior mean and std. This is needed for inflation

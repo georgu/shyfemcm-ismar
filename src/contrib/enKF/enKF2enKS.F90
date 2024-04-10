@@ -9,9 +9,10 @@
 !------------------------------------------------------------------------------
 program enKF2enKS
 
-  use basin
-  use levels
   use mod_restart
+  use levels, only: nlvdi,nlv,hlv,ilhv,ilhkv
+  use shympi
+  use basin
   implicit none
 
   character(len=80) :: basinf

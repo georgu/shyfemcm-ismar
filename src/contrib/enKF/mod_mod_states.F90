@@ -5,39 +5,40 @@
 !
 module mod_mod_states
 
-   use mod_dimensions
-   
+   integer,save :: nnkn = 0 !number of nodes
+   integer,save :: nnel = 0 !number of elements
+
 ! standard model state
    type states
-      real u(nnlv,nnel)                      ! 3-D u-velocity
-      real v(nnlv,nnel)                      ! 3-D v-velocity
-      real z(nnkn) 	                     ! 2-D water level 
-      real t(nnlv,nnkn)                      ! 3-D Temperature
-      real s(nnlv,nnkn)                      ! 3-D Salinity 
+      real,allocatable :: u(:,:)                      ! 3-D u-velocity
+      real,allocatable :: v(:,:)                      ! 3-D v-velocity
+      real,allocatable :: z(:) 	                     ! 2-D water level 
+      real,allocatable :: t(:,:)                      ! 3-D Temperature
+      real,allocatable :: s(:,:)                      ! 3-D Salinity 
    end type states
 
 ! single precision model state (used for read and write to files)
    type states4
-      real*4 u(nnlv,nnel)                      ! 3-D u-velocity
-      real*4 v(nnlv,nnel)                      ! 3-D v-velocity
-      real*4 z(nnkn) 	                     ! 2-D water level 
-      real*4 t(nnlv,nnkn)                      ! 3-D Temperature
-      real*4 s(nnlv,nnkn)                      ! 3-D Salinity 
+      real*4,allocatable :: u(:,:)                      ! 3-D u-velocity
+      real*4,allocatable :: v(:,:)                      ! 3-D v-velocity
+      real*4,allocatable :: z(:) 	                     ! 2-D water level 
+      real*4,allocatable :: t(:,:)                      ! 3-D Temperature
+      real*4,allocatable :: s(:,:)                      ! 3-D Salinity 
    end type states4
 
 ! double state, with the model errors
      type qstates
-      real qu(nnlv,nnel)                       ! 3-D u-velocity error
-      real qv(nnlv,nnel)                       ! 3-D v-velocity error
-      real qz(nnkn) 	                     ! 2-D water level 
-      real qt(nnlv,nnkn)                       ! 3-D Temperature error
-      real qs(nnlv,nnkn)                       ! 3-D Salinity error
+      real,allocatable :: qu(:,:)                       ! 3-D u-velocity error
+      real,allocatable :: qv(:,:)                       ! 3-D v-velocity error
+      real,allocatable :: qz(:) 	                     ! 2-D water level 
+      real,allocatable :: qt(:,:)                       ! 3-D Temperature error
+      real,allocatable :: qs(:,:)                       ! 3-D Salinity error
 
-      real u(nnlv,nnel)                        ! 3-D u-velocity
-      real v(nnlv,nnel)                        ! 3-D v-velocity
-      real z(nnkn) 	                     ! 2-D water level 
-      real t(nnlv,nnkn)                        ! 3-D Temperature
-      real s(nnlv,nnkn)                        ! 3-D Salinity 
+      real,allocatable :: u(:,:)                        ! 3-D u-velocity
+      real,allocatable :: v(:,:)                        ! 3-D v-velocity
+      real,allocatable :: z(:) 	                     ! 2-D water level 
+      real,allocatable :: t(:,:)                        ! 3-D Temperature
+      real,allocatable :: s(:,:)                        ! 3-D Salinity 
    end type qstates
  
 !-----------
@@ -69,6 +70,127 @@ module mod_mod_states
    end interface
 
 contains
+
+   subroutine mod_mod_init(nk,ne)
+    implicit none
+    integer,intent(in) :: nk,ne
+
+    nnkn = nk
+    nnel = ne
+
+   end subroutine mod_mod_init
+
+   subroutine allocate_states(AA,nkn_dim,nel_dim,nlv_dim)
+    implicit none
+    type(states) :: AA
+    integer :: nkn_dim,nel_dim,nlv_dim
+
+       allocate(AA%u(nlv_dim,nel_dim))
+       allocate(AA%v(nlv_dim,nel_dim))
+       allocate(AA%z(nkn_dim))
+       allocate(AA%t(nlv_dim,nkn_dim))
+       allocate(AA%s(nlv_dim,nkn_dim))
+       AA%u(:,:) = 0.
+       AA%v(:,:) = 0.
+       AA%z(:) = 0.
+       AA%t(:,:) = 0.
+       AA%s(:,:) = 0.
+
+   end subroutine allocate_states
+
+   subroutine allocate_states4(AA,nkn_dim,nel_dim,nlv_dim)
+    implicit none
+    type(states4) :: AA
+    integer :: nkn_dim,nel_dim,nlv_dim
+
+       allocate(AA%u(nlv_dim,nel_dim))
+       allocate(AA%v(nlv_dim,nel_dim))
+       allocate(AA%z(nkn_dim))
+       allocate(AA%t(nlv_dim,nkn_dim))
+       allocate(AA%s(nlv_dim,nkn_dim))
+       AA%u(:,:) = 0.
+       AA%v(:,:) = 0.
+       AA%z(:) = 0.
+       AA%t(:,:) = 0.
+       AA%s(:,:) = 0.
+
+   end subroutine allocate_states4
+
+   subroutine allocate_qstates(AA,nkn_dim,nel_dim,nlv_dim)
+    implicit none
+    type(qstates) :: AA
+    integer :: nkn_dim,nel_dim,nlv_dim
+
+       allocate(AA%qu(nlv_dim,nel_dim))
+       allocate(AA%qv(nlv_dim,nel_dim))
+       allocate(AA%qz(nkn_dim))
+       allocate(AA%qt(nlv_dim,nkn_dim))
+       allocate(AA%qs(nlv_dim,nkn_dim))
+
+       allocate(AA%u(nlv_dim,nel_dim))
+       allocate(AA%v(nlv_dim,nel_dim))
+       allocate(AA%z(nkn_dim))
+       allocate(AA%t(nlv_dim,nkn_dim))
+       allocate(AA%s(nlv_dim,nkn_dim))
+
+       AA%qu(:,:) = 0.
+       AA%qv(:,:) = 0.
+       AA%qz(:) = 0.
+       AA%qt(:,:) = 0.
+       AA%qs(:,:) = 0.
+
+       AA%u(:,:) = 0.
+       AA%v(:,:) = 0.
+       AA%z(:) = 0.
+       AA%t(:,:) = 0.
+       AA%s(:,:) = 0.
+
+   end subroutine allocate_qstates
+
+   subroutine deallocate_states(AA)
+    implicit none
+    type(states) :: AA
+
+       deallocate(AA%u)
+       deallocate(AA%v)
+       deallocate(AA%z)
+       deallocate(AA%t)
+       deallocate(AA%s)
+
+   end subroutine deallocate_states
+
+   subroutine deallocate_states4(AA,nkn_dim,nel_dim,nlv_dim)
+    implicit none
+    type(states4) :: AA
+    integer :: nkn_dim,nel_dim,nlv_dim
+
+       deallocate(AA%u)
+       deallocate(AA%v)
+       deallocate(AA%z)
+       deallocate(AA%t)
+       deallocate(AA%s)
+
+   end subroutine deallocate_states4
+
+   subroutine deallocate_qstates(AA,nkn_dim,nel_dim,nlv_dim)
+    implicit none
+    type(qstates) :: AA
+    integer :: nkn_dim,nel_dim,nlv_dim
+
+       deallocate(AA%qu)
+       deallocate(AA%qv)
+       deallocate(AA%qz)
+       deallocate(AA%qt)
+       deallocate(AA%qs)
+
+       deallocate(AA%u)
+       deallocate(AA%v)
+       deallocate(AA%z)
+       deallocate(AA%t)
+       deallocate(AA%s)
+
+   end subroutine deallocate_qstates
+
 
 !-------------------------------------------------------------------
 ! Functions
@@ -256,16 +378,16 @@ contains
       implicit none
       integer, intent(in) :: n
       type(states), intent(in) :: A(n)
-      type(states), intent(out) :: B
+      type(states), intent(inout) :: B
       integer i
 
       if (n <= 0) error stop 'mean_state: invalid n'
 
-      B%u = 1.d-15
-      B%v = 1.d-15
-      B%z = 1.d-15
-      B%t = 1.d-15
-      B%s = 1.d-15
+      B%u(:,:) = 0.
+      B%v(:,:) = 0.
+      B%z(:) = 0.
+      B%t(:,:) = 0.
+      B%s(:,:) = 0.
       do i = 1,n
        B%u = B%u + A(i)%u
        B%v = B%v + A(i)%v
@@ -280,24 +402,25 @@ contains
       B%s = B%s / float(n)
    end subroutine mean_state
 
-   subroutine std_state(n,A,B)
+   subroutine std_state(n,nk,ne,nl,A,B)
       implicit none
-      integer, intent(in) :: n
+      integer, intent(in) :: n,nk,ne,nl
       type(states), intent(in) :: A(n)
-      type(states), intent(out) :: B
+      type(states), intent(inout) :: B
       type(states), allocatable :: Aaux
       integer i
 
       if (n <= 0) error stop 'mean_state: invalid n'
 
       allocate(Aaux)
+      call allocate_states(Aaux,nk,ne,nl)
 
       ! This is not zero in case some vars are always zero
-      Aaux%u = 1.d-15
-      Aaux%v = 1.d-15
-      Aaux%z = 1.d-15
-      Aaux%t = 1.d-15
-      Aaux%s = 1.d-15
+      Aaux%u(:,:) = 0.
+      Aaux%v(:,:) = 0.
+      Aaux%z(:) = 0.
+      Aaux%t(:,:) = 0.
+      Aaux%s(:,:) = 0.
       do i = 1,n
        Aaux%u = Aaux%u + A(i)%u
        Aaux%v = Aaux%v + A(i)%v
@@ -311,11 +434,11 @@ contains
       Aaux%t = Aaux%t / float(n)
       Aaux%s = Aaux%s / float(n)
 
-      B%u = 1.d-15
-      B%v = 1.d-15
-      B%z = 1.d-15
-      B%t = 1.d-15
-      B%s = 1.d-15
+      B%u(:,:) = 0.
+      B%v(:,:) = 0.
+      B%z(:) = 0.
+      B%t(:,:) = 0.
+      B%s(:,:) = 0.
       do i = 1,n
        B%u = B%u + (A(i)%u - Aaux%u)**2
        B%v = B%v + (A(i)%v - Aaux%v)**2
@@ -382,138 +505,5 @@ contains
 
    end subroutine mult_inflation
 
-
-!-------------------------------------------------------------------
-! subroutines to switch between type and matrix formats
-!-------------------------------------------------------------------
-
-   subroutine tystate_to_matrix(ibrcl,nens,ndim,A,Amat)
-      implicit none
-      integer, intent(in) :: ibrcl
-      integer, intent(in) :: nens
-      integer, intent(in) :: ndim
-      type(states), intent(in) :: A(nens)
-      real, intent(out) :: Amat(ndim,nens)
-
-      integer i,dimuv,dimts,dimz
-
-      dimz = nnkn
-      dimuv = nnlv*nnel
-      dimts = nnlv*nnkn
-      do i = 1,nens
-         Amat(1:dimuv,i) = reshape(A(i)%u,(/dimuv/))
-         Amat(dimuv+1:2*dimuv,i) = reshape(A(i)%v,(/dimuv/))
-         Amat(2*dimuv+1:2*dimuv+dimz,i) = A(i)%z
-      end do
-      if (ibrcl > 0) then
-         do i = 1,nens
-            Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,i) = reshape(A(i)%t,(/dimts/))
-            Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,i) = reshape(A(i)%s,(/dimts/))
-	 end do
-      end if
-   end subroutine tystate_to_matrix
-
-   subroutine matrix_to_tystate(ibrcl,nens,ndim,Amat,A)
-      implicit none
-      integer, intent(in) :: ibrcl
-      integer, intent(in) :: nens
-      integer, intent(in) :: ndim
-      real, intent(in) :: Amat(ndim,nens)
-      type(states), intent(out) :: A(nens)
-
-      integer i,dimuv,dimts,dimz
-
-      dimz = nnkn
-      dimuv = nnlv*nnel
-      dimts = nnlv*nnkn
-      do i = 1,nens
-         A(i)%u = reshape(Amat(1:dimuv,i),(/nnlv,nnel/))
-         A(i)%v = reshape(Amat(dimuv+1:2*dimuv,i),(/nnlv,nnel/))
-         A(i)%z = Amat(2*dimuv+1:2*dimuv+dimz,i)
-      end do
-      if (ibrcl > 0) then
-         do i = 1,nens
-            A(i)%t = reshape(Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,i),(/nnlv,nnkn/))
-            A(i)%s = reshape(Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,i),(/nnlv,nnkn/))
-	 end do
-      end if
-   end subroutine matrix_to_tystate
-
-   subroutine tyqstate_to_matrix(ibrcl,nens,ndim,A,Amat)
-      implicit none
-      integer, intent(in) :: ibrcl
-      integer, intent(in) :: nens
-      integer, intent(in) :: ndim
-      type(qstates), intent(in) :: A(nens)
-      real, intent(out) :: Amat(2*ndim,nens)
-
-      integer i,dimuv,dimts,dimz
-
-      dimz = nnkn
-      dimuv = nnlv*nnel
-      dimts = nnlv*nnkn
-      do i = 1,nens
-         Amat(1:dimuv,i) = reshape(A(i)%qu,(/dimuv/))
-         Amat(dimuv+1:2*dimuv,i) = reshape(A(i)%qv,(/dimuv/))
-         Amat(2*dimuv+1:2*dimuv+dimz,i) = A(i)%qz
-      end do
-      if (ibrcl > 0) then
-         do i = 1,nens
-            Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,i) = reshape(A(i)%qt,(/dimts/))
-            Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,i) = reshape(A(i)%qs,(/dimts/))
-	 end do
-      end if
-
-      do i = 1,nens
-         Amat(ndim+1:ndim+dimuv,i) = reshape(A(i)%u,(/dimuv/))
-         Amat(ndim+dimuv+1:ndim+2*dimuv,i) = reshape(A(i)%v,(/dimuv/))
-         Amat(ndim+2*dimuv+1:ndim+2*dimuv+dimz,i) = A(i)%z
-      end do
-
-      if (ibrcl > 0) then
-         do i = 1,nens
-            Amat(ndim+2*dimuv+dimz+1:ndim+2*dimuv+dimz+dimts,i) = reshape(A(i)%t,(/dimts/))
-            Amat(ndim+2*dimuv+dimz+dimts+1:ndim+2*dimuv+dimz+2*dimts,i) = reshape(A(i)%s,(/dimts/))
-	 end do
-      end if
-   end subroutine tyqstate_to_matrix
-
-   subroutine matrix_to_tyqstate(ibrcl,nens,ndim,Amat,A)
-      implicit none
-      integer, intent(in) :: ibrcl
-      integer, intent(in) :: nens
-      integer, intent(in) :: ndim
-      real, intent(in) :: Amat(2*ndim,nens)
-      type(qstates), intent(out) :: A(nens)
-
-      integer i,dimuv,dimts,dimz
-
-      dimz = nnkn
-      dimuv = nnlv*nnel
-      dimts = nnlv*nnkn
-      do i = 1,nens
-         A(i)%qu = reshape(Amat(1:dimuv,i),(/nnlv,nnel/))
-         A(i)%qv = reshape(Amat(dimuv+1:2*dimuv,i),(/nnlv,nnel/))
-         A(i)%qz = Amat(2*dimuv+1:2*dimuv+dimz,i)
-      end do
-      if (ibrcl > 0) then
-         do i = 1,nens
-            A(i)%qt = reshape(Amat(2*dimuv+dimz+1:2*dimuv+dimz+dimts,i),(/nnlv,nnkn/))
-            A(i)%qs = reshape(Amat(2*dimuv+dimz+dimts+1:2*dimuv+dimz+2*dimts,i),(/nnlv,nnkn/))
-	 end do
-      end if
-
-      do i = 1,nens
-         A(i)%u = reshape(Amat(ndim+1:ndim+dimuv,i),(/nnlv,nnel/))
-         A(i)%v = reshape(Amat(ndim+dimuv+1:ndim+2*dimuv,i),(/nnlv,nnel/))
-         A(i)%z = Amat(ndim+2*dimuv+1:ndim+2*dimuv+dimz,i)
-      end do
-      if (ibrcl > 0) then
-         do i = 1,nens
-            A(i)%t = reshape(Amat(ndim+2*dimuv+dimz+1:ndim+2*dimuv+dimz+dimts,i),(/nnlv,nnkn/))
-            A(i)%s = reshape(Amat(ndim+2*dimuv+dimz+dimts+1:ndim+2*dimuv+dimz+2*dimts,i),(/nnlv,nnkn/))
-         end do
-      end if
-   end subroutine matrix_to_tyqstate
 
 end module mod_mod_states

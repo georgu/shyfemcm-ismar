@@ -5,7 +5,8 @@
 # Ensemble Kalman Filter for SHYFEM. 
 # 
 # 2016 first version
-# 2018-06 important updates
+# 2018 important updates
+# 2024 other changes
 #
 # See the README file
 # 
@@ -23,10 +24,12 @@ SIMDIR=$(pwd)		# current dir
 
 Usage()
 {
-  echo "Usage: enKF.sh [n] [out]"
+  echo "Usage: enKF.sh [bas-file] [nlv] [n] [out]"
   echo
-  echo "n = n. of threads"
-  echo "out = 0 only mean and std, 1 all members (for enKS)"
+  echo "bas-file = name of the basin bas file"
+  echo "nlv = number of vertical levels used in the simulations"
+  echo "n = number of threads"
+  echo "out = 0 saves only mean and std restarts, 1 save all the restarts (needed by enKS)"
   echo
   exit 0
 }
@@ -67,43 +70,15 @@ Check_num()
 
 #----------------------------------------------------------
 
-Read_conf()
-{
-  cfile='assconf.dat'
-  echo "Read the configuration file: $cfile"
-  Check_file $cfile
+Check_files(){
+  echo "Check the exec programs"
+  command -v parallel > /dev/null 2>&1 || { echo "parallel it's not installed.  Aborting." >&2; exit 1; }
+  [ ! -s $FEMDIR/fem3d/shyfem ] && echo "shyfem exec does not exist. Compile the model first." && exit 1
+  # Make here the mod_dimensions and compile main
+  
+  [ ! -s $FEMDIR/enKF/main ] && echo "main exec does not exist. Compile the enKF first." && exit 1
 
-  nrows=0
-  while read line
-  do
-
-     # Name of the bas file
-     if [ "$nrows" -eq "0" ]; then
-        bas_file=$line
-        Check_file $bas_file
-
-     # Dimension of the state vector: nkn nel nlv
-     elif [ "$nrows" -eq "1" ]; then
-        sdim=$line
-        
-     # idtrst
-     elif [ "$nrows" -eq "2" ]; then
-        idtrst=$line
-
-     # If 1 makes a new ens of initial states from 1
-     elif [ "$nrows" -eq "3" ]; then
-        is_new_ens=$line
-        Check_num 0 1 'int' $is_new_ens
-
-     else
-
-        echo "Too many rows"
-        exit 1
-
-     fi
-     nrows=$((nrows + 1))
-  done < $cfile
-
+  echo "Check the input files"
   ens_file_list='ens_list.txt'
   Check_file $ens_file_list  
   obs_file_list='obs_list.txt'
@@ -114,48 +89,28 @@ Read_conf()
 
 #----------------------------------------------------------
 
-Compile_enkf(){
-
-  nkn=$1
-  nel=$2
-  nlv=$3
-
-  cd $FEMDIR/enKF
-
-  cat mod_dimensions.skel | sed -e "s/NKN/$nkn/" | sed -e "s/NEL/$nel/" | \
-	sed -e "s/NLV/$nlv/" > mod_dimensions.F90
-
-  make clean > $SIMDIR/make.log
-  make main >> $SIMDIR/make.log
-
-  cd $SIMDIR
-}
-
-
-#----------------------------------------------------------
-
-Check_exec(){
-  echo "Check the exec programs"
-  command -v parallel > /dev/null 2>&1 || { echo "parallel it's not installed.  Aborting." >&2; exit 1; }
-  [ ! -s $FEMDIR/fem3d/shyfem ] && echo "shyfem exec does not exist. Compile the model first." && exit 1
-  # Make here the mod_dimensions and compile main
-  
-  [ ! -s $FEMDIR/enKF/main ] && echo "main exec does not exist. Compile the enKF first." && exit 1
-}
-
-#----------------------------------------------------------
-
 Read_ens_list(){
 # Reads the list of skel and restart files of the ensemble
   echo "Reading the ensemble list"
 
   rm -f an00001_en*b.rst
 
+  rst1=$(head -1 $ens_file_list | awk '{print $2}')
+  rst2=$(head -2 $ens_file_list | tail -1 | awk '{print $2}')
+
+  if [ "$rst1" = "$rst2" ];  then
+	  is_new_ens=1
+	  echo "Only one initial state..."
+  else
+	  is_new_ens=0
+	  echo "Many initial states..."
+  fi
+
   nrow=0
   while read line
   do
-     skelf=$(echo $line | cut -d " " -f 1)
-     rstf=$(echo $line | cut -d " " -f 2)
+     skelf=$(echo $line | awk '{print $1}')
+     rstf=$(echo $line | awk '{print $2}')
      Check_file $skelf
      Check_file $rstf
 
@@ -197,7 +152,7 @@ Read_an_time_list(){
 
 SkelStr(){
 # Makes a str file from a skel file
-inamesim=$1; iitanf=$2; iitend=$3; irestrt=$4; iidtrst=$5; iskelname=$6; istrname=$7
+inamesim=$1; iitanf=$2; iitend=$3; irestrt=$4; iskelname=$5; istrname=$6
 
 if [ ! -s $iskelname ]; then
         echo "File $iskelname does not exist"
@@ -206,7 +161,7 @@ fi
 
 cat $iskelname | sed -e "s/NAMESIM/$inamesim/g" |  sed -e "s/ITANF/$iitanf/g" \
                | sed -e "s/ITEND/$iitend/g" | sed -e "s/RESTRT/$irestrt/" \
-               | sed -e "s/IDTRST/$iidtrst/" \
+               | sed -e "s/IDTRST/-1/" \
                >  $istrname
 }
 
@@ -225,7 +180,8 @@ Write_info_file(){
 
   na=$1
 
-  echo $nrens > analysis.info		# nr of ens members
+  echo $nnlv > analysis.info		# nr of vertical levels
+  echo $nrens >> analysis.info		# nr of ens members
   echo $na >> analysis.info		# analysis step
   echo $bas_file >> analysis.info	# name of the basin
   echo ${timeo[$na]} >> analysis.info	# current time
@@ -283,7 +239,7 @@ for (( ne = 0; ne < $nrens; ne++ )); do
         rstfile="an${nal}_en${nel}a.rst" 
         strnew="${name_sim}.str"
 
-        SkelStr $name_sim $itanf $itend $rstfile $idtrst $ens_skel_file $strnew
+        SkelStr $name_sim $itanf $itend $rstfile $ens_skel_file $strnew
         strfiles="$strfiles $strnew"
    fi
 
@@ -297,10 +253,11 @@ done
 #----------------------------------------------------------
 #----------------------------------------------------------
 
-if [ $2 ]; then
-   nthreads=$1
-   Read_conf
-   out_verb=$2
+if [ $4 ]; then
+   bas_file=$1
+   nnlv=$2
+   nthreads=$3
+   out_verb=$4
 else
    Usage
 fi
@@ -308,11 +265,8 @@ fi
 # Export num of threads for main. Warning! Use the max num of cpu, not threads.
 export OMP_NUM_THREADS=$nthreads
 
-# Compiles the enKF code with the right total dimensions
-Compile_enkf $sdim
-
 # Checking the executable programs
-Check_exec
+Check_files
 
 # Reading skel file list
 Read_ens_list
