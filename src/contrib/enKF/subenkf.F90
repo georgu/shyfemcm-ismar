@@ -374,17 +374,18 @@
 
 !********************************************************
 
-  subroutine find_el_node(x,y,ie,ik)
+  subroutine find_el_node(x,y,iie,ik)
 
   use basin
 
   implicit none
 
   real, intent(in) :: x,y
-  integer, intent(out) :: ie,ik
+  integer, intent(out) :: iie,ik
   real*4 x4,y4
-  real dst,dstmax
+  real dst, dstmax
   integer iik,ii
+  integer k
 
   !-----------
   ! Finds the grid element and the node 
@@ -392,22 +393,34 @@
   !-----------
   x4 = x
   y4 = y
-  call find_element(x4,y4,ie)
-  if (ie == 0) then
-     write(*,*) 'find_el_node: observations must be inside the grid.'
-     write(*,*) 'x, y: ',x4,y4
-     error stop
-  end if
+  call find_element(x4,y4,iie)
 
   dstmax = 1e15
-  do ii = 1,3
-     iik = nen3v(ii,ie)
-     dst = sqrt( (xgv(iik)-x4)**2 + (ygv(iik)-y4)**2 )
-     if (dst < dstmax) then
-       dstmax = dst
-       ik = iik
-     end if
-  end do
+  ! Inside the grid
+  if (iie /= 0) then
+     dst = 0.
+     do ii = 1,3
+        iik = nen3v(ii,iie)
+        dst = sqrt( (xgv(iik)-x4)**2 + (ygv(iik)-y4)**2 )
+        if (dst < dstmax) then
+          dstmax = dst
+          ik = iik
+        end if
+     end do
+  ! outside the grid
+  else
+     write(*,*) 'Warning! Observation outside the grid'
+     dst = 0.
+     do k = 1,nkn
+        dst = sqrt( (xgv(k)-x4)**2 + (ygv(k)-y4)**2 )
+	if (dst < dstmax) then
+          dstmax = dst
+          ik = k
+        end if
+     end do
+     call find_element(xgv(ik),ygv(ik),iie)
+     write(*,*) 'Distance, node, element: ',dstmax, ik, iie
+  end if
 
   end subroutine find_el_node
 
