@@ -21,7 +21,7 @@ program make_antime_list
 
  integer :: nr
  double precision,allocatable :: atval(:),val(:)
- integer, allocatable :: nrec(:)
+ integer, allocatable :: nrec(:), isfile(:)
  double precision,allocatable :: atval_tot(:,:),val_tot(:,:)
  double precision, parameter :: flag = -999.
  integer :: iok,iflag
@@ -78,6 +78,7 @@ program make_antime_list
  ktot = k
 
  allocate(nrec(ktot),atval_tot(ktot,nsteps),val_tot(ktot,nsteps))
+ allocate(isfile(ktot))
  atval_tot = -999.
  val_tot = -999.
  do k = 1,ktot
@@ -102,6 +103,7 @@ program make_antime_list
     !call date2string(d,t,dstr)
     !write(*,*) 'Time: ',dstr
 
+    isfile = 0
     iflag = 0
     iok = 0
     ! loop on files
@@ -116,6 +118,7 @@ program make_antime_list
 		  iflag = iflag + 1
 	  else
 		  iok = iok + 1
+		  isfile(k) = 1
 	  end if
        end if
 
@@ -127,7 +130,8 @@ program make_antime_list
 	    call dts_from_abs_time(d,t,atime)
 	    call date2string(d,t,dstr)
 
-	    write(30,'(a20)') dstr
+	    write(30,'(a20,1x,i5)') dstr,ktot
+	    write(30,'(9999i2)') isfile(1:ktot)
     end if
 
  end do

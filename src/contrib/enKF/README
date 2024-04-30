@@ -35,7 +35,7 @@ Programs
   surface, fem-files, timeseries);
 - make_eof_ens_meteo : makes an ensemble of perturbed winds with PCA (to
   check);
-- make_antime_list : make the antime_list.txt, checking all the observations;
+- make_antime_list : make the antime_list.txt. Works only with timeseries.
 - enKF2enKS : Kalman Smoother from the output of Kalman Filter. Do not use
   with localisation.
 
@@ -98,8 +98,14 @@ Possible flag for the observations are:
 ----------
 antime_list.txt
 ----------
-A list of the times, in SHYFEM string format, of the analysis steps. Use
-make_antime_list to do it.
+This file has a record of two rows. The first row contains the time in SHYFEM
+format and the number of observation files (length of obs_list.txt). The
+second row has a 0-1 mask with the obs files used in the current time step.
+The following rows have the same format for the following analysis steps, in
+ascending order.
+This speed-up the program in case of many files, use make_antime_list to
+create this file. If you don't want to use this option, prescribe a mask with
+only 1 values at each timestep.
 
 ----------
 lbound.dat (optional)

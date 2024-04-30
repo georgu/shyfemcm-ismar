@@ -137,13 +137,20 @@ Read_an_time_list(){
   echo "Read the list of analysis steps"
   
   # timeo starts from 1 as the analysis steps
-  nrow=1
+  nrow=0
+  nran=0
   while read line
   do
-    timeo[$nrow]=$line
     nrow=$((nrow + 1))
+    iseven=$((nrow%2))
+    if [ "$iseven" -eq "1" ]; then
+	    nran=$((nran+1))
+	    timeo[$nran]=$(echo $line | awk '{print $1}')
+	    nfile[$nran]=$(echo $line | awk '{print $2}')
+    else
+	    isfile[$nran]=$line
+    fi
   done < $an_time_list
-  nran=$((nrow - 1))
   echo ""; echo "Number of analysis steps: $nran"
 }
 
@@ -175,6 +182,31 @@ Make_sim()
 
 #----------------------------------------------------------
 
+Write_obs_file(){
+# Write a tmp file with the observations used in the current time step
+
+  na=$1
+
+  IFS=' ' read -r -a nisfile <<< "${isfile[$na]}"
+  nnfile=${nfile[$na]}
+
+  rm -f obs_list_tmp.txt
+  k=0
+  while read line; do
+    if [ "${nisfile[$k]}" = "1" ]; then
+	    echo $line >> obs_list_tmp.txt
+    fi
+    k=$((k+1))
+  done < $obs_file_list
+
+  if [ "$nnfile" -ne "$k" ]; then
+	  echo "Error in the length of the obs file list: $nnfile $k"
+	  exit 1
+  fi
+}
+
+#----------------------------------------------------------
+
 Write_info_file(){
 # Write a file with informations for the fortran analysis program
 
@@ -185,7 +217,7 @@ Write_info_file(){
   echo $na >> analysis.info		# analysis step
   echo $bas_file >> analysis.info	# name of the basin
   echo ${timeo[$na]} >> analysis.info	# current time
-  echo $obs_file_list >> analysis.info	# obs file list
+  echo obs_list_tmp.txt >> analysis.info	# obs file list
   echo $is_new_ens >> analysis.info	# if to make a new ens of states
 }
 
@@ -280,8 +312,13 @@ for (( na = 1; na <= $nran; na++ )); do
 
    # make the analysis
    echo; echo "			ANALYSIS STEP $na OF $nran"; echo
+   Write_obs_file $na
+
    Write_info_file $na
+
+   ######################### ANALYSIS ######################
    Run_ensemble_analysis $na
+   #########################################################
 
    # Makes nrens str files for the simulations
    Make_ens_str
@@ -291,9 +328,11 @@ for (( na = 1; na <= $nran; na++ )); do
       # run nrens sims before the obs
       echo; echo "       running $nrens ensemble simulations..."
 
+   ############### MODEL RUN ###############################
       # with nthreads=0 uses the maximum number
       export -f Make_sim
       parallel --no-notice -P $nthreads Make_sim ::: $strfiles ::: $FEMDIR/fem3d
+   #########################################################
 
    fi
 
