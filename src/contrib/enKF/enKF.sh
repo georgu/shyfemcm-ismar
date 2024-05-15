@@ -24,8 +24,10 @@ SIMDIR=$(pwd)		# current dir
 
 Usage()
 {
-  echo "Usage: enKF.sh [bas-file] [nlv] [n] [out]"
+  echo "Usage: enKF.sh [method] [localisation] [bas-file] [nlv] [n] [out]"
   echo
+  echo "method = 11|12|13|21|22|23. See: analysis.F90"
+  echo "localisation = 0 (disable), 1 (enable)"
   echo "bas-file = name of the basin bas file"
   echo "nlv = number of vertical levels used in the simulations"
   echo "n = number of threads"
@@ -219,6 +221,8 @@ Write_info_file(){
   echo ${timeo[$na]} >> analysis.info	# current time
   echo obs_list_tmp.txt >> analysis.info	# obs file list
   echo $is_new_ens >> analysis.info	# if to make a new ens of states
+  echo $rmode >> analysis.info          # analysis method
+  echo $islocal >> analysis.info        # local analysis
 }
 
 #----------------------------------------------------------
@@ -285,11 +289,13 @@ done
 #----------------------------------------------------------
 #----------------------------------------------------------
 
-if [ $4 ]; then
-   bas_file=$1
-   nnlv=$2
-   nthreads=$3
-   out_verb=$4
+if [ $6 ]; then
+   rmode=$1
+   islocal=$2
+   bas_file=$3
+   nnlv=$4
+   nthreads=$5
+   out_verb=$6
 else
    Usage
 fi

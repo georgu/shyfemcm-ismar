@@ -185,7 +185,7 @@ mod_ens_state.o: ../femlib/mod/basin.mod ../femlib/mod/levels.mod \
 		../femlib/mod/mod_restart.mod \
 		../femlib/mod/mod_ts.mod \
 		../femlib/mod/mod_gotm_aux.mod
-mod_init_enkf.o: ../femlib/mod/iso8601.mod
+mod_init_enkf.o: ../femlib/mod/iso8601.mod ../femlib/mod/mod_para.mod
 mod_manage_obs.o: ../femlib/mod/iso8601.mod \
 		../femlib/mod/levels.mod \
 		../femlib/mod/mod_ens_state.mod \

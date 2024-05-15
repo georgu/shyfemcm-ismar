@@ -3,10 +3,10 @@
 !
 module mod_para
 
-  integer, parameter :: rmode = 13 ! Ensemble Kalman Filter with SVD pseudo inversion of SS'+ EE'
-  !integer, parameter :: rmode = 22 ! Square root algorithm with SVD pseudo inversion of SS'+(N-1)R
-  !integer, parameter :: rmode = 23 ! Square root algorithm with SVD pseudo inversion of SS'+ EE'
-  !integer, parameter :: rmode = 10 ! exact update scheme for diagonal obs-err-cov-mat
+  integer, save :: rmode = 13 ! Ensemble Kalman Filter with SVD pseudo inversion of SS'+ EE'
+  !22 Square root algorithm with SVD pseudo inversion of SS'+(N-1)R
+  !23 Square root algorithm with SVD pseudo inversion of SS'+ EE'
+  !10 exact update scheme for diagonal obs-err-cov-mat
 
   logical, parameter :: verbose = .true. ! Prints diagnostic output
 
@@ -22,7 +22,7 @@ module mod_para
 
   ! Set these parameters for local analysis. Important.				       
   !
-  integer, parameter :: is_local = 0 !Local analysis. 0 disable, 1 local analysis. Specify radii in the info files.
+  integer, save :: is_local = 0 !Local analysis. 0 disable, 1 local analysis. Specify radii in the info files.
 
   ! set this to 1 to include the model errors in the analysis (to test) or equal 2 to
   ! include model parameters (todo)

@@ -17,11 +17,7 @@
 !------------------------------------------------------------------------------
 program main
 
-  use mod_init_enkf
-  use mod_mod_states
-  use mod_para
   use mod_enkf
-  use mod_ens_state
   use mod_mod_err
   use mod_restart , only : ibarcl_rst
 
@@ -29,14 +25,14 @@ program main
   integer :: ndim
   real, allocatable :: Amat(:,:)
 
-  write(*,*) "***"
-  write(*,*) "*** Geir's analysis routine, method: ",rmode
-  write(*,*) "***"
-
 !----------------------------------------------------
 ! Opens info file
 !----------------------------------------------------
   call read_info
+
+  write(*,*) "***"
+  write(*,*) "*** Geir's analysis routine, method: ",rmode
+  write(*,*) "***"
 
 !----------------------------------------------------
 ! Read the ensemble of model states

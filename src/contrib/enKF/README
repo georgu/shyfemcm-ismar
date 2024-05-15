@@ -53,6 +53,17 @@ install also the following software:
 Running the code
 ===================
 
+To run the code execute enKF.sh. The arguments (mandatory) are:
+
+Usage: enKF.sh [method] [localisation] [bas-file] [nlv] [n] [out]
+
+- method = 11|12|13|21|22|23. See: analysis.F90
+- localisation = 0 (disable), 1 (enable)
+- bas-file = name of the basin bas file
+- nlv = number of vertical levels used in the simulations
+- n = number of threads
+- out = 0 saves only mean and std restarts, 1 save all the restarts (needed by enKS)
+
 Some files must be prepared before running enKF.sh:
 
 ----------
@@ -205,5 +216,4 @@ mod_para.F90).
 Parameters of the assimilation
 ===================
 
-See the file mod_para.F90 to set some assimilation parameters, like the
-method of data assimilation, the use of the local analysis and more.
+See the file mod_para.F90 to set some assimilation parameters.
