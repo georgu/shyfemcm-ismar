@@ -251,6 +251,7 @@ contains
   ! create super-observations
   !-------------------------------
   call make_super_2dvel
+  call make_super_1dlev
  
   if (nobs_tot < 1) error stop 'No valid observations, stopping.'
 
@@ -573,6 +574,54 @@ contains
 
 !********************************************************
 
+  subroutine make_super_1dlev
+
+  implicit none
+
+  integer :: i,j,k
+  real :: dist,xav,yav,valav,stdav
+
+  if (n_0dlev < 2) return
+
+  k = 0
+  do i = 1,n_0dlev
+     if ( o0dlev(i)%stat > 1 ) cycle
+
+     do j = i+1,n_0dlev
+        if ( o0dlev(j)%stat > 1 ) cycle
+
+        dist = sqrt((o0dlev(i)%x - o0dlev(j)%x)**2 + (o0dlev(i)%y - o0dlev(j)%y)**2)
+        if ( (dist < o0dlev(i)%rhol/4).or.(dist < o0dlev(j)%rhol/4) ) then
+		xav = (o0dlev(i)%x+o0dlev(j)%x)/2
+		yav = (o0dlev(i)%y+o0dlev(j)%y)/2
+		valav = (o0dlev(i)%val * o0dlev(i)%std + o0dlev(j)%val * o0dlev(j)%std) / (o0dlev(i)%std + o0dlev(j)%std)
+		stdav = (o0dlev(i)%std + o0dlev(j)%std)/2
+
+		o0dlev(i)%stat = 1
+		o0dlev(i)%x = xav
+		o0dlev(i)%y = yav
+		o0dlev(i)%val = valav
+		o0dlev(i)%std = stdav
+
+		o0dlev(j)%stat = 2
+		o0dlev(j)%x = xav
+		o0dlev(j)%y = yav
+		o0dlev(j)%val = valav
+		o0dlev(j)%std = stdav
+
+		k = k + 1
+	endif
+
+     end do
+
+  end do
+
+  write(*,*) 'Number of water-level super-observations: ',k
+
+  end subroutine make_super_1dlev
+
+!********************************************************
+
   subroutine make_super_2dvel
 
   implicit none
@@ -649,17 +698,13 @@ contains
   end do
   ens_std = sqrt(ens_std/float(nrens-1))
 
-  ! Formula from: Sakov, 2012 (topaz)
+  ! Formula from: Sakov, 2012 (Topaz)
   !
   if (abs(d) > KSTD * ens_std) then
      stdv_new = sqrt( sqrt( (ens_std**2 + stdv**2)**2 +&
                  (1/KSTD * ens_std * d)**2 ) - ens_std**2 )
-
-     if (verbose)&
-     write(*,'(a18,2f8.4)') ' changing obs std ',&
-             stdv,stdv_new
-
      stdv = stdv_new
+     !if (verbose) write(*,'(a18,2f8.4)') ' changing obs std ',stdv,stdv_new
   end if
 
   end subroutine check_spread

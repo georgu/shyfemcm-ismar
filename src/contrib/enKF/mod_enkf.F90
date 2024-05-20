@@ -37,15 +37,15 @@ contains
   nobs_ok = 0
   if (islev /= 0) then
      do n = 1,n_0dlev
-        if (o0dlev(n)%stat == 0) nobs_ok = nobs_ok + 1
+        if (o0dlev(n)%stat < 2) nobs_ok = nobs_ok + 1
      end do 
   else if (issalt /= 0) then
      do n = 1,n_0dsalt
-        if (o0dsalt(n)%stat == 0) nobs_ok = nobs_ok + 1
+        if (o0dsalt(n)%stat < 2) nobs_ok = nobs_ok + 1
      end do 
   else if (istemp /= 0) then
      do n = 1,n_0dtemp
-        if (o0dtemp(n)%stat == 0) nobs_ok = nobs_ok + 1
+        if (o0dtemp(n)%stat < 2) nobs_ok = nobs_ok + 1
      end do 		
   else if (isvel /= 0) then
      do n = 1,n_2dvel
@@ -124,7 +124,7 @@ contains
 
      ! next if the observation is not good
      !
-     if (ostate(nf)%stat /= 0) cycle
+     if (ostate(nf)%stat > 1) cycle
 
      nook = nook + 1
 
@@ -194,7 +194,7 @@ contains
  
   end do
 
-  if (nook /= nobs_ok) error stop 'The nubmer of good observations is wrong.'
+  if (nook /= nobs_ok) error stop 'The number of good observations is wrong.'
 
   end subroutine fill_scalar_0d
 

@@ -49,25 +49,25 @@
   if (verbose) write(*,*) 'Observations in local analysis:'
   nook = 0 
   do no = 1,nobs_tot
-     if ((islev /= 0).and.(o0dlev(no)%stat == 0)) then
+     if ((islev /= 0).and.(o0dlev(no)%stat < 2)) then
 	  nook = nook + 1
 	  if (no <= n_0dlev) then		!e.g. from timeseries
 		  xobs(nook) = o0dlev(no)%x
 		  yobs(nook) = o0dlev(no)%y
 		  rho_loc(nook) = o0dlev(no)%rhol
 	  !else if ((no > n_0dlev).and. &
-	!	  (no <= n_0dlev+n_1dlev).and.(o1dlev(no)%stat == 0)) then	!e.g. altimeter track
+	!	  (no <= n_0dlev+n_1dlev).and.(o1dlev(no)%stat < 2)) then	!e.g. altimeter track
 	!          write(*,*) 'Do it!'
 	!          stop
 	!	  !xobs(no) = o1dlev(no)%x
 	!	  !yobs(no) = o1dlev(no)%y
-	!  else if ((no > n_0dlev+n_1dlev).and.(o2dlev(no)%stat == 0)) then	!e.g. altimeter map
+	!  else if ((no > n_0dlev+n_1dlev).and.(o2dlev(no)%stat < 2)) then	!e.g. altimeter map
 	!          write(*,*) 'Do it!'
 	!          stop
 	!	  !xobs(no) = o2dlev(no)%x
 	!	  !yobs(no) = o2dlev(no)%y
 	  end if
-     else if ((istemp /= 0).and.(o0dtemp(no)%stat == 0)) then
+     else if ((istemp /= 0).and.(o0dtemp(no)%stat < 2)) then
 	  nook = nook + 1
 	  if (no <= n_0dtemp) then			!e.g. from timeseries
 		  xobs(nook) = o0dtemp(no)%x
@@ -85,7 +85,7 @@
 	!	  !xobs(no) = o2dtemp(no)%x
 	!	  !yobs(no) = o2dtemp(no)%y
 	  end if
-     else if ((issalt /= 0).and.(o0dsalt(no)%stat == 0)) then
+     else if ((issalt /= 0).and.(o0dsalt(no)%stat < 2)) then
 	  nook = nook + 1
 	  if (no <= n_0dsalt) then			!e.g. from timeseries
 		  xobs(nook) = o0dsalt(no)%x
@@ -108,7 +108,7 @@
 	  stop
      end if
 
-     if (verbose) write(*,*) 'x,y,rho = ',xobs(nook),yobs(nook),rho_loc(nook)
+     if (verbose) write(*,*) 'n,x,y,rho = ',nook,xobs(nook),yobs(nook),rho_loc(nook)
 
   end do
 

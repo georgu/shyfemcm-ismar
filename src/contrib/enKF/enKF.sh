@@ -336,8 +336,10 @@ for (( na = 1; na <= $nran; na++ )); do
 
    ############### MODEL RUN ###############################
       # with nthreads=0 uses the maximum number
+      nthsim=$nthreads
+      [[ "$nthsim" -gt "$nrens" ]] && nthsim=$nrens
       export -f Make_sim
-      parallel --no-notice -P $nthreads Make_sim ::: $strfiles ::: $FEMDIR/fem3d
+      parallel --no-notice -P $nthsim Make_sim ::: $strfiles ::: $FEMDIR/fem3d
    #########################################################
 
    fi

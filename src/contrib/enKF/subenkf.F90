@@ -409,7 +409,7 @@
      end do
   ! outside the grid
   else
-     write(*,*) 'Warning! Observation outside the grid'
+     !write(*,*) 'Warning! Observation outside the grid'
      dst = 0.
      do k = 1,nkn
         dst = sqrt( (xgv(k)-x4)**2 + (ygv(k)-y4)**2 )
@@ -419,7 +419,7 @@
         end if
      end do
      call find_element(xgv(ik),ygv(ik),iie)
-     write(*,*) 'Distance, node, element: ',dstmax, ik, iie
+     !write(*,*) 'Distance, node, element: ',dstmax, ik, iie
   end if
 
   end subroutine find_el_node
