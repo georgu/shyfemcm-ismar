@@ -59,6 +59,8 @@ contains
      error stop 'Observation type not valid.'
   end if
 
+  write(*,*) 'Valid observations: ',nobs_ok
+
   allocate(D(nobs_ok,nrens),E(nobs_ok,nrens),&
            R(nobs_ok,nobs_ok))
   allocate(S(nobs_ok,nrens),innov(nobs_ok))
@@ -172,7 +174,7 @@ contains
      ! check innovation value
      maxinn = sqrt(inn_alpha*(stdv**2+stdm**2))
      sinn = sign(1.,inn1)
-     if (inn1**2 > maxinn**2) then
+     if (abs(inn1) > abs(maxinn)) then
         if (verbose) write(*,*) 'Innovation too high (inn, max-inn): ',inn1,sinn*maxinn
 	inn1 = sinn*maxinn
      end if

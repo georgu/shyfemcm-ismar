@@ -67,6 +67,7 @@
 	!	  !xobs(no) = o2dlev(no)%x
 	!	  !yobs(no) = o2dlev(no)%y
 	  end if
+          if (verbose) write(*,*) 'n,x,y,rho = ',nook,xobs(nook),yobs(nook),rho_loc(nook)
      else if ((istemp /= 0).and.(o0dtemp(no)%stat < 2)) then
 	  nook = nook + 1
 	  if (no <= n_0dtemp) then			!e.g. from timeseries
@@ -85,6 +86,7 @@
 	!	  !xobs(no) = o2dtemp(no)%x
 	!	  !yobs(no) = o2dtemp(no)%y
 	  end if
+          if (verbose) write(*,*) 'n,x,y,rho = ',nook,xobs(nook),yobs(nook),rho_loc(nook)
      else if ((issalt /= 0).and.(o0dsalt(no)%stat < 2)) then
 	  nook = nook + 1
 	  if (no <= n_0dsalt) then			!e.g. from timeseries
@@ -103,12 +105,11 @@
 	!	  !xobs(no) = o2dsalt(no)%x
 	!	  !yobs(no) = o2dsalt(no)%y
 	  end if
+          if (verbose) write(*,*) 'n,x,y,rho = ',nook,xobs(nook),yobs(nook),rho_loc(nook)
      else if (isvel /= 0) then
 	  write(*,*) 'Do it!'
 	  stop
      end if
-
-     if (verbose) write(*,*) 'n,x,y,rho = ',nook,xobs(nook),yobs(nook),rho_loc(nook)
 
   end do
 

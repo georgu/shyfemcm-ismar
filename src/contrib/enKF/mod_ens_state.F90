@@ -246,7 +246,9 @@ contains
       if (file_exists) call bc_correction('node',k,nbc,bcid,bcrho,w)
 
       ! level
-      valb = Abk(ne)%z(k)
+      ! Correct only with the non perturbed value
+      valb = Abk(1)%z(k)
+      !valb = Abk(ne)%z(k)
       vala = Aan(ne)%z(k)
       vala = w * valb + (1. - w) * vala
 

@@ -578,47 +578,113 @@ contains
 
   implicit none
 
-  integer :: i,j,k
-  real :: dist,xav,yav,valav,stdav
-
+  integer, allocatable :: near_sts(:),near_sts_mat(:,:)
+  integer, allocatable :: id_sorted(:),near_sts_sort(:)
+  real dist,x,y,vstd,val,vrhol
+  real,parameter :: mult_coeff = 0.25
+  !real,parameter :: mult_coeff = 0.5
+  !real,parameter :: mult_coeff = 1
+  integer i,j,kk,nid
+  integer :: knorm,ksup,kbad
+  
   if (n_0dlev < 2) return
 
-  k = 0
+  allocate(near_sts(n_0dlev))
+  allocate(near_sts_mat(n_0dlev,n_0dlev))
+  allocate(near_sts_sort(n_0dlev))
+  allocate(id_sorted(n_0dlev))
+
+
+  write(*,*) 'Making superobs for the sea level...'
+
+  near_sts = 0
+  near_sts_mat = 0
   do i = 1,n_0dlev
-     if ( o0dlev(i)%stat > 1 ) cycle
-
-     do j = i+1,n_0dlev
-        if ( o0dlev(j)%stat > 1 ) cycle
-
+     do j = 1,n_0dlev
         dist = sqrt((o0dlev(i)%x - o0dlev(j)%x)**2 + (o0dlev(i)%y - o0dlev(j)%y)**2)
-        if ( (dist < o0dlev(i)%rhol/4).or.(dist < o0dlev(j)%rhol/4) ) then
-		xav = (o0dlev(i)%x+o0dlev(j)%x)/2
-		yav = (o0dlev(i)%y+o0dlev(j)%y)/2
-		valav = (o0dlev(i)%val * o0dlev(i)%std + o0dlev(j)%val * o0dlev(j)%std) / (o0dlev(i)%std + o0dlev(j)%std)
-		stdav = (o0dlev(i)%std + o0dlev(j)%std)/2
-
-		o0dlev(i)%stat = 1
-		o0dlev(i)%x = xav
-		o0dlev(i)%y = yav
-		o0dlev(i)%val = valav
-		o0dlev(i)%std = stdav
-
-		o0dlev(j)%stat = 2
-		o0dlev(j)%x = xav
-		o0dlev(j)%y = yav
-		o0dlev(j)%val = valav
-		o0dlev(j)%std = stdav
-
-		k = k + 1
-	endif
-
+        if ( (dist < o0dlev(i)%rhol*mult_coeff).or.(dist < o0dlev(j)%rhol*mult_coeff) ) then
+           near_sts(i) = near_sts(i) + 1
+           near_sts_mat(i,j) = 1
+        end if
      end do
-
   end do
 
-  write(*,*) 'Number of water-level super-observations: ',k
+  call dsort(n_0dlev,near_sts,near_sts_sort,id_sorted)
+
+  do i = 1,n_0dlev
+     nid = id_sorted(i)
+     kk = 0
+     x = 0
+     y = 0
+     vstd = 0
+     vrhol = 0
+     val = 0
+     do j = 1,n_0dlev
+        if ((near_sts_mat(nid,j) == 1).and.(o0dlev(j)%stat == 0)) then
+           x = x + o0dlev(j)%x
+           y = y + o0dlev(j)%y
+           vstd = vstd + o0dlev(j)%std
+           vrhol = vrhol + o0dlev(j)%rhol
+           val = val + o0dlev(j)%val
+           if (nid /= j) o0dlev(j)%stat = 2
+           kk = kk + 1
+        end if
+     end do
+     if (kk > 1) then
+         write(*,*) 'Making sea-level superobservation...'
+         o0dlev(nid)%x = x/kk
+         o0dlev(nid)%y = y/kk
+         o0dlev(nid)%std = vstd/kk
+         o0dlev(nid)%val = val/kk
+         o0dlev(nid)%rhol = vrhol/kk
+         o0dlev(nid)%stat = 1
+     end if
+  end do
+
+  knorm = 0
+  ksup = 0
+  kbad = 0
+  write(*,*) 'Final sea-level observations:'
+  do i = 1,n_0dlev
+     write(*,'(a24,i1,1x,f8.3,1x,f8.3,1x,f8.3,1x,f8.3,1x,f8.3)') 'status,x,y,val,std,rho: ',o0dlev(i)%stat,o0dlev(i)%x,o0dlev(i)%y,&
+          o0dlev(i)%val,o0dlev(i)%std,o0dlev(i)%rhol
+     ! Debug grd file
+     !if (o0dlev(i)%stat < 2) then
+     !   write(77,'(a2,i3,1x,i1,1x,f8.3,1x,f8.3,1x,f8.3)') '1 ',i,o0dlev(i)%stat,o0dlev(i)%x,o0dlev(i)%y,o0dlev(i)%val
+     !end if
+     if (o0dlev(i)%stat == 0) knorm = knorm + 1
+     if (o0dlev(i)%stat == 1) ksup = ksup + 1
+     if (o0dlev(i)%stat > 1) kbad = kbad + 1
+  end do
+  write(*,*) 'Normal sea-level observations: ',knorm
+  write(*,*) 'Super sea-level observations: ',ksup
+  write(*,*) 'Bad or merged sea-level observations: ',kbad
 
   end subroutine make_super_1dlev
+
+!********************************************************
+! Sort an integer array A in descending order, in B and the
+! indexes IA
+
+  subroutine dsort(ndim,A,B,IA)
+  implicit none
+  integer,intent(in) :: ndim
+  integer,intent(in) :: A(ndim)
+  integer,intent(out) :: B(ndim), IA(ndim)
+  integer :: aux(ndim)
+  integer :: n,iid
+
+  IA = 0
+  B = 0
+  aux = A
+  do n = 1,ndim
+     iid = maxloc(aux,ndim)
+     IA(n) = iid
+     B(n) = A(iid)
+     aux(iid) = -1
+  end do
+  
+  end subroutine dsort
 
 !********************************************************
 
