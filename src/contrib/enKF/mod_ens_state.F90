@@ -407,6 +407,8 @@ contains
   real,intent(in) :: vb
   real,intent(in) :: vmin,vmax
   integer,intent(inout) :: vnan,vout
+  real, parameter :: max_inc = 0.4
+  real rel_inc
 
   ! isnan and bk is a number
   if ( isnan(va) .and. (.not. isnan(vb) ) ) then
@@ -422,6 +424,13 @@ contains
 !$OMP CRITICAL
       vout = vout + 1
 !$OMP END CRITICAL
+   end if
+
+   ! set a maximum increment
+   rel_inc = abs(va-vb)/vb
+   if (rel_inc > max_inc) then
+      va = vb + max_inc*(va-vb)
+      write(*,*) 'Increment correction: ',rel_inc,vb,va
    end if
 
   end subroutine check_one_val
