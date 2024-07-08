@@ -197,6 +197,7 @@ contains
 
    integer zout,uvout,sout,tout,otot
    integer znan,uvnan,snan,tnan,ntot
+   integer zbig,uvbig,sbig,tbig,btot
 
    character(len=80),parameter :: bcfile = 'lbound.dat'
    logical :: file_exists
@@ -225,6 +226,7 @@ contains
 
    otot = 0
    ntot = 0
+   btot = 0
    do ne = 1,nrens
 
     zout = 0
@@ -236,6 +238,11 @@ contains
     uvnan = 0
     snan = 0
     tnan = 0
+
+    zbig = 0
+    uvbig = 0
+    sbig = 0
+    tbig = 0
 
 
 !$OMP PARALLEL PRIVATE(k,nl,valb,vala,znan,zout,snan,sout,tnan,tout,w),SHARED(ne,Abk,Aan,nbc,bcid,bcrho)
@@ -253,7 +260,7 @@ contains
       vala = w * valb + (1. - w) * vala
 
       ! check val
-      call check_one_val(vala,valb,SSH_MAX,SSH_MIN,znan,zout)
+      call check_one_val(vala,valb,SSH_MAX,SSH_MIN,znan,zout,zbig)
       Aan(ne)%z(k) = vala
 
       do nl = 1,nnlv
@@ -262,7 +269,7 @@ contains
 	vala = Aan(ne)%s(nl,k)
 	vala = w * valb + (1. - w) * vala
         ! check val
-	call check_one_val(vala,valb,SAL_MAX,SAL_MIN,snan,sout)
+	call check_one_val(vala,valb,SAL_MAX,SAL_MIN,snan,sout,sbig)
 	Aan(ne)%s(nl,k) = vala
 
 	! temperature
@@ -270,7 +277,7 @@ contains
 	vala = Aan(ne)%t(nl,k)
         vala = w * valb + (1. - w) * vala
         ! check val
-	call check_one_val(vala,valb,TEM_MAX,TEM_MIN,tnan,tout)
+	call check_one_val(vala,valb,TEM_MAX,TEM_MIN,tnan,tout,tbig)
 	Aan(ne)%t(nl,k) = vala
       end do
     end do
@@ -289,14 +296,14 @@ contains
 	vala = Aan(ne)%u(nl,ie)
         vala = w * valb + (1. - w) * vala
         ! check val
-	call check_one_val(vala,valb,VEL_MAX,VEL_MIN,uvnan,uvout)
+	call check_one_val(vala,valb,VEL_MAX,VEL_MIN,uvnan,uvout,uvbig)
 	Aan(ne)%u(nl,ie) = vala
 
 	valb = Abk(ne)%v(nl,ie)
 	vala = Aan(ne)%v(nl,ie)
         vala = w * valb + (1. - w) * vala
         ! check val
-	call check_one_val(vala,valb,VEL_MAX,VEL_MIN,uvnan,uvout)
+	call check_one_val(vala,valb,VEL_MAX,VEL_MIN,uvnan,uvout,uvbig)
 	Aan(ne)%v(nl,ie) = vala
       end do
     end do
@@ -305,6 +312,7 @@ contains
 
     otot = zout + tout + sout + uvout
     ntot = znan + tnan + snan + uvnan
+    btot = zbig + tbig + sbig + uvbig
 
     if ((verbose).and.(otot > 0)) write(*,*) 'Ensemble member: ',ne
     if ((verbose).and.(zout > 0)) write(*,*) 'Number of levels out of range: ', zout
@@ -318,10 +326,17 @@ contains
     if ((verbose).and.(snan > 0)) write(*,*) 'Number of nan salinities: ', snan
     if ((verbose).and.(uvnan > 0)) write(*,*) 'Number of nan velocities: ', uvnan
 
+    if ((verbose).and.(btot > 0)) write(*,*) 'Ensemble member: ',ne
+    if ((verbose).and.(zbig > 0)) write(*,*) 'Number of levels out of range: ', zbig
+    if ((verbose).and.(tbig > 0)) write(*,*) 'Number of temperatures out of range: ', tbig
+    if ((verbose).and.(sbig > 0)) write(*,*) 'Number of salinities out of range: ', sbig
+    if ((verbose).and.(uvbig > 0)) write(*,*) 'Number of velocities out of range: ', uvbig
+
    end do
 
    if (otot > 0) write(*,*) 'Number of variables out of range: ', otot
    if (ntot > 0) write(*,*) 'Number of nan variables: ', ntot
+   if (btot > 0) write(*,*) 'Number of increments too high: ', btot
 
   end subroutine bc_val_check_correct
 
@@ -401,12 +416,12 @@ contains
 
 
 !********************************************************
-  subroutine check_one_val(va,vb,vmax,vmin,vnan,vout)
+  subroutine check_one_val(va,vb,vmax,vmin,vnan,vout,vbig)
   implicit none
   real,intent(inout) :: va
   real,intent(in) :: vb
   real,intent(in) :: vmin,vmax
-  integer,intent(inout) :: vnan,vout
+  integer,intent(inout) :: vnan,vout,vbig
   real, parameter :: max_inc = 0.8
   real rel_inc,inc
 
@@ -428,10 +443,13 @@ contains
 
    ! set a maximum increment
    inc = va-vb
-   rel_inc = abs(inc)/vb
+   rel_inc = abs(inc)/abs(vb)
    if (rel_inc > max_inc) then
       va = vb + inc * (max_inc/rel_inc)
       !write(*,*) 'Increment correction: ',max_inc,rel_inc,inc,vb,va,va-vb
+!$OMP CRITICAL
+      vbig = vbig + 1
+!$OMP END CRITICAL
    end if
 
   end subroutine check_one_val
