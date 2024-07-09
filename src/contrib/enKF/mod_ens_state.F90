@@ -327,10 +327,10 @@ contains
     if ((verbose).and.(uvnan > 0)) write(*,*) 'Number of nan velocities: ', uvnan
 
     if ((verbose).and.(btot > 0)) write(*,*) 'Ensemble member: ',ne
-    if ((verbose).and.(zbig > 0)) write(*,*) 'Number of levels out of range: ', zbig
-    if ((verbose).and.(tbig > 0)) write(*,*) 'Number of temperatures out of range: ', tbig
-    if ((verbose).and.(sbig > 0)) write(*,*) 'Number of salinities out of range: ', sbig
-    if ((verbose).and.(uvbig > 0)) write(*,*) 'Number of velocities out of range: ', uvbig
+    if ((verbose).and.(zbig > 0)) write(*,*) 'Number of level increments too high: ', zbig
+    if ((verbose).and.(tbig > 0)) write(*,*) 'Number of temperature increments too high: ', tbig
+    if ((verbose).and.(sbig > 0)) write(*,*) 'Number of salinity increments too high: ', sbig
+    if ((verbose).and.(uvbig > 0)) write(*,*) 'Number of velocity increments too high: ', uvbig
 
    end do
 
