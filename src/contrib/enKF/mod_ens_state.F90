@@ -425,19 +425,11 @@ contains
   real, parameter :: max_inc = 0.8
   real rel_inc,inc
 
-  ! isnan and bk is a number
-  if ( isnan(va) .and. (.not. isnan(vb) ) ) then
+   ! isnan and bk is a number
+   if ( isnan(va) .and. (.not. isnan(vb) ) ) then
      va = vb
 !$OMP CRITICAL
      vnan = vnan + 1
-!$OMP END CRITICAL
-   end if
-
-   ! out of range
-   if (( va >= vmax ) .or. ( va <= vmin )) then
-      va = vb
-!$OMP CRITICAL
-      vout = vout + 1
 !$OMP END CRITICAL
    end if
 
@@ -449,6 +441,14 @@ contains
       !write(*,*) 'Increment correction: ',max_inc,rel_inc,inc,vb,va,va-vb
 !$OMP CRITICAL
       vbig = vbig + 1
+!$OMP END CRITICAL
+   end if
+
+   ! out of range
+   if (( va >= vmax ) .or. ( va <= vmin )) then
+      va = vb
+!$OMP CRITICAL
+      vout = vout + 1
 !$OMP END CRITICAL
    end if
 
