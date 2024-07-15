@@ -191,7 +191,7 @@ contains
   subroutine bc_val_check_correct
    implicit none
 
-   real vala,valb
+   real vala,valb,vala_old
 
    integer ne,k,ie,nl
 
@@ -291,20 +291,20 @@ contains
       ! BC correction
       if (file_exists) call bc_correction('elem',ie,nbc,bcid,bcrho,w)
       do nl = 1,nnlv
-        ! current
-	valb = Abk(ne)%u(nl,ie)
-	vala = Aan(ne)%u(nl,ie)
-        vala = w * valb + (1. - w) * vala
-        ! check val
-	call check_one_val(vala,valb,VEL_MAX,VEL_MIN,uvnan,uvout,uvbig)
-	Aan(ne)%u(nl,ie) = vala
+        ! Current, check only the speed
+	! BC correction
+        Aan(ne)%u(nl,ie) = w * Abk(ne)%u(nl,ie) + (1. - w) * Aan(ne)%u(nl,ie)
+        Aan(ne)%v(nl,ie) = w * Abk(ne)%v(nl,ie) + (1. - w) * Aan(ne)%v(nl,ie)
 
-	valb = Abk(ne)%v(nl,ie)
-	vala = Aan(ne)%v(nl,ie)
-        vala = w * valb + (1. - w) * vala
-        ! check val
-	call check_one_val(vala,valb,VEL_MAX,VEL_MIN,uvnan,uvout,uvbig)
-	Aan(ne)%v(nl,ie) = vala
+        ! Increment correction
+	valb = sqrt(Abk(ne)%u(nl,ie)**2 + Abk(ne)%v(nl,ie)**2)
+	vala = sqrt(Aan(ne)%u(nl,ie)**2 + Aan(ne)%v(nl,ie)**2)
+	vala_old = vala
+	call check_one_val(vala,valb,VEL_MAX,-0.001,uvnan,uvout,uvbig)
+
+	Aan(ne)%u(nl,ie) = Aan(ne)%u(nl,ie)*(vala/vala_old)
+	Aan(ne)%v(nl,ie) = Aan(ne)%v(nl,ie)*(vala/vala_old)
+
       end do
     end do
 !$OMP ENDDO

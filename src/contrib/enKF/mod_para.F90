@@ -78,13 +78,13 @@ module mod_para
 
   ! min-max values for the observation and model check
   !
-  real, parameter :: TEM_MIN = -30.0d0
-  real, parameter :: TEM_MAX = 70.0d0
-  real, parameter :: SAL_MIN = -1.0d0
-  real, parameter :: SAL_MAX = 50.0d0
-  real, parameter :: SSH_MIN = -10.0d0
-  real, parameter :: SSH_MAX = 10.0d0
-  real, parameter :: VEL_MIN = -10000.0d0
-  real, parameter :: VEL_MAX = 10000.0d0	!used also for u and v, min with -
+  real, parameter :: TEM_MIN = -20.0d0
+  real, parameter :: TEM_MAX = 60.0d0
+  real, parameter :: SAL_MIN = -0.5d0
+  real, parameter :: SAL_MAX = 60.0d0
+  real, parameter :: SSH_MIN = -8.0d0
+  real, parameter :: SSH_MAX = 8.0d0
+  real, parameter :: VEL_MIN = -90000.0d0
+  real, parameter :: VEL_MAX = 90000.0d0	!used also for u and v, min with -
 
 end module mod_para
