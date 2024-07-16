@@ -295,16 +295,6 @@ contains
 	! BC correction
         Aan(ne)%u(nl,ie) = w * Abk(ne)%u(nl,ie) + (1. - w) * Aan(ne)%u(nl,ie)
         Aan(ne)%v(nl,ie) = w * Abk(ne)%v(nl,ie) + (1. - w) * Aan(ne)%v(nl,ie)
-
-        ! Increment correction
-	valb = sqrt(Abk(ne)%u(nl,ie)**2 + Abk(ne)%v(nl,ie)**2)
-	vala = sqrt(Aan(ne)%u(nl,ie)**2 + Aan(ne)%v(nl,ie)**2)
-	vala_old = vala
-	call check_one_val(vala,valb,VEL_MAX,-0.001,uvnan,uvout,uvbig)
-
-	Aan(ne)%u(nl,ie) = Aan(ne)%u(nl,ie)*(vala/vala_old)
-	Aan(ne)%v(nl,ie) = Aan(ne)%v(nl,ie)*(vala/vala_old)
-
       end do
     end do
 !$OMP ENDDO
