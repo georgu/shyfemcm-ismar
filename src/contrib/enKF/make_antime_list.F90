@@ -8,7 +8,7 @@ program make_antime_list
  character(len=20) :: date1,date2
  character(len=80) :: filelist
  character(len=8) :: dtstr
- integer :: dt
+ double precision :: dt
  integer :: d,t
  integer :: ierr
  double precision :: atime1,atime2,atime
@@ -86,7 +86,7 @@ program make_antime_list
     read(20,*) oflag,ofile
 
     write(*,*) 'Reading: ',trim(ofile)
-    call read_file_obs(ofile,atime1,atime2,nsteps,nr,atval,val)
+    call read_file_obs(ofile,atime1,atime2,nsteps,nr,atval,val,dt)
     nrec(k) = nr
     atval_tot(k,:) = atval
     val_tot(k,:) = val
@@ -141,19 +141,19 @@ program make_antime_list
 end program make_antime_list
 
 
-subroutine read_file_obs(ofile,atime1,atime2,nsteps,nrec,atval,val)
+subroutine read_file_obs(ofile,atime1,atime2,nsteps,nrec,atval,val,dt)
   use iso8601
   implicit none
   character(len=80),intent(in) :: ofile
-  double precision,intent(in) :: atime1,atime2
   integer,intent(in) :: nsteps
+  double precision,intent(in) :: atime1,atime2,dt
   integer,intent(out) :: nrec
   double precision,intent(inout) :: atval(nsteps),val(nsteps)
   integer ierr
   character(len=20) :: dstring
   integer :: d,t
-  double precision :: atime,v
-  integer :: k
+  double precision :: atime,v,ctime
+  integer :: k,j
 
   open(21,file=trim(ofile),status='old',iostat=ierr)
   if ( ierr /= 0 ) error stop 'Error opening file'
@@ -165,13 +165,14 @@ subroutine read_file_obs(ofile,atime1,atime2,nsteps,nrec,atval,val)
   if ( ierr /= 0 ) error stop 'Invalid date'
   call dts_to_abs_time(d,t,atime)
 
-  if ((atime >= atime1) .and. (atime <= atime2)) then
-     k = k + 1
-     atval(k) = atime
-     val(k) = v
-
-     !write(*,*) k,atime,v
-  end if
+  do j = 0,nsteps-1
+     ctime = atime1 + j * dt
+     if (atime == ctime) then
+        k = k + 1
+        atval(k) = atime
+        val(k) = v
+     end if
+  end do
 
   goto 93
 
