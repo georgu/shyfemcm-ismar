@@ -19,14 +19,15 @@ program perturbeBC
   character(len=12) :: arg7
   character(len=12) :: arg8
   character(len=12) :: arg9
-  character(len=80) :: arg10
+  character(len=12) :: arg10
+  character(len=80) :: arg11
 
   integer nrens, var_dim
   character(len=80) :: filein
   character(len=3) :: filety
   real var_std
   double precision mem_time
-  double precision time_std	
+  double precision time_std,bias_std
   integer pert_type
 
   character(len=80) :: inbname
@@ -62,7 +63,7 @@ program perturbeBC
   character(len=80) :: dstring
   real              :: var_min,var_max
 
-  real, allocatable :: pvec(:),pvec1(:,:)
+  real, allocatable :: pvec(:),pvec1(:,:),bias(:)
   real, allocatable :: amat(:,:,:)
   real, allocatable :: pmat(:,:,:,:)
 
@@ -97,13 +98,14 @@ program perturbeBC
   call get_command_argument(8, arg8)
   call get_command_argument(9, arg9)
   call get_command_argument(10, arg10)
+  call get_command_argument(11, arg11)
 
   if (trim(arg10) .eq. '') then
       write(*,*) ''
       write(*,*) 'Usage:'
       write(*,*) ''
       write(*,*) 'perturbeBC [nrens] [file_type] [pert_type] [var_dim]' // &
-                           ' [var_std] [var_min] [var_max] [mem_time] [time_std] [input]'
+                           ' [var_std] [var_min] [var_max] [mem_time] [time_std] [bias_std] [input]'
       write(*,*) ''
       write(*,*) '[nrens] is the n. of ens members, control included.'
       write(*,*) '[file_type] can be fem or ts (timeseries).'
@@ -114,6 +116,7 @@ program perturbeBC
       write(*,*) '[var_max] maximum value for the variable (-999 to disable, if wind this is wind speed).'
       write(*,*) '[mem_time] time correlation of the perturbations (red noise) in seconds.'
       write(*,*) '[time_std] standard deviation for perturbation in time [in seconds].'
+      write(*,*) '[bias_std] standard deviation for a bias constant over the whole field over time (-1 disable).'
       write(*,*) '[input] is the name of the input unperturbed BC file.'
       write(*,*) ''
       write(*,*) 'pert_type can be:'
@@ -142,7 +145,8 @@ program perturbeBC
   read(arg7,*) var_max
   read(arg8,*) mem_time
   read(arg9,*) time_std
-  filein = arg10
+  read(arg10,*) bias_std
+  filein = arg11
 
   flag = -999.
 
@@ -188,6 +192,18 @@ program perturbeBC
 
   lmax = 1
   told = -999.
+
+
+!********************************
+! compute random bias
+!********************************
+  allocate(pvec(nrens-1),bias(nrens))
+  bias = 0.
+  if (bias_std > 0) then
+     call perturbe_0d(nrens-1,pvec)
+     bias(1) = 0.
+     bias(2:nrens) = bias_std * pvec(:)
+  end if
 
 !********************************
 ! time loop start
@@ -271,7 +287,6 @@ program perturbeBC
 ! generate perturbations and write the files
 !********************************
 
-    if (.not.allocated(pvec)) allocate(pvec(nrens-1))
     select case(var_dim)
 !----------------------------------------------
     case(0)	! 0D variable
@@ -279,7 +294,7 @@ program perturbeBC
 
         call perturbe_0d(nrens-1,pvec)
         call red_noise_0d(told,tnew,pvec,nrens-1,mem_time,1,1)
-        call write_record_0d(iunit,told,nrens,dstring,var,var_std,var_min,var_max,pvec,flag)
+        call write_record_0d(iunit,told,nrens,dstring,var,var_std,var_min,var_max,pvec,bias,flag)
 
 !----------------------------------------------
     case(1)	! 1D variable
@@ -334,7 +349,7 @@ program perturbeBC
 		     var = var3d_ens(i,ix,iy,1)
 		     if (nint(var_min) /= nint(flag)) call var_limit_min(var,var_min,flag)
 		     if (nint(var_max) /= nint(flag)) call var_limit_max(var,var_max,flag)
-	             femdata(1,ix,iy) = var
+	             femdata(1,ix,iy) = var + bias(ne)
 	          end do
                  end do
                  call fem_file_write_data(iformat,fid,nvers,np,lmax &
@@ -393,7 +408,7 @@ program perturbeBC
 	         do iy = 1,ny
 	          do ix = 1,nx
 		     var = var3d_ens(i,ix,iy,1)
-	             femdata(1,ix,iy) = var
+	             femdata(1,ix,iy) = var + bias(ne)
 	          end do
                  end do
                  call fem_file_write_data(iformat,fid,nvers,np,lmax &
@@ -453,7 +468,7 @@ program perturbeBC
 	         do iy = 1,ny
 	          do ix = 1,nx
 		     var = var3d_ens(i,ix,iy,1)
-	             femdata(1,ix,iy) = var
+	             femdata(1,ix,iy) = var + bias(ne)
 	          end do
                  end do
                  call fem_file_write_data(iformat,fid,nvers,np,lmax &
@@ -512,7 +527,7 @@ program perturbeBC
 	         do iy = 1,ny
 	          do ix = 1,nx
 		     var = var3d_ens(i,ix,iy,1)
-	             femdata(1,ix,iy) = var
+	             femdata(1,ix,iy) = var + bias(ne)
 	          end do
                  end do
                  call fem_file_write_data(iformat,fid,nvers,np,lmax &
@@ -562,7 +577,7 @@ program perturbeBC
 		         var = var3d_ens(i,ix,iy,l)
 		         if (nint(var_min) /= nint(flag)) call var_limit_min(var,var_min,flag)
 		         if (nint(var_max) /= nint(flag)) call var_limit_max(var,var_max,flag)
-		         femdata(l,ix,iy) = var
+		         femdata(l,ix,iy) = var + bias(ne)
 	              end do
                     end do
 		 end do
@@ -851,14 +866,14 @@ end program perturbeBC
   end subroutine perturbe_time
 
 !-----------------------------------------------
-  subroutine write_record_0d(iunit,told,nrens,dstring,var0,var_std,var_min,var_max,pvec,flag)
+  subroutine write_record_0d(iunit,told,nrens,dstring,var0,var_std,var_min,var_max,pvec,bias,flag)
 !-----------------------------------------------
   implicit none
   double precision, intent(in) :: told
   integer, intent(in) :: nrens,iunit
   character(len=80), intent(in) :: dstring
   real, intent(in) :: var0,var_std,var_min,var_max
-  real, intent(in) :: pvec(nrens-1)
+  real, intent(in) :: pvec(nrens-1),bias(nrens)
   real, intent(in) :: flag
 
   integer n,fid
@@ -869,9 +884,9 @@ end program perturbeBC
      fid = iunit + 10 + n
 
      if (n > 1) then
-        var = (pvec(n-1) * var_std) + var0
+        var = (pvec(n-1) * var_std) + var0 + bias(n)
      else
-        var = var0
+        var = var0 
      end if
 
      if (told < 0) var = var0

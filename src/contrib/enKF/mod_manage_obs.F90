@@ -749,8 +749,11 @@ contains
   real, intent(in) :: mvalm,mval(nrens)
   real, intent(inout) :: stdv
   integer ne
+  integer, save :: icall = 0
 
   real ens_std,stdv_new
+
+  if (icall == 0) write(*,*) 'Obs error variance limited to KSTD the ens spread (Sakov 2012):'
 
   ! if lower than zero do not modify the std
   !
@@ -764,14 +767,16 @@ contains
   end do
   ens_std = sqrt(ens_std/float(nrens-1))
 
-  ! Formula from: Sakov, 2012 (Topaz)
+  ! Formula from: Sakov, 2012 (Topaz): s_obs^2 = sqrt( (s_ens^2+s_obs^2)^2+(1/k*s_ens*Dd)^2 ) - s_ens^2
   !
   if (abs(d) > KSTD * ens_std) then
      stdv_new = sqrt( sqrt( (ens_std**2 + stdv**2)**2 +&
                  (1/KSTD * ens_std * d)**2 ) - ens_std**2 )
+     write(*,'(a20,1x,3f8.3)') 'STDe,STDo,STDo_new: ',ens_std,stdv,stdv_new
      stdv = stdv_new
-     !if (verbose) write(*,'(a18,2f8.4)') ' changing obs std ',stdv,stdv_new
   end if
+
+  icall = 1
 
   end subroutine check_spread
 

@@ -133,7 +133,7 @@ contains
      x = ostate(nf)%x
      y = ostate(nf)%y
      call find_el_node(x,y,iemin,kmin)
-     if (verbose) write(*,*) 'Internal node nearest to obs: ',kmin
+     !if (verbose) write(*,*) 'Internal node nearest to obs: ',kmin
 
      ! compute the observation errors R
      !
@@ -162,30 +162,27 @@ contains
 
      stdm = sqrt( sum(mval**2)/nrens - (sum(mval)/nrens)**2 )
 
-     S(nook,:) = mval - mvalm
-     HA(nook,:) = mval
+     S(nook,:) = mval(:) - mvalm
+     HA(nook,:) = mval(:)
 
      oval = ostate(nf)%val
      stdv = ostate(nf)%std
 
      inn1 = oval - mvalm
 
-
-     ! check innovation value
-     maxinn = sqrt(inn_alpha*(stdv**2+stdm**2))
-     sinn = sign(1.,inn1)
-     if (abs(inn1) > abs(maxinn)) then
-        if (verbose) write(*,*) 'Innovation too high (inn, max-inn): ',inn1,sinn*maxinn
-	inn1 = sinn*maxinn
-     end if
+     !! check innovation value
+     !maxinn = sqrt(inn_alpha*(stdv**2+stdm**2))
+     !sinn = sign(1.,inn1)
+     !if (abs(inn1) > abs(maxinn)) then
+     !   if (verbose) write(*,*) 'Innovation too high (inn, max-inn): ',inn1,sinn*maxinn
+     !	 inn1 = (sinn*maxinn)/2
+     !end if
 
      innov(nook) = inn1
 
      call check_spread(inn1,stdv,mval,mvalm)
 
-     if (verbose)&
-     write(*,'(a25,2x,i4,3f8.4)') 'nobs, vobs, vmod, innov:',&
-              nf,oval,mvalm,inn1
+     if (verbose) write(*,'(a26,1x,i4,2f8.4,1x,3f8.3)') 'ID obs,x,y,vobs,vmod,inn: ',nf,x,y,oval,mvalm,inn1
  
      ! compute the perturbations E, the perturbed observations D
      ! and the innovation vectors D1
