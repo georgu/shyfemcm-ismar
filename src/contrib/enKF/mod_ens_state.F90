@@ -513,6 +513,18 @@ contains
     implicit none
  
     type(states4),intent(inout) :: A4
+    real zmean
+    integer k
+
+    ! check and correct znv
+    zmean = 0.
+    zmean = sum(znv)/nnkn
+    do k = 1,nnkn
+       if (abs(znv(k)) > 4.) then
+          write(*,*) 'Warning: this node has a large z level: ',k,znv(k),zmean
+          znv(k) = zmean
+       end if
+    end do
 
     ! no significant differences by using currents rather than transports
     A4%u = utlnv

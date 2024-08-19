@@ -422,7 +422,7 @@ program perturbeBC
 	case(3)
 	!-----------------------
 
-	    if (var_std > 0.) write(*,*) '  Case 2: 2D wind-press pseudo-Gaussian geostrophic perturbations'
+	    if (var_std > 0.) write(*,*) '  Case 3: 2D wind-press pseudo-Gaussian geostrophic perturbations'
 
 	    if (nvar /= 3) error stop 'Dimension error'
 	    if (trim(vstring(1)) /= 'wind velocity - x') error stop 'Invalid variables'
