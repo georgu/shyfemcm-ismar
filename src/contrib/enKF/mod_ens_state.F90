@@ -513,16 +513,21 @@ contains
     implicit none
  
     type(states4),intent(inout) :: A4
-    real zmean
+    real zmean,zstd
     integer k
 
     ! check and correct znv
     zmean = 0.
+    zstd = 0.
     zmean = sum(znv)/nnkn
+    zstd = sqrt(sum(znv**2)/nnkn - zmean**2)
     do k = 1,nnkn
-       if (abs(znv(k)) > 4.) then
-          write(*,*) 'Warning: this node has a large z level: ',k,znv(k),zmean
-          znv(k) = zmean
+       if (znv(k) > (zmean + 3.*zstd)) then
+          write(*,*) 'Warning: this node has a large z level: ',k,znv(k),zmean,zstd
+          znv(k) = zmean + 3.*zstd
+       else if (znv(k) < (zmean - 3.*zstd)) then
+          write(*,*) 'Warning: this node has a large z level: ',k,znv(k),zmean,zstd
+          znv(k) = zmean - 3.*zstd
        end if
     end do
 
