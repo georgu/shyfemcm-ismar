@@ -510,25 +510,54 @@ contains
     use mod_ts
     use mod_conz
     use mod_restart
+    use basin
     implicit none
  
     type(states4),intent(inout) :: A4
-    real zmean,zstd
-    integer k
 
-    ! check and correct znv
+    character(len=80),parameter :: bcfile = 'lbound.dat'
+    logical :: file_exists
+    integer,allocatable :: nbc,bcid(:),k_int
+    real,allocatable :: bcrho(:)
+    real zmean,zstd,dist
+    integer k,i
+    integer ipint
+    integer :: fact = 8
+
+    ! Check the distance from the boundary
+    nbc = 1
+    allocate(bcid(nbc),bcrho(nbc))
+    bcrho = 0.
+    bcid = 1
+    inquire(file=bcfile,exist=file_exists)
+    if (file_exists) then
+      ! read file
+      call read_bc_file(0,bcfile,nbc,bcid,bcrho)
+      deallocate(bcid,bcrho)
+      allocate(bcid(nbc),bcrho(nbc))
+      call read_bc_file(1,bcfile,nbc,bcid,bcrho)
+    end if
+
     zmean = 0.
     zstd = 0.
+    dist = 1.e10
+    ! check and correct znv
     zmean = sum(znv)/nnkn
     zstd = sqrt(sum(znv**2)/nnkn - zmean**2)
     do k = 1,nnkn
-       if (znv(k) > (zmean + 3.*zstd)) then
-          write(*,*) 'Warning: this node has a large z level: ',k,znv(k),zmean,zstd
-          znv(k) = zmean + 3.*zstd
-       else if (znv(k) < (zmean - 3.*zstd)) then
-          write(*,*) 'Warning: this node has a large z level: ',k,znv(k),zmean,zstd
-          znv(k) = zmean - 3.*zstd
+      do i = 1,nbc
+       k_int = ipint(bcid(i))
+       dist = sqrt( (xgv(k)-xgv(k_int))**2 + (ygv(k)-ygv(k_int))**2 )
+       if (dist > 1.5*bcrho(i)) then
+         if (znv(k) > (zmean + fact*zstd)) then
+           write(*,*) 'Warning: this node has a large z level: ',k,znv(k),zmean,fact,zstd
+           znv(k) = zmean + fact*zstd
+         else if (znv(k) < (zmean - fact*zstd)) then
+           write(*,*) 'Warning: this node has a large z level: ',k,znv(k),zmean,-fact,zstd
+           znv(k) = zmean - fact*zstd
+         end if
        end if
+      end do
     end do
 
     ! no significant differences by using currents rather than transports
