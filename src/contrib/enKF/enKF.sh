@@ -257,11 +257,7 @@ Make_ens_str(){
 strfiles=""
 for (( ne = 0; ne < $nrens; ne++ )); do
 
-   if [ "$is_new_ens" -eq "0" ]; then
-      ens_skel_file=${skel_file[$ne]}
-   else
-      ens_skel_file=${skel_file[0]}
-   fi
+   ens_skel_file=${skel_file[$ne]}
    Check_file $ens_skel_file
 
    nel=$(printf "%05d" $ne); nal=$(printf "%05d" $na)
