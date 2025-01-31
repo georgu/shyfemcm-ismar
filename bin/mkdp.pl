@@ -44,6 +44,7 @@ use strict;
 			'mod_petsc_global.f90'		=> 	1,
 			'mod_petsc_system.f90'		=> 	1,
 			'simsys_petsc.f90'		=> 	1,
+			'nuopc_shyfem_cap.f90'		=> 	1,
 		    );
 
 #------------------------------------------------------

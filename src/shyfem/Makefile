@@ -406,7 +406,6 @@ cleanall: clean
 ../../lib/mod/mod_test_zeta.mod: test_zeta.o
 ../../lib/mod/mod_ww3.mod: ww3.o
 ../../lib/mod/mod_ww3.mod: ww3_dummy.o
-../../lib/mod/ocean_shyfem.mod: nuopc_shyfem_cap.o
 ../../lib/mod/omp_admin.mod: openmp_admin.o
 ../../lib/mod/poisson.mod: poisson.o
 ../../lib/mod/semi_implicit.mod: iostr.o
@@ -836,9 +835,6 @@ nudge.o: ../../lib/mod/basin.mod ../../lib/mod/intp_fem_file.mod \
 		../../lib/mod/mod_layer_thickness.mod \
 		../../lib/mod/mod_nudging.mod \
 		../../lib/mod/shympi.mod 
-nuopc_shyfem_cap.o: ../../lib/mod/esmf.mod \
-		../../lib/mod/mod_shyfem.mod \
-		../../lib/mod/nuopc.mod 
 offline_data.o: ../../lib/mod/basin.mod ../../lib/mod/levels.mod \
 		../../lib/mod/mod_diff_visc_fric.mod \
 		../../lib/mod/mod_hydro.mod \
