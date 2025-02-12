@@ -337,12 +337,12 @@ nuopc_shyfem.mk:
 	@echo "SHYFEM_DEP_INCPATH   = `pwd`/"$(LIBDIR)/mod              >> $@
 	@echo "SHYFEM_DEP_CMPL_OBJS = `pwd`/"$(NUOPCOBJ)                >> $@
 	@echo "SHYFEM_DEP_LINK_OBJS = `pwd`/"$(LIBFNU)                  >> $@
-	@echo "SHYFEM_DEP_SHRD_PATH = `pwd`/"$(LIBDIR) $(METISDIR)/lib  >> $@
-	@echo "SHYFEM_DEP_SHRD_LIBS = "$(LIBSHYUTILMPI) $(LIBSHYMPI) $(LIBSHYUTIL) $(LIBUTIL) $(LIBSPARSKIT) $(LIBGOTM) $(LIBMETIS) >> $@
+	@echo "SHYFEM_DEP_SHRD_PATH = `pwd`/"$(LIBDIR) $(PARMETISDIR)/lib $(METISDIR)/lib  >> $@
+	@echo "SHYFEM_DEP_SHRD_LIBS = "$(LIBSHYUTILMPI) $(LIBSHYMPI) $(LIBSHYUTIL) $(LIBUTIL) $(LIBSPARSKIT) $(LIBGOTM) $(LIBPARMETIS) $(LIBMETIS) >> $@
 
 libnuopc: $(LIBFNU)
 
-$(LIBFNU): $(NUOPCOBJ) $(OBJ)
+$(LIBFNU): $(NUOPCOBJ) $(OBJ) $(XFILES)
 	@echo "creating static library with shyfem and nuopc cap layer"
 	ar rvs $(LIBFNU) $?
 
@@ -1073,7 +1073,7 @@ ww3.o: ../../lib/mod/basin.mod ../../lib/mod/evgeom.mod \
 		../../lib/mod/mod_roughness.mod \
 		../../lib/mod/mod_waves.mod \
 		../../lib/mod/pkonst.mod ../../lib/mod/shympi.mod \
-		../../lib/mod/shympi_aux.mod \
+		../../lib/mod/shympi_internal.mod \
 		../../lib/mod/w3cplshyfem.mod \
 		../../lib/mod/w3gdatmd.mod \
 		../../lib/mod/w3idatmd.mod \

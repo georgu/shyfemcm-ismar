@@ -893,8 +893,8 @@
             txy = sqrt( tx(k)**2 + ty(k)**2 )
             wspeed = sqrt(txy/(cd*wfact*roluft))
             wxymax = max(wxymax,wspeed)
-            wx(k) = tx(k) / (cd*wspeed)
-            wy(k) = ty(k) / (cd*wspeed)
+            wx(k) = tx(k) / (cd*wfact*roluft*wspeed)
+            wy(k) = ty(k) / (cd*wfact*roluft*wspeed)
 	    ws(k) = wspeed
           end do
         else 

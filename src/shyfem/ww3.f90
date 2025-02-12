@@ -37,7 +37,7 @@
 !===========================================================
 
 	use shympi
-	use shympi_aux
+	use shympi_internal
 	use mod_meteo
 	use mod_waves
 	use mod_roughness
