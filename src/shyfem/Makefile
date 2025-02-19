@@ -1047,7 +1047,6 @@ water_ren_time.o: ../../lib/mod/basin.mod \
 		../../lib/mod/shympi.mod ../../lib/mod/simul.mod 
 waves_admin.o: ../../lib/mod/basin.mod \
 		../../lib/mod/coordinates.mod \
-		../../lib/mod/evgeom.mod ../../lib/mod/levels.mod \
 		../../lib/mod/mod_depth.mod \
 		../../lib/mod/mod_geom.mod \
 		../../lib/mod/mod_hydro.mod \

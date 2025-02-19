@@ -592,9 +592,9 @@
 	   call trace_point_0('before sp111')
 	   call sp111(2)		!boundary conditions
 	   call trace_point_0('after sp111')
-           call read_wwm		!wwm wave model
-	   call trace_point_0('after wwm')
 	   
+	   call ww3_loop
+
            if(bmpi_debug) call shympi_check_all(1)	!checks arrays
 
 	   call trace_point_0('hydro')
@@ -633,9 +633,6 @@
 	   call check_all
 	   !call check_layer_depth
 	   !call check_special
-
-           call write_wwm
-	   call ww3_loop
 
 	   call debug_write_var
 	   call off_print_debug_var

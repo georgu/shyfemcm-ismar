@@ -30,6 +30,7 @@
 ! 05.12.2017	ggu	changed VERS_7_5_39
 ! 16.02.2019	ggu	changed VERS_7_5_60
 ! 21.05.2019	ggu	changed VERS_7_5_62
+! 17.02.2025    ccf     adapted to WW3
 
 !**************************************************************************
 
@@ -43,18 +44,19 @@
         integer, private, save  :: nlv_waves = 0
         integer, private, save  :: nel_waves = 0
 
-        integer, save  :: iwave  = 0	! call parameter to the wave model
-        integer, save  :: iwwm   = 0	! type of shyfem-wwm coupling
-        integer, save  :: idcoup = 0	! shyfem-wwm coupling time step [s]
+        integer, save  :: iwave  = 0		! call parameter to the wave model
+        integer, save  :: idcoup = 0		! shyfem-ww3 coupling time step [s]
 
-        real, allocatable, save :: waveh(:)  !significant wave height [m]
-        real, allocatable, save :: wavep(:)  !wave mean period [s]
-        real, allocatable, save :: wavepp(:) !wave peak period [s]
-        real, allocatable, save :: waved(:)  !mean wave direction [deg]
-        real, allocatable, save :: waveov(:) !wave bottom orbital velocity [m/s]
-
-        real, allocatable, save :: wavefx(:,:)	! wave forcing term in x
-        real, allocatable, save :: wavefy(:,:)	! wave forcing term in y
+        real, allocatable, save :: waveh(:)	!significant wave height [m]
+        real, allocatable, save :: wavep(:)	!wave mean period [s]
+        real, allocatable, save :: wavepp(:)	!wave peak period [s]
+        real, allocatable, save :: waved(:)	!mean wave direction [deg]
+        real, allocatable, save :: waveov(:)	!wave bottom orbital velocity [m/s]
+        real, allocatable, save :: charn(:)     !Charnock parameter
+        real, allocatable, save :: tusx(:)      !Volume transport associated to Stokes drift in x
+        real, allocatable, save :: tusy(:)      !Volume transport associated to Stokes drift in x
+        real, allocatable, save :: wavefx(:,:)  !wave forcing term in x
+        real, allocatable, save :: wavefy(:,:)  !wave forcing term in y
 
         double precision, save  :: da_wav(4) = 0
 
@@ -85,6 +87,9 @@
           deallocate(waveov)
           deallocate(wavefx)
           deallocate(wavefy)
+          deallocate(charn)
+          deallocate(tusx)
+          deallocate(tusy)
         end if
 
         nlv_waves = nlv
@@ -93,21 +98,16 @@
 
         if( nkn == 0 ) return
 
-        allocate(waveh(nkn))
-        allocate(wavep(nkn))
-        allocate(wavepp(nkn))
-        allocate(waved(nkn))
-        allocate(waveov(nkn))
-        allocate(wavefx(nlv,nel))
-        allocate(wavefy(nlv,nel))
-
-	waveh = 0.
-	wavep = 0.
-	wavepp = 0.
-	waved = 0.
-	waveov = 0.
-	wavefx = 0.
-	wavefy = 0.
+        allocate(waveh(nkn)); waveh = 0.
+        allocate(wavep(nkn)); wavep = 0.
+        allocate(wavepp(nkn)); wavepp = 0.
+        allocate(waved(nkn)); waved = 0.
+        allocate(waveov(nkn)); waveov = 0.
+        allocate(wavefx(nlv,nel)); wavefx = 0.
+        allocate(wavefy(nlv,nel)); wavefy = 0.
+        allocate(charn(nkn)); charn = 0.0185
+        allocate(tusx(nkn)); tusx = 0.
+        allocate(tusy(nkn)); tusy = 0.
 
         end subroutine mod_waves_init
 
