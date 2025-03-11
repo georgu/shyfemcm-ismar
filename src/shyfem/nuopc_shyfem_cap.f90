@@ -27,6 +27,7 @@
 #define WITHFIELDS_HEATFLUX
 #define WITHFIELDS_MASSFLUX
 #define WITHFIELDS_SST
+#define WITHFIELDS_SEAROUGHNESS
 
 	!! The ocean component is coded into a Fortran module.
         module ocean_shyfem
@@ -194,7 +195,7 @@
 	  !! array. This ordering is beneficial to factorize the code and perform the 
 	  !! many operations of the fields with do loops. You have to keep in mind that, 
 	  !! first we have import fields, and only after we have export fields. 
-	  allocate( SHYFEM_FieldMetadata(10) )
+	  allocate( SHYFEM_FieldMetadata(11) )
 
           !! The field list is defined here. You can modify this part adding new fields.
 	  !! The metadata of each field is filled with a simple constructor statement.
@@ -276,11 +277,19 @@
      &      longName="atmospheric_unmapped_points", &
      &      meshloc=ESMF_MESHLOC_NODE)
 
-	  !! \item sea surface salinity.
+	  !! \item sea surface temperature.
           num = num + 1
 	  SHYFEM_FieldMetadata(num) = SHYFEM_Metadata( &
      &      fieldName="sst", &
      &      longName="sea_surface_temperature", &
+     &      meshloc=ESMF_MESHLOC_NODE)
+#endif
+#ifdef WITHFIELDS_SEAROUGHNESS
+	  !! \item sea roughness length
+          num = num + 1
+          SHYFEM_FieldMetadata(num) = SHYFEM_Metadata( &
+     &      fieldName="z0", &
+     &      longName="roughness_length", &
      &      meshloc=ESMF_MESHLOC_NODE)
 #endif
           SHYFEM_numOfExportFields = num - SHYFEM_numOfImportFields
@@ -1540,6 +1549,8 @@
 	!! in SHYFEM:
         !! \begin{itemize}
         !! \item \textsf{tempv} the sea temperature, in $[C]$
+        !! \item \textsf{charn} the sea roughness expressed
+        !!       with the Charnock parameter, dimensionless
         !! \end{itemize}
 	!! We pass to the coupler only inner nodes. To realize
 	!! interpolation I expect to pass also ghost nodes but
@@ -1567,6 +1578,11 @@
 !              do i=1,mesh%nkn_ghost
 !	        fieldPtr(i) = !tempv(1,mesh%table_ghostToLocal(i))
 !	      enddo !lrp
+            case ("z0")
+              fieldPtr(1:nkn_inner) = charn(1:nkn_inner)
+!              do i=1,mesh%nkn_ghost
+!               fieldPtr(i) = charn(mesh%table_ghostToLocal(i))
+!             enddo !lrp
             case default
               call ESMF_LogWrite("  OCN unknown field name", &
      &          ESMF_LOGMSG_INFO, rc=rc)
