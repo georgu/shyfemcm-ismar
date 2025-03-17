@@ -1040,7 +1040,8 @@
 	  call write_restart_mercury(iunit)
         end if
 
-	write(iunit) ibfm
+	call restart_write_value(iunit,ibfm)
+	!write(iunit) ibfm
 	if( ibfm .gt. 0 ) then
 	  call write_restart_bfm(iunit)
         end if
