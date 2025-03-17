@@ -989,7 +989,6 @@
      &      line=__LINE__, &
      &      file=__FILE__)) &
      &      return  ! bail out
-	  print *, "Mesh Created" 
           call SHYFEM_MaskCreate(SHYFEM_mesh, SHYFEM_nodeMask, rc)
 
 	  call ESMF_MeshFreeMemory(SHYFEM_mesh, rc)
