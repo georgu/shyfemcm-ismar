@@ -1253,25 +1253,43 @@
 
 	  type(ESMF_Grid)                       :: gridForMask
 	  type(ESMF_Field)                      :: onesField, maskField
+	  type(ESMF_CoordSys_Flag)              :: SHYFEM_coordSys
 	  double precision, pointer             :: fieldPtr2d(:,:)
 	  double precision, pointer             :: fieldPtr1d(:)
 	  type(ESMF_RouteHandle)                :: rh
           character(len=160)                    :: petString
+          real(ESMF_KIND_R8)                    :: xmin,ymin,xmax,ymax,dx
+	  integer                               :: nx,ny 
+          real, external                        :: getpar
 
 	  rc = ESMF_SUCCESS
 
 	  !! We need to flag land point of atmospheric grid. These are
 	  !! computed by WRF but here I do not have access to this info
 	  !! and I need to use a proxy.
-	  !! We create a structured mesh which should be equal to the
+	  !! We create a structured mesh which should be similar to the
 	  !! atmospheric one. Then a real field is created on it.
 	  !! A second constant field (one everywhere) is created attached to
 	  !! the SHYFEM mesh.
+          dx = getpar('slwidth')
+          if ( nint(getpar('isphe')) == 1) then
+            SHYFEM_coordSys = ESMF_COORDSYS_SPH_DEG
+            dx = dx * 0.000009    
+          else
+            SHYFEM_coordSys = ESMF_COORDSYS_CART
+          endif
+          xmin = shympi_min(xgv) - 10.D0*dx
+          ymin = shympi_min(ygv) - 10.D0*dx
+          xmax = shympi_max(xgv) + 10.D0*dx
+          ymax = shympi_max(ygv) + 10.D0*dx
+          nx = NINT(ABS(xmax-xmin)/dx)
+          ny = NINT(ABS(ymax-ymin)/dx)
+
 	  gridForMask = ESMF_GridCreateNoPeriDimUfrm( &
-     &      maxIndex=(/101, 101/), & !maxIndex=(/20, 20/),
-     &      minCornerCoord=(/0.0D0,0.0D0/), & !minCornerCoord=(/9.0D0,38.0D0/),
-     &      maxCornerCoord=(/3000000.0D0, 3000000.0D0/), & !maxCornerCoord=(/21.0D0, 46.0D0/),
-     &      coordSys=ESMF_COORDSYS_CART, & !coordSys=ESMF_COORDSYS_SPH_DEG,
+     &      maxIndex=(/nx, ny/), & !maxIndex=(/20, 20/),
+     &      minCornerCoord=(/xmin,ymin/), & !minCornerCoord=(/9.0D0,38.0D0/),
+     &      maxCornerCoord=(/xmax,ymax/), & !maxCornerCoord=(/21.0D0, 46.0D0/),
+     &      coordSys=SHYFEM_coordSys, & !coordSys=ESMF_COORDSYS_SPH_DEG,
      &      staggerLocList=(/ESMF_STAGGERLOC_CENTER/), &
      &      rc=rc)
 	  if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, &
@@ -1343,7 +1361,6 @@
      &      return  ! bail out
 
 	  where( fieldPtr1d<1.D0) nodeMask=1
-
 	  write(petString, "('.',I0,'.',I0)") ShyfemToEsmf_Mesh%petCount, &
      &                                        ShyfemToEsmf_Mesh%localPet
 	  call SHYFEM_FieldWrite(onesField, &

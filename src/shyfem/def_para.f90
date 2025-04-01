@@ -1900,6 +1900,15 @@
 
         call addpar('idtatm',2592000.)!time step for output
 
+! |slwidth|     Sea-land mask width (in meters). Nodes close to the boundary, within
+!               this width are masked. Masking at the sea-land boundary is necessary to
+!               avoid to interpolate the atmospheric field from values at land in the
+!               atmopsheric model. If a SHYFEM nodes falls into this width
+!               an extrapolation from the sea values is used instead
+!               The resolution of the atmospheric model could be use to select a
+!               reasonable value (default 1000).
+
+        call addpar('slwidth',1000.)      !sea-land mask width
 !
 ! DOCS  END
 !
