@@ -32,6 +32,7 @@
 ! 15.10.2022    ggu     shympi_exchange_array substituted with shympi_l2g_array
 ! 03.12.2024    lrp     ww3 restored
 ! 15.02.2025    ccf     ww3 coupling updated
+! 01.04.2025    ccf     wind partitioning
 !
 !**************************************************************
 ! DOCS  START   S_wave_ww3
@@ -143,10 +144,8 @@
 ! \item main wave direction (the where the wave go);
 ! \item radiation stress,
 ! \item Charnock parameter;
-! \item wind stress components;
-! \item wave supported stress components;
-! \item total momentum to ocea (from wind and wave);
-! \item Bernulli head;
+! \item Friction velocity;
+! \item Bernulli head (J term);
 ! \item Stokes drift velocities;
 ! \item Stokes drift volume transports;
 ! \end{itemize}
@@ -243,6 +242,7 @@
 	use shympi
 	use shympi_internal
 	use mod_meteo
+	use meteo_forcing_module, only : iatm
 	use mod_waves
 	use mod_roughness
 	use mod_depth 
@@ -252,7 +252,8 @@
 
 	use wminitmd
 	use w3cplshyfem, ONLY: SXXWW3, SXYWW3, SYYWW3, OUTVARWW3
-	use w3cplshyfem, ONLY: CHARNWW3, TAUWIXWW3, TAUWIYWW3, TAUWOXWW3, TAUWOYWW3
+	use w3cplshyfem, ONLY: CHARNWW3, USTWW3
+	use w3cplshyfem, ONLY: TAUWWXWW3, TAUWWYWW3
 	use w3cplshyfem, ONLY: USSXWW3, USSYWW3, TUSXWW3, TUSYWW3, BHDWW3
 	use w3cplshyfem, ONLY: w3cplparam, w3cplrdstr2d, nvarsww3
 	use w3gdatmd, ONLY: nseal
@@ -278,14 +279,12 @@
 	real, allocatable     :: syy3dlshyfem(:,:)
 	real, allocatable     :: charngl(:)	   !Charnock parameter
 	real, allocatable     :: charnshyfem(:)
-	real, allocatable     :: tauwixgl(:)       !Wind wave stress from WW3 x
-	real, allocatable     :: tauwixshyfem(:)
-	real, allocatable     :: tauwiygl(:)       !Wind wave stress from WW3 y
-	real, allocatable     :: tauwiyshyfem(:) 
-	real, allocatable     :: tauwoxgl(:)       !Sum of wind input to wave and wave to ocean x
-	real, allocatable     :: tauwoxshyfem(:)
-	real, allocatable     :: tauwoygl(:)       !Sum of wind input to wave and wave to ocean y
-	real, allocatable     :: tauwoyshyfem(:) 
+	real, allocatable     :: ustgl(:)	   !Charnock parameter
+	real, allocatable     :: ustshyfem(:)
+	real, allocatable     :: tauwwxgl(:)       !Sum of wind input to wave and wave to ocean x
+	real, allocatable     :: tauwwxshyfem(:)
+	real, allocatable     :: tauwwygl(:)       !Sum of wind input to wave and wave to ocean y
+	real, allocatable     :: tauwwyshyfem(:) 
 	real, allocatable     :: ussxgl(:)	   !Stokes drift velocity x
 	real, allocatable     :: ussxshyfem(:)
 	real, allocatable     :: ussygl(:)	   !Stokes drift velocity y
@@ -294,7 +293,7 @@
 	real, allocatable     :: tusxshyfem(:)
 	real, allocatable     :: tusygl(:)	   !Stokes drift transport y
 	real, allocatable     :: tusyshyfem(:)
-	real, allocatable     :: bhdgl(:)	   !Bernulli head
+	real, allocatable     :: bhdgl(:)	   !Bernulli head (J term)
 	real, allocatable     :: bhdshyfem(:)
 	real, allocatable     :: currxgl(:)        !Current velocity x
 	real, allocatable     :: currxlshyfem(:)
@@ -371,14 +370,12 @@
 		allocate(outvarshyfem(nvarsww3, nkn)); outvarshyfem = 0.
 		allocate(charngl(np_global)); charngl = 0.
 		allocate(charnshyfem(nkn)); charnshyfem = 0.
-		allocate(tauwixgl(np_global)); tauwixgl = 0.
-		allocate(tauwixshyfem(nkn)); tauwixshyfem = 0.
-		allocate(tauwiygl(np_global)); tauwiygl = 0.
-		allocate(tauwiyshyfem(nkn)); tauwiyshyfem = 0.
-		allocate(tauwoxgl(np_global)); tauwoxgl = 0.
-		allocate(tauwoxshyfem(nkn)); tauwoxshyfem = 0.
-		allocate(tauwoygl(np_global)); tauwoygl = 0.
-		allocate(tauwoyshyfem(nkn)); tauwoyshyfem = 0.
+		allocate(ustgl(np_global)); ustgl = 0.
+		allocate(ustshyfem(nkn)); ustshyfem = 0.
+		allocate(tauwwxgl(np_global)); tauwwxgl = 0.
+		allocate(tauwwxshyfem(nkn)); tauwwxshyfem = 0.
+		allocate(tauwwygl(np_global)); tauwwygl = 0.
+		allocate(tauwwyshyfem(nkn)); tauwwyshyfem = 0.
 		allocate(ussxgl(np_global)); ussxgl = 0.
 		allocate(ussxshyfem(nkn)); ussxshyfem = 0.
 		allocate(ussygl(np_global)); ussygl = 0.
@@ -586,12 +583,8 @@
 	integer id, nvar, ierr
 	double precision dtime
 	double precision daux
-	integer icall             !initialization parameter                        
-	save icall
-	data icall /0/
+	real wfact,wparam,wsmin,cdw
 	real z0alpha
-	real tramp,alpha
-	save tramp
 
 !------------------------------------------------------
 
@@ -635,10 +628,9 @@
 
 !         other variables ... 
 	  call get_global_array_ww3(charnww3,charngl) 
-	  call get_global_array_ww3(tauwixww3,tauwixgl) 
-	  call get_global_array_ww3(tauwiyww3,tauwiygl) 
-	  call get_global_array_ww3(tauwoxww3,tauwoxgl) 
-	  call get_global_array_ww3(tauwoyww3,tauwoygl) 
+	  call get_global_array_ww3(ustww3,ustgl) 
+	  call get_global_array_ww3(tauwwxww3,tauwwxgl) 
+	  call get_global_array_ww3(tauwwyww3,tauwwygl) 
 	  call get_global_array_ww3(ussxww3,ussxgl) 
 	  call get_global_array_ww3(ussyww3,ussygl) 
 	  call get_global_array_ww3(tusxww3,tusxgl) 
@@ -669,10 +661,9 @@
 
 !         other variables ... 
 	  call fill_local_array_shyfem(charnshyfem,charngl) 
-          call fill_local_array_shyfem(tauwixshyfem,tauwixgl)
-          call fill_local_array_shyfem(tauwiyshyfem,tauwiygl)
-          call fill_local_array_shyfem(tauwoxshyfem,tauwoxgl)
-          call fill_local_array_shyfem(tauwoyshyfem,tauwoygl)
+	  call fill_local_array_shyfem(ustshyfem,ustgl) 
+          call fill_local_array_shyfem(tauwwxshyfem,tauwwxgl)
+          call fill_local_array_shyfem(tauwwyshyfem,tauwwygl)
 	  call fill_local_array_shyfem(ussxshyfem,ussxgl) 
 	  call fill_local_array_shyfem(ussyshyfem,ussygl) 
 	  call fill_local_array_shyfem(tusxshyfem,tusxgl) 
@@ -693,62 +684,44 @@
 !         -----------------------------------------------
           charn  = charnshyfem
 
+!      	  -----------------------------------------------
+!         Compute residual momentum flux from atm to ocean
+!           substract wave-supported stress from wind stress
+!      	  -----------------------------------------------
+          if ( iatm /= 1 ) then		!Wind stress from WW3
+  	    wfact = 1. / rowass
+  	    do k = 1,nkn
+              wsmin = max(0.01,metws(k))
+              cdw = (ustshyfem(k)/wsmin)**2
+              windcd(k) = max(0.001, cdw)
+  	      wparam = (1.-metice(k))*wfact*windcd(k)*metws(k)
+              tauxnv(k) = wparam*wxv(k)
+              tauynv(k) = wparam*wyv(k)
+            end do
+          end if
+
+  	  tauxnv = tauxnv - tauwwxshyfem*(1.-metice)
+          tauynv = tauynv - tauwwyshyfem*(1.-metice)
+
 !         -----------------------------------------------
-!         Computes wave induced forces
+!         Compute wave induced forces
 !         -----------------------------------------------
   	  if (iwave .eq. 2) then
 !         	-----------------------------------------------
 !         	Radiation stress formulation
 !         	-----------------------------------------------
-	  	call diffxy(sxx3dlshyfem,sxy3dlshyfem &
-     			,syy3dlshyfem,wavefx,wavefy)
-
-!         	-----------------------------------------------
-!               Residual momentum flux from atm to ocean
-!               substract wave-supported stress from wind stress
-!         	-----------------------------------------------
-    	        !if ( iatm == 1 ) then       !Wind stress from WRF
-        	!  tauxnv = (1. - metice)*(tauxnv + tauwoxshyfem/rowass)
-	        !  tauynv = (1. - metice)*(tauynv + tauwoyshyfem/rowass)
-	        !else         !Wind stress from WW3
-	        !  tauxnv = (1. - metice)*(tauwixshyfem - tauwoxshyfem)/rowass
-	        !  tauynv = (1. - metice)*(tauwiyshyfem - tauwoyshyfem)/rowass
-	        !end if
+	  	call diffxy(sxx3dlshyfem,sxy3dlshyfem,syy3dlshyfem &
+			,wavefx,wavefy)
 
   	  elseif (iwave .eq. 3) then
 !         	-----------------------------------------------
 !         	Vortex force formulation 
+!		3D formulation TO BE DONE
 !         	-----------------------------------------------
-		call wave_vortex(ussxshyfem,ussyshyfem,bhdshyfem,wavefx,wavefy)
-
-!         	-----------------------------------------------
-!               Residual momentum flux from atm to ocean
-!                = wind stress - wave-supported stress + momentum flux from waves to the ocean via breaking
-!         	-----------------------------------------------
-    	        !if ( iatm == 1 ) then       !Wind stress from WRF
-        	!  tauxnv = (1. - metice)*(tauxnv + tauwoxshyfem/rowass)
-	        !  tauynv = (1. - metice)*(tauynv + tauwoyshyfem/rowass)
-	        !else         !Wind stress from WW3
-	        !  tauxnv = (1. - metice)*(tauwixshyfem - tauwoxshyfem)/rowass
-	        !  tauynv = (1. - metice)*(tauwiyshyfem - tauwoyshyfem)/rowass
-	        !end if
+		call wave_vortex(ussxshyfem,ussyshyfem,bhdshyfem &
+			,wavefx,wavefy)
 
   	  endif ! iwave
-
-!         -----------------------------------------------
-!         simulate smooth initial forcing
-!         useful for test cases
-!         -----------------------------------------------
-	  alpha = 1.
-	  if( tramp .gt. 0. ) then
-  		call get_passed_dtime(dtime)
-		alpha = dtime/tramp
-		if( alpha .gt. 1. ) alpha = 1.
-	  end if
-	  if( alpha /= 1. ) then
-		wavefx = wavefx * alpha
-		wavefy = wavefy * alpha
-	  end if
 
 	end if ! dtcoup
 
@@ -1054,7 +1027,7 @@
             wvz = 0.
 
             if ( sz1 .lt. 0. ) then
-             wuz = wuz - sz1*uaux(l-1)
+              wuz = wuz - sz1*uaux(l-1)
               wvz = wvz - sz1*vaux(l-1)
             else
               wuz = wuz - sz1*uaux(l)
@@ -1091,9 +1064,9 @@
 ! arguments
         real vf(nlv,nkn)                !auxiliary array
         real va(nlv,nkn)                !auxiliary array
-        real stxe(nlv,nel)      !x stokes transport on elements
-        real stye(nlv,nel)      !y stokes transport on elements
-        real auxstz(nlv,nkn)    !z stokes velocity on node k for plot
+        real stxe(nlv,nel)      	!x stokes transport on elements
+        real stye(nlv,nel)      	!y stokes transport on elements
+        real auxstz(nlv,nkn)    	!z stokes velocity on node k for plot
         real stokesze(0:nlv,nel)        !z stokes velocity on elements
 
 ! local
