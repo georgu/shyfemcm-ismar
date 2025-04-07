@@ -1,0 +1,18 @@
+
+#------------------------------------------------------------------
+#
+#    Copyright (C) 1985-2020  Georg Umgiesser
+#
+#    This file is part of SHYFEM.
+#
+#------------------------------------------------------------------
+
+$title
+        benchmark test for test lagoon
+        bench
+        venlag
+$end
+
+$para
+        itanf = 0  itend = 86400  idt = 300 
+$end

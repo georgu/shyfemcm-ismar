@@ -1,0 +1,56 @@
+SHYFEM includes an as\-tro\-no\-mi\-c tidal model which can be
+ activated by setting the parameter |rtide| equal 1 in the |para| 
+ section.
+
+ The model calculates equilibrium tidal potential ($\eta$) and load 
+ tides ($\beta$) and uses these to force the free surface. 
+ The term $\eta$ in the momentum equations is calculated as a sum
+ of the tidal potential of each tidal constituents multiplied by the
+ frequency-dependent elasticity factor. The factor $\beta$ accounts 
+ for the effect of the load tides, assuming that loading tides are
+ in-phase with the oceanic tide. $\beta$ is function of the water 
+ depth as $\beta=ltidec*H$ with |ltidec| a calibration factor to be 
+ set in the str |para| section.
+
+ The model cosiders the following tidal costituents:
+ \begin{itemize}
+ \item Semidiurnal species:
+    \begin{itemize}
+    \item M2  semi-diurnal principal lunar
+    \item S2  semi-diurnal principal solar
+    \item N2  large elliptical tide of first-order to M2
+    \item K2  semi-diurnal declination to M2
+    \item NU2 large evection tide to M2
+    \item MU2 large variation tide to M2
+    \item L2  small elliptical tide of first-order to M2
+    \item T2  large elliptical tide of first-order to S2
+    \end{itemize}
+ \item Diurnal species:
+    \begin{itemize}
+    \item K1  declination luni-solar
+    \item O1  principal lunar
+    \item P1  principal solar
+    \item Q1  elliptical lunar
+    \item J1  elliptical tide of first-order to K1
+    \item OO1 evection tide to O1
+    \item S1  radiational tide 
+    \end{itemize}
+ \item Long-Period species:
+    \begin{itemize}
+    \item MF  fortnightly lunar
+    \item MM  monthly lunar
+    \item MSM S0-semiannual solar
+    \item MSF Evection tide to M0
+    \item SSA semiannual solar
+    \item SA  elliptical tide of first-order to S0
+    \end{itemize}
+ \end{itemize}
+
+ SHYFEM also allows to perform the tidal analysis of water levels
+ during the model runtime. The tidal analysis is actived by setting
+ |itmtid| and |idttid|. |idttid| should be long enough to perform 
+ a reliable analysis. The parameter |itmtid| can be used to start 
+ the analysis after the simulation spin-up. The tidal analysis module
+ write an output file .tide.shy containing amplitudes and phases
+ of all tidal constituents over the computational domain (on the 
+ nodes).

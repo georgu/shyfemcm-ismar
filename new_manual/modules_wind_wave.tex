@@ -1,0 +1,63 @@
+ SHYFEM can be coupled with the spectral wind wave unstructured
+ model WWMIII (Wave Watch III Model) or it can compute wave characteristics using empirical
+ prediction equations.
+
+ This empirical wave module is used to calculate the wave height 
+ and period from wind speed, fetch and depth using the empirical prediction
+equations for shallow water \cite{shoreprot:84}.
+
+ WWMIII is not provided in the SHYFEM distribution.
+ The coupling of SHYFEM with WWMIII is done through the FIFO PIPE 
+ mechanism. The numerical mesh needs to be converted to the GR3 
+ format using the bas2wwm program. WWMIII needs its own input 
+ parameter file (wwminput.nml). The use of the coupled SHYFEM-WWMIII
+ model requires additional software which is not described here.
+
+ The wave module writes in the WAV file the following outputs:
+ \begin{itemize}
+ \item significant wave height [m], variable 231
+ \item mean wave period [s], variable 232
+ \item mean wave direction [deg], variable 233
+ \end{itemize}
+
+ The time step and start time for writing to file WAV 
+ are defined by the parameters |idtwav| and |itmwav| in the |waves|
+ section. These parameter are the same used for writting tracer
+ concentration, salinity and water temperature. If |idtwav| is not
+ defined, then the wave module does not write any results. The wave 
+ results can be plotted using |plots -wav|.
+
+ In case of SHYFEM-WWMIII coupling, several variables are exchanged 
+ between the two models:
+ \begin{itemize}
+ \item SHYFEM sends to WWMIII:
+  \begin{itemize}
+   \item surface velocities
+   \item water level
+   \item bathymetry and number of vertical layers
+   \item 3D layer depths
+   \item wind components$^{**}$
+  \end{itemize}
+ \item SHYFEM reads from WWMIII:
+  \begin{itemize}
+   \item gradient of the radiation stresses
+   \item significant wave height
+   \item mean period
+   \item significant wave direction
+   \item wave supported stress
+   \item peak period
+   \item wave length
+   \item orbital velocity
+   \item stokes velocities
+   \item wind drag coefficient
+   \item wave pressure
+   \item wave dissipation
+   \item wind components$^{**}$
+ \end{itemize}
+ \end{itemize}
+
+ $^{**}$Wind could be either read from SHYFEM or WWMIII, see parameter 
+ |iwave| in Appendix C.
+ For more information about WWMIII and its coupling with SHYFEM please refer
+ to Roland et al. \cite{roland:coupled09} and Ferrarin et al. 
+ \cite{ferrarin:morpho08}.

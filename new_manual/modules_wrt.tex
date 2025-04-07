@@ -1,0 +1,42 @@
+
+%------------------------------------------------------------------------
+%
+%    Copyright (C) 1985-2020  Georg Umgiesser
+%
+%    This file is part of SHYFEM.
+%
+%    SHYFEM is free software: you can redistribute it and/or modify
+%    it under the terms of the GNU General Public License as published by
+%    the Free Software Foundation, either version 3 of the License, or
+%    (at your option) any later version.
+%
+%    SHYFEM is distributed in the hope that it will be useful,
+%    but WITHOUT ANY WARRANTY; without even the implied warranty of
+%    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+%    GNU General Public License for more details.
+%
+%    You should have received a copy of the GNU General Public License
+%    along with SHYFEM. Please see the file COPYING in the main directory.
+%    If not, see <http://www.gnu.org/licenses/>.
+%
+%    Contributions to this file can be found below in the revision log.
+%
+%------------------------------------------------------------------------
+
+SHYFEM includes a module for the computation of the water renewal time (WRT) of semi-enclosed basins. 
+Following the method proposed by \cite{Cucco2006}, WRT is defined as the time required for 
+each node of the domain to replace the mass of a conservative tracer initially released into the basin with 
+new water. It is estimated by computing the advection and diffusion of a conservative tracer initially released 
+within a selected domain and by calculating the integral of the tracer local remnant function at the end of 
+the simulation run. Assuming an exponential decay of the tracer initial concentration corresponds to its half-life. The computation can be carried out for the entire domain or for a selected sub-area and for 
+a specific time interval. 
+The main parameters to be set are the time of the initial tracer release (|itmin|), the 
+code of elements out of the selected sub-area (|iaout|) and the tracer initial concentration (|c0|). Additional 
+features are:
+\begin{itemize} 
+\item |iret|, the possibility of neglecting the tracer return flow
+\item |bstir|, the simulation of a completely stirred domain by replacing at each time step the local concentration with the basin average value
+\item |percmin|, the definition of the minimal percentage of the initial tracer concentration to end the WRT computation
+\item |idtwrt|,  the possibility of sequential WRT computation by defining the time step to reset the tracer concentration to its initial value
+\item |blog|, the possibility of using logarithmic regression to compute the WRT therefore assuming an exponential time decay of the tracer concentration.
+\end{itemize}
