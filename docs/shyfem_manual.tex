@@ -1,0 +1,365 @@
+
+
+%------------------------------------------------------------------------
+%
+%    Copyright (C) 1985-2020  Georg Umgiesser
+%
+%    This file is part of SHYFEM.
+%
+%    SHYFEM is free software: you can redistribute it and/or modify
+%    it under the terms of the GNU General Public License as published by
+%    the Free Software Foundation, either version 3 of the License, or
+%    (at your option) any later version.
+%
+%    SHYFEM is distributed in the hope that it will be useful,
+%    but WITHOUT ANY WARRANTY; without even the implied warranty of
+%    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+%    GNU General Public License for more details.
+%
+%    You should have received a copy of the GNU General Public License
+%    along with SHYFEM. Please see the file COPYING in the main directory.
+%    If not, see <http://www.gnu.org/licenses/>.
+%
+%    Contributions to this file can be found below in the revision log.
+%
+%------------------------------------------------------------------------
+
+% $Id$
+
+\documentclass{report}
+%\documentclass[draft]{report}
+
+\usepackage{a4}
+\usepackage{shortvrb}
+\usepackage{pslatex}
+\usepackage{xcolor} %DEB
+\usepackage{graphicx}
+\usepackage{verbatim}
+\usepackage{alltt}		% as verbatim, but interpret \ { }
+\usepackage{amsmath, amssymb}
+
+\newenvironment{code}{\verbatim}{\endverbatim}
+\newenvironment{codem}{\alltt}{\endalltt}	%interpret \
+\newcommand{\ttt}[1]{{\tt #1}}
+
+\newcommand{\shy}{{\tt SHYFEM}}
+\newcommand{\shyfem}{{\tt SHYFEM}}
+\newcommand{\psp}{{\tt SHYFEM}}
+
+%\input{P_version.tex} %DEB scommentare
+\newcommand{\VERSION}{8\_1\_1} %DEB dummy
+\newcommand{\version
+}{DUMMY} %DEB dummy
+\newcommand{\shyname}{shyfem-\version}
+%\newcommand{\shydist}{\shyname.tar.gz} %DEB scommentare
+\newcommand{\shydist}{\shyfem-DUMMY.tar.gz} %DEB dummy
+\newcommand{\basedir}{/home/model}
+\newcommand{\shydir}{\basedir/shyfem-\version}
+
+\newcommand{\descrpsep}{\vspace{0.2cm}}
+\newcommand{\descrpitem}[1]{\descrpsep\parbox[t]{2cm}{#1}}
+\newcommand{\descrptext}[1]{\parbox[t]{8cm}{#1}\descrpsep}
+\newcommand{\descrp}[1]{\descrpsep\parbox[t]{4cm}{#1}}
+\newcommand{\descrpn}[1]{\parbox[t]{4cm}{#1}}
+
+\newcommand{\densityunit}{kg\,m${}^{-3}$}
+\newcommand{\accelunit}{m\,s${}^{-2}$}
+\newcommand{\maccelunit}{m${}^{4}$\,s${}^{-2}$}
+\newcommand{\dischargeunit}{m${}^3$\,s${}^{-1}$}
+
+\newcommand{\ten}[1]{$\cdot 10^{#1}$}
+\newcommand{\degrees}{${}^o$}
+
+\newcommand{\figref}[1]{\ref{fig:#1}}
+\newcommand{\Fig}{Fig.~}
+
+\newcommand{\todo}[1]{This section still has to be written by #1}
+
+\parindent 0cm
+
+\newcommand{\importstr}[2]{%
+\begin{figure}
+\begin{alltt}
+\input{#1.str}
+\end{alltt}
+\caption{#2}
+\label{fig:#1}
+\end{figure}
+}
+
+\MakeShortVerb{\|}
+
+\hyphenation{ ba-thy-me-try stop-ped sim-u-la-ted }
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% front matter
+
+\title{%
+	\shy{}
+	\\Finite Element Model for Coastal Seas
+	\\~
+	\\User Manual
+	}
+
+\author{%
+	The SHYFEM Group
+	\\Georg Umgiesser
+	\\Oceanography, ISMAR-CNR
+	\\Arsenale Tesa 104, Castello 2737/F
+	\\30122 Venezia, Italy
+	\vspace{0.5cm}
+	\\georg.umgiesser@ismar.cnr.it
+	\vspace{1cm}
+	\\Version \VERSION
+	}
+
+%\address{ISDGM-CNR}
+
+%\date{}		%uncomment for no date
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% document
+
+\begin{document}
+
+\bibliographystyle{plain}
+
+\pagenumbering{roman}
+\pagestyle{plain}
+
+\maketitle
+
+%\begin{abstract}
+% to be written
+%\end{abstract}
+
+\thispagestyle{empty}
+
+\newpage
+\tableofcontents
+\newpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter*{Disclaimer}
+	\addcontentsline{toc}{chapter}{Disclaimer}
+
+	\input{disclaimer}
+
+\newpage
+\pagenumbering{arabic}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% external software
+% contributors
+
+\chapter{Overview}
+
+	\section{What is SHYFEM}
+	\input{over_what}
+
+	%\section{Where and how to get it}
+	%\input{over_where_how}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{Installing SHYFEM}
+
+	\input{installing_shyfem}
+
+	\section{Prerequisites}
+        \label{prereq}
+	\input{inst_prerequisites}
+
+	\section{Where to get the source code}
+        \label{inst_where}
+	\input{inst_where_src_code}
+
+	\section{How to install the model}
+	\input{inst_howto}
+
+	\section{Compilation options}
+	\input{inst_comp_options}
+
+	\section{Compatibility problems}
+	\input{inst_compatibility}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{Preprocessing: The numerical grid}
+
+	\section{Overview}
+	\input{grid_overview}
+
+        \section{Coastline and bathymetry}
+        \input{grid_convert}
+
+        \section{Boundary line: smoothing and reducing}
+        \input{grid_reduce}
+
+        \section{Manipulating nodes, lines and elements}
+        \input{grid_prg}
+
+        \section{Creating the mesh}
+        \input{grid_mesh}
+
+        \section{Interpolating the bathymetry into the grd file}
+        \input{grid_intp_bath}
+
+        \section{Creating the bas file}
+        \input{grid_pre_basin}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{Running SHYFEM}
+
+	\input{running_shyfem}
+
+	\section{The parameter input file (str)}
+	\input{running_parameter}
+
+	\section{Initial, boundary and forcing conditions}
+	\input{running_ic_bc_forcing}
+
+	\section{Restart }
+	\input{running_restart}
+
+	\section{Vertical layers}
+	\input{hydro_vertical_layers}
+
+	\section{Variable time step}
+	\input{hydro_var_time}
+
+	%\section{Advection and diffusion}
+	%\input{hydro_adv_diff} %TODO %DEB forse basta il seguente baroclino con opzioni
+	%\textcolor{red}{SERVE UNA SEZIONE A SE STANTE O PUO' STARE CON BAROCLINIC??}
+
+	\section{Baroclinic terms}
+	\input{hydro_barocl}
+
+	\section{Vertical viscosity and turbulence closure}
+	\input{hydro_turb}
+
+	\section{Offline}
+	\input{running_offline}
+
+	\section{Tidal potential}
+	\input{modules_tidal_pot}
+
+	\section{Non-hydrostatic formulation}
+	\input{modules_nonhydro}
+
+	\section{Full setup file example}
+	\input{hydro_full_str_example}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{Additional Modules}
+
+	%\section{Sediment transport}
+	%\input{modules_sedtrans}
+
+	\section{Wind waves}\label{ww3}
+	\input{modules_wind_wave}
+
+
+	\section{Lagrangian particle module}
+	\input{modules_lagrang}
+
+	%\section{Heat and Mass Fluxes}
+	%\input{modules_heat_mass} %done in running_ic_bc_forcing.tex
+
+	\section{Water Renewal Time}
+	\input{modules_wrt}
+
+        \section{Ecological modules}
+	\label{eco}
+	\input{modules_eco}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\appendix
+\chapter{Hydrodynamic equations and resolution techniques}
+
+      \section{Equations and Boundary Conditions}
+	\input{A_equation3D_bc}
+
+	\section{The Model}
+	\input{A_model}
+
+\chapter{File Formats}
+	\section{GRD file}
+	\input{B_grd}
+
+	\section{FEM file}
+	\input{B_fem}
+
+	\section{SHY file}
+	\input{B_shy}
+
+
+	%\section{STR file}
+	%\input{B_str}
+
+\chapter{Input parameter list}
+      \section{Parameter list for the SHYFEM model}
+        \label{param_list}
+	\input{C_parameters}
+
+\chapter{Pre-Processing and Post-Processing Tools}
+        \section{Elaborating GRD files (exgrd, shybas, shypre, shyparts)}
+        \label{elab_grd}
+	\input{D_elab_grd} %TODO %Georg
+
+	\section{Plotting SHYFEM results (shyplot)}
+	\input{D_plot}
+
+	\section{Elaborating SHY files (shyelab)}
+	\input{D_elab_shy} %TODO %Georg
+
+	\section{Elaborating FEM files (femelab, femtide, tselab)}
+	\input{D_elab_fem}
+
+	\section{Other useful elaboration tools}
+	\label{postproc_prg}
+        \input{D_other}
+
+	%\section{PETSC Library}
+	%\label{PETSC}
+        %\input{E_PETSC}
+
+	%\section{SHYFEM quick built-in tools for mesh generation}
+	%\label{grd}
+        %\input{F_grd}
+      %\chapter{Make Options}
+	%\input{E_make}   %TODO %Georg
+	%\textcolor{red}{SECONDO ME APPENDICE NON NECESSARIA - GEORG}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\bibliography{add,abbrev,lag,sedi,lagra}
+\addcontentsline{toc}{chapter}{Bibliography}
+
+
+\end{document}
+
+
+
+

@@ -1,0 +1,150 @@
+
+%------------------------------------------------------------------------
+%
+%    Copyright (C) 1985-2020  Georg Umgiesser
+%
+%    This file is part of SHYFEM.
+%
+%    SHYFEM is free software: you can redistribute it and/or modify
+%    it under the terms of the GNU General Public License as published by
+%    the Free Software Foundation, either version 3 of the License, or
+%    (at your option) any later version.
+%
+%    SHYFEM is distributed in the hope that it will be useful,
+%    but WITHOUT ANY WARRANTY; without even the implied warranty of
+%    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+%    GNU General Public License for more details.
+%
+%    You should have received a copy of the GNU General Public License
+%    along with SHYFEM. Please see the file COPYING in the main directory.
+%    If not, see <http://www.gnu.org/licenses/>.
+%
+%    Contributions to this file can be found below in the revision log.
+%
+%------------------------------------------------------------------------
+
+In the following the basic structure of the input file is described. Refer to the Appendix \ref{param_list}
+for the full list of parameters that can be set. The description will provide indication on how to run a simple simulation.
+In the following chapter a deeper insight in how to prepare a more complex input file will be provided.
+
+
+\subsection{Structure}
+
+The input parameter file is the file that guides the program performance. It
+contains all the necessary information for the main routine to execute
+the model. Nearly all parameters that can be given have a default value
+which is used when the parameter is not listed in the file. All parameters
+will be printed in the listing output at the beginning of the simulation.
+Only some time parameters are compulsory and must be present in the file.
+They will be listed later in this section.
+
+The file format looks much like a namelist format, but is
+not dependent on the compiler used. Values of parameters are given
+in the form :
+|name = value|  or  |name = 'text'|.  If |name|
+is an array the following format is used :
+\begin{verbatim}
+          name = value1 , value2, ... valueN
+\end{verbatim}
+The list can continue on the following lines. Blanks before and after
+the equal sign are ignored. More than one parameter can be present
+in one line. Blank, tab and comma can be used as separators.
+The maximum lenght for a line is set to 80 column, however if the user
+overpasses this limit the program will automatically stop with an
+appropriate error message, writing the guilty line.
+
+Parameters, arrays and data are delimited in sections.
+A section starts with the character {\tt \$} followed by a keyword and
+ends with {\tt \$end}. The {\tt \$keyword} and {\tt \$end} must not
+contain any blank characters and must be the first non blank characters
+in the line. Other characters following the keyword on the same line
+separated by a valid separator are ignored.
+
+Several sections of data may be present in the input parameter file.
+Further ahead, all possible sections are presented together with
+ the parameters prone to be specified.
+The sequence in
+which the sections appear is of no importance. However,
+the section |\$title| must be the first; it includes
+a one line description of the simulation, the name of the simulation
+and the basin file .
+
+Lines outside of the sections are ignored. This gives
+the possibility to comment the parameter input file.
+
+\begin{figure}[htbp]
+\begin{alltt}
+\input{basic.str}
+\end{alltt}
+\caption{Example of a basic parameter input file ({\tt STR} file)}
+\label{fig:basic}
+\end{figure}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% former basic_minimal.tex
+
+%\importstr{basic}
+%{Example of a basic parameter input file ({\tt str} file)}
+
+A basic version of a |str| file can be found in \ref{fig:basic} in which
+only the compulsory parameters have been inserted (in fact, this str does not do anything).
+
+These are:
+
+\begin{itemize}
+
+\item An introductory section |\$title| where on three lines the following
+information is given:
+
+\begin{enumerate}
+\item A description of the run. This can be any text that fits on one line.
+\item The name of the simulation. This name is used for all files that
+the simulation produces. These files differ from each other only by
+their extension.
+\item The name of the basin file (including its path if the file is not
+in the working directory where we do the run). This is the basin file without
+the extension |.bas|.
+\end{enumerate}
+
+\item A section |$para| that contains all necessary parameters for the
+simulation to be run. The only compulsory parameters are the ones that
+specify the start of the simulation |itanf|, its end |itend|, its
+time step |idt| and a reference date (|date = yyyymmdd|). This is the
+reference for all the time parameters used in the |str| file and in all
+the files provided as input to the simulation, as well as the output files.
+
+\end{itemize}
+
+All the time parameters can be specified in seconds from the reference
+date or using a date label |'yyyy-mm-dd::HH:MM:SS'|. The parameters that specify
+time steps can be prescribed both in seconds or using the following labels:
+|'Ns'|, |'Nm'|, |'Nh'|, |'Nd'|.
+Where |N| is a number, |s| means seconds, |m| minutes, |h| hours and |d| days.
+
+In order to be more helpful, some more information must be added to the
+|str| file.
+\Fig\ref{fig:example} shows an example of a typical input
+parameter file, for 2D applications, and the use of the sections and definition of
+parameters.
+
+\begin{figure}[htbp]
+\begin{alltt}
+\input{example.str}
+\end{alltt}
+\caption{Example of a parameter input file ({\tt STR} file)}
+\label{fig:example}
+\end{figure}
+
+Here, two parameters that deal with the type of friction have been added.
+|ireib| specifies the bottom friction formulation with its value equals to
+5 denoting a simple quadratic bulk formula (for the exact meaning of the
+parameters, please refer to the appendix where all parameters
+are listed). The parameter |czdef| specifies the bottom drag coefficient value to be used.
+
+%\begin{figure}
+%%\begin{alltt}
+%\includegraphics[width=12cm,height=18cm]{example3D.pdf}
+%\includegraphics{example3D.pdf}
+%%\end{alltt}
+%\caption{Example of a 3D parameter input file ({\tt STR} file)}
+%\label{fig:example3D}
+%\end{figure}

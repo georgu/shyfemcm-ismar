@@ -1,0 +1,12 @@
+The SHYFEM model offers the possibility to run the lagrangian simulation using an offline mode. In this case the hydrodynamic run  is saved in a  ''offline'' format. This permits to run different setup without recalculate the whole hydrodynamic run. The timestep of  the offline file is fixed so it is recommended to calibrate the timestep used to write the file in order to include the timescales of all  the main processes and also to take into  account the diffusion coefficient used for  the lagrangian model in order to be consistent during the simulation. Another warning is that in the  vertical  structure of the hydrodynamic setup the last bottom layer has to be not much deeper than the maximum depth of the basin.
+To write the offline file the following parameters have to be present in the configuration file (file.str), in the section |para|. The parameter |idtoff| manages the offline mode. If Idtoff is equal to 0, as in  default mode,  no offline routines are called
+If idtoff has  positive value in seconds (i.e. 3600) activates the mode to write offline data file (.off) with time step |idtoff|.  In this case you are calculating all the simulation and only writing the offline file to  be used later.
+In this case it is possible to  define the itmoff parameter to indicate the start time for writing the offline file. As default choice itmoff has value -1 starting from the begin of  the simulation.
+When Idtoff has negative value, it activates the mode to read offline data from file. In this case the possible values are :
+\begin{itemize}
+\item |Idtoff = -1| : the run uses only the hydrodynamic  results written in the offline files. 
+\item |Idtoff = -2|: the run uses temperature and salinity results
+\item |Idtoff = -4| : the run uses the turbulence results
+\end{itemize}
+The combination of values is possible so |itdoff = -3| means that hydrodynamic, temperature and salinity will be readed by the offline file. If |idtoff = -7| all  the available  values will be readed by the offline file. 
+The name of the offline file to be used  is  described  by the parameter |offlin| in the section name. This parameter has identical syntax as the other in section name 

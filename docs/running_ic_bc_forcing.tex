@@ -1,0 +1,127 @@
+
+%------------------------------------------------------------------------
+%
+%    Copyright (C) 1985-2020  Georg Umgiesser
+%
+%    This file is part of SHYFEM.
+%
+%    SHYFEM is free software: you can redistribute it and/or modify
+%    it under the terms of the GNU General Public License as published by
+%    the Free Software Foundation, either version 3 of the License, or
+%    (at your option) any later version.
+%
+%    SHYFEM is distributed in the hope that it will be useful,
+%    but WITHOUT ANY WARRANTY; without even the implied warranty of
+%    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+%    GNU General Public License for more details.
+%
+%    You should have received a copy of the GNU General Public License
+%    along with SHYFEM. Please see the file COPYING in the main directory.
+%    If not, see <http://www.gnu.org/licenses/>.
+%
+%    Contributions to this file can be found below in the revision log.
+%
+%------------------------------------------------------------------------
+\subsection{Initial and boundary conditions}
+%former bound_cond.tex
+
+In order to have a more meaningfull simulation, we need to specify initial and
+boundary conditions.
+Concerning initial conditions, spatially constant values can be set for water
+ level, temperature, salinity, sediment or tracer concentration,
+in the |$para| section of the setup file. If spatially variable, eventually 3D fields are imposed as initial condition,
+they have to be declared in |$name| section and properly formatted (please refer to the Appendix \ref{param_list})
+
+In this section we will also deal with the open boundary
+conditions, e.g., the conditions where the basin communicates with
+other water bodies (e.g., for lagoons it could be the inlets).
+
+For every boundary condition one section |$bound| must be specified. Since
+you can have more than one open boundary you must specify also the number
+of your boundary, e.g., |$bound1|, |$bound2| etc. Inside every section
+you can then specify the various parameters that characterize your boundary.
+
+Basically there are two types of open boundary conditions. Either the water
+level or the discharges (fluxes) can be specified. The parameter that
+decides the type of boundary is |ibtyp|. A value of one indicates water
+levels, instead a value of 2 or 3 indicates fluxes. If you specify
+discharges entering at the border of the domain, |ibtyp| = 2 should be
+specified. Otherwise, if there are internal sources in the basin then
+|ibtyp| = 3 must be used. If you do not define this parameter, a value of 1
+will be used and water levels will be specified.
+
+The only compulsory parameter in this section is the list of boundary
+nodes.  You do this with the parameter |kbound|.
+In the case of |ibtype| 1 or 2 at least two nodes must be
+specified, in order to give an extension of the boundary. The numeration
+of the boundary nodes must be consecutive and with the basin on its
+left side when going along the boundary nodes.  In the case of |ibtyp|
+= 3 even a single point can be given.
+
+The boundary values are normally specified through a time series file.
+You give the name of the file that contains
+the time series with the parameter |boundn|.
+An example with two boundaries can be found
+ in \Fig\figref{example} where water levels are prescribed and
+the values are read from a |levels1.dat| file.
+
+The imposed boundary values can be described through a simple sinus function by specifying  its parameters.
+ An example of a water level boundary with a tide of
+$\pm 70 cm$ and a period of 12 hours (semi-diurnal) is given below. Note thet |zref| gives the average water level of the
+boundary. If you specify |ampli|=0 you get a constant boundary value
+of |zref|.
+
+%\begin{figure}[htbp]
+%\begin{verbatim}
+\begin{code}
+$bound1
+      ibtyp = 1   kbound = 23 25 28
+      ampli = 0.70  period = 43200  phase = 10800  zref = 0.
+$end
+\end{code}
+%\end{verbatim}
+%\caption{
+This is an example of a regular sinusoidal water level boundary.
+The phase of 10800 (3 hours) makes sure that the simulation starts at
+slack tide when the basin is completely full.
+%}
+%\label{fig:bound}
+%\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Forcings}
+%former wind_forcing.tex
+
+\subsubsection{Wind forcing}
+The wind and the mean sea level pressure can be prescribed by means of an external
+ file with extension |fem| that can be either formatted or unformatted.
+ Please see the section on file formats to write such a
+file correctly.  The name of the file must be specified in the |str|
+file in the section |name|, using the flag |wind|. For example:
+
+\begin{code}
+$name
+...
+wind = 'mywind.fem'
+...
+$end
+\end{code}
+
+Other important parameters to set in the |str| file, in the section
+|para|, are |iwtype| and |itdrag|. The former specifies the wind stress
+formulation, while the latter is used to prescribe a constant value of
+the wind drag coefficient.
+
+For more information see the Appendix \ref{param_list}.
+
+
+\subsubsection{Heat and Mass Fluxes}
+\input{modules_heat_mass}
+
+
+
+
+
+
+
+

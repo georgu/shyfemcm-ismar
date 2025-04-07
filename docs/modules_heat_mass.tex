@@ -1,0 +1,30 @@
+
+%------------------------------------------------------------------------
+%
+%    Copyright (C) 1985-2020  Georg Umgiesser
+%
+%    This file is part of SHYFEM.
+%
+%    SHYFEM is free software: you can redistribute it and/or modify
+%    it under the terms of the GNU General Public License as published by
+%    the Free Software Foundation, either version 3 of the License, or
+%    (at your option) any later version.
+%
+%    SHYFEM is distributed in the hope that it will be useful,
+%    but WITHOUT ANY WARRANTY; without even the implied warranty of
+%    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+%    GNU General Public License for more details.
+%
+%    You should have received a copy of the GNU General Public License
+%    along with SHYFEM. Please see the file COPYING in the main directory.
+%    If not, see <http://www.gnu.org/licenses/>.
+%
+%    Contributions to this file can be found below in the revision log.
+%
+%------------------------------------------------------------------------
+\shy{} includes a module for the exchange of heat and mass (evaporation and rain) at the sea-atmosphere surface. This module must be activated only in case of a simulation with the calculation of temperature and salinity. The module is triggered by the |iheat| parameter, which decides which scheme to use. The humidity present in the air is prescribed by the physical variable defined with the |ihtype| parameter, while |isolp| decides the decay curve of solar radiation in the water column. The turbidity of the water can be specified with the |iwtyp| parameter and the depth of radiation decay (e-folding time), with the |hdecay| parameter. The fraction of radiation absorbed by the seabed is prescribed with the |botabs| parameter, while the albedo of the water
+surface is specified with the |albedo| parameter and, for temperatures below 4$^{\circ}$C, with |albed4|. Finally, the |ievap| parameter activates or deactivates the calculation of the water evaporation.
+
+It is advisable to leave the default values of these parameters, or to change them following a calibration procedure. A detailed description can be found in Appendix \ref{parameter}.
+
+Using the heat module a fem-file, or a time-series, with the surface forcing must be prescribed. This file must be specified in the str-file, in the |name| section, with the parameter |qflux |. The file must contain the following variables: solar radiation, air temperature, humidity and cloud cover. Finally, in the same section, it is possible to prescribe a file with the precipitation, through the parameter |rain |.

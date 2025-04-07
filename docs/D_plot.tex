@@ -1,0 +1,784 @@
+|shyplot| is the tool to plot \shy{} results and supports the -h option.
+
+\begin{verbatim}
+ Usage: shyplot [-h|-help] [-options] file(s)
+  plots a shy file
+  options:
+   -h|-help       this help screen
+   -v|-version    version of routine
+  general options
+   -info          only give info on header
+   -verbose       be more verbose, write time records
+   -quiet         do not write header information
+   -silent        do not write anything
+   -write         write min/max of records
+  time options
+   -tmin time     only process starting from time
+   -tmax time     only process up to time
+   -freq n        frequency for plot
+      time is either YYYY-MM-DD[::hh[:mm[:ss]]]
+      or integer for relative time
+  variable to plot
+   -varid id      plot variable id
+   -varnum i      plot i'th variable of file
+   -varname name  plot variable name
+    varid,varnum,varname are mutually exclusive
+  layer to plot (default 0)
+   -2d            plot vertical average (default)
+   -layer l       plot layer l
+  additional options
+   -regall        for regular fem files plot whole grid
+    file can be the following:
+      shy-file to plot results
+      bas-file to plot bathymetry and grid
+      one or more str-files for instructions
+\end{verbatim}
+
+The format of the parameter input file is the same as the one for
+the main routine. Please see this section for more information
+on the format of the parameter input file.
+
+Some sections of the parameter input file are identical to the
+sections used in the main routine. For easier reference we will
+repeat the possible parameters of these sections here.
+
+
+\subsection{Section {\tt \$title}}
+
+This section must be always the first section in the parameter input file.
+It contains only three lines. An example has been given already in
+\Fig\ref{fig:titleexample}.
+
+The only difference with respect to the {\tt \$para} section of the main
+routine is the first line. Here any description of the output can be used.
+It is just a way to label the parameter file.  The other two lines with
+the name of simulation and the basin are used to open the files needed
+for plotting.
+
+
+\subsection{Section {\tt \$para}}
+
+
+These parameters set generic values for the plot.
+
+Some of the parameters set coordinates in the plot. For example, the
+values |x0, y0| and |x1, y1| indicate the actual plotting area, which can
+be bigger or smaller than the extension of the numerical grid.
+
+Normally, values have to be in meters (the same as the coordinates in the
+numerical grid). However, also relative coordinates can be used. If all
+values given are in the range between -1 and +2, then these values
+are interpreted as relative coordinates. Therefore, $x$ coordinates of
+0 indicate the left border, and 1 the right border. The upper left quarter
+of the domain can be chosen with (|x0, y0|) = (0,0.5) and
+(|x1, y1|) = (0.5,1).
+
+\descrpitem{|x0\\y0|}
+\descrptext{%
+Lower left corner of the plotting area.
+(Default is whole area)
+}
+\par
+\descrpitem{|x1\\y1|}
+\descrptext{%
+Upper right corner of the plotting area.
+(Default is whole area)
+}
+\par
+
+The next values give the position, where the legend (scale bar and
+true north) is plotted. This legend will only be plotted if
+the coordinates are not geographical (lat/lon) but cartesian.
+
+\descrpitem{|x0leg\\y0leg|}
+\descrptext{%
+Lower left corner of the area
+where the legend is plotted.
+}
+\par
+\descrpitem{|x1leg\\y1leg|}
+\descrptext{%
+Upper right corner of the area where
+the legend (north and scale) is plotted.
+}
+\par
+
+\descrpitem{|lblank|}
+\descrptext{%
+The legend is plotted over a white rectangle.
+Sometimes this blanking is not desireable.
+If you do not want to have a white box below the
+legend set |lblank| to 0. (Default 1)
+}
+\par
+
+\descrpitem{|cislnd|}
+\descrptext{%
+It is possible to plot all islands in gray color.
+Setting |cislnd| to a value between 0 (black) and
+1 (white) will achieve this. A negative value
+will not fill islands with gray color.
+(Default -1)
+}
+\par
+
+\descrpitem{|dgray|}
+\descrptext{%
+It is possible to plot all dry areas in gray color.
+Setting |dgray| to a value between 0 (black) and
+1 (white) will achieve this. A negative value
+will not fill dry areas with gray color.
+(Default -1)
+}
+\par
+
+\descrpitem{|hgray|}
+\descrptext{%
+Whereas |dgray| is normally only coloring
+elements that are dry, you can also color elements
+shallower than a given depth |hgray|. E.g., a value
+for |hgray| of -0.5 will plot in gray all
+elements with depth lower than -0.5 m (salt
+marshes). (Default -10000)
+}
+\par
+
+\descrpitem{|dxygrd|}
+\descrptext{%
+Grid size if the results are interpolated on
+a regular grid. A value of 0 does
+not use a regular grid but the original
+finite element grid for plotting. (Default 0)
+}
+\par
+\descrpitem{|typls|}
+\descrptext{%
+Typical length scale to be used when scaling
+velocity or transport arrows. If |dxygrd| is
+given this length is used and |typls| is not used.
+If not given it is computed from the basin
+parameters. (Default 0)
+}
+\par
+\descrpitem{|typlsf|}
+\descrptext{%
+Additional factor to be used with |typls| to
+determine the length of the maximum or
+reference vector. This is the easiest way
+to scale the velocitiy arrows
+with an overall factor. (Default 1)
+}
+\par
+\descrpitem{|velref|}
+\descrptext{%
+Reference value to be used when scaling arrows.
+If given, a vector with this value will have a length
+of |typls|*|typlsf| on the map, or, in case
+|dxygrd| is given, |dxygrd|*|typlsf|. If not set
+the maximum value of the velocity/transport
+will be used as |velref|. (Default 0)
+}
+\par
+\descrpitem{|velmin|}
+\descrptext{%
+Minimum value for which an arrow will be plotted.
+With this value you can eliminate small arrows
+in low dynamic areas. (Default 0)
+}
+\par
+\descrpitem{|velmax|}
+\descrptext{%
+Maximum value for which an arrow will be plotted.
+With this value you can eliminate arrows that are
+too big. This is usefull if you would like to study an
+area with low current speed but but the adjacent area has high current speeds that would overplot the area.
+(Default -1, no limitation)
+}
+\par
+
+\descrpitem{|isphe|}
+\descrptext{%
+If 0, a cartesian coordinate system is used,
+If 1, the coordinates are in the spherical
+system (lat/lon). Among other, this
+indicates that the $x$-coordinates will be multiplied
+by a factor that accounts for the visual deformation
+using lat/lon coordinates.
+The default is -1, which means that the
+type of coordinate system will
+be determined automatically. (Default -1)
+}
+\par
+\descrpitem{|reggrd|}
+\descrptext{%
+If different from 0 it plots a regular grid over
+the plot for geographical reference. The value of
+|reggrd| gives the spacing of the regular grid lines.
+The units must be according to the units used for
+the coordinates. With value of -1 the regular grid is
+determined automatically. (Default -1)
+}
+\par
+\descrpitem{|regdst|}
+\descrptext{%
+This value gives the number of intervals
+that are used to sub-divide the grid given by
+|reggrd| with a black and white scale around
+the plot. If 0 it tries to determine automatically
+the sub-intervals (2 or 4). A value of -1 does
+not plot the subgrid scale. (Default 0)
+}
+\par
+\descrpitem{|reggry|}
+\descrptext{%
+If plotting the regular overlay grid this gives
+the gray value used for the grid. 0 is black, and
+1 is white. A value of 1 does not plot the
+overlay grid, but still writes the labels.
+(Default 1)
+}
+\par
+
+\descrpitem{|bndlin|}
+\descrptext{%
+Name of file that gives the boundary line
+that is not part of the finite element domain.
+The file must be in BND format. You can use
+the program grd2bnd.pl to create the file
+from a GRD file.
+(Default is no file)
+}
+\par
+
+\descrpitem{|ioverl|}
+\descrptext{%
+Create overlay of velocity vectors on scalar value.
+With the value of 0 no overlay is created, 1
+creates an overlay with the velocity speed.
+The value of 2 overlays vertical velocities,
+3 water levels and 4 overlays bathymetry.(Default 0)
+}
+\par
+\descrpitem{|inorm|}
+\descrptext{%
+Normally the horizontal velocities are plotted
+in scale. The value of |inorm| can change this
+behavior. A value of 1 normalizes velocity vectors
+(all vectors are the same length), whereas 2
+scales from a given minimum velocity |velmin|.
+Finally, the value of 3 uses a logarithmic scale.
+(Default 0)
+}
+\par
+
+The next parameters give the choice to selectively avoid to plot areas
+of the basin and to apply different gray tones for the boundary and
+net lines when plotting the basin.
+Please remember that when working with gray tones the value should
+be between 0 (black) and 1 (white).
+
+\descrpitem{|ianopl|}
+\descrptext{%
+Area code for which no plot has to be produced. Normally
+the whole basin is plotted, but with this parameter some
+areas can be excluded. (Default -1)
+}
+\par
+\descrpitem{|bgray|}
+\descrptext{%
+Gray value used for the finite element grid when plotting
+the bathymetry. (Default 0.8)
+}
+\par
+\descrpitem{|bbgray|}
+\descrptext{%
+Gray value used for the boundary of the finite element grid.
+(Default 0)
+}
+\par
+\descrpitem{|bsgray|}
+\descrptext{%
+Gray value used to plot the finite element grid over
+a scalar or velocity plot. This is basically useful
+for debugging reasons. The default is to not plot
+the grid (Default -1.0)
+}
+\par
+
+\subsection{Section {\tt \$color}}
+
+
+The next parameters deal with the definition of the colors
+to be used in the plot. A color bar is plotted too.
+
+\descrpitem{|icolor|}
+\descrptext{%
+Flag that determines the type of color table
+to be used:
+\begin{description}
+\item 0 gray scale
+\item 1 HSB color table
+\item 2 from white to blue
+\item 3 from white to red
+\item 4 from blue over white to red
+\item 5 from blue over black to red
+\item 6 and 7 indicate non-linear HSB color tables.
+(Default 0)
+\end{description}
+}
+\par
+
+\descrpitem{|colfil|}
+\descrptext{%
+A color table can also be read from file. An example
+of the format can be found in directory |femplot/color|
+in the file |colormap.dat|. The variable |colfil|
+indicates the file where the color table is being
+read from. The default is not to read a color table file.
+}
+\par
+\descrpitem{|coltab|}
+\descrptext{%
+If a color table file has been read then the variable
+|coltab| indicates the name of the color table that
+is going to be used. The default is to not use any
+of the color tables if no name is specified.
+}
+\par
+
+\descrpitem{|isoval|}
+\descrptext{%
+Array that defines the values for the isolines
+and colors that are to be plotted. Values given must
+be in the unit of the variable that will be plotted,
+i.e., meters for water levels etc.
+}
+\par
+\descrpitem{|color|}
+\descrptext{%
+Array that gives the color indices for the
+plotting color to be used. Ranges are from
+0 to 1. The type of the color depends on the
+variable |icolor|. For the gray scale table
+0 represents black and 1 white. Values in between
+correspond to tones of gray. For the HSB color table
+going from 0 to 1 gives the color of the rainbow.
+There must be one more value in |color| than in |isoval|.
+The first color in |color| refers to values less
+than |isoval(1)|, the second color in |color| to
+values between |isoval(1)| and |isoval(2)|. The last
+color in |color| refers to values greater than the last
+value in |isoval|.
+}
+\par
+
+\descrpitem{|x0col\\y0col|}
+\descrptext{%
+Lower left corner of the area where the
+color bar is plotted.
+}
+\par
+\descrpitem{|x1col\\y1col|}
+\descrptext{%
+Upper right corner of the area where the
+color bar is plotted.
+}
+\par
+
+\descrpitem{|cblank|}
+\descrptext{%
+The color bar is plotted over a white rectangle.
+Sometimes this blanking is not desireable.
+If you do not want to have a white box below the
+legend set |cblank| to 0. (Default 1)
+}
+\par
+
+\descrpitem{|faccol|}
+\descrptext{%
+Factor for the values that are written to the
+color bar legend. This enables you, e.g., to give water level
+results in mm (|faccol = 1000|). (Default 1)
+}
+\par
+\descrpitem{|ndccol|}
+\descrptext{%
+Decimals after the decimal point for the values
+written to the color bar legend. Use the value |-1|
+to not write the decimal point. A value of 0 automatically
+computes the number of decimals needed. (Default 0)
+}
+\par
+\descrpitem{|legcol|}
+\descrptext{%
+Text for the description of the color bar. This text
+is written above the color bar.
+}
+\par
+
+It is not necessary to give all values for isolines and colors above.
+A faster way is to give only the minimum and maximum values and fix
+the number of isovalues to be used.
+
+\descrpitem{|niso|}
+\descrptext{%
+Total number of isolines to use. (Default is |nisodf|)
+}
+\par
+\descrpitem{|nisodf|}
+\descrptext{%
+Default number of isolines to use. (Default 5)
+}
+\par
+\descrpitem{|colmin\\colmax|}
+\descrptext{%
+Minimum and maximum color index used. Defaults are
+0.1 and 0.9 respectively. The value of |colmax| can
+be smaller than |colmin| which inverts the color
+index used.
+}
+\par
+\descrpitem{|valmin\\valmax|}
+\descrptext{%
+Minimum and maximum value for isovalues to be used.
+There is no default.
+}
+\par
+\descrpitem{|rfiso|}
+\descrptext{%
+Defines function to be used to compute intermediate
+values between |valmin| and |valmax|. If 0 or 1
+the values are linearlily interpolated. Else they
+are computed by $y=x^n$ where $n$ is |rfiso|
+and $x=\frac{v-v_{min}}{v_{max}-v{min}}$. Values
+for |rfiso| greater than 0 capture higher detail in
+the lower values, whereas values less than 1 do
+the opposite.
+(Default 0)
+}
+\par
+\descrpitem{|ipllog|}
+\descrptext{%
+Indicates the usage of a logarithmic color scale.
+The possible values are 0-3. The value of 0
+indicates not to use a logarithmic scale.
+If 1, the values of
+the scale are 1,10,100,etc., if 2 the values
+1,2,10,20,100,etc. are used, and for 3 the values
+are 1,2,5,10,20,50,100,etc. (Default 0)
+}
+\par
+\descrpitem{|dval|}
+\descrptext{%
+Difference of values between isolines. If this
+value is greater then 0 the values for isolines
+and the total number of isolines are computed
+automatically using also |valmin| and |valmax|.
+(Default 0)
+}
+\par
+
+Since there is a great choice of combinations between the parameters,
+the following rules show how the values for colors and isolines are determined.
+
+If colors are given in array |color|, they are used, else |colmin| and
+|colmax| or their respective defaults are used to determine the color bar.
+If |isoval| is given it is used, else |valmin| and |valmax| are used.
+If |valmin| and |valmax| are not given they are computed every time
+for each plot and the minimum and maximum values in the basin are used.
+In any case, if |isoval| is specified the total number of isovalues
+is known and |niso| is ignored. However, if |isoval| is not given
+then first |dval| is used to decide how many isovalues to plot, and
+if |dval| is 0 then the |niso| and, finally, |nisodf| are used.
+
+Other parameters that can be changed are the following.
+
+\descrpitem{|nisomx|}
+\descrptext{%
+Maximum for |niso| allowed. This is especially useful
+when the value for |niso| is determined automatically.
+It avoids you to plot 1000 isolines due to wrong settings
+of |dval|. However, if you want to use 50 isovalues
+then just set |niso| and |nisomx| to 50. (Default 20)
+}
+\par
+\descrpitem{|nctick|}
+\descrptext{%
+Number of values to be written in color bar. If |niso| is high
+the labels on the color bar become unreadable. Therefore
+you can use |nctick| to write only some of the values to
+the color bar. For example, if |valmin| is 0 and |valmax| is
+5 and you use many isolines, then setting |nctick| to 6 would
+give you labels at values 0,1,2,3,4,5. If |nctick| is 0
+then all lables are written. (Default 0)
+}
+\par
+\descrpitem{|isolin|}
+\descrptext{%
+Normally the isolines are not drawn on the plot, just
+the colors are used to show the value in the different
+parts of the plot. A value different from 0 plots also
+the isolines. In this case |isolin| gives the number of
+isolines to be plotted. A good choice is to make this
+equal to |nctick|, so that the isolines correspond to the
+values	written on the colorbar. For compatibility, a value of
+1 plots all isolines. (Default 0)
+}
+\par
+\descrpitem{|isoinp|}
+\descrptext{%
+Normally inside elements the values are interpolated.
+Sometimes it is usefull to just plot the value of the
+node without interpolation inside the element. This can
+be accomplished by setting |isoinp=0|. (Default 1)
+}
+\par
+
+\subsection{Section {\tt \$arrow}}
+
+
+The next parameters deal with the reference arrow that is plotted
+in a legend. The arrow regards the plots where the velocity or
+the transport is plotted.
+
+\descrpitem{|x0arr\\y0arr|}
+\descrptext{%
+Lower left corner of the area where the
+reference arrow is plotted.
+}
+\par
+\descrpitem{|x1arr\\y1arr|}
+\descrptext{%
+Upper right corner of the area where the
+reference arrow is plotted.
+}
+\par
+
+\descrpitem{|ablank|}
+\descrptext{%
+The arrow legend is plotted over a white rectangle.
+Sometimes this blanking is not desireable.
+If you do not want to have a white box below the
+legend set |ablank| to 0. (Default 1)
+}
+\par
+
+\descrpitem{|facvel|}
+\descrptext{%
+Factor for the value that is written to the
+arrow legend for the velocity.
+This enables you, e.g., to give
+velocities in mm/s (|facvel = 1000|). (Default 1)
+}
+\par
+\descrpitem{|ndcvel|}
+\descrptext{%
+Decimals after the decimal point for the values
+written to the arrow legend.
+Use the value |-1|
+to not write the decimal point. (Default 2)
+}
+\par
+\descrpitem{|legvel|}
+\descrptext{%
+Text for the description of the arrow legend.
+This text is written above the arrow.
+}
+\par
+\descrpitem{|arrvel|}
+\descrptext{%
+Length of arrow in legend (in velocity
+units). If not given the arrow length will be computed
+automatically. (Default 0)
+}
+\par
+\descrpitem{|sclvel|}
+\descrptext{%
+Additional factor to be used for the arrow
+in the legend. When the arrow length will be
+computed automatically, this parameter gives
+the possibility to change the length of the
+reference vector. This is an easy way
+to scale the velocitiy arrow
+with an overall factor. Not used if
+|arrvel| is given. (Default 1)
+}
+\par
+
+\subsection{Section {\tt \$legend}}
+In this section, annotations in the plots can be given. The
+section consists of a series of lines that must contain the
+following information:
+
+The first value is a keyword that specifies what has to be plotted.
+Possible values are |text|, |line|, |vect|, |rect|, |circ|  and also
+|wid| and |col|. These correspond to different types of information
+that is inserted into the plot such as text, line, vector, rectangle
+or circle (filled or just outline). Moreover, the color and
+line width of the pen can be controlled with |wid| and |col|.
+
+In case of |text| the starting position (lower left corner) is given,
+then the point size of the font and the text that is inserted. |line|
+needs the starting and end point of the line. The same with |vect|,
+but in this case also the relative tip size must be given as a final
+parameter. |rect| needs the coordinates of the lower left corner and
+upper right corner of the rectangle. It also needs the color used for
+the filling of the rectangle (0-1) or the flag -1 which only draws the
+outline of the rectangle without filling it. |circ| needs the center
+point and the radius and a fill color (see rectangle). Finally |wid| needs
+the relative width of the line and |col| the stroke color used when plotting
+lines.
+
+A small example of an annotation that explains the above parameters
+would be:
+
+\begin{verbatim}
+$legend
+text  30500 11800     15  'Chioggia'   #text, 15pt
+line  30500 11800 35000 15000          #line
+vect  30500 11800 35000 15000 0.1      #arrow, tipsize 0.1
+rect  30500 11800 35000 15000 0.1      #rectangle, fill color 0.1
+rect  30500 11800 35000 15000 -1       #rectangle (outline, no fill)
+circ  30500 11800 5000 -1              #circle (outline, no fill)
+wid   5                                #set line width to 5
+col   0.5                              #set color to 0.5
+$end
+\end{verbatim}
+
+There is also an old way to specify the legend that does not use
+keywords. However, this way is deprecated and unsupported and is therefore
+not described anymore in this manual.
+
+\subsection{Section {\tt \$legvar}}
+
+
+In this section variable fields like the date and wind vectors
+may be inserted into the plot.
+
+A time and date can be assigned to the simulation results. These values
+refer to the time 0 of the FEM model. The format for the date is
+YYYYMMDD and for the time HHMMSS.
+You can also give a time zone if your time is not referring to
+GMT but to another time zone such as MET. Please note that you have to give
+this information only if the simulation does not contain it already.
+Normally, this information is already assigned during the simulation runs.
+
+\descrpitem{|date|}
+\descrptext{%
+The real date corresponding to time 0. (Default 0)
+}
+\par
+\descrpitem{|time|}
+\descrptext{%
+The real time corresponding to time 0. (Default 0)
+}
+\par
+\descrpitem{|tz|}
+\descrptext{%
+The time zone you are in. This is 0 for GMT, 1 for MET
+and 2 for MEST (MET summer time). (Default 0)
+}
+\par
+\descrpitem{|tzshow|}
+\descrptext{%
+The time zone you want to show your results. If your
+time zone is GMT (0) and you want to show the results
+referred to MET (+1) set this to +1. Please note that
+you have to set this variable only if you want to
+show results in a different time zone than the one
+given in |tz|. (Default 0)
+}
+\par
+
+The information of date and time may be written to the plot. This
+is done with the following parameters.
+
+\descrpitem{|xdate\\ydate|}
+\descrptext{%
+Starting point for the date text (lower left corner).
+}
+\par
+\descrpitem{|sdate|}
+\descrptext{%
+Point size of the text. (Default 18)
+}
+\par
+\descrpitem{|idate|}
+\descrptext{%
+Output mode. If 0 no date is written to the
+plot, else the date and time is written. (Default 0)
+}
+\par
+
+Wind data can be used to insert a wind vector into the figure.
+This can be useful in the case of varying wind conditions as
+the exact speed and direction of the time frame represented
+in the plot will be shown.
+
+Since only one wind vector can be plotted, the wind data must consist
+of one value for each time. The same ASCII file that is used
+in the STR file can be used.
+
+\descrpitem{|xwind\\ywind|}
+\descrptext{%
+Starting point where the wind arrow is plotted.
+}
+\par
+\descrpitem{|iwtype|}
+\descrptext{%
+Type of wind data. The same as the one in the
+STR file. If this parameter is 0 then no
+wind vector is plotted. (Default 0)
+}
+\par
+\descrpitem{|lwwind|}
+\descrptext{%
+Line width of the wind vector. (Default 0.1)
+}
+\par
+\descrpitem{|scwind|}
+\descrptext{%
+Scaling parameter of the wind vector. This depends
+on the size of your plot. If your wind is 10 m/s
+and you want the vector to strech over a distance
+of 5 km on the plot then you have to choose
+the value of 500 (10*500=5000) for |scwind|.
+(Default 1)
+}
+\par
+\descrpitem{|wfile|}
+\descrptext{%
+Name of the file containing the wind data. This
+may be the same file than the one used in the
+STR file to run the program.
+}
+\par
+
+The wind vector is also given a text legend with the speed of the
+wind written out. The next parameters decide where and how this information
+is set.
+
+\descrpitem{|xtwind\\ytwind|}
+\descrptext{%
+Starting point for the legend text (lower left corner).
+}
+\par
+\descrpitem{|stwind|}
+\descrptext{%
+Point size of the text. (Default 18)
+}
+\par
+\descrpitem{|wtext|}
+\descrptext{%
+Text used for the legend (Default 'Wind speed')
+}
+\par
+\descrpitem{|wunit|}
+\descrptext{%
+Unit for the wind speed (Default 'm/s')
+}
+\par
+
+%\subsection{Section {\tt \$name}}
+%\input{S_name.tex}
+

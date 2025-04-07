@@ -1,0 +1,34 @@
+
+%------------------------------------------------------------------------
+%
+%    Copyright (C) 1985-2020  Georg Umgiesser
+%
+%    This file is part of SHYFEM.
+%
+%    SHYFEM is free software: you can redistribute it and/or modify
+%    it under the terms of the GNU General Public License as published by
+%    the Free Software Foundation, either version 3 of the License, or
+%    (at your option) any later version.
+%
+%    SHYFEM is distributed in the hope that it will be useful,
+%    but WITHOUT ANY WARRANTY; without even the implied warranty of
+%    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+%    GNU General Public License for more details.
+%
+%    You should have received a copy of the GNU General Public License
+%    along with SHYFEM. Please see the file COPYING in the main directory.
+%    If not, see <http://www.gnu.org/licenses/>.
+%
+%    Contributions to this file can be found below in the revision log.
+%
+%------------------------------------------------------------------------
+
+SHYFEM has the option of solving the nonhydrostatic equations (NH) relevant for flows where there are strong vertical accelerations. In order to use the nonhydrostatic model a new section must be added |$nonhyd|, and the parameter |inohyd| must be set to 1. Unlike for the primitive equations, for the NH case the vertical velocity component is a prognostic variable which is solved from the vertical momentum equation. The full NH equations are solved following the two step approach of Casulli (1999) whereby in the first step only the hydrostatic equations are solved, followed by a second step where the NH pressure is computed through the solution of a 3D Poisson equation, and then used to correct the hydrostatic fields. The semi-implicit weighting parameter for the nonhydrostatic pressure term is given by the parameter aqpar which must be given a value between 0 and 1 (default value is 0.5). Both the vertical velocity and nonhydrostatic pressure variables can be output to a file by setting the parameters |iwvel| and |iqpnv| equal to 1 respectively. There is a option to exclude the NH terms at or near boundaries where sometimes problems can arise with the gradient of the NH pressure term. This is done by setting |inhbnd=1| and setting the parameter |nqdist| to the an integer value greater than 0 which is the number of nodes distance from the boundary where the NH terms are excluded. The parameter |ivwadv| chooses the scheme used to do the vertical advection of the vertical momentum, 1 being for a upwind scheme, 2 being for a centred differencing scheme, and 0 excludes this term. Below is an example of the new section |$nonhyd|. 
+\begin{verbatim}
+\nonhyd
+        inohyd = 1      aqpar  = 0.6    ivwadv = 2
+        nqdist = 5      iwvel  = 1      iqpnv  = 1
+\end
+\end{verbatim}
+
+

@@ -1,0 +1,94 @@
+Given the number of possible setup options discussed in the above section and in the previous chapter, the following represents an
+example of a full str setup file.
+The full explanation of each parameter can be find in Appendix \ref{parameter}.
+
+%\begin{figure}[ht]
+%\begin{alltt}
+%\input{example3Da.str}
+%\end{alltt}
+%\caption{Example of a 3D parameter input file ({\tt STR} file)}
+%\label{fig:example3D}
+%\end{figure}
+
+\begin{verbatim}
+$title
+	in this single line write description
+      simname
+	gridname
+$end
+
+$para
+	date = '2021-01-01'
+	
+	itanf  = '2021-01-01'	itend = '2021-12-31'  idt = '30s'
+	itmout = '2021-01-01'	idtout = '1h' 
+	itmflx = '2021-01-01'	idtflx = '1h' 
+	itmext = '2021-01-01'	idtext = '1h'
+	itmcon = '2021-01-01'	idtcon = '1h'
+	itmrst = '2021-01-01'	idtrst = '1d'
+	
+	ilin = 0
+	itlin = 0
+	iclin = 0
+	itsplt = 2
+	coumax = 0.90
+	idtsyn = '3600s'
+	idtmin = 0.1
+	ampar = 0.60	azpar = 0.60	aapar = 0
+
+	icor = 1	dlat = 45.	isphe = 0 
+
+	ireib = 5	czdef = 0.002
+
+	iwtype = 3	itdrag = 0	dragco = 0.00250
+
+	ilytyp = 3	hlvmin = 0.5
+
+	ibarcl = 1	iturb = 1
+	idhtyp = 2	
+	itvd = 2	itvdv = 1	rstol = 0.85
+	diftur = 0.001 vistur = 0.001
+
+	salref = 35	temref = 18
+	isalt = 1  itemp = 1 
+	thpar = 0.2	 shpar = 0.2
+	ievap = 0
+          iheat  = 0      hdecay = 2      botabs = 0
+$end
+
+$levels
+1 1.5 2. 2.5 3. 3.5 4. 4.5 5 6 7 8 9 10 12 14 16 18 20 22 24 26 30 34
+
+$end
+
+$bound1     ----  OPEN SEA BOUNDARY  ----  
+   
+ kbound=    26861 26860 26859 26858 26857 26856 26855 26854 26853 26852
+ 26851 26850 26849 26848 26847 26846 26845 26844 26843 26842
+ 26841 
+	ibtyp  = 1
+	saltn = 'salt_bnd.fem'
+	tempn = 'temp_bnd.fem'
+	boundn = 'level.dat'
+$end
+	
+$bound2     ----  RIVER INPUT  ----  
+
+        kbound = 34137 34132 34136
+        ibtyp  = 2 
+        zref = 140 
+        salt = 0.
+        temp = 23.8 
+$end
+
+$name		
+	gotmpa=	'gotmturb.nml'
+	saltin = 'salt_ic.fem'
+	tempin = 'temp_ic.fem'
+      wind=  'wind.fem'
+	rain=	'rain.fem'
+	qflux='meteo.fem'
+	restrt = 'sim.rst'	
+$end
+\end{verbatim}
+The str file can be even more complex, adding the options connected to the different modules that will be presented in the next chapter.
