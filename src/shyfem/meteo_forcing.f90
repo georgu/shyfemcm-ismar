@@ -927,6 +927,7 @@
 	    wparam = fice * wfact * cd * wspeed		!INTEL_BUG_OLD
             tx(k) = wparam * wx(k)
             ty(k) = wparam * wy(k)
+	    cdv(k) = cd
           end do
         end if
 
@@ -1592,7 +1593,7 @@
 
 ! Computes drag coefficient with a formulation proposed in:
 ! Hersbach, H., 2011: Sea Surface Roughness and Drag Coefficient as 
-! Functions of Neutral Wind Speed. J. Phys. Oceanogr., 41, 247–251, 
+! Functions of Neutral Wind Speed. J. Phys. Oceanogr., 41, 247-251, 
 ! https://doi.org/10.1175/2010JPO4567.1
 
 	implicit none

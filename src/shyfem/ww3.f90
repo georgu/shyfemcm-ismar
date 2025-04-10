@@ -689,7 +689,7 @@
 !           substract wave-supported stress from wind stress
 !      	  -----------------------------------------------
           if ( iatm /= 1 ) then		!Wind stress from WW3
-  	    wfact = 1. / rowass
+  	    wfact = 1. / rowass		!need to be recomputed here
   	    do k = 1,nkn
               wsmin = max(0.01,metws(k))
               cdw = (ustshyfem(k)/wsmin)**2
@@ -698,10 +698,14 @@
               tauxnv(k) = wparam*wxv(k)
               tauynv(k) = wparam*wyv(k)
             end do
+            tauxnv = tauxnv - tauwwxshyfem*(1.-metice)
+            tauynv = tauynv - tauwwyshyfem*(1.-metice)
+          else				!Wind stress from WRF
+            if (icall_nuopc == 1) then  !partition it only at first call
+  	      tauxnv = tauxnv - tauwwxshyfem*(1.-metice)
+              tauynv = tauynv - tauwwyshyfem*(1.-metice)
+            end if
           end if
-
-  	  tauxnv = tauxnv - tauwwxshyfem*(1.-metice)
-          tauynv = tauynv - tauwwyshyfem*(1.-metice)
 
 !         -----------------------------------------------
 !         Compute wave induced forces
