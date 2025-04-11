@@ -26,14 +26,14 @@
 %former bound_cond.tex
 
 In order to have a more meaningfull simulation, we need to specify initial and
-boundary conditions. 
+boundary conditions.
 Concerning initial conditions, spatially constant values can be set for water
- level, temperature, salinity, sediment or tracer concentration, 
+ level, temperature, salinity, sediment or tracer concentration,
 in the |$para| section of the setup file. If spatially variable, eventually 3D fields are imposed as initial condition,
-they have to be declared in |$name| section and properly formatted. Please refer to Appendix C.
+they have to be declared in |$name| section and properly formatted (please refer to the Appendix \ref{param_list})
 
 In this section we will also deal with the open boundary
-conditions, e.g., the conditions where the basin communicates with 
+conditions, e.g., the conditions where the basin communicates with
 other water bodies (e.g., for lagoons it could be the inlets).
 
 For every boundary condition one section |$bound| must be specified. Since
@@ -51,18 +51,18 @@ specified. Otherwise, if there are internal sources in the basin then
 will be used and water levels will be specified.
 
 The only compulsory parameter in this section is the list of boundary
-nodes.  You do this with the parameter |kbound|. 
+nodes.  You do this with the parameter |kbound|.
 In the case of |ibtype| 1 or 2 at least two nodes must be
 specified, in order to give an extension of the boundary. The numeration
 of the boundary nodes must be consecutive and with the basin on its
 left side when going along the boundary nodes.  In the case of |ibtyp|
 = 3 even a single point can be given.
 
-The boundary values are normally specified through a time series file. 
+The boundary values are normally specified through a time series file.
 You give the name of the file that contains
-the time series with the parameter |boundn|. 
+the time series with the parameter |boundn|.
 An example with two boundaries can be found
- in \Fig\figref{example} where water levels are prescribed and 
+ in \Fig\figref{example} where water levels are prescribed and
 the values are read from a |levels1.dat| file.
 
 The imposed boundary values can be described through a simple sinus function by specifying  its parameters.
@@ -89,7 +89,7 @@ slack tide when the basin is completely full.
 %\end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{forcings}
+\subsection{Forcings}
 %former wind_forcing.tex
 
 \subsubsection{Wind forcing}
@@ -112,11 +112,11 @@ Other important parameters to set in the |str| file, in the section
 formulation, while the latter is used to prescribe a constant value of
 the wind drag coefficient.
 
-For more information see the appendix.
+For more information see the Appendix \ref{param_list}.
 
 
 \subsubsection{Heat and Mass Fluxes}
-\input{modules_heat_mass} 
+\input{modules_heat_mass}
 
 
 
