@@ -1,0 +1,105 @@
+--------------------------------------------------------
+                  SECTION TITLE
+--------------------------------------------------------
+$title
+	venice_lagoon
+	venlag
+	GRID/venlag62
+$end
+
+--------------------------------------------------------
+                SECTION PARAMETER
+--------------------------------------------------------
+&para
+        date   = '2014-08-01'   time   = 0
+        itanf  = '2014-08-01'   itend  = '2014-08-03'
+	itsplt = 2              coumax = 0.9           idtsyn = '15m'
+        idt    = '1m'           idtmin = 0.1
+
+	itmout = '2014-08-01'   idtout = '1h'
+	itmext = '2014-08-01'   idtext = '5m'
+	itmcon = '2014-08-01'   idtcon = '1h'
+
+        iclin  = 0	ilin   = 0
+        ibarcl = 1
+        isalt  = 1      shpar = 0.1
+        itemp  = 1      thpar = 0.1
+
+        nadist = 3
+
+        ireib  = 2      czdef  = 36
+        iwtype = 3      dragco = 2.5e-3
+
+        iheat  = 6      hdecay = 2      botabs = 0
+
+        ievap  = 1
+
+        iturb  = 1
+
+	salref = 30	temref = 25
+
+        ampar  = 0.60   azpar  = 0.60
+        atpar  = 1.0    adpar  = 1.0
+        aapar  = 0.
+
+        itlin = 0       ihwadv = 1
+
+        itvd   = 0      itvdv  = 1
+
+        ilytyp = 3      hlvmin = 0.5
+        nzadapt = 0
+&end
+
+--------------------------------------------------------
+                  SECTION 3D LEVEL
+--------------------------------------------------------
+$levels
+        1 2 3 4 5 6 8 10 
+        12 14 16 20 24 28 32 36 40
+$end
+
+--------------------------------------------------------
+                SECTION BOUNDARY
+--------------------------------------------------------
+$bound1     ---- chioggia ----
+	kbound = 150 173 172 151
+        ampli = 0.40  period = 43200.  phase = 32400.  zref = 0.
+        salt   = 35.
+        temp   = 25.0
+$end
+
+$bound2    ---- malamocco ----
+	kbound = 4311 4315 4314 4309
+        ampli = 0.40  period = 43200.  phase = 32400.  zref = 0.
+        salt   = 35.
+        temp   = 25.0
+$end
+
+$bound3   ---- lido ----
+	kbound = 2750 2757 2758 2751
+        ampli = 0.40  period = 43200.  phase = 32400.  zref = 0.
+        salt   = 35.
+        temp   = 25.0
+$end
+
+-------------------------------------------------------
+           SECTIONS EXTRA for TIME SERIES
+--------------------------------------------------------
+$extra 
+        2750   '1_Bocca_di_Porto_Lido'
+        2449   '2_Punta_della_salute'
+        2174   '3_Fusina'
+        2032   '4_Poveglia' 
+        3140   '5_Sant_Erasmo' 
+        3342   '6_Treporti' 
+        3971   '7_Le_Saline'
+$end
+
+--------------------------------------------------------
+           SECTION NAME for FILES
+--------------------------------------------------------
+$name
+        gotmpa = 'INPUT/gotmturb.nml'
+        wind   = 'INPUT/wind_lightBora.dat'
+        qflux  = 'INPUT/heat_idealSummer.dat'
+$end

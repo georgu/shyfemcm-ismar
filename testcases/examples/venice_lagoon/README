@@ -1,0 +1,43 @@
+
+#------------------------------------------------------------------------
+#
+#    Copyright (C) 1985-2020  Georg Umgiesser
+#
+#    This file is part of SHYFEM.
+#
+#------------------------------------------------------------------------
+
+
+directory containing files to run simulations for the tutorial
+
+-------------------------------------------------------------------
+
+First visualize the mesh with the associated bathymetry:
+
+grid -fc7 GRID/venlag62.grd
+
+shyplot GRID/venlag62.grd 
+
+For the simulation in the tutorial you run the simulation as simply as
+
+./shyfem venlag.str 
+
+And for a simple postprocessing of surface fields:
+
+shyplot -varid 2 -layer 1 venlag.hydro.shy  apn_venice_lagoon.str
+
+shyplot -varid 11 -layer 1 venlag.ts.shy  apn_venice_lagoon.str
+
+shyplot -varid 12 -layer 1 venlag.ts.shy  apn_venice_lagoon.str
+
+To extract the gauge files in ASCII format run:
+
+shyelab -split venlag.ext
+
+-------------------------------------------------------------------
+
+The tutorial can be found at the following address:
+
+https://github.com/lucarpaia/shyfemcm-ismar/wiki/Three%E2%80%90dimensional-Venice-lagoon-simulation
+
+-------------------------------------------------------------------
