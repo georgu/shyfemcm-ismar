@@ -90,6 +90,7 @@
 	logical, save :: bgeo
 	logical, save :: blimit
 	logical, save :: bback = .false.
+	logical, save :: bfile = .false.
 
 	real, parameter :: flag = -999
 
@@ -276,7 +277,7 @@
 
 	call setup_background_coords(nback,regpar,xback,yback)
 
-	call read_background_values(backfile,nback,zback)
+	!call read_background_values(backfile,nback,zback)
 
 	zback = flag
 	zanal = flag
@@ -442,7 +443,8 @@
 	    call write_fem_record(iutau,atime_old,regpar,string,np,ztau_old)
 	  end if
 	  if( bweight .and. bchanged ) then
-	    call make_weight(nobs,xobs,yobs,zobs,rlact,nback,xback,yback &
+	    call make_weight(nobs,xobs,yobs,zobs,rlact,rlmaxa &
+     &						,nback,xback,yback &
      &						,zweight)
 	    string = 'weight'
 	    call write_fem_record(iuweight,atime,regpar,string,np,zweight)
@@ -510,6 +512,8 @@
 	    write(6,*) 'limiting records treated to: ',nrec
 	  end if
 	end if
+
+	call optintp_final
 
 !-----------------------------------------------------------------
 ! end of routine
@@ -723,7 +727,8 @@
 
 !****************************************************************
 
-	subroutine make_weight(nobs,xobs,yobs,zobs,rl,nback,xback,yback &
+	subroutine make_weight(nobs,xobs,yobs,zobs,rl,rlmax &
+     &					,nback,xback,yback &
      &					,zweight)
 
 	use mod_optintp, only : flag
@@ -735,6 +740,7 @@
 	real yobs(nobs)
 	real zobs(nobs)
 	real rl(nobs)
+	real rlmax(nobs)
 	integer nback
 	real xback(nback)
 	real yback(nback)
@@ -744,19 +750,22 @@
 	real xi,yi,zi,xj,yj
 	real dist2,z
 	real rl2(nobs)
+	real rlm2(nobs)
 
-	rl2 = rl**2
+	rl2 = 2.*(rl**2)
+	rlm2 = rlmax**2
 
         do j=1,nback
           xj = xback(j)
           yj = yback(j)
-	  z = 0
+	  z = 0.
           do i=1,nobs
             xi = xobs(i)
             yi = yobs(i)
             zi = zobs(i)
 	    if( zi == flag ) cycle
             dist2 = (xi-xj)**2 + (yi-yj)**2
+	    if( dist2 > rlm2(i) ) continue
             z = z + exp( -dist2/rl2(i) )
           end do
 	  z = min(1.,z)
@@ -1218,7 +1227,7 @@
 	real yobs(nobs)			!y-coordinate
 	real zobs(nobs)			!value of observation
 	real rra(nobs)			!error of observation
-	real rla(nobs)			!std of observation
+	real rla(nobs)			!std of background
 
 	character*80 line
 	logical bdebug
@@ -1274,8 +1283,8 @@
 	    xobs(i) = f(2)
 	    yobs(i) = f(3)
 	    zobs(i) = f(4)
-	    if( ianz >= 5 ) rra(i) = f(5)	!optional rr
-	    if( ianz >= 6 ) rla(i) = f(6)	!optional rl
+	    if( ianz >= 5 .and. f(5) > 0 ) rra(i) = f(5)	!optional rr
+	    if( ianz >= 6 .and. f(6) > 0 ) rla(i) = f(6)	!optional rl
 	end do
 
 	if( nobs_orig == 0 ) nobs_orig = nobs
@@ -1325,7 +1334,7 @@
 
 	character*(*) file
 
-	integer ns,ierr
+	integer ns,ierr,ios
 	real f(4)
 
 !-------------------------------------------------------------
@@ -1356,7 +1365,7 @@
      &		,'dx,dy for regular field')
         call clo_add_option('minmax xmin,ymin,xmax,ymax',' ' &
      &		,'min/max for regular field')
-        call clo_add_option('backval val',flag &
+        call clo_add_option('backvalue val',flag &
      &		,'use val as average background value')
         call clo_add_option('backfile file',' ' &
      &		,'use file as background grid')
@@ -1457,11 +1466,22 @@
 	bback = ( backvalue /= flag )
 	bfile = ( backfile /= ' ' )
 
+	open(1,file='success.txt',iostat=ios,status='old')
+	if( ios == 0 ) close(1,status='delete')
+
 !-------------------------------------------------------------
 ! end of routine
 !-------------------------------------------------------------
 
 	end subroutine
+
+!******************************************************************
+
+	subroutine optintp_final
+	open(1,file='success.txt',form='formatted')
+	write(1,*) 'optinp has finished with success'
+	close(1)
+	end
 
 !******************************************************************
 
