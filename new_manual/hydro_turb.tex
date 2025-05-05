@@ -39,8 +39,12 @@ using the turbulence closure module.
 The parameter that has to be set in order to choose the turbulence
 scheme is |iturb| in the |$para| section..  If |iturb|=0 the vertical
 eddy viscosity and eddy diffusivity are set constant (default 0) and
-must be defined in |vistur| and |diftur|.
+must be defined in |vistur| and |diftur|. In this case possible values are between 1\ten{-2} and 1\ten{-5}, depending on the
+stability of the water column. Higher values (1\ten{-2}) indicate higher
+stability and a stronger barotropic behavior.
 
+The other possibility is to compute the vertical eddy coefficients through
+a turbulence closure scheme. This usage will be described in the paragraph.
 If |iturb|=1 the GOTM turbulence closure module is used.
 If |iturb|=2 the turbulence closure scheme applied is the $k-\epsilon$ model. 
 Finally, if |iturb|=3, the Munk-Anderson model is used.
