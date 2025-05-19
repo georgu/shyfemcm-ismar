@@ -195,7 +195,7 @@
 	  !! array. This ordering is beneficial to factorize the code and perform the 
 	  !! many operations of the fields with do loops. You have to keep in mind that, 
 	  !! first we have import fields, and only after we have export fields. 
-	  allocate( SHYFEM_FieldMetadata(11) )
+	  allocate( SHYFEM_FieldMetadata(12) )
 
           !! The field list is defined here. You can modify this part adding new fields.
 	  !! The metadata of each field is filled with a simple constructor statement.
@@ -212,7 +212,7 @@
           !! \item atmospheric pressure at sea-level $p_a$ that
           !! act as a forcing term on the momentum equation.
           num = num + 1	  
-          SHYFEM_FieldMetadata(1) = SHYFEM_Metadata(fieldName="pmsl", &
+          SHYFEM_FieldMetadata(num) = SHYFEM_Metadata(fieldName="pmsl", &
      &      longName="air_pressure_at_sea_level", &
      &      meshloc=ESMF_MESHLOC_NODE)
 
@@ -222,15 +222,27 @@
           !! the atmospheric component with the aid of bulk formulae.
           !! For now we have added only momentum flux that has two components.
           num = num + 1	  
-          SHYFEM_FieldMetadata(2) = SHYFEM_Metadata(fieldName="smes", &
+          SHYFEM_FieldMetadata(num) = SHYFEM_Metadata(fieldName="smes", &
      &      longName="surface_downward_eastward_stress", &
      &      meshloc=ESMF_MESHLOC_NODE)
 
           num = num + 1	  
-          SHYFEM_FieldMetadata(3) = SHYFEM_Metadata(fieldName="smns", &
+          SHYFEM_FieldMetadata(num) = SHYFEM_Metadata(fieldName="smns", &
      &      longName="surface_downward_northward_stress", &
      &      meshloc=ESMF_MESHLOC_NODE)
 
+          !! \item momentum drag coefficient. This is not strictly necessary for ocean
+          !! atmosphere coulping, since the wind stress in enough.
+          !! However SHYFEM has a global variable for the drag that can be occasionally
+          !! used. If not set correctly, mismatches between the wind stress and the
+          !! wind velocity may arise. We transfer one more variable and we let the drag
+          !! coeff be choerent with the wind stress. Note that this is important in case
+          !! of ocean-wave-atmosphere couplung, to recover wind velocity component to
+          !! force WW3.
+          num = num + 1
+          SHYFEM_FieldMetadata(num) = SHYFEM_Metadata(fieldName="smcd", &
+     &      longName="surface_momentum_drag_coefficient", &
+     &      meshloc=ESMF_MESHLOC_NODE)
 #endif
 #ifdef WITHFIELDS_HEATFLUX
 	  !! \item downward-short-wave-radiation flux $R_{sw}$.
@@ -1533,6 +1545,9 @@
             case ("smns")
 	      wyv(1:nkn_inner) = fieldPtr(1:nkn_inner)
 	      call shympi_exchange_2d_node(wyv)
+            case ("smcd")
+              windcd(1:nkn_inner) = fieldPtr(1:nkn_inner)
+              call shympi_exchange_2d_node(windcd)
             case ("stsh")
               mettair(1:nkn_inner) = fieldPtr(1:nkn_inner)
 	      call shympi_exchange_2d_node(mettair)
