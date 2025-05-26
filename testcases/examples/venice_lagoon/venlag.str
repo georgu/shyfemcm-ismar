@@ -82,6 +82,29 @@ $bound3   ---- lido ----
         temp   = 25.0
 $end
 
+--------------------------------------------------------
+           SECTION AREA FOR DRAG COEFF
+--------------------------------------------------------
+0:       intertidal flats
+1:       intertidal flats
+2,6,7,8: channels
+3:       Chioggia inlet
+4:       Malamocco inlet
+5:       Lido inlet south
+9:       Lido inlet north
+$area
+        0 16.
+        1 16.
+        2 40.
+        3 26.
+        4 22.
+        5 25.
+        6 40.
+        7 40.
+        8 40.
+        9 25.
+$end
+
 -------------------------------------------------------
            SECTIONS EXTRA for TIME SERIES
 --------------------------------------------------------
