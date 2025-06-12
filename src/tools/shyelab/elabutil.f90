@@ -180,6 +180,7 @@
 	integer, save :: ifreq			= 0
 	logical, save :: b2d			= .false.
 	logical, save :: bvorticity		= .false.
+	logical, save :: buse_string		= .false.
 
 	real, save :: perc			= -1.		!percentile
 
@@ -393,6 +394,9 @@
         call clo_add_sep('output options')
 
         call clo_add_option('out',.false.,'writes new file')
+
+        call clo_add_option('use_string',.false.,'use string in file name ' &
+     &				// 'with -split')
 
         call clo_add_option('outformat form','native','output format')
 	call clo_add_com('    possible output formats are: ' &
@@ -752,6 +756,7 @@
         call clo_get_option('rfreq',rfreq)
 
         call clo_get_option('out',bout)
+        call clo_get_option('use_string',buse_string)
         call clo_get_option('outformat',outformat)
         call clo_get_option('catmode',catmode)
         call clo_get_option('ncglobal',sncglobal)
@@ -924,6 +929,8 @@
 	bneedbasin = bneedbasin .or. ( type == 'OUS' .and. bsplit )
 
 	bthreshold = ( threshold /= flag )
+
+	call shyelab_unit_set_new_format(buse_string)
 
 	if( binfo ) bverb = .true.
 	if( bwrite ) bverb = .true.

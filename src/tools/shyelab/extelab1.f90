@@ -463,7 +463,11 @@
 	if( .not. bquiet ) then
 	 if( bsplit ) then
 	  write(6,*) 'output written to following files: '
-	  write(6,*) '  what.dim.node.txt'
+	  if( buse_string ) then
+	    write(6,*) '  what.dim.node.string.txt'
+	  else
+	    write(6,*) '  what.dim.node'
+	  end if
 	  write(6,*) 'what is one of the following:'
 	  call write_special_vars(niu,what,descrp)	!write hydro variables
 	  if( nvar > 2 ) then
@@ -473,8 +477,10 @@
 	  write(6,*) '  2d for depth averaged variables'
 	  write(6,*) '  3d for output at each layer'
 	  call compute_range(knausm,range)
-	  write(6,1123) ' node is either name of station ' // &
-     &		'or consecutive node numbering: ',trim(range)
+	  write(6,1123) ' node is consecutive node numbering: ',trim(range)
+	  if( buse_string ) then
+	    write(6,*) ' string is description of node (if available)'
+	  end if
 	 else if( boutput ) then
 	  write(6,*) 'output written to file out.ext'
 	 end if

@@ -161,8 +161,8 @@
 	  write(6,*) 'file: ',trim(file)
 	  stop 'error stop shyelab: file not existing'
 	end if
-	if( .not. shy_is_shy_file(file) .and.
-     +      .not. shy_is_lgr_file(file) ) then
+	if( .not. shy_is_shy_file(file) .and. &
+     &      .not. shy_is_lgr_file(file) ) then
 	  write(6,*) 'file: ',trim(file)
 	  stop 'error stop shyelab: not a valid shy file'
 	end if
@@ -203,9 +203,9 @@
 
         subroutine open_shy_file_0(file,status,nunit)
 
-c open SHY file
-c
-c nunit is 0 if no other file exists
+! open SHY file
+!
+! nunit is 0 if no other file exists
 
         use clo
 
@@ -261,8 +261,8 @@ c nunit is 0 if no other file exists
 !***************************************************************
 !***************************************************************
 
-	subroutine read_records(id,dtime,bhydro,nvar,nndim,nlvddi
-     +				,ivars,cv3,cv3all,ierr)
+	subroutine read_records(id,dtime,bhydro,nvar,nndim,nlvddi &
+     &				,ivars,cv3,cv3all,ierr)
 
 	use elabutil
 	use shyfile
@@ -301,8 +301,8 @@ c nunit is 0 if no other file exists
 	  if( iv > nvar ) exit
 	  belem = ( bhydro .and. iv >= 2 )
 	  cv3 = 0.
-	  call shy_read_record(id,dtime,belem
-     +				,ivar,n,m,lmax,nlvddi,cv3,ierr)
+	  call shy_read_record(id,dtime,belem &
+     &				,ivar,n,m,lmax,nlvddi,cv3,ierr)
           if( ierr .gt. 0 ) goto 75
           if( ierr .ne. 0 ) exit
 	  nexp = n * m

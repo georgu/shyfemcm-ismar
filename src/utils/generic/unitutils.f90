@@ -35,12 +35,42 @@
 
 	module shyelab_unit
 
-	logical, save :: b_use_string = .false.
+	logical, save :: b_use_new_format = .false.
 	integer, save :: iunit = 100
 	character*80, save :: string_save = ' '
 
 	end module shyelab_unit
 
+!***************************************************************
+!***************************************************************
+!***************************************************************
+
+	subroutine shyelab_unit_set_new_format(bval)
+
+	use shyelab_unit
+
+	implicit none
+
+	logical bval
+
+	b_use_new_format = bval
+
+	end
+
+!***************************************************************
+
+	subroutine shyelab_unit_get_new_format(bval)
+
+	use shyelab_unit
+
+	implicit none
+
+	logical bval
+
+	bval = b_use_new_format
+
+	end
+	
 !***************************************************************
 
 	subroutine get_new_unit(iu)
@@ -66,13 +96,15 @@
 
 	subroutine set_iunit_string(string)
 
+! transforms " ()" into underscores
+
 	use shyelab_unit
 
 	character*(*) string
 
 	string_save = string
 
-	if( .not. b_use_string ) string_save = ' '
+	if( .not. b_use_new_format ) string_save = ' '
 
 	do i=1,len_trim(string_save)
 	  if( string_save(i:i) == ' ' ) string_save(i:i) = '_'
@@ -99,19 +131,30 @@
 	logical bopen
 	character*80 numb
 	character*80 dimen
+	character*80 string
+	character*80 extension
 	character*80 name
 
 	if( j <= 0 ) then	!no node number given
 	  numb = '0'
-	else if( b_use_string .and. string_save /= ' ' ) then
-	  numb = string_save
 	else
           write(numb,'(i5)') j
           numb = adjustl(numb)
 	end if
 
+	string = ' '
+	extension = ' '
+
+	if( b_use_new_format ) then
+	  if( string_save /= ' ' ) then
+	    string = '.' // string_save
+	  end if
+	  extension = '.txt'
+	end if
+
 	dimen = '.' // trim(dim) // '.'
-	name = trim(short)//trim(modi)//trim(dimen)//trim(numb)//'.txt'
+	name = trim(short)//trim(modi)//trim(dimen) &
+     &			//trim(numb)//trim(string)//trim(extension)
 
 	call get_new_unit(iu)
 
