@@ -29,13 +29,108 @@
 !
 ! 03.03.2023    ggu     created
 ! 15.01.2025    ggu     get description for variables
+! 15.06.2025    ggu     better documentation
 !
 ! info : 
 !
 ! https://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf-f77/
 ! https://www.unidata.ucar.edu/software/netcdf/examples/programs/
 ! http://nco.sourceforge.net/nco.html
- 
+
+!--------------------------------------------------------------------------
+!
+! contents :
+!
+! function ncf_get_nitem(ncid)		returns nitem structure
+!
+! ncf_get_record(ncid,varid,irec,data)  returns data of varid of record irec
+! ncf_get_data(ncid,varid,data)		returns data of varid (no time dim)
+!
+! ncf_open_read(file,ncid)		opens nc file for read and returns ncid
+! ncf_open_write(file,ncid)		opens nc file for write and returns ncid
+! ncf_start_data_mode(ncid)		starts data mode for writing data
+! ncf_close(ncid)			closes nc file
+! ncf_make_dim(ncid,ndims,len,name)	makes dimensions for output file
+!
+! ncf_var_ndims(ncid,varid,ndims)	gets total number of dims of var varid
+! ncf_ndims(ncid,ndims)			gets total number of dims of nc file
+! ncf_dim(ncid,dimid,dimname,dimlen)	gets name and length of dimension dimid
+!
+! ncf_nvars(ncid,nvars)			retrieves total number of variables
+! ncf_var_id(ncid,varname,varid)	retrieves varid from variable name 
+! ncf_var_name(ncid,varid,varname)	retrieves variable name from varid
+! ncf_var_inf(ncid,varid,vitem)		returns vitem info from varid
+!
+! ncf_var_get(ncid,vitem)		gets data for variable vitem
+! ncf_var_get_record(ncid,irec,vitem)	gets record for variable vitem
+! ncf_var_make(ncid,vitem)		defines new variable structure vitem
+! ncf_var_put(ncid,vitem)		writes variable data in vitem to file
+!
+! ncf_natts(vitem,natts)		returns number of attributes of vitem
+! ncf_att_id(ncid,varid,attname,attid)  retrieves attid of varid and attname
+! ncf_att_name(ncid,varid,attid,attname)retrieves attname of varid and attid
+! ncf_att_name_string(ncid,varid,attname,string) gets string of varid & attname
+! ncf_att_id_string(ncid,varid,attid,string)     gets string of varid & attid
+! ncf_att_inf(ncid,varid,attid,aitem)	retrieves aitem of attid and varid
+! ncf_att_put(ncid,varid,aitem)		writes attribute aitem of varid to file
+!
+! ncf_print_dimensions(ditem)		prints dimensions
+! ncf_print_variable(ncid,vitem)	prints variable
+! ncf_print_variable_header(ncid,nitem)	prints variable header
+! ncf_print_attributes(ncid,vitem)	prints attributes of vitem
+! ncf_print_attribute_header(ncid,varid)prints attribute header
+! ncf_print_attribute(aitem)		prints attribute
+!
+! ncf_get_var_description(ncid,vitem,description)	returns var description
+! ncf_set_var_name_length(ncid,nitem)	sets variable name length of nc file
+! ncf_set_att_name_length(ncid,varid)	sets attribute name length of varid
+!
+! ncf_file_info(nitem,bverbose)		prints general info on nitem
+!
+! legend :
+!
+! ncid		identifier of nc filew
+! file		file name of nc file
+! varid		id of variable
+! attid		id of attribute
+! varname	name of variable
+! attname	name of attribute
+! ndims		total number of dimensions (either in file or of variable)
+! dimid		id of dimension
+! nvars		total number of variables in file
+! natts		total number of attributes of variable
+! ngatts	total number of global attributes
+! idunlim	id of unlimited dimension (0 if none)
+!
+! irec		number of time record
+! data		array for variable data (double)
+! string	character string
+! description	description of variable
+!
+! nitem		data structure of nc file
+! ditem		data structure of dimensions
+! vitem		data structure of variable
+! aitem		data structure of attribute
+!
+! typical usage for reading nc files :
+!
+! call ncf_open_read(ncfile,ncid)
+! nitem = ncf_get_nitem(ncid)
+! nvars = nitem%nvars
+! call ncf_print_variable_header(ncid,nitem)
+! do varid=1,nvars
+!   call ncf_var_inf(ncid,varid,vitem)
+!   call ncf_print_variable(ncid,vitem)
+!   call ncf_natts(vitem,natts)
+!   if( natts > 0 ) then
+!     call ncf_print_attribute_header(ncid,varid)
+!     call ncf_print_attributes(ncid,vitem)
+!   end if
+! end do
+! call ncf_close(ncid)
+!
+!--------------------------------------------------------------------------
+
 !==================================================================
         module ncf
 !==================================================================
@@ -464,7 +559,9 @@
 
 	subroutine ncf_open_read(file,ncid)
 
-! reads file into ncf structure
+! opens nc file for read and returns ncid
+!
+! fills in nitem data structure
 
 	implicit none
 
@@ -519,7 +616,7 @@
 
 	subroutine ncf_open_write(file,ncid)
 
-! opens file ncf for write
+! opens nc file for write and returns ncid
 
 	implicit none
 
@@ -601,6 +698,8 @@
 
 	subroutine ncf_var_ndims(ncid,varid,ndims)
 
+! gets total number of dims of var varid
+
 	implicit none
 
 	integer ncid,varid,ndims
@@ -613,6 +712,8 @@
 !*****************************************************************
 
         subroutine ncf_ndims(ncid,ndims)
+
+! gets total number of dims of nc file
 
 	implicit none
 
@@ -627,6 +728,8 @@
 !*****************************************************************
 
         subroutine ncf_dim(ncid,dimid,dimname,dimlen)
+
+! gets name and length of dimension dimid
 
 	implicit none
 
@@ -672,38 +775,38 @@
  
 !*****************************************************************
 
-	subroutine ncf_var_id(ncid,name,varid)
+	subroutine ncf_var_id(ncid,varname,varid)
 
-! retrieves variable id from variable name
+! retrieves varid from varname
 
 	implicit none
 
 	integer ncid
-	character*(*) name
+	character*(*) varname
 	integer varid
 
-	retval = NF_INQ_VARID(ncid,name,varid)
+	retval = NF_INQ_VARID(ncid,varname,varid)
         if( ncf_has_err(retval) ) varid = 0
 
 	end
  
 !*****************************************************************
 
-	subroutine ncf_var_name(ncid,varid,name)
+	subroutine ncf_var_name(ncid,varid,varname)
 
-! retrieves variable name from variable id
+! retrieves varname from varid
 
 	implicit none
 
 	integer ncid
 	integer varid
-	character*(*) name
+	character*(*) varname
 
         character*(NF_MAX_NAME) :: nameaux
 
 	retval = NF_INQ_VARNAME(ncid,varid,nameaux)
         if( ncf_has_err(retval) ) nameaux = ' '
-	name = nameaux
+	varname = nameaux
 
 	end
  
@@ -711,7 +814,7 @@
 
 	subroutine ncf_var_inf(ncid,varid,vitem)
 
-! retrieves variable info from variable id and returns it in vitem
+! returns vitem info from varid
 
 	implicit none
 
@@ -841,7 +944,7 @@
 
 	subroutine ncf_var_make(ncid,vitem)
 
-! makes new variable structure vitem
+! defines new variable structure vitem
 
 	implicit none
 
@@ -866,7 +969,7 @@
 
 	subroutine ncf_var_put(ncid,vitem)
 
-! writes variable data to file
+! writes variable data in vitem to file
 
 	implicit none
 
@@ -896,7 +999,7 @@
 
 	subroutine ncf_natts(vitem,natts)
 
-! checks if variable has atrributes
+! returns number of attributes of vitem
 
 	implicit none
 
@@ -911,7 +1014,7 @@
 
 	subroutine ncf_att_id(ncid,varid,attname,attid)
 
-! retrieves attribute id (attid) of variable varid and attribute name attname
+! retrieves attid of varid and attname
 
 	implicit none
 
@@ -929,7 +1032,7 @@
 
 	subroutine ncf_att_name(ncid,varid,attid,attname)
 
-! retrieves attribute name (attname) of variable varid and attribute id (attid)
+! retrieves attname of varid and attid
 
 	implicit none
 
@@ -950,7 +1053,7 @@
 
 	subroutine ncf_att_name_string(ncid,varid,attname,string)
 
-! retrieves attribute string of variable varid and attribute name
+! gets string of varid and attname
 
 	implicit none
 
@@ -976,7 +1079,7 @@
 
 	subroutine ncf_att_id_string(ncid,varid,attid,string)
 
-! retrieves attribute string of variable varid and attribute id
+! gets string of varid and attid
 
 	implicit none
 
@@ -997,7 +1100,7 @@
 
 	subroutine ncf_att_inf(ncid,varid,attid,aitem)
 
-! retrieves attribute with attid of variable varid and stores info in aitem
+! retrieves aitem of attid and varid
 
 	implicit none
 
@@ -1116,59 +1219,6 @@
 
 !*****************************************************************
 
-        subroutine ncf_get_var_description(ncid,vitem,description)
-
-        implicit none
-
-        integer ncid
-	type(var_item) :: vitem
-        character*(*) :: description
-
-        integer varid
-        character*80 :: string
-
-        varid = vitem%id
-        description = ' '
-
-	call ncf_att_name_string(ncid,varid,'long_name',description)
-        if( description /= ' ' ) return
-
-	call ncf_att_name_string(ncid,varid,'standard_name',description)
-        if( description /= ' ' ) return
-
-	call ncf_att_name_string(ncid,varid,'description',description)
-        if( description /= ' ' ) return
-
-        end
-
-!*****************************************************************
-
-	subroutine ncf_set_var_name_length(ncid,nitem)
-
-        implicit none
-
-        integer ncid
-	type(nc_item) :: nitem
-
-        integer nvars,varid
-        integer len,lmax
-	type(var_item) :: vitem
-
-        nvars = nitem%nvars
-
-        lmax = 0
-        do varid=1,nvars
-          call ncf_var_inf(ncid,varid,vitem)
-	  len = len_trim(vitem%name)
-          lmax = max(lmax,len)
-        end do
-
-	var_name_length = lmax		!this is global
-
-        end
-
-!*****************************************************************
-
 	subroutine ncf_print_variable_header(ncid,nitem)
 
 ! prints variable header
@@ -1276,9 +1326,66 @@
 !*****************************************************************
 !*****************************************************************
 
+        subroutine ncf_get_var_description(ncid,vitem,description)
+
+! returns var description
+
+        implicit none
+
+        integer ncid
+	type(var_item) :: vitem
+        character*(*) :: description
+
+        integer varid
+        character*80 :: string
+
+        varid = vitem%id
+        description = ' '
+
+	call ncf_att_name_string(ncid,varid,'long_name',description)
+        if( description /= ' ' ) return
+
+	call ncf_att_name_string(ncid,varid,'standard_name',description)
+        if( description /= ' ' ) return
+
+	call ncf_att_name_string(ncid,varid,'description',description)
+        if( description /= ' ' ) return
+
+        end
+
+!*****************************************************************
+
+	subroutine ncf_set_var_name_length(ncid,nitem)
+
+! sets variable name length of nc file
+
+        implicit none
+
+        integer ncid
+	type(nc_item) :: nitem
+
+        integer nvars,varid
+        integer len,lmax
+	type(var_item) :: vitem
+
+        nvars = nitem%nvars
+
+        lmax = 0
+        do varid=1,nvars
+          call ncf_var_inf(ncid,varid,vitem)
+	  len = len_trim(vitem%name)
+          lmax = max(lmax,len)
+        end do
+
+	var_name_length = lmax		!this is global
+
+        end
+
+!*****************************************************************
+
 	subroutine ncf_set_att_name_length(ncid,varid)
 
-! sets attribute name length of variable varid
+! sets attribute name length of varid
 
 	implicit none
 
@@ -1322,6 +1429,8 @@
 !*****************************************************************
 
 	subroutine ncf_file_info(nitem,bverbose)
+
+! prints general info on nitem
 
 	implicit none
 
