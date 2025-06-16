@@ -599,6 +599,7 @@ endif
 GMV := $(shell $(BINDIR)/cmv.sh -quiet gfortran)
 IMV := $(shell $(BINDIR)/cmv.sh -quiet intel)
 GMV_LE_4  := $(shell [ $(GMV) -le 4 ] && echo true || echo false )
+GMV_LE_5  := $(shell [ $(GMV) -le 5 ] && echo true || echo false )
 GMV_LE_8  := $(shell [ $(GMV) -le 8 ] && echo true || echo false )
 IMV_LE_14 := $(shell [ $(IMV) -le 14 ] && echo true || echo false )
 
@@ -607,6 +608,7 @@ MVDEBUG := false
 ifeq ($(MVDEBUG),true)
   $(info gfortran major version = $(GMV) )
   $(info gfortran major version <= 4: $(GMV_LE_4) )
+  $(info gfortran major version <= 5: $(GMV_LE_5) )
   $(info gfortran major version <= 8: $(GMV_LE_8) )
   $(info intel major version = $(IMV) )
   $(info intel major version <= 14: $(IMV_LE_14) )
@@ -647,9 +649,11 @@ ifeq ($(GMV_LE_8),true)
   WNOINIT = -Wno-uninitialized
 endif
 WTABS = -Wno-tabs
-FGNU_allow-argument-mismatch = -fallow-argument-mismatch
 ifeq ($(GMV_LE_4),true)
   WTABS = -Wtabs
+endif
+FGNU_allow-argument-mismatch = -fallow-argument-mismatch
+ifeq ($(GMV_LE_5),true)
   FGNU_allow-argument-mismatch = 
 endif
 
