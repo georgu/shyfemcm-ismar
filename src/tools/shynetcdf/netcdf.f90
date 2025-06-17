@@ -76,6 +76,7 @@
 ! 03.10.2024	ggu	new variables added
 ! 01.04.2025	ggu	handle variables with no CL description
 ! 07.04.2025	ggu	new routine handle_time_string()
+! 17.06.2025	ggu	deal with description == 'unknown'
 !
 ! notes :
 !
@@ -1588,15 +1589,15 @@
 	if( .not. nc_has_err(retval) ) then
 	  call nc_get_var_attrib(ncid,var_id,aname,atext,avalue)
 	  description = atext
-	  return
 	end if
+
+	if( description /= ' ' .and. description /= 'unknown' ) return
 
 	aname = 'long_name'
 	retval = nf_inq_att(ncid,var_id,aname,xtype,length)
 	if( .not. nc_has_err(retval) ) then
 	  call nc_get_var_attrib(ncid,var_id,aname,atext,avalue)
 	  description = atext
-	  return
 	end if
 
 	end
