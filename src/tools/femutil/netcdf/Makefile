@@ -69,7 +69,7 @@ OBJS_TIME = ncf_tutil.o subiso8601.o subdts.o
 OBJS_BGC += $(OBJS_TIME)
 
 EXES = gr gw ncinfo ncelab
-EXES = ncinfo ncbgc ncelab ncugrid
+EXES = ncinfo ncbgc ncelab ncugrid grnew
 
 DATA = $(HOME)/work/nc2fem/data
 
@@ -92,6 +92,9 @@ ncugrid: $(OBJS_UGRID) $(LIBFS) ncugrid.o
 	gfortran -o $@ $@.o $(OBJS_UGRID) $(LIBGS)
 
 gr: $(OBJS_GR) $(LIBFS) gr.o
+	gfortran -o $@ $@.o $(OBJS_GR) $(LIBGS)
+
+grnew: $(OBJS_GR) $(LIBFS) grnew.o
 	gfortran -o $@ $@.o $(OBJS_GR) $(LIBGS)
 
 link: data
