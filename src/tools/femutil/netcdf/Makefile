@@ -61,6 +61,7 @@ LIBFS      = $(LIBF_NETCDF)
 OBJS = ncf_util.o subclo.o ncf_dim_coords.o convert.o
 OBJS_BASE = ncf_util.o ncf_dim_coords.o subclo.o convert.o
 OBJS_INFO = ncf_util.o subclo.o
+OBJS_UGRID = ncf_util.o subclo.o convert.o
 OBJS_ELAB = ncf_util.o subclo.o
 OBJS_BGC = ncf_util.o ncf_dim_coords.o subclo.o convert.o bgc_util.o subgeo.o
 OBJS_GR = ncf_util.o subclo.o
@@ -68,7 +69,7 @@ OBJS_TIME = ncf_tutil.o subiso8601.o subdts.o
 OBJS_BGC += $(OBJS_TIME)
 
 EXES = gr gw ncinfo ncelab
-EXES = ncinfo ncbgc ncelab
+EXES = ncinfo ncbgc ncelab ncugrid grnew
 
 DATA = $(HOME)/work/nc2fem/data
 
@@ -81,13 +82,19 @@ all: link $(EXES)
 ncinfo: $(OBJS_INFO) $(LIBFS) ncinfo.o
 	gfortran -o $@ $@.o $(OBJS_INFO) $(LIBGS)
 
-ncelab: $(OBJS_ELAB) $(LIBFS) ncelab.o
-	gfortran -o $@ $@.o $(OBJS_ELAB) $(LIBGS)
-
 ncbgc: $(OBJS_BGC) $(LIBFS) ncbgc.o
 	gfortran -o $@ $@.o $(OBJS_BGC) $(LIBGS)
 
+ncelab: $(OBJS_ELAB) $(LIBFS) ncelab.o
+	gfortran -o $@ $@.o $(OBJS_ELAB) $(LIBGS)
+
+ncugrid: $(OBJS_UGRID) $(LIBFS) ncugrid.o
+	gfortran -o $@ $@.o $(OBJS_UGRID) $(LIBGS)
+
 gr: $(OBJS_GR) $(LIBFS) gr.o
+	gfortran -o $@ $@.o $(OBJS_GR) $(LIBGS)
+
+grnew: $(OBJS_GR) $(LIBFS) grnew.o
 	gfortran -o $@ $@.o $(OBJS_GR) $(LIBGS)
 
 link: data

@@ -77,6 +77,7 @@ c 29.01.2023    ggu     more on correct area computation (eliminated areatr)
 c 10.05.2024    ggu     new routine write_basin_txt() (bbastxt)
 c 03.10.2024    ggu     new call to test_fast_find()
 c 21.11.2024    ggu     renamed call to some routines
+c 18.06.2025    ggu     new option -comparebas and routine bascompare_bas()
 c
 c todo :
 c
@@ -162,7 +163,8 @@ c-----------------------------------------------------------------
 	if( bquality ) call basqual		!grid quality
 	if( bresol ) call bas_resolution	!grid resolution
 
-	if( bcompare ) call bascompare		!compares 2 basins
+	if( bcompare ) call bascompare_depth	!compares depth of 2 basins
+	if( bcomparebas ) call bascompare_bas	!compares 2 basins
 	if( hsigma > 0 ) call bashsigma(hsigma)	!creates hybrid layers
 	if( bfile /= ' ' ) call basbathy	!interpolate bathymetry
 	if( bsmooth ) call bas_smooth		!limit and smooth
@@ -1380,7 +1382,7 @@ c-----------------------------------------------------------------
 
 c*******************************************************************
 
-	subroutine bascompare
+	subroutine bascompare_depth
 
 c compares two basins and writes delta depths to file
 
@@ -1400,13 +1402,13 @@ c compares two basins and writes delta depths to file
 	call clo_get_file(2,file)
 	if( file == ' ' ) then
 	  write(6,*) 'for -compare we need two bas files'
-	  stop 'error stop bascomp: missing second file'
+	  stop 'error stop bascompare_depth: missing second file'
 	end if
 	call basin_read(file)
 
 	if( nel /= nel_aux ) then
 	  write(6,*) 'dimension of basins incompatible: ',nel,nel_aux
-	  stop 'error stop bascomp: nel'
+	  stop 'error stop bascompare_depth: nel'
 	end if
 
 	!call ev_init(nel)
@@ -1418,6 +1420,100 @@ c compares two basins and writes delta depths to file
         call grd_write('bascomp.grd')
         write(6,*) 'The basin has been written to bascomp.grd'
 
+	end
+
+c*******************************************************************
+
+	subroutine bascompare_bas
+
+c compares two basins
+
+	use basin
+	use clo
+
+	implicit none
+
+	logical bequal
+	character*80 file
+	type(basin_type) :: pbasin
+
+	call basin_save_basin(pbasin)
+
+	call clo_get_file(2,file)
+	if( file == ' ' ) then
+	  write(6,*) 'for -compare we need two bas files'
+	  stop 'error stop bascompare_depth: missing second file'
+	end if
+	call basin_read(file)
+
+	write(6,*) 'comparing basins...'
+
+	bequal = .true.
+
+	if( nkn /= pbasin%nkn ) goto 99
+	if( nel /= pbasin%nel ) goto 99
+	if( ngr /= pbasin%ngr ) goto 99
+	if( mbw /= pbasin%mbw ) then
+	  bequal = .false.
+	  write(6,*) 'mbw: ',mbw,pbasin%mbw
+	end if
+
+	if( dcorbas /= pbasin%dcorbas ) then
+	  bequal = .false.
+	  write(6,*) 'dcorbas: ',dcorbas,pbasin%dcorbas
+	end if
+	if( dirnbas /= pbasin%dirnbas ) then
+	  bequal = .false.
+	  write(6,*) 'dirnbas: ',dirnbas,pbasin%dirnbas
+	end if
+	if( sphebas /= pbasin%sphebas ) then
+	  bequal = .false.
+	  write(6,*) 'sphebas: ',sphebas,pbasin%sphebas
+	end if
+	if( descrr /= pbasin%descrr ) then
+	  bequal = .false.
+	  write(6,*) 'descrr: ',descrr,pbasin%descrr
+	end if
+
+	if( any(nen3v/=pbasin%nen3v) ) then
+	  bequal = .false.
+	  write(6,*) 'nen3v is differing'
+	end if
+	if( any(ipv/=pbasin%ipv) ) then
+	  bequal = .false.
+	  write(6,*) 'ipv is differing'
+	end if
+	if( any(ipev/=pbasin%ipev) ) then
+	  bequal = .false.
+	  write(6,*) 'ipev is differing'
+	end if
+	if( any(iarv/=pbasin%iarv) ) then
+	  bequal = .false.
+	  write(6,*) 'iarv is differing'
+	end if
+	if( any(xgv/=pbasin%xgv) ) then
+	  bequal = .false.
+	  write(6,*) 'xgv is differing'
+	end if
+	if( any(ygv/=pbasin%ygv) ) then
+	  bequal = .false.
+	  write(6,*) 'ygv is differing'
+	end if
+	if( any(hm3v/=pbasin%hm3v) ) then
+	  bequal = .false.
+	  write(6,*) 'hm3v is differing'
+	end if
+
+	if( bequal ) write(6,*) 'basins are identical'
+
+	return
+   99	continue
+	write(6,*) 'basins have different dimension:'
+	write(6,*) 'nkn: ',nkn,pbasin%nkn
+	write(6,*) 'nel: ',nel,pbasin%nel
+	write(6,*) 'ngr: ',ngr,pbasin%ngr
+	write(6,*) 'mbw: ',mbw,pbasin%mbw
+	stop 'error stop bascompare_bas: different dimensions'
 	end
 
 c*******************************************************************

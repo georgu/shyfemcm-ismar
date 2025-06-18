@@ -117,7 +117,7 @@
 	call clo_get_option('date0',stime)
 
 	if( stime == ' ' ) then
-	  stop 'error stop emdate: no date/time given'
+	  stop 'error stop femdate: no date/time given'
 	end if
 
 !--------------------------------------------------------------

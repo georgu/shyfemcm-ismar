@@ -1089,14 +1089,16 @@
 
         integer ierr
 	integer mpi_what
-	double precision valout
+	double precision valin(1)
+	double precision valout(1)
 
 	ierr = 0
 	if( bpmpi ) then
+	  valin(1) = val
 	  call shympi_internal_reduce_what(what,mpi_what)
-	  call MPI_ALLREDUCE(val,valout,1,MPI_DOUBLE,mpi_what &
+	  call MPI_ALLREDUCE(valin,valout,1,MPI_DOUBLE,mpi_what &
      &				,MPI_COMM_WORLD,ierr)
-	  val = valout
+	  val = valout(1)
 	end if
 
 	call shympi_error('shympi_reduce_internal_d','reduce',ierr)
@@ -1117,14 +1119,16 @@
 
         integer ierr
 	integer mpi_what
-	real valout
+	real valin(1)
+	real valout(1)
 
 	ierr = 0
 	if( bpmpi ) then
+	  valin(1) = val
 	  call shympi_internal_reduce_what(what,mpi_what)
-	  call MPI_ALLREDUCE(val,valout,1,MPI_REAL,mpi_what &
+	  call MPI_ALLREDUCE(valin,valout,1,MPI_REAL,mpi_what &
      &				,MPI_COMM_WORLD,ierr)
-	  val = valout
+	  val = valout(1)
 	end if
 
 	call shympi_error('shympi_reduce_internal_r','reduce',ierr)
@@ -1145,14 +1149,16 @@
 
         integer ierr
 	integer mpi_what
-	integer valout
+	integer valin(1)
+	integer valout(1)
 
 	ierr = 0
 	if( bpmpi ) then
+	  valin(1) = val
           call shympi_internal_reduce_what(what,mpi_what)
-          call MPI_ALLREDUCE(val,valout,1,MPI_INTEGER,mpi_what &
+          call MPI_ALLREDUCE(valin,valout,1,MPI_INTEGER,mpi_what &
      &                          ,MPI_COMM_WORLD,ierr)
-          val = valout
+          val = valout(1)
 	end if
 
 	call shympi_error('shympi_reduce_internal_i','reduce',ierr)

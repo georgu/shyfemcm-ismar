@@ -12,7 +12,7 @@
 #
 #------------------------------------------------------------------------
 
-var()
+Test_Var()
 {
   # https://www.howtogeek.com/782514/
 
@@ -23,12 +23,12 @@ var()
   set -euxo pipefail	# all of the above
 }
 
-func()
+Test_Func()
 {
   return $1
 }
 
-If()
+Test_If()
 {
   echo "================================="
   echo "test if"
@@ -38,7 +38,7 @@ If()
   if func 1; then echo "ok"; else echo "false"; fi
 }
 
-PatternMatching()
+Test_PatternMatching()
 {
   echo "================================="
   echo "pattern matching"
@@ -52,7 +52,7 @@ PatternMatching()
   [[ $vech = B* ]] && echo "Start with B" || echo "Not matched"
 }
 
-Loop()
+Test_Loop()
 {
   echo "================================="
   echo "test loop"
@@ -65,7 +65,7 @@ Loop()
   done
 }
 
-ReadFromFile()
+Test_ReadFromFile()
 {
   echo "================================="
   echo "read from file"
@@ -83,7 +83,7 @@ ReadFromFile()
   echo "$ilines read"
 }
 
-Arithmetics()
+Test_Arithmetics()
 {
   echo "================================="
   echo "arithmetics"
@@ -105,7 +105,7 @@ Arithmetics()
   echo "$a == 20"
 }
 
-Array()
+Test_Array()
 {
   echo "================================="
   echo "test array"
@@ -168,7 +168,7 @@ Array()
   # ${arr[@]:s:n} 	# Retrieve n elements starting at index s
 }
 
-Associative()
+Test_Associative()
 {
   echo "================================="
   echo "test associative array"
@@ -228,6 +228,27 @@ Associative()
   echo "${assArray1[@]}"
 }
 
+Test_Round()
+{
+  val="2.3"; new=$( round $val 0 ); echo "$val -> $new"
+  val="2.5"; new=$( round $val 0 ); echo "$val -> $new"
+  val="2.7"; new=$( round $val 0 ); echo "$val -> $new"
+  val="-2.3"; new=$( round $val 0 ); echo "$val -> $new"
+  val="-2.5"; new=$( round $val 0 ); echo "$val -> $new"
+  val="-2.7"; new=$( round $val 0 ); echo "$val -> $new"
+  val="2.34"; new=$( round $val 1 ); echo "$val -> $new"
+  val="2.56"; new=$( round $val 1 ); echo "$val -> $new"
+  val="2.71"; new=$( round $val 1 ); echo "$val -> $new"
+}
+
+#-----------------------------------------------------------
+#-----------------------------------------------------------
+#-----------------------------------------------------------
+# utility routines
+#-----------------------------------------------------------
+#-----------------------------------------------------------
+#-----------------------------------------------------------
+
 log()
 { 
   # returns floor[log(x)] for x integer
@@ -247,17 +268,35 @@ log()
   echo $l;
 }
 
+round()
+{
+  # call as "round var [ipos]" : rounds var to ipos positions (default ipos=2)
+
+  local val=$1
+  local ipos=$2
+  [ -z "$ipos" ] && ipos=2
+
+  printf "%.${ipos}f" "${val}"
+}
+
+#-----------------------------------------------------------
+#-----------------------------------------------------------
+#-----------------------------------------------------------
+# execute Test routines
+#-----------------------------------------------------------
+#-----------------------------------------------------------
 #-----------------------------------------------------------
 
 Test()
 {
-  Loop
-  Array
-  Associative
-  If
-  Arithmetics
-  ReadFromFile
-  PatternMatching
+  Test_Loop
+  Test_Array
+  Test_Associative
+  Test_If
+  Test_Arithmetics
+  Test_ReadFromFile
+  Test_PatternMatching
+  Test_Round
 }
 
 #-----------------------------------------------------------

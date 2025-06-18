@@ -20,7 +20,7 @@
 !
 !---------------------------------------------------------------------
 
-      program gr
+      program grnew
 
 ! this programs reads an existing nc file, 
 ! changes some infortmation,
@@ -30,66 +30,10 @@
 
       implicit none
 
-!     This is the name of the data file we will read.
-      character*(80) file
-      character*(*) FILE_NAME
-      parameter (FILE_NAME='sfc_pres_temp.nc')
-      integer ncid
-
-!     We are reading 2D data, a 6 x 12 lat-lon grid.
-      integer NDIMS
-      parameter (NDIMS=2)
-      integer NLATS, NLONS
-      parameter (NLATS = 6, NLONS = 12)
-      character*(*) LAT_NAME, LON_NAME
-      parameter (LAT_NAME='latitude', LON_NAME='longitude')
-      integer lat_dimid, lon_dimid
-
-!     For the lat lon coordinate netCDF variables.
-      real lats(NLATS), lons(NLONS)
-      integer lat_varid, lon_varid
-
-!     We will read surface temperature and pressure fields. 
-      character*(*) PRES_NAME, TEMP_NAME
-      parameter (PRES_NAME='pressure')
-      parameter (TEMP_NAME='temperature')
-      integer pres_varid, temp_varid
-      integer dimids(NDIMS)
-
-!     To check the units attributes.
-      character*(*) UNITS
-      parameter (UNITS = 'units')
-      character*(*) PRES_UNITS, TEMP_UNITS, LAT_UNITS, LON_UNITS
-      parameter (PRES_UNITS = 'hPa', TEMP_UNITS = 'celsius')
-      parameter (LAT_UNITS = 'degrees_north')
-      parameter (LON_UNITS = 'degrees_east')
-      integer MAX_ATT_LEN
-      parameter (MAX_ATT_LEN = 80)
-      character*(MAX_ATT_LEN) pres_units_in, temp_units_in
-      character*(MAX_ATT_LEN) lat_units_in, lon_units_in
-      integer att_len
-
-!     Read the data into these arrays.
-      real pres_in(NLONS, NLATS), temp_in(NLONS, NLATS)
-
-!     These are used to calculate the values we expect to find.
-      real START_LAT, START_LON
-      parameter (START_LAT = 25.0, START_LON = -125.0)
-      real SAMPLE_PRESSURE
-      parameter (SAMPLE_PRESSURE = 900.0)
-      real SAMPLE_TEMP
-      parameter (SAMPLE_TEMP = 9.0)
-
-!     We will learn about the data file and store results in these
-!     program variables.
-
-      integer ndims_in, nvars_in, ngatts_in, idunlim
+      integer nvars_in, ngatts_in, idunlim
       integer nc,ia,varid
-
-!     Loop indices
-
-      integer lat, lon, id, ncid_out
-
+      integer id, ncid, ncid_out
+	character*80 file
 	logical, save :: bvarelab = .false.
 	logical, save :: battelab = .false.
 
@@ -100,6 +44,8 @@
 	type(nc_item), pointer :: nitem_in,nitem_out
 
 !---------------------------------------------------------------------
+! open input file
+!---------------------------------------------------------------------
 
         nc = command_argument_count()
 	if( nc /= 1 ) then
@@ -108,6 +54,8 @@
 	end if
         call get_command_argument(1,file)
 
+!---------------------------------------------------------------------
+! read input file and write general information
 !---------------------------------------------------------------------
 
 	call ncf_open_read(file,ncid)
@@ -129,6 +77,8 @@
 	end do
 
 !---------------------------------------------------------------------
+! open output file and copy dimensions
+!---------------------------------------------------------------------
 
 	call ncf_open_write('out.nc',ncid_out)
 
@@ -137,6 +87,8 @@
 	ditem = nitem_in%ditem
 	call ncf_make_dim(ncid_out,ditem%ndims,ditem%len,ditem%name)
 
+!---------------------------------------------------------------------
+! preparing attributes for variables
 !---------------------------------------------------------------------
 
 	write(6,*) 'preparing attributes for variables'
@@ -153,6 +105,8 @@
 	  end do
 	end do
 
+!---------------------------------------------------------------------
+! writing output file
 !---------------------------------------------------------------------
 
 	write(6,*) 'writing global attributes'
@@ -173,11 +127,15 @@
 	end do
 
 !---------------------------------------------------------------------
+! closing open files
+!---------------------------------------------------------------------
 
 	write(6,*) 'closing files'
 	call ncf_close(ncid)
 	call ncf_close(ncid_out)
 
+!---------------------------------------------------------------------
+! end of routine
 !---------------------------------------------------------------------
 
 	end
@@ -197,7 +155,7 @@
 
 	character*80 name
 
-	if( varid > 2 ) return
+	if( varid /= 1 ) return
 
 	name = aitem%name
 

@@ -76,6 +76,7 @@
 ! 03.10.2024	ggu	new variables added
 ! 01.04.2025	ggu	handle variables with no CL description
 ! 07.04.2025	ggu	new routine handle_time_string()
+! 17.06.2025	ggu	deal with description == 'unknown'
 !
 ! notes :
 !
@@ -1588,15 +1589,15 @@
 	if( .not. nc_has_err(retval) ) then
 	  call nc_get_var_attrib(ncid,var_id,aname,atext,avalue)
 	  description = atext
-	  return
 	end if
+
+	if( description /= ' ' .and. description /= 'unknown' ) return
 
 	aname = 'long_name'
 	retval = nf_inq_att(ncid,var_id,aname,xtype,length)
 	if( .not. nc_has_err(retval) ) then
 	  call nc_get_var_attrib(ncid,var_id,aname,atext,avalue)
 	  description = atext
-	  return
 	end if
 
 	end
@@ -3350,6 +3351,27 @@
 	  units = 'm'
 	  cmin = 0.
 	  cmax = 100.
+	else if( ivar .eq. 231 ) then	! significant wave height
+	  name = 'significant_wave_height'
+	  what = 'long_name'
+	  std = 'sea_surface_wind_wave_significant_height'
+	  units = 'm'
+	  cmin = 0.
+	  cmax = 100.
+	else if( ivar .eq. 232 ) then	! significant wave period
+	  name = 'significant_wave_period'
+	  what = 'long_name'
+	  std = 'sea_surface_wave_significant_period'
+	  units = 's'
+	  cmin = 0.
+	  cmax = 100.
+	else if( ivar .eq. 233 ) then	! wave direction
+	  name = 'wave_direction'
+	  what = 'long_name'
+	  std = 'sea_surface_wave_to_direction'
+	  units = 'degree'
+	  cmin = 0.
+	  cmax = 360.
 	else if( ivar > 300 .and. ivar < 400 ) then	! concentration
 	  name = 'concentration'
 	  what = 'long_name'

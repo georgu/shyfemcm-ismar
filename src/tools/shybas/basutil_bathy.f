@@ -48,6 +48,7 @@ c 11.04.2016	ggu	meaning of ufact has changed
 c 25.05.2017	ggu	changed VERS_7_5_28
 c 16.02.2019	ggu	changed VERS_7_5_60
 c 14.02.2022	ggu	revisted, some bug fixes
+c 12.06.2025	ggu	bug fix for nn (BUGnn)
 c
 c****************************************************************
 
@@ -165,11 +166,15 @@ c-----------------------------------------------------------------
 
 	write(6,*) 'finished reading bathymetry file : ',trim(bfile)
 
+c	in xp,yp,dp,ap are values of bathymetry with dimension np
+
 c-----------------------------------------------------------------
 c allocate arrays for basin
 c-----------------------------------------------------------------
 
-	nn = max(nk,ne)
+	!nn = max(nk,ne)		!BUGnn
+	nn = max(nkn,nel)
+	write(6,*) 'nn = ',nn
 	allocate(xt(nn),yt(nn),at(nn),ht(nn))
 
 c-----------------------------------------------------------------

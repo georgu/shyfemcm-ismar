@@ -393,7 +393,6 @@ cleanlinks:
 ../../lib/mod/lgr_sedim_module.mod: lagrange_sedim.o
 ../../lib/mod/lines.mod: line_admin.o
 ../../lib/mod/meteo_forcing_module.mod: meteo_forcing.o
-../../lib/mod/mod_bfm.mod: bfm.o
 ../../lib/mod/mod_bndo.mod: bndo.o
 ../../lib/mod/mod_bstress.mod: substress.o
 ../../lib/mod/mod_conz.mod: conz_common.o
@@ -437,15 +436,6 @@ bcvel.o: ../../lib/mod/basin.mod ../../lib/mod/levels.mod \
 		../../lib/mod/mod_internal.mod \
 		../../lib/mod/mod_layer_thickness.mod \
 		../../lib/mod/shympi.mod 
-bfm.o: ../../lib/mod/basin.mod ../../lib/mod/levels.mod \
-		../../lib/mod/mod_depth.mod \
-		../../lib/mod/mod_diff_visc_fric.mod \
-		../../lib/mod/mod_hydro.mod \
-		../../lib/mod/mod_hydro_print.mod \
-		../../lib/mod/mod_layer_thickness.mod \
-		../../lib/mod/mod_meteo.mod \
-		../../lib/mod/mod_sinking.mod \
-		../../lib/mod/mod_ts.mod 
 bnd_routines.o: ../../lib/mod/basin.mod \
 		../../lib/mod/intp_fem_file.mod \
 		../../lib/mod/levels.mod ../../lib/mod/mkonst.mod \

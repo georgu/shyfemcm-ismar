@@ -1,4 +1,96 @@
 
+12.06.2025
+
+! ./src/shyfem/explicit.f90:
+! 24.04.2025    ggu     handle new value for ibarcl == 5
+!
+! ./src/shyfem/bnd_routines.f90:
+! 12.06.2025    clc     set dvols to 0 to avoid compiler warning
+!
+! ./src/shyfem/conz_common.f90:
+! 16.04.2025	ggu	contau eliminated, added wsettlv
+!
+! ./src/shyfem/conz_admin.f90:
+! 16.04.2025    ggu     variable sinking (wsettlv) introduced
+!
+! ./src/shyfem/baroclinic.f90:
+! 24.04.2025    ggu     new value for ibarcl: ibercl == 5
+!
+! ./src/shyfem/wetdry.f90:
+! 24.04.2025	ggu	write out dry elements and nodes
+!
+! ./src/shyfem/shyfem_subs.f90:
+! 10.03.2025    ggu	write local commit
+!
+! ./src/shyfem/def_para.f90:
+! 01.04.2025    ggu     new value 5 for ibarcl
+! 16.04.2025    ggu     new parameter wsettl
+!
+! ./src/shyfem/mod_petsc_system.f90:
+! 24.05.2025	clr&ccf	replace PETSC_NULL_INTEGER with PETSC_NULL_OPTIONS 
+!
+! ./src/shyfem/bndo.f90:
+! 12.06.2025	ggu	extra info on error
+!
+! ./src/tools/shyplot/supout.f90:
+!  02.04.2025	ggu	adjust adjust_no_plot_area() to only plot in some areas
+!
+! ./src/tools/shyelab/shyelab1.f90:
+! 01.04.2025    ggu     better error message
+!
+! ./src/tools/shyelab/extelab1.f90:
+! 12.06.2025	ggu	prepare for writing station name
+!
+! ./src/tools/shynetcdf/nc2fem.f90:
+! 25.04.2025    ggu     new option -rfact
+!
+! ./src/tools/shynetcdf/netcdf.f90:
+! 01.04.2025	ggu	handle variables with no CL description
+! 07.04.2025	ggu	new routine handle_time_string()
+!
+! ./src/tools/shynetcdf/nc_tutil.f90:
+! 07.04.2025	ggu	new time_type == 3 (time as string)
+!
+! ./src/tools/shynetcdf/nc_domain.f90:
+! 25.04.2025	ggu	use ncnames_get_dim_coord_info() to find coord name
+!
+! ./src/tools/shynetcdf/nc_dim_coords.f90:
+! 24.04.2025	ggu	new routine ncnames_get_dim_coord_info()
+!
+! ./src/tools/femutil/optintp/optintp.f90:
+! 18.03.2025	ggu	write new complementary files
+! 12.06.2025	ggu	minor changes
+!
+! ./src/tools/femutil/netcdf/nc_dim_coords.f90:
+! 24.04.2025	ggu	new routine ncnames_get_dim_coord_info()
+!
+! ./src/utils/generic/compatibility.f90:
+! 12.03.2025    clc     fixed bug for INTEL compiler in compiler information
+!
+! ./src/utils/generic/clo.f90:
+! 18.03.2025	ggu	more documentation
+!
+! ./src/utils/generic/femfile.f90:
+! 18.03.2025	ggu	deal with lmax == 0 in writing record
+!
+! ./src/utils/generic/unitutils.f90:
+! 12.06.2025	ggu	if string is available add it to file name
+!
+! ./src/utils/shyutilmpi/shy_util.f90:
+! 01.04.2025    ggu     write subrange of variables
+! 10.04.2025    ggu     new routine shyfem_init_scalar_fix_file() (nfix)
+!
+! ./src/utils/shyutil/strings.f90:
+! 01.04.2025	ggu	ivar values and range for BFM model
+! 24.04.2025	ggu	new entries for sensible, latent and long wave heat flux
+!
+! ./src/utils/shyutil/io_shy.f90:
+! 10.04.2025    ggu     new nfix introduced for fixed vertical structure
+!
+! ./src/utils/modules/mod_sedim.f90:
+! 12.06.2025    clc     set sedpa to 0 (avoid undefined value)
+
+
 09.03.2025
 
 ! ./src/shyfem/restart.f90:

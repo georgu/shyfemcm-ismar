@@ -115,6 +115,7 @@
 ! 02.04.2023	ggu	merged files subbndo.f and mod_bndo.f
 ! 21.04.2023	ggu	call bexnod() only for existing boundaries
 ! 29.10.2024	ggu	check if boundary node is unique
+! 12.06.2025	ggu	extra info on error
 !
 !--------------------------------------------------------------------------
 
@@ -270,7 +271,8 @@
 	      write(6,*) 'boundary node already inserted'
 	      write(6,*) 'boundary: ',ibc
 	      write(6,*) 'node already in boundary: ',ibcnod(ip)
-	      write(6,*) 'kint,kext: ',k,ipext(k)
+	      write(6,*) 'kint,kext: ',k,ipext( k)
+	      write(6,*) 'boundary node is in two boundaries... not possible'
 	      stop 'error stop bndo_init: not unique boundary node'
 	    end if
 	    iopbnd(k) = nbndo

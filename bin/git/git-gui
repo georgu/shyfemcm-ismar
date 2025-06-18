@@ -21,6 +21,14 @@ ShowDate()
   done
 }
 
+WaitForInput()
+{
+  read -p "any input: " input
+  #echo "input: $input"
+}
+
+#----------------------------------------------------------------
+
 command dialog > /dev/null 2>&1
 if [ $? -ne 0 ]; then
   echo "dialog not available... exiting"
@@ -110,7 +118,10 @@ do
       git diff $file | less
     fi
     status=$?	#not working
-    [ $status -ne 0 ] && echo "error diffing..." && exit 7
+    if [ $status -ne 0 ]; then
+      echo "error diffing..."
+      WaitForInput
+    fi
   elif [ $status -eq 3 ]; then
     file=${array[$choice]}
     echo "editing $file"

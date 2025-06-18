@@ -12,6 +12,8 @@
 #
 # possible command line options: see subroutine FullUsage
 #
+# version       1.11    18.06.2025     option -grd and $::write_all_points
+# version       1.10    08.05.2025     option -order and -compare
 # version       1.9     28.01.2025     option -verbose
 # version       1.8     09.01.2025     tselab, handle error in reduce
 # version       1.7     02.11.2023     -restart implemented
@@ -42,8 +44,11 @@ $::bnd = 0 unless $::bnd;
 $::files = 0 unless $::files;
 $::extra = 0 unless $::extra;
 $::flux = 0 unless $::flux;
+$::grd = 0 unless $::grd;
 $::zip = 0 unless $::zip;
 $::rewrite = 0 unless $::rewrite;
+$::compare = 0 unless $::compare;
+$::order = 0 unless $::order;
 $::restart = 0 unless $::restart;
 $::essential = 0 unless $::essential;
 $::sect = "" unless $::sect;
@@ -55,6 +60,9 @@ $::simtime = 0 unless $::simtime;
 $::collect = "" unless $::collect;
 $::reduce = "" unless $::reduce;
 #-------------------------------------------------------------
+
+$::write_all_points = 0;	# needed if all points are written with -grd
+$::nnmax = 0;			# if we have to scale nodes
 
 #-------------------------------------------------------------
 # info on names in sections
@@ -72,13 +80,19 @@ $::reduce = "" unless $::reduce;
 #-------------------------------------------------------------
 
 my $file = $ARGV[0];
+my $file2 = $ARGV[1];	# needed for compare
 
 $::scriptpath = ScriptPath();
 
 my $str = new str;
 $str->{quiet} = $::quiet;
+$str->{verbose} = $::verbose;
 $str->{nocomment} = $::essential;
+$str->{order} = $::order;
 $str->read_str($file) if $file;
+
+my $str2 = new str;
+$str2->read_str($file2) if $file2;
 
 if( $::h or $::help ) {
   FullUsage();
@@ -90,12 +104,21 @@ if( $::h or $::help ) {
   show_extra_nodes($str);
 } elsif( $::flux ) {
   show_flux_nodes($str);
+} elsif( $::grd ) {
+  show_all_nodes($str);
 } elsif( $::files ) {
   show_files($str);
 } elsif( $::zip ) {
   my $files = show_files($str);
   push(@$files,$file);		#add str-file to archive
   zip_files($files);
+} elsif( $::compare ) {
+  die "compare option needs two files\n" unless $file2;
+  $str->{order} = 1;
+  $str->write_str("new1.str");;
+  $str2->{order} = 1;
+  $str2->write_str("new2.str");;
+  print STDERR "files to be compared are in new1.str new2.str\n";
 } elsif( $::rewrite ) {
   #$str->print_sections();;
   $str->write_str("new.str");;
@@ -139,13 +162,13 @@ if( $::h or $::help ) {
 
 sub Usage {
 
-  print STDERR "Usage: strparse.pl [-h|-help] [-options] str-file\n";
+  print STDERR "Usage: strparse.pl [-h|-help] [-options] str-file [str-file2]\n";
   exit 0;
 }
 
 sub FullUsage {
 
-  print STDERR "Usage: strparse.pl [-h|-help] [-options] str-file\n";
+  print STDERR "Usage: strparse.pl [-h|-help] [-options] str-file [str-file2]\n";
   print STDERR "  options:\n";
   print STDERR "    -h!-help      this help screen\n";
   print STDERR "    -verbose      be more verbose\n";
@@ -156,8 +179,10 @@ sub FullUsage {
   print STDERR "    -flux         extract flux nodes\n";
   print STDERR "    -zip          zips forcing files, grid, str in one file\n";
   print STDERR "    -rewrite      rewrite the str file\n";
+  print STDERR "    -compare      rewrite the str files for comparison\n";
   print STDERR "    -restart      create a restart from the str file\n";
   print STDERR "    -essential    only write active sections, no comments\n";
+  print STDERR "    -order        write sections and variables ordered\n";
   print STDERR "    -value=var    show value of var ([sect:]var)\n";
   print STDERR "    -replace=val  replace value of var with val and rewrite\n";
   print STDERR "    -simtime      prints start and end time of simulation\n";
@@ -166,6 +191,7 @@ sub FullUsage {
   #print STDERR "    -sect=sect    writes contents of section\n";
   print STDERR "    -txt          write nodes as text and not in grd format\n";
   print STDERR "  if -replace is given also -value must be specified\n";
+  print STDERR "  if -compare is given two str-files must be specified\n";
   print STDERR "  using -collect=dir -reduce choses minimal data for sim\n";
   exit 0;
 }
@@ -192,6 +218,8 @@ sub show_flux_nodes {
   my $sections = $str->{sections};
   my $sequence = $str->{sequence};
 
+  print STDERR "handling flux sections\n";
+
   my $basin = $str->get_basin();
   my $grid = new grd;
   $grid->readgrd("$basin.grd");
@@ -200,7 +228,9 @@ sub show_flux_nodes {
     die "*** no flux section found...\n";
   }
 
-  open_nodes_file("flux_str");
+  open_nodes_file("flux_str") unless $::write_all_points;
+
+  print_comment("flux sections");
 
   foreach my $section (@$sequence) {
     my $sect = $sections->{$section};
@@ -211,14 +241,18 @@ sub show_flux_nodes {
       my $n = 0;
       foreach my $ra (@$slist) {
         $n++;
-        write_line($n,-1,$grid,$ra);
 	my $descr = shift(@$dlist);
         print_section($n,$ra,$descr);
+	print_comment("flux section $n  $descr");
+	my $itype = -1;
+        $itype = 3 if $::write_all_points;
+        write_line($n,$itype,$grid,$ra);
       }
     }
   }
 
-  close_nodes_file();
+  print_empty();
+  close_nodes_file() unless $::write_all_points;
 }
 
 sub print_section {
@@ -264,6 +298,8 @@ sub show_extra_nodes {
   my $sections = $str->{sections};
   my $sequence = $str->{sequence};
 
+  print STDERR "handling extra nodes\n";
+
   my $basin = $str->get_basin();
   my $grid = new grd;
   $grid->readgrd("$basin.grd");
@@ -272,7 +308,9 @@ sub show_extra_nodes {
     die "*** no extra section found...\n";
   }
 
-  open_nodes_file("extra_str");
+  open_nodes_file("extra_str") unless $::write_all_points;
+
+  print_comment("extra nodes");
 
   foreach my $section (@$sequence) {
     my $sect = $sections->{$section};
@@ -280,12 +318,15 @@ sub show_extra_nodes {
     if( $sect->{name} eq "extra" ) {
       my $ra = $sect->{array};
       my ($rlist,$dlist) = get_node_list($str,$sect);
-      write_nodes(-1,$grid,$rlist);
+      my $itype = -1;
+      $itype = 2 if $::write_all_points;
+      write_nodes($itype,$grid,$rlist);
       print_nodes($rlist,$dlist);
     }
   }
 
-  close_nodes_file();
+  print_empty();
+  close_nodes_file() unless $::write_all_points;;
 }
 
 sub get_node_list {
@@ -326,22 +367,31 @@ sub show_bnd_nodes {
   my $sections = $str->{sections};
   my $sequence = $str->{sequence};
 
+  print STDERR "handling open boundaries\n";
+
   my $basin = $str->get_basin();
   my $grid = new grd;
   $grid->readgrd("$basin.grd");
 
-  open_nodes_file("bnd_str");
+  open_nodes_file("bnd_str") unless $::write_all_points;
+
+  print_comment("open boundaries");
 
   foreach my $section (@$sequence) {
     my $sect = $sections->{$section};
 
     if( $sect->{name} eq "bound" ) {
+      my $sect_number = $sect->{number}; 
+      my $sect_info = $sect->{info}; 
+      print_comment("boundary $sect_number  $sect_info");
       my ($itype,$rlist) = parse_bnd_nodes($str,$sect);
+      $itype = 1 if $::write_all_points;
       write_nodes($itype,$grid,$rlist);
     }
   }
 
-  close_nodes_file();
+  print_empty();
+  close_nodes_file() unless $::write_all_points;;
 }
 
 sub parse_bnd_nodes {
@@ -368,6 +418,40 @@ sub parse_bnd_nodes {
   }
 
   return($sect_number,\@list);
+}
+
+sub show_all_nodes {
+
+  my $str = shift;
+
+  $::write_all_points = 1;
+
+  my $basin = $str->get_basin();
+  my $grid = new grd;
+  $grid->readgrd("$basin.grd");
+
+  my $nnmax = $grid->get_max("node");
+  print "nnmax = $nnmax\n";
+
+  open_nodes_file("all_str");
+
+  $::nnmax = 0;
+  show_bnd_nodes($str);
+  $::nnmax += $nnmax;
+  show_extra_nodes($str);
+  $::nnmax += $nnmax;
+  show_flux_nodes($str);
+
+  close_nodes_file();
+}
+
+sub print_empty {
+  print OUT "\n";
+}
+
+sub print_comment {
+  my $string = shift;
+  print OUT "\n0 $string\n\n";
 }
 
 #------------------------------------------------------------
@@ -421,19 +505,23 @@ sub write_line_to_grd {
   #return if( $ibtyp == 0 );
   my $type = $ibtyp;
 
+  #print_empty();
+
   foreach my $node (@$list) {
     my $item = $grid->get_node($node);
     my $x = $item->{x};
     my $y = $item->{y};
     $n++;
     $type = $n if $ibtyp < 0;
-    print OUT "1 $node 0 $x $y\n";
+    my $nn = $node + $::nnmax;			# to avoid colisions
+    print OUT "1 $nn $type $x $y\n";
   }
   my $j = 0;
   $type = $n if $ibtyp < 0;
   print OUT "3 $nline $type $n\n";
-  foreach my $nn (@$list) {
+  foreach my $node (@$list) {
     $j++;
+    my $nn = $node + $::nnmax;			# to avoid colisions
     print OUT "  $nn";
     print OUT "\n" if $j%$nval == 0;
   }
@@ -474,6 +562,7 @@ sub write_nodes_to_grd {
     my $y = $item->{y};
     $n++;
     $type = $n if $ibtyp < 0;
+    $node += $::nnmax;				# to avoid colisions
     print OUT "1 $node $type $x $y\n";
   }
 }

@@ -107,6 +107,14 @@ SetVars()
     export PARMETIS_HOME=$HOME/georg/lib/parmetis
     export PETSC_HOME=$HOME/georg/lib/petsc
     export BFM_HOME=$HOME/georg/lib/bfm
+  elif [ $server = "stream" ]; then
+    export NETCDF_C_HOME=
+    export NETCDF_FORTRAN_HOME=
+    export NETCDFDIR=
+    export METIS_HOME=$HOME/georg/lib/metis
+    export PARMETIS_HOME=$HOME/georg/lib/parmetis
+    export PETSC_HOME=$HOME/georg/lib/petsc
+    export BFM_HOME=$HOME/georg/lib/bfm
   elif [ $server = "nemunas.ku.lt" ]; then
     export NETCDF_C_HOME=
     export NETCDF_FORTRAN_HOME=

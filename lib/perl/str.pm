@@ -66,9 +66,12 @@ sub new
 			,sections	=>	{}
 			,sequence	=>	[]
 			,section_types	=>	undef
+			,all_sections	=>	undef
+			,bound_sections	=>	[]
 			,verbose	=>	0
 			,quiet		=>	0
 			,nocomment	=>	0
+			,order		=>	0
 		};
 
     bless $self;
@@ -85,11 +88,19 @@ sub make_arrays {
 
   my ($self) = @_;
 
+  my @title_sections = qw/ title /;
   my @param_sections = qw/ para bound name color legvar wrt sedtr waves close /;
   my @number_sections = qw/ extra flux levels /;
   my @table_sections = qw/ area extts /;
-  my @title_sections = qw/ title /;
   my @comment_sections = qw/ comment /;
+
+  my @all_sections = ();
+  push(@all_sections,@title_sections);
+  push(@all_sections,@param_sections);
+  push(@all_sections,@number_sections);
+  push(@all_sections,@table_sections);
+  #push(@all_sections,@comment_sections);
+  $self->{all_sections} = \@all_sections;
 
   my %sections = ();
 
@@ -332,24 +343,29 @@ sub read_section {
 
   my ($self,$sect) = @_;
 
-  my $section = $sect->{name};
+  my $section_name = $sect->{name};
   my $number = $sect->{number};
   $number = "" unless $number;
-  $number = "($number)" if $number;
-  print STDERR "reading section $section $number\n" if $self->{verbose};;
+  #$number = "($number)" if $number;
+  print STDERR "reading section $section_name $number\n" if $self->{verbose};;
+
+  if( $section_name eq "bound" ) { # we need this for writing bound sections
+    my $bound_sections = $self->{bound_sections};
+    push(@$bound_sections,"$section_name$number");
+  }
 
   my @data = ();
 
   while(<STR_FILE>) {
 	  chomp;
-	  if( /^\s*[\$\&]end\s*$/ ) {
+	  if( /^\s*[\$\&]end\s*$/ ) {		# end of section found
 		  return \@data;
-	  } elsif( /^\s*[\$\&](\w+)\s*(.*)/ ) {
-		  die "new section $1 started before ending $section\n";
+	  } elsif( /^\s*[\$\&](\w+)\s*(.*)/ ) {	# new section started
+		  die "new section $1 started before ending $section_name\n";
 	  }
 	  push(@data,$_);
   }
-  die "end of section $section not found\n";
+  die "end of section $section_name not found\n";
 }
 
 #-----------------------------------------------------------------
@@ -401,6 +417,7 @@ sub parse_param_section {
 
   while( $dline =~ /^\s*(\w+)\s*=\s*/ ) {
 	my $name = $1;
+	print STDERR "warning: $name more than once defined\n" if $hash{$name};
 	my $rest = $';
 	my @val = ();
 	while( defined ($item = $self->get_next_value(\$rest)) ) {
@@ -595,21 +612,21 @@ sub apply_sections {
 
 sub print_sections {
 
-  my ($self) = @_;
+  my ($self,$nodata) = @_;
 
   my $sections = $self->{sections};
   my $sequence = $self->{sequence};
 
   foreach my $section (@$sequence) {
 	  my $sect = $sections->{$section};
-	  $self->print_section($sect);
+	  $self->print_section($sect,$nodata);
   }
 
 }
 
 sub print_section {
 
-  my ($self,$sect) = @_;
+  my ($self,$sect,$nodata) = @_;
 
   my $id		=	$sect->{id};
   my $name		=	$sect->{name};
@@ -618,6 +635,8 @@ sub print_section {
   my $data		=	$sect->{data};
 
   print "$id: $name $number  $info\n";
+
+  return if $nodata;
 
   foreach my $line (@$data) {
 	  print "$line\n";
@@ -652,9 +671,23 @@ sub write_sections {
   my $sections = $self->{sections};
   my $sequence = $self->{sequence};
 
+  if( $self->{order} ) {
+    $sequence = $self->{all_sections} if $self->{order};
+    my $ibound = 2;		# this is the position of bound in sequence
+    my $bound = $sequence->[$ibound];
+    die "this should be bound: $bound\n" if $bound ne "bound";
+    my $bound_sections = $self->{bound_sections};
+    splice(@$sequence, $ibound, 1, @$bound_sections);
+    print "\n"; # no comments - insert blank line
+  }
+
   foreach my $section (@$sequence) {
 	  my $sect = $sections->{$section};
-	  $self->write_section($sect);
+	  if( $sect ) {
+	    #$self->print_section($sect,1);
+	    $self->write_section($sect);
+	    print "\n" if $self->{order}; # no comments - insert blank line
+	  }
   }
 
 }
@@ -674,6 +707,7 @@ sub write_section {
 
   $self->write_start_of_section($sect);
 
+  print STDERR "writing section $name $number\n" if $self->{verbose};;
   #print "+++++++++ type: $type  $name  ($data)\n";
 
   if( $type eq "param" ) {
@@ -748,6 +782,7 @@ sub write_param_section {
 
   #my @items = sort keys %$hash;
   my @items = @{$sect->{items}};
+  @items = sort(@items) if $self->{order};
 
   foreach my $name (@items) {
     my $value = $hash->{$name};
@@ -876,6 +911,7 @@ sub write_array {
     print "   $item";
     if( $item == 0 or $i == $nval ) {
       print "\n";
+      print "\t" if $extra;		#indent more
       $i = 0;
     }
   }

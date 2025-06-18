@@ -144,6 +144,7 @@
 ! 21.10.2021    ggu     set rhosa to a reasonable value (was infinite) (GGUBS)
 ! 21.10.2021    ggu     in call to get_sigma_info() protect nlv
 ! 23.10.2024    ggu     module definition taken out from sedim_admin.f90
+! 12.06.2025    clc     set sedpa to 0 (avoid undefined value)
 ! 
 !****************************************************************************
 
@@ -221,7 +222,7 @@
 
       implicit none
 
-      double precision, save, dimension(8)  :: sedpa    !sediment parameter vector
+      double precision, save, dimension(8) :: sedpa = 0 !sediment parameter vector
       real, allocatable, save   :: gsc(:)		!grainsize class read from str
       real, allocatable, save   :: tue(:)		!initial erosion threshold
       real, allocatable, save   :: prin(:,:)		!initial percetage [0,1]

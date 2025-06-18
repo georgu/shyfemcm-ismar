@@ -60,3 +60,19 @@
 
 !****************************************************************
 
+	subroutine mima_flag(n,array,flag,amin,amax)
+
+	implicit none
+
+	integer n
+	real array(n)
+	real flag
+	real amin,amax
+
+	amin = minval(array,array/=flag)
+	amax = maxval(array,array/=flag)
+
+	end
+
+!****************************************************************
+

@@ -336,6 +336,7 @@
 
 	if( btime ) then
 	  call print_time_records(ncid)
+	  call print_minmax_time_records(ncid)
 	end if
 
 !-----------------------------------------------------------------
@@ -503,6 +504,7 @@
 !-----------------------------------------------------------------
 
 	if( nrec > 0 .and. .not. bsilent ) then
+	  call print_minmax_time_records(ncid)
 	  write(6,*) 'total number of time records written: ',nrec
 	  write(6,*) 'variables written: ',n
 	  write(6,*) 'output written to file out.fem'

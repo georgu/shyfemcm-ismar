@@ -1,4 +1,17 @@
 
+12.06.2025	VERS_8_2_5	Sankt Antonius edition
+
+	new value for ibarcl (ibarcl==5)
+	variable settling velocity (wsettlv)
+	bug fix: replace PETSC_NULL_INTEGER with PETSC_NULL_OPTIONS
+	with -split option write station name
+	netcdf: 
+		handle variables with no CL description
+		new routine ncnames_get_dim_coord_info()
+	fixed bug for INTEL compiler in compiler information
+	new nfix introduced for fixed vertical structure
+	new entries for sensible, latent and long wave heat flux
+
 10.03.2025	VERS_8_2_4	bug fix edition
 
 	optimal interpolation revisited

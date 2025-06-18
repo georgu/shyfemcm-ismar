@@ -52,8 +52,19 @@
 ! 16.02.2019	ggu	changed VERS_7_5_60
 ! 03.02.2020	ggu	cleaned, new headers for split
 ! 06.03.2020	ggu	check for time step
+! 12.06.2025	ggu	prepare for writing station name
 !
 !**************************************************************
+
+!==============================================================
+	module extelab_strings
+!==============================================================
+
+	character*80, allocatable :: strings(:)
+
+!==============================================================
+	end module extelab_strings
+!==============================================================
 
 	subroutine extelab
 
@@ -61,6 +72,7 @@
 	use elabutil
 	use elabtime
 	use shyfem_strings
+	use extelab_strings
 
         use basin
         use mod_depth
@@ -77,7 +89,7 @@
 	real, allocatable :: x(:)
 	real, allocatable :: y(:)
 	real, allocatable :: hl(:)
-	character*80, allocatable :: strings(:)
+	!character*80, allocatable :: strings(:)
 	integer, allocatable :: ivars(:)
 	real, allocatable :: xv(:,:)
 	real, allocatable :: vals(:,:,:)
@@ -451,7 +463,7 @@
 	if( .not. bquiet ) then
 	 if( bsplit ) then
 	  write(6,*) 'output written to following files: '
-	  write(6,*) '  what.dim.node'
+	  write(6,*) '  what.dim.node.txt'
 	  write(6,*) 'what is one of the following:'
 	  call write_special_vars(niu,what,descrp)	!write hydro variables
 	  if( nvar > 2 ) then
@@ -461,8 +473,8 @@
 	  write(6,*) '  2d for depth averaged variables'
 	  write(6,*) '  3d for output at each layer'
 	  call compute_range(knausm,range)
-	  write(6,1123) ' node is consecutive node numbering: ' &
-     &					,trim(range)
+	  write(6,1123) ' node is either name of station ' // &
+     &		'or consecutive node numbering: ',trim(range)
 	 else if( boutput ) then
 	  write(6,*) 'output written to file out.ext'
 	 end if
@@ -522,6 +534,7 @@
         character*20 dline
 	integer, save :: icall = 0
 	integer, save, allocatable :: iusplit(:,:)
+	character*80 station
 	character*20, save :: time_date = '#          date_time'
 	character*80, save :: title(niu) =  &
      &			(/'      velx' &
@@ -538,6 +551,8 @@
 	  allocate(iusplit(niu,knausm))
 	  title(6) = all
 	  do j=1,knausm
+	    call get_station_name(j,station)
+	    call set_iunit_string(station)
 	    do ii=1,niu
 	      call make_iunit_name(what(ii),'','2d',j,iu)
 	      iusplit(ii,j) = iu
@@ -577,8 +592,6 @@
 
 ! splits 2d scalar records
 
-	use shyfem_strings
-
         implicit none
 
 	double precision atime
@@ -592,6 +605,7 @@
         character*14 title
         character*20 dline
 	character*10 short
+	character*80 station
 	integer, save :: icall = 0
 	integer, save, allocatable :: iusplit(:,:)
 	character*20, save :: time_date = '#          date_time'
@@ -605,6 +619,8 @@
 	  call ivar2filename(ivar,filename)
 	  title = adjustr(filename(1:14))
 	  do j=1,knausm
+	    call get_station_name(j,station)
+	    call set_iunit_string(station)
 	    call make_iunit_name(filename,'','2d',j,iu)
 	    write(iu,'(2a)') time_date,trim(title)
 	    iusplit(j,iv) = iu
@@ -653,6 +669,7 @@
         character*20 filename
         character*20 dline
 	character*10 short
+	character*80 station
 	integer, save :: icall = 0
 	integer, save, allocatable :: iusplit(:)
 
@@ -664,6 +681,8 @@
 	if( iusplit(1) == 0 ) then
 	  call ivar2filename(ivar,filename)
 	  do j=1,knausm
+	    call get_station_name(j,station)
+	    call set_iunit_string(station)
 	    call make_iunit_name(filename,'','2d',j,iu)
 	    iusplit(j) = iu
 	  end do
@@ -701,6 +720,7 @@
 	integer l,lm
 	real u(lmax),v(lmax),s(lmax),d(lmax)
         character*80 name,format
+	character*80 station
         character*20 dline
         character*20 filename
 	character*10 short
@@ -717,6 +737,8 @@
 	if( iusplit(1,1,iv) == 0 ) then
 	  call ivar2filename(ivar,filename)
 	  do j=1,knausm
+	    call get_station_name(j,station)
+	    call set_iunit_string(station)
 	    if( ivar == 2 ) then	!velocities
 	      do ii=1,niu
 	        call make_iunit_name(what(ii),'','3d',j,iu)
@@ -812,6 +834,21 @@
 	  call average_vertical_node(lm,hl,z,h,v,v0)
 	  val0(j) = v0
 	end do
+
+	end
+
+!***************************************************************
+
+	subroutine get_station_name(j,name)
+
+	use extelab_strings
+
+	implicit none
+
+	integer j
+	character*(*) name
+
+	name = strings(j)
 
 	end
 

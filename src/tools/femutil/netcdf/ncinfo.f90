@@ -115,7 +115,6 @@
 !---------------------------------------------------------------------
 
 	if( binfo ) then
-          call ncf_set_var_name_length(ncid,nitem)
 	  nvars = nitem%nvars
 	  write(6,*) 'variables: ',nvars
 	  call ncf_print_variable_header(ncid,nitem)

@@ -224,7 +224,7 @@ nc2fem.o: ../../../lib/mod/clo.mod ../../../lib/mod/iso8601.mod \
 		../../../lib/mod/ncnames.mod \
 		../../../lib/mod/shyfem_strings.mod 
 nc_tutil.o: ../../../lib/mod/iso8601.mod
-netcdf.o: netcdf.inc
+netcdf.o: ../../../lib/mod/shyfem_strings.mod netcdf.inc
 netcdf_util.o: ../../../lib/mod/basin.mod
 ts2nc.o: ../../../lib/mod/basin.mod ../../../lib/mod/evgeom.mod \
 		../../../lib/mod/levels.mod \

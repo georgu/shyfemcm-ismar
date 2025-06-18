@@ -10,10 +10,13 @@
 #
 # general utilities
 #
-# useage:
+# Usage:
 #
-# require "utils.pl";		# ts_util.pl must be in same dir
+# #!/usr/bin/env perl
 #
+# use lib ("$ENV{SHYFEMDIR}/lib/perl","$ENV{HOME}/shyfemcm/lib/perl");
+# use utils;
+# 
 #------------------------------------------------------------------------
 
 use strict;
@@ -37,6 +40,21 @@ sub example_sort_hash_table
 							keys %planets) {
         printf "%-8s %s\n", $name, $planets{$name};
     }
+}
+
+sub round {
+
+  my ($val,$ipos) = @_;
+
+  $ipos = 2 unless defined $ipos;
+
+  my $result= sprintf "%.${ipos}f", "${val}";
+
+  return $result;
+}
+
+sub print_to_var($$) {
+   $_[0] .= $_[1];
 }
 
 #------------------------------------------------------------------------

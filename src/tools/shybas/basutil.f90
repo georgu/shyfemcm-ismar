@@ -53,6 +53,7 @@
 ! 12.10.2022	ggu	new option -detail (bdetail)
 ! 03.10.2024	ggu	new option -fastfind to test fast_find routines
 ! 09.11.2024	ggu	new option -layers to compute areas and volumes
+! 18.06.2025    ggu     new option -comparebas and routine bascompare_bas()
 !
 !************************************************************
 
@@ -82,6 +83,7 @@
 	logical, save :: bfreq
 	logical, save :: bcheck
 	logical, save :: bcompare
+	logical, save :: bcomparebas
 	logical, save :: bbox
 	logical, save :: bboxgrd
 	logical, save :: barea
@@ -196,6 +198,8 @@
         call clo_add_option('check',.false.,'runs extra check on file')
         call clo_add_option('compare',.false. &
      &				,'compares depth of 2 basins')
+        call clo_add_option('comparebas',.false. &
+     &				,'compares 2 basins')
         call clo_add_option('invert_depth',.false. &
      &				,'inverts depth values')
         call clo_add_option('box',.false.,'creates index for box model')
@@ -270,6 +274,7 @@
         call clo_get_option('freq',bfreq)
         call clo_get_option('check',bcheck)
         call clo_get_option('compare',bcompare)
+        call clo_get_option('comparebas',bcomparebas)
         call clo_get_option('invert_depth',binvert)
         call clo_get_option('box',bbox)
         call clo_get_option('boxgrd',index_file)

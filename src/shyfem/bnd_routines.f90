@@ -194,6 +194,7 @@
 ! 13.10.2024    ggu     introduced drvols to avoid INTEL_BUG compiler bug
 ! 13.11.2024    ggu     marked old code with INTEL_BUG_OLD
 ! 03.12.2024    ggu     run init_flux() only for ibtyp>1
+! 12.06.2025    clc     set dvols to 0 to avoid compiler warning
 !
 !***************************************************************
 
@@ -1108,6 +1109,7 @@
 	    if( lmax > nlv ) goto 98
 
 	    dvoltot = 0.
+	    dvols = 0.
 	    do l=lmin,lmax
 	      dvol = volnode(l,k,mode)
 	      dvols(l) = dvol

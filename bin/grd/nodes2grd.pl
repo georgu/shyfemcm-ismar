@@ -58,8 +58,10 @@ sub read_nodes {
   while(<FILE>) {
     chomp;
     s/^\s+//;
-    s/\s+$//;
-    push(@list,$_) if $_;
+    my @f = split;
+    #s/\s+$//;
+    #push(@list,$_) if $_;
+    push(@list,$f[0]) if $f[0];
   }
 
   close(FILE);

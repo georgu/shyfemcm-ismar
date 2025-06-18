@@ -34,6 +34,7 @@ c 24.01.2018	ggu	changed VERS_7_5_41
 c 18.12.2018	ggu	changed VERS_7_5_52
 c 16.02.2019	ggu	changed VERS_7_5_60
 c 14.02.2022	ggu	cosmetic changes
+c 12.06.2025	ggu	write better information to terminal, bug fix np->nt
 c
 c****************************************************************
 
@@ -123,9 +124,11 @@ c interpolation on squares
 	real hmed
 	real fact,dx,dy
 	real flag
-	integer ihev(nel)
 	logical bmin
 	logical ok(nel)
+	integer ihev(nel)
+	character*80 header
+
 	logical inconvex,inquad
 
 c-----------------------------------------------------------------
@@ -142,6 +145,9 @@ c-----------------------------------------------------------------
 	!imax = -1		!do not compute over square
 
 	flag = -999.
+	ihev = 0
+	ht = 0.
+	ok = .false.
 
 c-----------------------------------------------------------------
 c initialize
@@ -204,9 +210,11 @@ c-----------------------------------------------------------------
 	  end if
 	end do
 
+	header = 'interpol      iter   without      with     total'
+
 	write(6,*) 'Elements without depth (start):  ',nnone,'/',nel
 	write(6,*) 'Elements without depth (convex): ',nel-netot,'/',nel
-	write(6,'(a)') 'interpol      iter   without      with     total'
+	write(6,'(a)') trim(header)
 	write(6,1000) 'convex: ',-1,nel-netot,netot,nel
 
 c-----------------------------------------------------------------
@@ -216,6 +224,7 @@ c-----------------------------------------------------------------
 	i = 0
 	do while( netot .lt. nel .and. i .le. imax )
 	 netot = 0
+	 if( mod(i+1,50) == 0 ) write(6,'(a)') trim(header)
 	 do ie=1,nel
 	  if( .not. ok(ie) ) then
 	    do ii=1,3
@@ -333,10 +342,10 @@ c interpolates depth values - exponential interpolation
 	real yp(np)
 	real dp(np)
 	integer nt		!points on which to interpolate
-	real xt(np)
-	real yt(np)
-	real at(np)		!area - used as standard deviation
-	real ht(np)		!interpolated depth values (return)
+	real xt(nt)
+	real yt(nt)
+	real at(nt)		!area - used as standard deviation
+	real ht(nt)		!interpolated depth values (return)
 	real umfact		!factor for maximum radius
 	integer nminimum	!how many points needed for interpolation
 

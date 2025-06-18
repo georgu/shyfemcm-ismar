@@ -10,6 +10,8 @@
 #
 # writes node list to GRD format
 #
+# Usage: nod2grd.pl basin.grd node_list.txt
+#
 #----------------------------------------------------
 
 use lib ("$ENV{SHYFEMDIR}/lib/perl","$ENV{HOME}/shyfem/lib/perl");
@@ -18,19 +20,24 @@ use grd;
 use strict;
 
 my $grid = new grd;
-my $file = $ARGV[0];
+my $basin = $ARGV[0];
 my $nodes = $ARGV[1];
+Usage() unless $basin;
+Usage() unless $nodes;
+
 my @nodes = ();
 my $n = 0;
 
-$grid->readgrd($file);
+$grid->readgrd($basin);
 
-open(FILE,"<$nodes");
+open(FILE,"<$nodes") || die "cannot open file: $nodes\n";
 
 while(<FILE>) {
 
   chomp;
-  my $nnode = $_;
+  next unless $_;
+  my @f = split;
+  my $nnode = $f[0];
   last if $nnode == 0;
 
   my $node = $grid->get_node($nnode);
@@ -54,3 +61,9 @@ foreach my $nnode (@nodes) {
 }
 print "\n";
 
+#----------------------------------------------------
+
+sub Usage {
+
+  die "Usage: nod2grd.pl basin.grd node_list.txt\n";
+}

@@ -42,6 +42,7 @@
 ! 23.06.2022	ggu	allow for custom time correction (correct_nc_time*)
 ! 07.02.2024	ggu	changes in clean_time
 ! 07.04.2025	ggu	new time_type == 3 (time as string)
+! 17.06.2025	ggu	new routine get_minmax_time_records()
 !
 ! notes :
 !
@@ -327,6 +328,25 @@
         end do
 
         end
+
+!*****************************************************************
+
+        subroutine get_minmax_time_records(ncid,atime_start,atime_end)
+
+! get min/max time of records
+
+        implicit none
+
+        integer ncid
+        double precision atime_start,atime_end
+
+        integer nit
+
+        call nc_get_time_recs(ncid,nit)
+        call handle_nc_time(ncid,1,atime_start)
+        call handle_nc_time(ncid,nit,atime_start)
+
+	end
 
 !*****************************************************************
 
