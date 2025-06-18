@@ -77,6 +77,7 @@
 ! 16.06.2022    ggu     bug fix in bas_get_special_coordinates() -> np
 ! 10.05.2024    ggu     handle spherical, new routine bas_check_spherical()
 ! 01.08.2024    ggu     more output for bas_info()
+! 18.06.2025    ggu     structure and routines to save basin
 !
 !***********************************************************
 !***********************************************************
@@ -92,10 +93,32 @@
 	integer, private, parameter :: nversm = 6		!max version
 	!integer, private, parameter :: nversm = 5		!max version
 
+        type :: basin_type
+          logical      :: ballocated = .false.
+          integer      :: nvers = 0
+          integer      :: nkn = 0
+          integer      :: nel = 0
+          integer      :: ngr = 0
+          integer      :: mbw = 0
+	  real         :: dcorbas = 0.
+	  real         :: dirnbas = 0.
+          integer      :: sphebas = 0
+	  character*80 :: descrr = ' '
+	  integer, allocatable :: nen3v(:,:)
+	  integer, allocatable :: ipv(:)
+	  integer, allocatable :: ipev(:)
+	  integer, allocatable :: iarv(:)
+	  real, allocatable    :: xgv(:)
+	  real, allocatable    :: ygv(:)
+	  real, allocatable    :: hm3v(:,:)
+        end type basin_type
+
         integer, private, save :: nkn_basin = 0
         integer, private, save :: nel_basin = 0
 
         logical, private, save :: bbasinread = .false.	! basin has been read
+
+        integer, save :: nvers_basin = 0
 
         integer, save :: nkn = 0
         integer, save :: nel = 0
@@ -399,6 +422,8 @@
 
 	if(nvers.eq.0) goto 99
 	if(nvers.lt.0) goto 98
+
+        nvers_basin = nvers
 
 	read(nb) nkn,nel,ngr,mbw
 	read(nb) dcorbas,dirnbas
@@ -1265,6 +1290,124 @@
 	end if
 
         end
+
+!*************************************************
+!*************************************************
+!*************************************************
+! save and restore basin
+!*************************************************
+!*************************************************
+!*************************************************
+
+	subroutine basin_save_basin(pbasin)
+
+	use basin
+
+	implicit none
+
+	type(basin_type) :: pbasin
+
+	call basin_allocate_structure(pbasin)
+
+	pbasin%nvers = nvers_basin
+	pbasin%nkn = nkn
+	pbasin%nel = nel
+	pbasin%ngr = ngr
+	pbasin%mbw = mbw
+	pbasin%dcorbas = dcorbas
+	pbasin%dirnbas = dirnbas
+	pbasin%sphebas = sphebas
+	pbasin%descrr = descrr
+
+	pbasin%nen3v = nen3v
+	pbasin%ipv = ipv
+	pbasin%ipev = ipev
+	pbasin%iarv = iarv
+	pbasin%xgv = xgv
+	pbasin%ygv = ygv
+	pbasin%hm3v = hm3v
+	
+	end
+
+!*************************************************
+
+	subroutine basin_restore_basin(pbasin)
+
+	use basin
+
+	implicit none
+
+	type(basin_type) :: pbasin
+
+	nvers_basin = pbasin%nvers
+	nkn = pbasin%nkn
+	nel = pbasin%nel
+	ngr = pbasin%ngr
+	mbw = pbasin%mbw
+	dcorbas = pbasin%dcorbas
+	dirnbas = pbasin%dirnbas
+	sphebas = pbasin%sphebas
+	descrr = pbasin%descrr
+
+	nen3v = pbasin%nen3v
+	ipv = pbasin%ipv
+	ipev = pbasin%ipev
+	iarv = pbasin%iarv
+	xgv = pbasin%xgv
+	ygv = pbasin%ygv
+	hm3v = pbasin%hm3v
+	
+	end
+
+!*************************************************
+
+	subroutine basin_allocate_structure(pbasin)
+
+	use basin
+
+	implicit none
+
+	type(basin_type) :: pbasin
+
+	if( pbasin%ballocated ) then
+	  call basin_deallocate_structure(pbasin)
+	end if
+
+	allocate(pbasin%nen3v(3,nel))
+	allocate(pbasin%ipv(nkn))
+	allocate(pbasin%ipev(nel))
+	allocate(pbasin%iarv(nel))
+	allocate(pbasin%xgv(nkn))
+	allocate(pbasin%ygv(nkn))
+	allocate(pbasin%hm3v(3,nel))
+
+	pbasin%ballocated = .true.
+
+	end
+
+!*************************************************
+
+	subroutine basin_deallocate_structure(pbasin)
+
+	use basin
+
+	implicit none
+
+	type(basin_type) :: pbasin
+
+	if( pbasin%ballocated ) then
+	  deallocate(pbasin%nen3v)
+	  deallocate(pbasin%ipv)
+	  deallocate(pbasin%ipev)
+	  deallocate(pbasin%iarv)
+	  deallocate(pbasin%xgv)
+	  deallocate(pbasin%ygv)
+	  deallocate(pbasin%hm3v)
+	end if
+
+	pbasin%ballocated = .false.
+
+	end
 
 !*************************************************
 

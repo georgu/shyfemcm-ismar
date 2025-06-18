@@ -43,6 +43,7 @@
 ! 09.11.2018	ggu	more general version of linear routines
 ! 18.12.2018	ggu	changed VERS_7_5_52
 ! 16.02.2019	ggu	changed VERS_7_5_60
+! 18.06.2025	ggu	new version 9, handle version 8 (old and new)
 !
 ! notes :
 !
@@ -82,6 +83,10 @@
 !	u,v,z		for record 0 barotropic velocity and water level
 !
 ! format of file:
+!
+! version 9	(some versions 8 also have written nzadapt)
+!
+!	writes also nzadapt
 !
 ! version 8
 !
@@ -136,7 +141,7 @@
         implicit none
 
         integer, save :: ext_type = 947336
-        integer, save :: ext_maxvers = 8
+        integer, save :: ext_maxvers = 9
 
 !==================================================================
         contains
@@ -218,9 +223,10 @@
 	else if(nvers.ge.3.and.nvers.le.6) then
 	  read(iunit,iostat=ierr)  it
 	  atime = it
-	else if(nvers.ge.7.and.nvers.le.8) then
+	else if(nvers.ge.7) then
 	  read(iunit,iostat=ierr)  atime,ivar
 	else
+	  write(6,*) 'nvers = ',nvers
 	  stop 'error stop ext_peek_record: internal error (1)'
 	end if
 
@@ -266,6 +272,7 @@
 	if( ios /= 0 ) goto 99
 	if( ntype /= ext_type ) goto 99
 	if( nvers <= 6 ) goto 98
+	if( nvers > ext_maxvers ) goto 97
 
 	read(iunit,iostat=ios) knausm,lmax,nvar
 	if( ios /= 0 ) goto 99
@@ -276,7 +283,11 @@
 	rewind(iunit)		!we rewind in any case
 
 	return
+   97	continue
+	write(6,*) 'unknown version nvers = ',nvers
+	stop 'error stop ext_check_new_header: unknown version'
    98	continue
+	write(6,*) 'nvers = ',nvers
 	write(6,*) 'cannot read old version with new routine...'
 	stop 'error stop ext_check_new_header: internal error (1)'
 	end
@@ -393,8 +404,23 @@
 	else
 	  read(iunit,iostat=ierr) atime0
 	  if( ierr /= 0 ) return
-	  read(iunit,iostat=ierr) href,hzmin,nzadapt
-	  if( ierr /= 0 ) return
+
+	  if( nvers < 8 ) then		
+	    read(iunit,iostat=ierr) href,hzmin
+	    if( ierr /= 0 ) return
+	  else if( nvers == 8 ) then		!handle old and new version 8
+	    read(iunit,iostat=ierr) href,hzmin,nzadapt	!try new version 8
+	    if( ierr /= 0 ) then
+	      backspace(iunit)
+	      nzadapt = 0
+	      read(iunit,iostat=ierr) href,hzmin	!try old version 8
+	      if( ierr /= 0 ) return
+	    end if
+	  else if( nvers > 8 ) then
+	    read(iunit,iostat=ierr) href,hzmin,nzadapt
+	    if( ierr /= 0 ) return
+	  end if
+
 	  read(iunit,iostat=ierr) title,femver
 	  if( ierr /= 0 ) return
 	  read(iunit,iostat=ierr) knaus,hdep,ilhkv,x,y,strings
