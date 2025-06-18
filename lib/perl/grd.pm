@@ -536,6 +536,17 @@ sub adjust_max_lines
     $self->{nlmax} = $self->adjust_nmax($self->get_lines());
 }
 
+sub get_max
+{
+    my ($self,$what) = @_;
+
+    if( $what eq "node" ) {
+      return $self->{nnmax};
+    } else {
+      die "*** get_max: what not recognized: $what\n";
+    }
+}
+
 ###############################################################################
 
 sub by_number {

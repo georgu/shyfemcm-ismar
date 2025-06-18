@@ -75,6 +75,8 @@ src/tools/femutil/netcdf/ncinfo
 src/tools/femutil/netcdf/ncbgc
 src/tools/femutil/netcdf/ncelab
 src/tools/femutil/netcdf/ncugrid
+src/tools/femutil/netcdf/gr
+src/tools/femutil/netcdf/grnew
 src/tools/shyplot/shyplot
 bin/shyplot
 src/tools/shyelab/shyelab
