@@ -1234,7 +1234,7 @@
 
 	logical bdebug
 	integer iunit
-	integer k,l,lmax,lmin,ks
+	integer k,l,lmax,lmin,ks,kint
 	real flux,conz
 	real surf_flux
 	real getpar
@@ -1244,8 +1244,9 @@
 	ks = 2757
 	ks = 2831
 	ks = 6651
+	kint = 2319
+	ks = ipext(kint)
 	ks = -1
-	!ks = nint(getpar('kref'))	!not working - here global, but local
 	bdebug = .false.
 
 	do k=1,nkn
