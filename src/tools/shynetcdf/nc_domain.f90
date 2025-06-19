@@ -203,10 +203,10 @@
 	  stop 'error stop check_regular_coords: dx==0'
         else if( dxmin < 0 ) then
 	  call ncnames_get_dim_coord_info('x',dim_size,dim_name,coord_name)
-	  write(6,*) 'x coords spacing is negative ',dxmin
+	  write(6,*) 'x coords spacing is negative: dx = ',dxmin
 	  write(6,*) 'use the following command to invert coords:'
-	  write(6,*) 'ncpdq -a "-'//trim(coord_name)//'" in.nc out.nc'
-	  !write(6,*) '(this assumes that your x-coord is named lon)'
+	  write(6,*) '   ncpdq -a "-'//trim(coord_name)//'" in.nc out.nc'
+	  write(6,*) 'you might have to install the nco package'
 	  stop 'error stop check_regular_coords: dx<=0'
           bx_invert = .true.
           dxx = -dxx
@@ -240,10 +240,10 @@
 	  stop 'error stop check_regular_coords: dy==0'
         else if( dymin < 0 ) then
 	  call ncnames_get_dim_coord_info('y',dim_size,dim_name,coord_name)
-	  write(6,*) 'y coords spacing is negative ',dymin
+	  write(6,*) 'y coords spacing is negative: dy = ',dymin
 	  write(6,*) 'use the following command to invert coords:'
-	  write(6,*) 'ncpdq -a "-'//trim(coord_name)//'" in.nc out.nc'
-	  !write(6,*) '(this assumes that your y-coord is named lat)'
+	  write(6,*) '   ncpdq -a "-'//trim(coord_name)//'" in.nc out.nc'
+	  write(6,*) 'you might have to install the nco package'
 	  stop 'error stop check_regular_coords: dy<=0'
           by_invert = .true.
           dyy = -dyy
