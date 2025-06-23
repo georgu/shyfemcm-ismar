@@ -42,6 +42,12 @@
 ! 16.02.2019	ggu	changed VERS_7_5_60
 ! 08.01.2020	ggu	new values for time description
 ! 21.10.2021	ggu	new dims and coords for vertical
+! 27.01.2022	ggu	new values for atmos
+! 20.06.2022	ggu	look in variable name to find coordinates
+! 23.10.2022	ggu	new routine handle_exceptions()
+! 15.11.2024	ggu	use bclip for some coordinates
+! 15.01.2025	ggu	check also if coordinate is without dimension
+! 24.04.2025	ggu	new routine ncnames_get_dim_coord_info()
 !
 ! notes :
 !
@@ -77,7 +83,7 @@
 	character*80, save :: cdims(0:4)
 	character*80, save :: ccoords(0:4)
 
-	character*5, parameter :: what = 'txyzi'
+	character*5, parameter :: what_list = 'txyzi'
 	integer, parameter :: nwhere = 3
 	character*13, parameter :: where(nwhere) = (/ &
      &					 'standard_name' &
@@ -256,8 +262,8 @@
 	character*80 name
 
 	bdebug = .true.			!GGU
-	bdebug = .false.			!GGU
 	bdebug = bdebug .and. what == 'var'
+	bdebug = .false.			!GGU
 
 	short = ' '
 	name = descrp
@@ -282,13 +288,12 @@
 	end if
 
 	do id=1,idlast
-	  !bdebug = ( bdebug .and. id == 56 )		!GGU
 	  if( pentry(id)%what /= what ) cycle
 	  ilen = il
 	  if( pentry(id)%bclip ) ilen = pentry(id)%ilen
 	if( bdebug ) then
-	write(6,*) id,il,ilen,pentry(id)%bclip		!GGU
-	write(6,*) pentry(id)%descrp(1:ilen),'  ',trim(name)
+	write(6,*) id,il,ilen,pentry(id)%bclip &
+     &		,trim(name),'  ',pentry(id)%descrp(1:ilen)
 	end if
 	  if( pentry(id)%descrp(1:ilen) == name(1:ilen) ) then
 	    short = pentry(id)%short
@@ -335,7 +340,7 @@
 
 	  call ncnames_get('dim',name,short)
 
-	  i = index(what,short(1:1)) - 1
+	  i = index(what_list,short(1:1)) - 1
 	  if( i < 0 ) then
 	    if( bdebug ) then
 	      write(6,*) '*** cannot identify dimension: ',trim(name)
@@ -352,7 +357,7 @@
 
 	write(6,*) 'dimensions in ncnames_get_dims:'
 	do i=0,3
-	  c = what(i+1:i+1)
+	  c = what_list(i+1:i+1)
 	  write(6,*) c,'    ',idims(:,i),'  ',trim(cdims(i))
 	end do
 
@@ -371,7 +376,7 @@
 	integer ncid
 	logical bverb
 
-	logical bdebug
+	logical bdebug,bexcept
 	character*80 short
 	integer var_id,nvars,nlen,i,j
 	integer ndims,dimids(1)
@@ -385,21 +390,21 @@
 	icoords = 0
 	ccoords = ' '
 
-	!write(6,*) 'debug: ncnames_get_coords: ',bdebug
+	if( bdebug ) write(6,*) 'debug: ncnames_get_coords: ',bdebug
 
         call ncf_nvars(ncid,nvars)
 
         do var_id=1,nvars
 
-          !call nc_get_var_name(ncid,var_id,name)
           call ncf_var_name(ncid,var_id,name)
 
 	  short = ' '
 	  do j=1,nwhere
+	    if( bdebug ) write(6,*) 'looking in ',trim(where(j))
             call ncf_att_string(ncid,var_id,trim(where(j)),atext)
 	    if( atext == ' ' ) cycle
 	    call ncnames_get('coord',atext,short)
-	    if( bdebug ) write(6,*) trim(atext),'  ',trim(short)
+	    if( bdebug ) write(6,*) 'found: ',trim(atext),'  ',trim(short)
 	    if( short /= ' ' ) exit
 	  end do
 
@@ -415,9 +420,10 @@
      &					,'  ',trim(short)
 	  end if
 	  if( short == ' ' ) cycle
-
+	  call handle_exceptions(ncid,var_id,bexcept)
+	  if( bexcept ) cycle
 	  if( bdebug ) write(6,*) '+++ ',trim(name),'  ',trim(short)
-	  i = index(what,short(1:1)) - 1
+	  i = index(what_list,short(1:1)) - 1
 	  if( i >= 0 ) then
 	    if( icoords(1,i) > 0 ) cycle	!do not insert second one
 	    ndims = 0
@@ -434,7 +440,7 @@
 
 	write(6,*) 'coordinates:'
 	do i=0,3
-	  c = what(i+1:i+1)
+	  c = what_list(i+1:i+1)
 	  write(6,*) c,'    ',icoords(:,i),'  ',trim(ccoords(i))
 	end do
 
@@ -465,7 +471,6 @@
 
         do var_id=1,nvars
 
-          !call nc_get_var_name(ncid,var_id,name)
           call ncf_var_name(ncid,var_id,name)
 
 	  do j=1,nwhere
@@ -506,7 +511,6 @@
 	bdebug = .true.			!GGU
 	bdebug = .false.			!GGU
 
-	!call nc_get_var_id(ncid,var,var_id)
 	call ncf_var_id(ncid,var,var_id)
 
 	do j=1,nwhere
@@ -535,6 +539,33 @@
 
 	end subroutine
 
+!*****************************************************************
+
+	subroutine handle_exceptions(ncid,var_id,bexcept)
+
+	use ncf
+
+	implicit none
+
+	integer ncid,var_id
+	logical bexcept
+
+	character*80 varname,atext
+
+	bexcept = .false.
+        call ncf_var_name(ncid,var_id,varname)
+        call ncf_att_string(ncid,var_id,'long_name',atext)
+
+	if( varname == 'Z' .and. atext == 'Geopotential' ) then
+	  bexcept = .true.
+	end if
+
+	if( bexcept ) then
+	  write(6,*) '...skipping: ',trim(varname),' ',trim(atext)
+	end if
+
+	end
+
 !================================================================
         end module ncnames
 !================================================================
@@ -542,9 +573,41 @@
 !*****************************************************************
 !*****************************************************************
 !*****************************************************************
-! check routines
+! external routines (to be called without use statement)
 !*****************************************************************
 !*****************************************************************
+!*****************************************************************
+
+	subroutine ncnames_get_dim_coord_info(what,dim_size,dim_name,coord_name)
+
+	use ncnames
+
+	implicit none
+
+	character*(*) what
+	integer dim_size
+	character*(*) dim_name
+	character*(*) coord_name
+	
+	character*1 w
+	integer i
+	character*4, save :: string = 'txyz'
+
+	dim_size = 0
+	dim_name = ' '
+	coord_name = ' '
+
+	do i=0,3
+	  w = string(i+1:i+1)
+	  if( w == what ) then
+            dim_size = idims(2,i)
+            dim_name = trim(cdims(i))
+            coord_name = trim(ccoords(i))
+	  end if
+	end do
+
+	end
+
 !*****************************************************************
 
 	subroutine get_dims_and_coords(ncid,bverb &
@@ -562,7 +625,9 @@
 	integer nt,nx,ny,nz
 	character(*) tcoord,xcoord,ycoord,zcoord
 
+	logical berror
 	integer i
+	character*1 :: w
 
         call nc_init_dims_and_coords(ncid,bverb)
 
@@ -582,23 +647,54 @@
 	  end do
 	end if
 
+	berror = .false.
+
         if( nt > 0 .and. tcoord == ' ' ) then
-          write(6,*) 'nt = ',nt,'   tcoord = ',trim(tcoord)
-          !stop 'error stop: dimension without variable name'
-        end if
-        if( nx > 0 .and. xcoord == ' ' ) then
-          write(6,*) 'nx = ',nx,'   xcoord = ',trim(xcoord)
-          !stop 'error stop: dimension without variable name'
-        end if
-        if( ny > 0 .and. ycoord == ' ' ) then
-          write(6,*) 'ny = ',ny,'   ycoord = ',trim(ycoord)
-          !stop 'error stop: dimension without variable name'
-        end if
-        if( nz > 0 .and. zcoord == ' ' ) then
-          write(6,*) 'nz = ',nz,'   zcoord = ',trim(zcoord)
-          !stop 'error stop: dimension without variable name'
+	  berror = .true.
+	  write(6,*) '*** t dimension without variable name'
+	else if( nt == 0 .and. tcoord /= ' ' ) then
+	  berror = .true.
+	  write(6,*) '*** t coordinate without dimension name'
         end if
 
+        if( nx > 0 .and. xcoord == ' ' ) then
+	  berror = .true.
+	  write(6,*) '*** x dimension without variable name'
+	else if( nx == 0 .and. xcoord /= ' ' ) then
+	  berror = .true.
+	  write(6,*) '*** x coordinate without dimension name'
+        end if
+
+        if( ny > 0 .and. ycoord == ' ' ) then
+	  berror = .true.
+	  write(6,*) '*** y dimension without variable name'
+	else if( ny == 0 .and. ycoord /= ' ' ) then
+	  berror = .true.
+	  write(6,*) '*** y coordinate without dimension name'
+        end if
+
+        if( nz > 0 .and. zcoord == ' ' ) then
+	  berror = .true.
+	  write(6,*) '*** z dimension without variable name'
+	else if( nz == 0 .and. zcoord /= ' ' ) then
+	  berror = .true.
+	  write(6,*) '*** z coordinate without dimension name'
+        end if
+
+	if( bverb .or. berror ) then
+          write(6,*) 'i  what  dim_size             dim_name   coord_name'
+	  do i=0,3
+	    w = what_list(i+1:i+1)
+            write(6,1000) i,w,idims(2,i),trim(cdims(i)),trim(ccoords(i))
+	  end do
+	end if
+
+	if( berror ) then
+          write(6,*) 'please add missing name to nc_dim_coords.f90' 
+          stop 'error stop: incompatible dimension or variable names'
+	end if
+
+ 1000   format(i2,5x,a1,2x,i8,1x,a20,3x,a)
 	end
 
 !*****************************************************************
@@ -635,7 +731,7 @@
 	  write(6,*) 'dimensions:'
 	  write(6,*) 'direction    id   dimension   name'
 	  do i=0,3
-	    c = what(i+1:i+1)
+	    c = what_list(i+1:i+1)
 	    write(6,*) c,'  ',idims(:,i),'  ',trim(cdims(i))
 	  end do
 	end if
@@ -644,14 +740,13 @@
 	  write(6,*) 'coordinates:'
 	  write(6,*) 'direction    id   dimension   name'
 	  do i=0,3
-	    c = what(i+1:i+1)
+	    c = what_list(i+1:i+1)
 	    write(6,*) c,'  ',icoords(:,i),'  ',trim(ccoords(i))
 	  end do
 	end if
 
 	time_d = cdims(0)
 	time_v = ccoords(0)
-        !call nc_set_time_name(time_d,time_v)
 	if( bverb ) then
 	  write(6,*) 'time:'
 	  write(6,*) 'time dimension: ',trim(time_d)
@@ -748,8 +843,6 @@
 
 	implicit none
 
-	character*80 time_d,time_v
-
 	if( binitialized ) return
 
 	cdims = ' '
@@ -760,10 +853,6 @@
 	call ncnames_add_dimensions
 	call ncnames_add_coordinates
 	call ncnames_add_variables
-
-	time_d = cdims(0)
-	time_v = ccoords(0)
-        !call nc_set_time_name(time_d,time_v)
 
 	binitialized = .true.
 
@@ -782,6 +871,7 @@
 	call ncnames_add_dim('t','Time')
 	call ncnames_add_dim('t','ocean_time')
 	call ncnames_add_dim('t','time_counter')
+	call ncnames_add_dim('t','valid_time')
 
 	call ncnames_add_dim('x','x')
 	call ncnames_add_dim('x','xpos')
@@ -830,8 +920,10 @@
 
 	call ncnames_add_coord('t','Time')
 	call ncnames_add_coord('t','time')
+	call ncnames_add_coord('t','Times')
 	call ncnames_add_coord('t','time_counter')
 	call ncnames_add_coord('t','ocean_time')
+	call ncnames_add_coord('t','valid_time')
 	call ncnames_add_coord('t','averaged time since initialization')
 	call ncnames_add_coord('t','Julian day (UTC) of the station')
 	call ncnames_add_coord('t','minutes since',bclip)
@@ -858,7 +950,7 @@
 	call ncnames_add_coord('z','eta values on full',bclip)
 	call ncnames_add_coord('z','tcell zstar depth')
 	call ncnames_add_coord('z','ocean_s_coordinate_g1')
-	call ncnames_add_coord('z','Vertical T levels')
+	call ncnames_add_coord('z','Vertical T levels',bclip)
 	!call ncnames_add_coord('z','S-coordinate at RHO-points')
 
 	end subroutine ncnames_add_coordinates
@@ -910,9 +1002,12 @@
 	call ncnames_add_var('airp','SFC PRESSURE')
 	call ncnames_add_var('airp','Pressure reduced to MSL')
 	call ncnames_add_var('airp','air_pressure')
+	call ncnames_add_var('airp','air_pressure_at_sea_level')
 	call ncnames_add_var('airp','Sea Level Pressure')
 	call ncnames_add_var('wind','eastward_wind')
+	call ncnames_add_var('wind','eastward_wind_at_10m')
 	call ncnames_add_var('wind','northward_wind')
+	call ncnames_add_var('wind','northward_wind_at_10m')
 	call ncnames_add_var('wind','U at 10 M')
 	call ncnames_add_var('wind','V at 10 M')
 	call ncnames_add_var('wind','10 metre U wind component')
@@ -922,14 +1017,18 @@
 	call ncnames_add_var('rhum','Relative Humidity at 2 m')
 	call ncnames_add_var('rhum','Relative Humidity')
 	call ncnames_add_var('rhum','relative_humidity')
+	call ncnames_add_var('rhum','relative_humidity_at_2m')
 	call ncnames_add_var('shum','specific humidity')
 	call ncnames_add_var('mixrat','Water vapor mixing ratio')
 	call ncnames_add_var('airt','Temperature at 2 m')
 	call ncnames_add_var('airt','TEMP at 2 M')
 	call ncnames_add_var('airt','air_temperature')
+	call ncnames_add_var('airt','air_temperature_at_2m')
 	call ncnames_add_var('cc','total cloud cover')
 	call ncnames_add_var('cc','total_cloud_cover')
 	call ncnames_add_var('cc','Cloud cover')
+	call ncnames_add_var('cc','total cloud fraction')
+	call ncnames_add_var('cc','cloud_area_fraction')
 	call ncnames_add_var('cc','CLOUD FRACTION')
 	call ncnames_add_var('srad','surface_downwelling_shortwave_flux')
 	call ncnames_add_var('srad','Short wave flux')
@@ -938,10 +1037,22 @@
      &			,'DOWNWARD SHORT WAVE FLUX AT GROUND SURFACE')
 	call ncnames_add_var('srad' &
      &			,'surface_downwelling_shortwave_flux_in_air')
+       call ncnames_add_var('srad'                                     &
+     &                  ,'surface_solar_radiation_downwards')
+        call ncnames_add_var('srad'                                     &
+     &                  ,'surface_net_downward_shortwave_flux')
+        call ncnames_add_var('qsens'                                    &
+     &                  ,'surface_upward_sensible_heat_flux')
+        call ncnames_add_var('qlat'                                     &
+     &                  ,'surface_upward_latent_heat_flux')
+        call ncnames_add_var('qlong'                                    &
+     &                  ,'surface_net_upward_longwave_flux')
 	call ncnames_add_var('rain','large_scale_precipitation_amount')
+	call ncnames_add_var('rain','accumulated_precipitation_amount')
 	call ncnames_add_var('rain' &
      &			,'ACCUMULATED TOTAL GRID SCALE PRECIPITATION')
 	call ncnames_add_var('rain','Total Precipitation')
+	call ncnames_add_var('rain','Precipitation')
 
 	end subroutine ncnames_add_variables 
 
