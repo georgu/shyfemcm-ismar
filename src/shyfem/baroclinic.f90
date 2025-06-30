@@ -936,6 +936,7 @@
 	character*80 tempf,saltf,ttauf,stauf
 	character*80 string
 	real ttaup,staup
+	real tau_limit
 	logical, save :: btnudge,bsnudge
 	integer, save :: idtemp,idsalt
 	integer, save :: idttau,idstau
@@ -990,9 +991,12 @@
 	  icall = 1
 	end if
 
+	tau_limit = 172000.
+
 	if( btnudge ) then
 	  if( idttau > 0 ) then
             call ts_next_record(dtime,idttau,nlvddi,nkn,nlv,ttauv)
+	    if( tau_limit > 0. ) where( ttauv > tau_limit ) ttauv = 0.
 	    where( ttauv > 0. ) ttauv = 1./ttauv
 	  end if
           call ts_next_record(dtime,idtemp,nlvddi,nkn,nlv,tobsv)
@@ -1001,6 +1005,7 @@
 	if( bsnudge ) then
 	  if( idstau > 0 ) then
             call ts_next_record(dtime,idstau,nlvddi,nkn,nlv,stauv)
+	    if( tau_limit > 0. ) where( stauv > tau_limit ) stauv = 0.
 	    where( stauv > 0. ) stauv = 1./stauv
 	  end if
           call ts_next_record(dtime,idsalt,nlvddi,nkn,nlv,sobsv)

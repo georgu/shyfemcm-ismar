@@ -584,7 +584,7 @@
         real rcv(nlvddi,nkn)	!boundary condition (value of scalar)
 	real cobs(nlvddi,nkn)	!observations (for nudging)
 	real robs		!use nudging
-	real rtauv(nlvddi,nkn)	!observations (for nudging)
+	real rtauv(nlvddi,nkn)	!inverse time scale (for nudging)
         real rkpar
 	real wsink
 	real wsinkv(0:nlvddi,nkn)
