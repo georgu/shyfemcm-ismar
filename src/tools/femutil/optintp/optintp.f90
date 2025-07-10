@@ -282,7 +282,7 @@
 
 	call setup_background_coords(nback,regpar,xback,yback)
 
-	call read_background_values(backfile,nback,zback)
+	!call read_background_values(backfile,nback,zback)
 
 	if( bback ) then
 	  zback = backvalue
@@ -448,7 +448,8 @@
 	    call write_fem_record(iutau,atime_old,regpar,string,np,ztau_old)
 	  end if
 	  if( bweight .and. bchanged ) then
-	    call make_weight(nobs,xobs,yobs,zobs,rlact,nback,xback,yback &
+	    call make_weight(nobs,xobs,yobs,zobs,rlact,rlmaxa &
+     &						,nback,xback,yback &
      &						,zweight)
 	    string = 'weight'
 	    call write_fem_record(iuweight,atime,regpar,string,np,zweight)
@@ -733,7 +734,8 @@
 
 !****************************************************************
 
-	subroutine make_weight(nobs,xobs,yobs,zobs,rl,nback,xback,yback &
+	subroutine make_weight(nobs,xobs,yobs,zobs,rl,rlmax &
+     &					,nback,xback,yback &
      &					,zweight)
 
 	use mod_optintp, only : flag
@@ -745,6 +747,7 @@
 	real yobs(nobs)
 	real zobs(nobs)
 	real rl(nobs)
+	real rlmax(nobs)
 	integer nback
 	real xback(nback)
 	real yback(nback)
@@ -754,19 +757,22 @@
 	real xi,yi,zi,xj,yj
 	real dist2,z
 	real rl2(nobs)
+	real rlm2(nobs)
 
-	rl2 = rl**2
+	rl2 = 2.*(rl**2)
+	rlm2 = rlmax**2
 
         do j=1,nback
           xj = xback(j)
           yj = yback(j)
-	  z = 0
+	  z = 0.
           do i=1,nobs
             xi = xobs(i)
             yi = yobs(i)
             zi = zobs(i)
 	    if( zi == flag ) cycle
             dist2 = (xi-xj)**2 + (yi-yj)**2
+	    if( dist2 > rlm2(i) ) continue
             z = z + exp( -dist2/rl2(i) )
           end do
 	  z = min(1.,z)
@@ -1228,7 +1234,7 @@
 	real yobs(nobs)			!y-coordinate
 	real zobs(nobs)			!value of observation
 	real rra(nobs)			!error of observation
-	real rla(nobs)			!std of observation
+	real rla(nobs)			!std of background
 
 	character*80 line
 	logical bdebug
@@ -1335,7 +1341,7 @@
 
 	character*(*) file
 
-	integer ns,ierr
+	integer ns,ierr,ios
 	real f(4)
 
 !-------------------------------------------------------------
@@ -1466,6 +1472,9 @@
 
 	bback = ( backvalue /= flag )
 	bfile = ( backfile /= ' ' )
+
+	open(1,file='success.txt',iostat=ios,status='old')
+	if( ios == 0 ) close(1,status='delete')
 
 !-------------------------------------------------------------
 ! end of routine

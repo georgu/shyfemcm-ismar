@@ -792,6 +792,9 @@
 	double precision, parameter :: d_tiny = tiny(1.d+0)
 	double precision, parameter :: r_tiny = tiny(1.)
       
+	logical, save :: bdebug = .false.
+	character*80 aline
+
 ! ----------------------------------------------------------------
 !  debug code
 ! ----------------------------------------------------------------
@@ -831,6 +834,15 @@
             else					!erosion
               cn(l,k) = cn(l,k) + dt*loading
             end if
+
+	    if( bdebug ) then
+	     if( mflux /= 0. .or. loading /= 0. ) then
+	      call get_act_timeline(aline)
+	      write(666,*) trim(aline),l,k
+	      write(666,*) cconz,qflux,mflux
+	      write(666,*) rload,loading
+	     end if
+	    end if
 
 	  end do
 
