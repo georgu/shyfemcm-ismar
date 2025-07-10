@@ -28,6 +28,7 @@
 ! revision log :
 !
 ! 12.12.2024	ggu	written from scratch
+! 10.07.2025	ggu	added sucess_stop()
 
 !===============================================================
 	module mod_error_stop
@@ -48,7 +49,7 @@
         END INTERFACE
 
 	public :: error_stop
-	public :: success
+	public :: success_stop
 
 !===============================================================
 	contains
@@ -101,11 +102,11 @@
 
 !******************************************************************
 
-	subroutine success
+	subroutine success_stop
 
 	call exit(i_code_success)
 
-	end subroutine success
+	end subroutine success_stop
 
 !===============================================================
 	end module mod_error_stop

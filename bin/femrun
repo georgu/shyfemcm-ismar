@@ -39,12 +39,13 @@ FullUsage()
   Usage
   echo ""
   echo "Available options:"
-  echo "  -h|-help         this help"
-  echo "  -batch           run in batch mode"
-  echo "  -exe executable  use executable to run model (default shyfem)"
-  echo "  -num p           run on processor p with numactl"
-  echo "  -mpi n           run MPI process with n sub-domains"
-  echo "  -time time-date  run model at given time-date"
+  echo "  -h|-help          this help"
+  echo "  -batch            run in batch mode"
+  echo "  -exe executable   use executable to run model (default shyfem)"
+  echo "  -num p            run on processor p with numactl"
+  echo "  -mpi n            run MPI process with n sub-domains"
+  echo "  -options options  use options with executable"
+  echo "  -time time-date   run model at given time-date"
   echo ""
   echo "   p        :  0 or 0,2 or 0-4 or 1,2,4-6"
   echo "   time     :  HH:MM, midnight, noon, 1am tomorrow"
@@ -87,8 +88,9 @@ RunNotify()
 ############################################################## read arguments ?
 
 mpi=0
+options=""
 batch="NO"
-hpfile=$BINDIR/shyfem
+exefile=$BINDIR/shyfem
 attime="now+0minutes"
 attime="now"
 
@@ -96,10 +98,11 @@ while [ -n "$1" ]
 do
    case $1 in
         -batch)         batch="YES";;
-        -exe)           hpfile=$2; shift;;
+        -exe)           exefile=$2; shift;;
         -time)          attime=$2; shift;;
         -num)           num=$2; shift;;			#processore number
         -mpi)           mpi=$2; shift;;			#mpi processes
+        -options)       options=$2; shift;;		#options for exe
         -h|-help)       FullUsage; exit 0;;
         -*)             ErrorOption $1; exit 1;;
         *)              break;;
@@ -129,8 +132,8 @@ actdate=`date "+%d.%m.%y %H:%M:%S"`
 
 ##################################################### control if files do exist
 
-if [ ! -x $hpfile ]; then
-	echo "Program not executable : $hpfile"
+if [ ! -x $exefile ]; then
+	echo "Program not executable : $exefile"
 	exit 1
 elif [ ! -f $strfile ]; then
 	echo "No such file : $strfile"
@@ -158,13 +161,14 @@ fi
 ######################################################## echo names to terminal
 
 echo " "
-echo "FEM routine          : " $hpfile
+echo "FEM routine          : " $exefile
 echo "input parameter file : " $strfile
 echo "name of simulation   : " $simulation
 echo "name of log file     : " $logfile
 echo "time                 : " $attime
 echo "num                  : " $prefix
 echo "mpi                  : " $mpi
+echo "options              : " $options
 echo " "
 
 ##################################################### write to overall log file
@@ -174,7 +178,7 @@ mkdir -p $tmpdir/hpat
 mkdir -p $tmpdir/hpbatch
 mkdir -p $tmpdir/hpinfo
 
-echo $actdate $simulation $simname $hpfile $hostname $attime >> $overall_log
+echo $actdate $simulation $simname $exefile $hostname $attime >> $overall_log
 
 ############################################################### remove log file
 
@@ -191,17 +195,14 @@ fi
     tmpfil=$tmpdir/hpat/hpat.$aux.$$
     echo "cd $actdir" > $tmpfil
     if [ $mpi -ne 0 ]; then
-      #cc="/usr/bin/mpirun -np $mpi $hpfile -mpi"
-      cc="mpirun -np $mpi $hpfile -mpi"
-      command="$prefix nohup $fembat $tmpfil $cc $strfile"
-    else
-      command="$prefix nohup $fembat $tmpfil $hpfile $strfile"
+      exefile="mpirun -np $mpi $exefile -mpi"
     fi
+    command="$prefix nohup $fembat $tmpfil $exefile $options $strfile"
     echo "$command > $logfile 2>&1 &" >> $tmpfil
 
     chmod +x $tmpfil
-      status=$?
-      echo "executing $tmpfil   status = $status"
+    status=$?
+    echo "executing $tmpfil   status = $status"
     if [ "$attime" = "now" ]; then
       $tmpfil
     else 
@@ -214,9 +215,9 @@ fi
 
     tmpfil=$tmpdir/hpbatch/hpbatch.$aux.$$
     echo "cd $actdir" > $tmpfil
-    command="$prefix nohup $fembat $tmpfil $hpfile $strfile"
+    command="$prefix nohup $fembat $tmpfil $exefile $options $strfile"
     echo "$command > $logfile 2>&1 &" >> $tmpfil
-    #echo "nohup $fembat $tmpfil $hpfile $strfile > $logfile 2>&1 &" >> $tmpfil
+    #echo "nohup $fembat $tmpfil $exefile $strfile > $logfile 2>&1 &" >> $tmpfil
 
     $fembatch
 
