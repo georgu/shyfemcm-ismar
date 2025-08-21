@@ -1303,6 +1303,8 @@
 	call strings_add_new('wave direction',233)
 	call strings_add_new('wave orbital velocity',234)
 	call strings_add_new('wave peak period',235)
+	call strings_add_new('wave net wind stress',236)
+	call strings_add_new('ocean-side wind stress',237)
 
 	call strings_add_new('concentration',300,100)	!new numbering
 	!call strings_add_new('concentration (multi old)',30,20)
@@ -1394,6 +1396,8 @@
 	call strings_set_short(233,'wdir')
 	call strings_set_short(234,'worb')
 	call strings_set_short(235,'wpeak')
+	call strings_set_short(236,'tauwi')
+	call strings_set_short(237,'tauwo')
 
 	call strings_set_short(300,'conc')
 	!call strings_set_short(30,'conc')

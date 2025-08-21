@@ -476,7 +476,7 @@
 		call getvarshyfem(.true.)
 
 ! init output
-		nvar = 3
+		nvar = 5
 		call init_output_d('itmwav','idtwav',da_wav)
 		if( has_output_d(da_wav)) then
 			call shyfem_init_scalar_file('wave',nvar,.true.,id)
@@ -585,6 +585,7 @@
 	double precision daux
 	real wfact,wparam,wsmin,cdw
 	real z0alpha
+        real tauwi(nkn), tauwo(nkn)
 
 !------------------------------------------------------
 
@@ -707,6 +708,9 @@
             end if
           end if
 
+          tauwi = sqrt(tauwwxshyfem*tauwwxshyfem+tauwwyshyfem*tauwwyshyfem)
+          tauwo = sqrt(tauxnv*tauxnv+tauynv*tauynv)
+
 !         -----------------------------------------------
 !         Compute wave induced forces
 !         -----------------------------------------------
@@ -737,6 +741,8 @@
 		call get_act_dtime(dtime)
 		call shy_write_scalar_record2d(id,dtime,231,waveh)
 		call shy_write_scalar_record2d(id,dtime,232,wavep)
+		call shy_write_scalar_record2d(id,dtime,236,tauwi)
+		call shy_write_scalar_record2d(id,dtime,237,tauwo)
 		call shy_write_scalar_record2d(id,dtime,233,waved)
 		call shy_sync(id)
 	end if
