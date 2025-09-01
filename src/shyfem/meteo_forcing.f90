@@ -190,8 +190,11 @@
 !		\item[0] constant value given in |dragco|. 
 !		\item[1] Smith and Banke (1975) formula
 !		\item[2] Large and Pond (1981) formula
-!		\item[3] Spatial/temporal varying in function of wave. Need
-!		the coupling with WWMIII.
+!		\item[3] Spatial/temporal varying function from other eart components. With
+!		wave coupling with WW3 |iwave=2| drag is computed by WW3. With atmosphere
+!               wave coupling |iwave=2| and |iatm=1| the drag coefficient is computed by
+!               the the atmospheric model WRF with a Charnock parameter given by WW3. In
+!               this last case setting itdrag=3 is compulsory since other choices are inconsistent.
 !		\item[4] Spatial/temporal varying in function of heat flux. 
 !		Only for |iheat| = 6. 
 !		\item[5] Hersbach (2011) formula. This is a fit of kinematic
@@ -711,13 +714,26 @@
 	call iff_get_var_description(id,1,string1)
 	call iff_get_var_description(id,2,string2)
 
+        if ( nint(getpar('iwave')) > 0 .and. iwtype == 2) then !coupling oce-wav
+          if( itdrag .ne. 0 .and. itdrag .ne. 3 ) then
+            write(6,*) 'ocean-wave coupling but wind drag type is incorrect'
+            write(6,*) 'set itdrag = 0 or itdrag = 3'
+            stop 'error stop meteo_set_wind_data: itdrag'
+          end if
+        end if
+
 	if( .not. iff_has_file(id) ) then	!no wind file
 
 	  if ( iatm == 1 ) then			!no file but coupling atm-oce
             if( iwtype .ne. 0 .and. iwtype .ne. 2 ) then
-              write(6,*) 'atmosphere-ocean coupling but no wind type'
+              write(6,*) 'atmosphere-ocean coupling but wind type is incorrect'
               write(6,*) 'set iwtype = 0 or iwtype = 2'
 	      stop 'error stop meteo_set_wind_data: iwtype'
+            end if
+            if( itdrag .ne. 0 .and. itdrag .ne. 3 ) then
+              write(6,*) 'atmosphere-ocean coupling but drag type is incorrect'
+              write(6,*) 'set itdrag = 3'
+              stop 'error stop meteo_set_wind_data: itdrag'
             end if
 	  else
             iwtype = 0                          !no file and no coupling atm-oce
@@ -891,7 +907,10 @@
             tx(k) = fice * wfact * wx(k)
             ty(k) = fice * wfact * wy(k)
             txy = sqrt( tx(k)**2 + ty(k)**2 )
+            cd = max(cdv(k),0.001)	!with waves only itdrag=0 or itdrag=3
+                                        !are allowed: such drag works for these cases.
             wspeed = sqrt(txy/(cd*wfact*roluft))
+            wspeed = max(wspeed,0.1)
             wxymax = max(wxymax,wspeed)
             wx(k) = tx(k) / (cd*wfact*roluft*wspeed)
             wy(k) = ty(k) / (cd*wfact*roluft*wspeed)
