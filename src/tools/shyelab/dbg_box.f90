@@ -150,7 +150,7 @@
         end if
 
         if( ierr > 0 ) call error_stop(77)
-	call success
+	call success_stop
 
         end
 
@@ -869,7 +869,7 @@
 	    call error_stop(routine,'differences found')
           else
             write(6,*) 'no differences found'
-	    call success
+	    call success_stop
           end if
 	end if
 

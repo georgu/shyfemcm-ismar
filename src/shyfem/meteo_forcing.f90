@@ -111,6 +111,7 @@
 ! 13.11.2024    ggu     marked old code with INTEL_BUG_OLD
 ! 03.12.2024    lrp     new parameter irain for the coupled model
 ! 25.01.2025    ggu     tentative cubic interpolation for wind (bbspline)
+! 10.09.2025    ggu     add heat fluxes to meteo output data
 !
 ! notes :
 !
@@ -538,7 +539,7 @@
 !------------------------------------------------------------------
 
 	call output_debug_data
-	call output_meteo_data
+	!call output_meteo_data
 
 	if( bextra_exchange ) then
 	  call shympi_exchange_2d_node(tauxnv)
@@ -589,17 +590,20 @@
 
 	subroutine output_meteo_data
 
+! this must be called after meteo_forcing_fem and compute_heat_flux
+! called in barocl() because only there we have all the data (and new tempv)
+
 	use basin
 	use mod_meteo
 	use shympi
 
 	integer			:: id
 	integer			:: nvar_act
-	integer, save		:: imetout
+	integer, save		:: imetout,iheat
 	double precision 	:: dtime
 	integer, save		:: nvar = 0
 	logical, save 		:: b2d = .true.
-	logical, save		:: bwind,bheat,brain,bice
+	logical, save		:: bwind,bheat,brain,bice,bhflx
         real, parameter		:: zconv = 86400. / 1000. !convert m/s to mm/day
 	real, allocatable	:: maux(:)
 
@@ -615,20 +619,24 @@
 	  if( da_met(4) < 0 ) return
 
 	  imetout = getpar('imetout')	!what type of meteo output
+	  iheat = getpar('imetout')	!what heat flux parameterization
 	  bwind = ( bit10_extract_value(imetout,1) > 0 )
 	  bheat = ( bit10_extract_value(imetout,2) > 0 )
 	  brain = ( bit10_extract_value(imetout,3) > 0 )
 	  bice  = ( bit10_extract_value(imetout,4) > 0 )
+	  bhflx = ( bit10_extract_value(imetout,5) > 0 )
 	  bwind = bwind .and. iff_has_file(idwind)
 	  bheat = bheat .and. iff_has_file(idheat)
 	  brain = brain .and. iff_has_file(idrain)
 	  bice  = bice  .and. iff_has_file(idice)
+	  bhflx = bhflx .and. iheat > 0
 
 	  nvar = 0
 	  if( bwind ) nvar = nvar + 4
 	  if( bheat ) nvar = nvar + 4
 	  if( brain ) nvar = nvar + 1
 	  if( bice  ) nvar = nvar + 1
+	  if( bhflx ) nvar = nvar + 4
 	  if( nvar == 0 ) da_met(4) = -1
 	  if( da_met(4) < 0 ) return
 
@@ -665,6 +673,12 @@
 	end if
 	if( bice ) then
           call shy_write_scalar_record2d(id,dtime,85,metice)
+	end if
+	if( bhflx ) then
+          call shy_write_scalar_record2d(id,dtime,47,qsensv)
+          call shy_write_scalar_record2d(id,dtime,48,qlatv)
+          call shy_write_scalar_record2d(id,dtime,49,qlongv)
+          call shy_write_scalar_record2d(id,dtime,27,evapv)
 	end if
 
 	call shy_get_nvar_act(id,nvar_act)

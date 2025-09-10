@@ -79,7 +79,7 @@
         end if
 
         if( ierr > 0 ) call error_stop(77)
-	call success
+	call success_stop
 
         end
 

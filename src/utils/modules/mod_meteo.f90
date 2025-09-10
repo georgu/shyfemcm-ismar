@@ -32,6 +32,7 @@
 ! 21.05.2019	ggu	changed VERS_7_5_62
 ! 03.06.2022	ggu	specific humidity added
 ! 06.09.2024	lrp	new parameter icall_nuopc
+! 10.09.2025	ggu	new parameters qsensv, qlatv,qlongv
 
 !**************************************************************************
 
@@ -67,6 +68,10 @@
         real, allocatable, save :: windcd(:)	! wind drag coefficient
         real, allocatable, save :: evapv(:)	! evaporation [m/s]
 
+        real, allocatable, save :: qsensv(:)	! sensible heat flux [W/m**2]
+        real, allocatable, save :: qlatv(:)	! latent heat flux [W/m**2]
+        real, allocatable, save :: qlongv(:)	! long wave heat flux [W/m**2]
+
         contains
 
 !************************************************************
@@ -94,6 +99,9 @@
           deallocate(metws)
           deallocate(windcd)
           deallocate(evapv)
+          deallocate(qsensv)
+          deallocate(qlatv)
+          deallocate(qlongv)
         end if
 
         nkn_meteo = nkn
@@ -116,6 +124,9 @@
         allocate(metws(nkn))
         allocate(windcd(nkn))
         allocate(evapv(nkn))
+        allocate(qsensv(nkn))
+        allocate(qlatv(nkn))
+        allocate(qlongv(nkn))
 
         end subroutine mod_meteo_init
 

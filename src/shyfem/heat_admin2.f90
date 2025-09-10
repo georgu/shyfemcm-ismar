@@ -313,7 +313,7 @@
 	  call shyice_is_active(bice)		!ice model is active
 	  bheat = iheat > 0			!we have to compute heat fluxes
 	  batm = iatm > 0			!have ocean-atmosphere coupling
-	  call qflux_compute(bqflux)		!have qflux file
+	  call qflux_compute(bqflux)		!has qflux file?
 
 	  if( .not. bqflux .and. .not. batm ) icall = -1
 	  if( .not. bheat .and. .not. bice ) icall = -1
@@ -634,6 +634,9 @@
 
 	  evap = evap / rhow			!evaporation in m/s
 	  evapv(k) = evap			!positive if loosing mass
+	  qsensv(k) = qsens
+	  qlatv(k) = qlat
+	  qlongv(k) = qlong
 
           ddq = ddq + qtot * dt * area
 
