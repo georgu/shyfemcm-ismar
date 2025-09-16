@@ -67,6 +67,7 @@
 ! 03.10.2024	ggu	new has_direction_ivar() and is_2d()
 ! 01.04.2025	ggu	ivar values and range for BFM model
 ! 24.04.2025	ggu	new entries for sensible, latent and long wave heat flux
+! 15.09.2025	ggu	new id_tentative, do not compress '_'
 !
 ! contents :
 !
@@ -283,12 +284,14 @@
 	if( id > idlast ) id = ids
 
         name_aux = string
-        bdebug = ( name_aux(1:6) == 'transp' )
+        !bdebug = .false.
+        !bdebug = bdebug .or. ( name_aux(1:6) == 'Oxygen' )
+        !bdebug = bdebug .or. ( name_aux(1:7) == 'bfm_O2o' )
         bdebug = .false.
         if( bdebug ) then
           write(6,*) '-----------------------------'
           write(6,*) 'debug: ',trim(name),' ',trim(string)
-          write(6,*) 'id/ids: ',id,ids
+          write(6,*) 'id/ids/idlast: ',id,ids,idlast
           if( id > 0 )  write(6,*) 'id: ',trim(pentry(id)%search)
           if( ids > 0 ) write(6,*) 'ids: ',trim(pentry(ids)%short)
           write(6,*) '-----------------------------'
@@ -308,20 +311,23 @@
 	integer ivar
 
 	integer id,ivmin,ivmax
+	integer id_tentative
 	logical bdebug
 
 	call check_populate
 
 	bdebug = ivar == -1
 	bdebug = .false.
+	id_tentative = 0	!this is set if if we find ivar in range
 
 	do id=1,idlast
 	  ivmin = pentry(id)%ivar
 	  ivmax = ivmin + pentry(id)%irange
 	  if( bdebug ) write(6,*) id,ivar,ivmin,ivmax
-	  if( ivmin == ivar ) exit
-	  if( ivmin < ivar .and. ivar < ivmax ) exit
+	  if( ivmin == ivar ) exit	!ivar found
+	  if( ivmin < ivar .and. ivar < ivmax ) id_tentative = id
 	end do
+	if( id > idlast .and. id_tentative > 0 ) id = id_tentative
 	if( id > idlast ) id = 0
 
 	strings_get_id_by_ivar = id
@@ -594,6 +600,7 @@
         return
    98   continue
         call strings_info(id)
+        write(6,*) 'looking for: ',trim(name)
         write(6,*) 'ivar,iv: ',ivar,iv
         stop 'error stop strings_check_consistency: ivar/=iv'
    99   continue
@@ -618,6 +625,20 @@
 	write(6,*) 'irange: ',pentry(id)%irange
 
 	end subroutine strings_info
+
+!******************************************************************
+
+	subroutine strings_info_all
+
+	integer id
+
+	do id=1,idlast
+	  write(6,*) '----------------------------'
+	  call strings_info(id)
+	  write(6,*) '----------------------------'
+	end do
+
+	end subroutine strings_info_all
 
 !****************************************************************
 
@@ -901,7 +922,8 @@
 
 	do l=1,lmax
 	  c = string(l:l)
-	  if( c == ' ' .or. c == '_' ) cycle
+	  !if( c == ' ' .or. c == '_' ) cycle
+	  if( c == ' ' ) cycle
 	  ll = ll + 1
 	  s(ll:ll) = c
 	end do
@@ -1432,7 +1454,14 @@
 	call strings_set_short(853,'bsedm')
 
 !---------------------------------------------------------------------
+!	populate bfm strings
+!---------------------------------------------------------------------
 
+	call populate_bfm_strings
+
+!---------------------------------------------------------------------
+
+	!call strings_info_all
 	call strings_check_consistency
 
 !---------------------------------------------------------------------
