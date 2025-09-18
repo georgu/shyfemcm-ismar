@@ -38,6 +38,7 @@
 ! 21.05.2019	ggu	changed VERS_7_5_62
 ! 24.07.2024	ggu	revisited and omp enabled
 ! 29.01.2025	ggu	nomp==-1 uses maximal available procs (OMP_NUM_THREADS)
+! 18.09.2025	ggu	some debug code, documentation
 
 !***************************************************************
 
@@ -50,6 +51,8 @@
 	logical, save :: bomp_init = .false.
 	integer, save :: nomp_max = 0
 	integer, save :: nomp_use = 0
+
+	logical, save :: bomp_debug = .false.
 
 !===============================================================
 	end module omp_admin
@@ -65,6 +68,10 @@
 	nomp_max = 1
 !$      nomp_max = omp_get_max_threads()
 	nomp_use = nomp_max
+
+	if( bomp_debug ) then
+	  write(6,*) 'openmp_init: nomp_max,nomp_use: ',nomp_max,nomp_use
+	end if
 
 	end
 
@@ -88,11 +95,13 @@
 
 	subroutine openmp_set_num_threads(n)
 
+! this sets the numer of threads that are used
+
 	use omp_admin
 
 	implicit none
 
-	integer n
+	integer n,m
 
 	if( .not. bomp_init ) call openmp_init
 
@@ -101,13 +110,26 @@
 	nomp_use = min(nomp_use,nomp_max)
 	nomp_use = max(nomp_use,1)
 	
+	if( bomp_debug ) then
+	  write(6,*) 'openmp_set_num_threads: nomp_max,nomp_use: ' &
+     &				,nomp_max,nomp_use
+	end if
+
 !$	call omp_set_num_threads(nomp_use)
+
+	if( bomp_debug ) then
+	  m = 0
+!$	  m = omp_get_max_threads()
+	  write(6,*) '...',n,nomp_use,m
+	end if
 
 	end
 
 !***************************************************************
 
 	subroutine openmp_get_num_threads(n)
+
+! this gets the numer of threads that are used
 
 	use omp_admin
 
@@ -124,6 +146,8 @@
 !***************************************************************
 
 	subroutine openmp_get_thread_num(it)
+
+! in a parallel section it returns the actual thread number [0,nomp_use-1]
 
 	use omp_admin
 
@@ -194,7 +218,7 @@
 
         function openmp_in_parallel()
 
-! true if in parallel region
+! true if in parallel section
 
 	use omp_admin
 
@@ -236,6 +260,34 @@
         call system_clock(count,count_rate,count_max)
 
         dcount = count - count0
+
+        end
+
+!***************************************************************
+
+        subroutine get_clock_time(time)
+
+        implicit none
+
+        real time
+
+        call cpu_time(time)
+
+        end
+
+!***************************************************************
+
+        subroutine get_clock_time_diff(time0,dtime)
+
+        implicit none
+
+        real time0,dtime
+
+        real time
+
+        call cpu_time(time)
+
+        dtime = time - time0
 
         end
 

@@ -7,6 +7,21 @@
 #
 #------------------------------------------------------------------------
 
+18.09.2025
+==========
+
+OMP and serial version give same results (see ~/work/ogs/mg/salt/bug/omp)
+	in hydro part computations in element are independent
+	in concentration parallel loop is running inside indepenedent
+		element subsets, therefore the summation is the same
+		as in the serial case
+
+check_shympi_debug.f90 has been debuged, now working as expected
+
+restart checked - gives same results with and without
+
+older
+=====
 
 boundary conditions with fluxes not working in 3D
 

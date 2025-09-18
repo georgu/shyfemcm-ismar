@@ -238,12 +238,18 @@
 
         nchunk = 1
 	nthreads = 1
-!$	nthreads = omp_get_num_threads()
+!!!!$	nthreads = omp_get_num_threads()
+	call openmp_get_num_threads(nthreads)
  
+	!write(6,*) 'subset_num: ',subset_num,nthreads
+	!write(6,*) subset_el
+	!write(6,*) sum(subset_el),nkn,nel
+
       do i=1,subset_num 	! loop over indipendent subset
        
 !$     nchunk = subset_el(i) / ( nthreads * 10 )
        nchunk = max(nchunk,1)
+       !write(6,*) i,subset_el(i),nchunk,nthreads
 
 !$OMP TASKWAIT 
 !!!$OMP TASKGROUP 

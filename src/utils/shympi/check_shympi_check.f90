@@ -23,6 +23,8 @@
 	subroutine check_shympi_check_sub
 
 ! simplified version of check_shympi_debug
+!
+! file format is different from usual dbg files
 
 	use clo
 
@@ -52,7 +54,7 @@
 
 	nc = clo_number_of_files()
 	if( nc == 0 ) stop 'no file given'
-	if( nc > 2 ) stop 'error stop: not yet ready for 2 files'
+	if( nc > 2 ) stop 'error stop: cannot handle more than 2 files'
 	call clo_get_file(1,name_one)
 	open(iu,file=name_one,status='old',form='unformatted',iostat=ios)
 	if( ios /= 0 ) stop 'error stop check500: cannot open file'
@@ -106,7 +108,7 @@
 	  end do
 	end do
 
-	if( ierr > 0 ) stop 'error stop check500: read error'
+	if( ierr > 0 ) stop 'error stop check500: time record read error'
 
 	stop
    98	continue
@@ -193,6 +195,7 @@
 
 	what = 'unknown'
 	read(iu,iostat=ios) dtime,isact,nsize,lmax,belem,what
+	!write(6,*) ios,dtime,isact,nsize,lmax,belem,what
 	ierr = ios
 
 	end

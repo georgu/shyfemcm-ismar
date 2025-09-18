@@ -771,9 +771,9 @@
 	integer ilin,itlin
 	integer num_threads,myid,el_do,rest_do,init_do,end_do
 	integer nchunk,nthreads
-	!integer count0,dcount
-	integer count,dcount
-	integer, save :: acount = 0
+	integer, allocatable :: its(:)
+	real time,difftime
+	real, save :: atime = 0
 	logical bcolin,baroc
 	real az,am,af,at,av,azpar,ampar
 	real rlin,radv
@@ -832,13 +832,22 @@
 
 	call get_act_dtime(dtime)
 
-	call get_clock_count(count)
+        nthreads = 1
+	call openmp_get_num_threads(nthreads)
+
+	!write(6,*) 'nthreads = ',nthreads
+	!allocate(its(0:nthreads-1))
+	!its = 0
+
+	call get_clock_time(time)
 
 !$OMP PARALLEL DO FIRSTPRIVATE(bcolin,baroc,az,am,af,at,radv       &
-!$OMP &            ,vismol,rrho0,dt) PRIVATE(ie,rmsdif)  &
-!$OMP &     SHARED(nel,nchunk)   DEFAULT(NONE)
+!$OMP &            ,vismol,rrho0,dt) PRIVATE(ie,rmsdif,ith)  &
+!$OMP &     SHARED(nel,nchunk,its)   DEFAULT(NONE)
 
  	  do ie=1,nel
+	    !call openmp_get_thread_num(ith)
+	    !its(ith) = its(ith) + 1
 	    call hydro_intern(ie,bcolin,baroc,az,am,af,at,radv &
      &			,vismol,rrho0,dt,rmsdif)
 	    if( rmsdif > 1.D-10 ) then
@@ -849,13 +858,15 @@
 
 !$OMP END PARALLEL DO
 
+	!write(6,*) 'its: ',its
+
 !-------------------------------------------------------------
 ! end of loop over elements
 !-------------------------------------------------------------
 
-	call get_clock_count_diff(count,dcount)
-	acount = acount + dcount
-	!write(653,*) dcount,acount
+	call get_clock_time_diff(time,difftime)
+	atime = atime + difftime
+	write(653,*) difftime,atime
 
 !-------------------------------------------------------------
 ! end of routine
