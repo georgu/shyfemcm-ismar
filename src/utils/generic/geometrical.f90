@@ -893,13 +893,8 @@
 	real u,v
 	real s,d
 
-	real rad,a
-
-!----------------------------------------------------------------
-! Pi
-!----------------------------------------------------------------
-
-	rad = 45. / atan (1.)
+	real a
+        real, parameter :: rad = atan(1.) / 45.
 
 !----------------------------------------------------------------
 ! compute speed
@@ -939,6 +934,67 @@
 	end
 
 !**************************************************************
+
+	subroutine p2c(s,d,u,v)
+
+! converts polar to cartesian coordinates
+
+	implicit none
+
+	real s,d,u,v
+
+	real a
+        real, parameter :: rad = atan(1.) / 45.
+
+        a = d
+        a = 90. - a + 180.
+        do while( a .lt. 0. )
+          a = a + 360.
+        end do
+        a = mod(a,360.)
+
+        u = s * cos( rad * a )
+        v = s * sin( rad * a )
+
+	end
+
 !**************************************************************
+!**************************************************************
+!**************************************************************
+
+        subroutine polar2xy(n,speed,dir,uv,vv)
+
+        implicit none
+
+        integer n
+        real speed(n), dir(n)
+        real uv(n), vv(n)
+
+        integer i
+
+        do i=1,n
+	  call p2c(speed(i),dir(i),uv(i),vv(i))
+        end do
+
+        end
+
+!**************************************************************
+
+        subroutine xy2polar(n,uv,vv,speed,dir)
+
+        implicit none
+
+        integer n
+        real uv(n), vv(n)
+        real speed(n), dir(n)
+
+        integer i
+
+        do i=1,n
+	  call c2p(uv(i),vv(i),speed(i),dir(i))
+	end do
+
+	end
+
 !**************************************************************
 

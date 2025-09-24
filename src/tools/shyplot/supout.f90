@@ -437,9 +437,8 @@
 	real uv(n), vv(n)
 
 	integer i
-	real rad,a
-
-	rad = atan(1.) / 45.
+	real a
+	real, parameter :: rad = atan(1.) / 45.
 
 	do i=1,n
 	  a = dir(i)
