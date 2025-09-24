@@ -132,7 +132,7 @@
 !            they are changed into internal numbers in box_init
 !            just after reading the sections
 !
-! versions :
+! versions (nversbox) of written files:
 !
 ! 1		first version 
 ! 2		fairly standard old version
@@ -144,6 +144,10 @@
 ! 6		in 3d file also write act_eta and bstress
 !		in sections block write section number
 ! 7		in 3d/vertical box section write also nvars2d (3/0)
+!
+! version of boxes.txt:
+!
+! 3		only allowed version
 !
 !******************************************************************
 !

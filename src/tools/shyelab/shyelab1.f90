@@ -92,6 +92,7 @@
 	use shyutil
 	use custom_dates
 	use shy_extract
+	use mod_trace_point
 
         use basin
         use mod_depth
@@ -155,6 +156,8 @@
 !--------------------------------------------------------------
 ! initialize everything
 !--------------------------------------------------------------
+
+	call set_trace_point(.false.)
 
 	nread=0
 	nelab=0

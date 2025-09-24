@@ -20,6 +20,11 @@ check_shympi_debug.f90 has been debuged, now working as expected
 
 restart checked - gives same results with and without
 
+16.09.2025
+==========
+
+strings for bfm
+
 older
 =====
 
