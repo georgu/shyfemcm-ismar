@@ -56,7 +56,12 @@
 ! function inpoly0(n,x,y,x0,y0)		!using winding number
 ! function winding(n,x,y,x0,y0)
 !
+! subroutine c2p_ocean(u,v,s,d)
+!
 ! subroutine c2p(u,v,s,d)		converts cartesian to polar coordinates
+! subroutine p2c(s,d,u,v)		converts polar to cartesian coordinates
+! subroutine polar2xy(n,speed,dir,uv,vv)	as p2c but for arrays
+! subroutine xy2polar(n,uv,vv,speed,dir)	as c2p but for arrays
 !
 ! revision log :
 !
@@ -79,6 +84,7 @@
 ! 18.12.2018	ggu	changed VERS_7_5_52
 ! 14.02.2019	ggu	changed VERS_7_5_56
 ! 16.02.2019	ggu	changed VERS_7_5_60
+! 23.09.2025	ggu	more routines to convert cartesian to polar and vicev.
 !
 !**************************************************************
 !**************************************************************
@@ -894,7 +900,7 @@
 	real s,d
 
 	real a
-        real, parameter :: rad = atan(1.) / 45.
+        real, parameter :: rad = 45 / atan(1.)
 
 !----------------------------------------------------------------
 ! compute speed
@@ -959,8 +965,6 @@
 	end
 
 !**************************************************************
-!**************************************************************
-!**************************************************************
 
         subroutine polar2xy(n,speed,dir,uv,vv)
 
@@ -997,4 +1001,73 @@
 	end
 
 !**************************************************************
+!**************************************************************
+!**************************************************************
+! test routines for ploar conversion
+!**************************************************************
+!**************************************************************
+!**************************************************************
 
+	subroutine test_polar
+
+	implicit none
+
+	integer, parameter :: ndim = 100000
+	real, parameter :: eps = 1.e-6
+
+	integer i,ierr
+	real u,v,uu,vv,s,d,dmax
+	real du,dv,dd
+
+	ierr = 0
+	dmax = 0.
+
+	call test_polar_local(1.,0.)
+	call test_polar_local(1.,1.)
+	call test_polar_local(-1.,1.)
+
+	do i=1,ndim
+	  call random_number(u)
+	  call random_number(v)
+	  u = 2*u - 1.
+	  v = 2*v - 1.
+	  call c2p(u,v,s,d)
+	  call p2c(s,d,uu,vv)
+	  du = abs(u-uu)
+	  dv = abs(v-vv)
+	  dd = max(du,dv)
+	  dmax = max(dmax,dd)
+	  if( dd > eps ) then
+	    ierr = ierr + 1
+	    write(6,'(6f10.2,e14.6)') u,v,s,d,uu,vv,dd
+	  end if
+	  !write(6,'(6f10.2,e14.6)') u,v,s,d,uu,vv,dd
+	end do
+
+	write(6,*) eps,dmax,ierr,ndim
+
+	end
+
+!**************************************************************
+
+	subroutine test_polar_local(u,v)
+
+	implicit none
+
+	real u,v
+
+	real uu,vv,s,d
+
+	call c2p(u,v,s,d)
+	call p2c(s,d,uu,vv)
+
+	write(6,'(6f10.2)') u,v,s,d,uu,vv
+	
+	end
+
+!**************************************************************
+!	program main_test_polar
+!	call test_polar
+!	end
+!**************************************************************
+	

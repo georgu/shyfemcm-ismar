@@ -866,7 +866,7 @@
 
 	call get_clock_time_diff(time,difftime)
 	atime = atime + difftime
-	write(653,*) difftime,atime
+	!write(653,*) difftime,atime
 
 !-------------------------------------------------------------
 ! end of routine

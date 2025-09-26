@@ -1084,6 +1084,8 @@
 
 	implicit none
 
+	logical, save :: bwavedebug = .false.
+
         real, parameter :: z0 = 5.e-4
         real, parameter :: awice = 1.	!use wave reduction due to ice cover
 
@@ -1125,7 +1127,10 @@
 	logical debug
         !integer ie,icount,ii,k
 	integer id,nvar
+	integer k,ie
+	real w
 	double precision dtime
+	character*20 aline
 
         real getpar
         real depele             !element depth function [m]
@@ -1184,6 +1189,22 @@
 ! normal call
 ! -------------------------------------------------------------------
 
+!       -------------------------------------------------------------
+!	set up debugging
+!       -------------------------------------------------------------
+
+	call get_act_dtime(dtime)
+	bwavedebug = .false.
+	!if( dtime == 56998800. ) bwavedebug = .true.
+	if( bwavedebug ) then
+	  call get_act_timeline(aline)
+	  write(666,*) 'wavedebug: ',aline,'  ',dtime
+	end if
+
+!       -------------------------------------------------------------
+!	handle ice cover
+!       -------------------------------------------------------------
+
 	call get_ice_cover_all(icecover)
 
 !       -------------------------------------------------------------
@@ -1205,12 +1226,34 @@
         call compute_wave_parameters
 
 !       -------------------------------------------------------------------
-!       copy to global values
+!       copy to global nodal values
 !       -------------------------------------------------------------------
 
-        call e2n2d(waeh,waveh,v1v)
-        call e2n2d(waep,wavep,v1v)
-        call e2n2d(waed,waved,v1v)
+        call e2n2d(waeh,waveh,v1v)	!wave height
+        call e2n2d(waep,wavep,v1v)	!wave period
+
+!       -------------------------------------------------------------------
+!       direction has to be handled differently
+!       -------------------------------------------------------------------
+
+	call aver_wave_dir(nel,nkn,waeh,waed,waved)
+
+        !call e2n2d(waed,waved,v1v)	!wave direction
+
+	if( bwavedebug ) then
+	  do k=1,nkn
+	    w = waved(k)
+	    if( w > 300 ) cycle
+	    if( w < 50 ) cycle
+	    write(666,*) 'node ',k,w
+	  end do
+	  do ie=1,nel
+	    w = waed(ie)
+	    if( w > 300 ) cycle
+	    if( w < 50 ) cycle
+	    write(666,*) 'elem ',ie,w
+	  end do
+	end if
 
 	wavepp = wavep                  !peak period is not computed
 
@@ -1291,6 +1334,7 @@
         parameter(et2=1.,at3=0.0379,et3=1./3.,et4=1.)
 
         real, parameter :: g = 9.81		!gravity acceleration [m2/s]
+        real, parameter :: eps = 1.e-5
 
 	integer icount
 	real dep,depe
@@ -1393,9 +1437,9 @@
 20        continue
 
 	  call wave_spm(wis,wid,fet(ie),dep,waeh1,waep1,waed1)
-	  if( waeh1 /= waeh(ie) ) goto 99
-	  if( waep1 /= waep(ie) ) goto 99
-	  if( waed1 /= waed(ie) ) goto 99
+	  if( abs(waeh1 - waeh(ie)) > eps ) goto 99
+	  if( abs(waep1 - waep(ie)) > eps ) goto 99
+	  if( abs(waed1 - waed(ie)) > eps ) goto 99
 
 	return
    99	continue
@@ -1754,3 +1798,26 @@
         end function has_waves
 
 !*********************************************************************
+
+	subroutine aver_wave_dir(nel,nkn,waeh,waed,waved)
+
+	implicit none
+
+	integer nel,nkn
+	real waeh(nel)
+	real waed(nel)
+	real waved(nkn)
+
+	real uv(nel),vv(nel)
+	real unode(nkn),vnode(nkn)
+	real v1v(nkn)
+
+	call polar2xy(nel,waeh,waed,uv,vv)
+        call e2n2d(uv,unode,v1v)
+        call e2n2d(vv,vnode,v1v)
+	call xy2polar(nkn,unode,vnode,v1v,waved)
+
+	end
+
+!*********************************************************************
+

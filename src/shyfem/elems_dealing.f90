@@ -949,6 +949,7 @@
         logical bsigma
 	integer k,l,ie,ii,ie_mpi
 	integer lmax,lmin,lmink,n,nlev,nsigma,levmin
+	integer imode
 	real hfirst,hlast,h,htot,z,zmed,hm
 	real hacu,hlevel,hsigma,hsig
 	real hmin
@@ -1008,6 +1009,8 @@
 !	  -------------------------------------------------------
 !	  nodal values
 !	  -------------------------------------------------------
+
+	  imode = 1
 
 	  do ii=1,n
 
@@ -1071,6 +1074,8 @@
 !	  -------------------------------------------------------
 !	  element values
 !	  -------------------------------------------------------
+
+	  imode = 2
 
 	  k = 0
 	  ii = 0
@@ -1176,6 +1181,11 @@
 
 	return
    77	continue
+	if( imode == 1 ) then
+	  write(6,*) 'while computing nodal values:'
+	else
+	  write(6,*) 'while computing elemental values:'
+	end if
 	write(6,*) 'last layer negative: ',hlast
 	write(6,*) 'levdim,lmax: ',levdim,lmax
 	write(6,*) 'ie,ii,k: ',ie,ii,k

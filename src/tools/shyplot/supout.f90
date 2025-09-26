@@ -428,7 +428,7 @@
 ! ******************************************************
 ! ******************************************************
 
-	subroutine polar2xy(n,speed,dir,uv,vv)
+	subroutine polar2xy00(n,speed,dir,uv,vv)
 
 	implicit none
 
