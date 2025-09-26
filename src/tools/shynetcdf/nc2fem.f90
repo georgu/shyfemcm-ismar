@@ -53,6 +53,7 @@
 ! 23.06.2022    ggu     possible time correction for SMHI data (-tcorrect)
 ! 23.06.2022    ggu     more debug output with bwrite
 ! 25.04.2025    ggu     new option -rfact
+! 19.06.2025    ggu     check file format with nc_check_file_format()
 !
 ! notes :
 !
@@ -124,6 +125,7 @@
 	integer iftype
 	integer ifreq
 	integer regexpand
+	integer iformat
 	real rfact
 	real regpar_data(9)
 	real regpar(9)
@@ -296,6 +298,8 @@
 	if( .not. bsilent ) call global_information(ncid)
 
 	if( bwrite ) write(6,*) 'ncid = ',ncid
+
+	call nc_check_file_format(ncid,3,iformat)
 
 	call ncnames_init
 

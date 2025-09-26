@@ -135,7 +135,7 @@
 	implicit none
 
 	integer nobdim
-	parameter (nobdim = 5)
+	parameter (nobdim = 4)
 
 	real xobs(nobdim)
 	real yobs(nobdim)
@@ -203,6 +203,7 @@
 !--------------------------------------------------------------
 
 	call optintp_init(obsfile)
+	call success_init
 
 !-----------------------------------------------------------------
 ! set some variables
@@ -517,7 +518,7 @@
 	  end if
 	end if
 
-	call optintp_final
+	call success_final
 
 !-----------------------------------------------------------------
 ! end of routine
@@ -1483,11 +1484,32 @@
 
 !******************************************************************
 
-	subroutine optintp_final
-	open(1,file='success.txt',form='formatted')
-	write(1,*) 'optinp has finished with success'
+	subroutine success_init
+
+	implicit none
+
+	integer ios
+	character*80, save :: file = "success.txt"
+
+	open(unit=1, iostat=ios, file=file, status='old')
+	if (ios == 0) close(1, status='delete')
+
+	end subroutine
+
+!******************************************************************
+
+	subroutine success_final
+
+	implicit none
+
+	integer ios
+	character*80, save :: file = "success.txt"
+
+	open(1,file=file,status='new',form='formatted')
+	write(1,*) 'optintp finished with success'
 	close(1)
-	end
+
+	end subroutine
 
 !******************************************************************
 

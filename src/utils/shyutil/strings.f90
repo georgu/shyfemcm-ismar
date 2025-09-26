@@ -67,6 +67,7 @@
 ! 03.10.2024	ggu	new has_direction_ivar() and is_2d()
 ! 01.04.2025	ggu	ivar values and range for BFM model
 ! 24.04.2025	ggu	new entries for sensible, latent and long wave heat flux
+! 10.07.2025	ggu	started parsing BFM variable names
 ! 15.09.2025	ggu	new id_tentative, do not compress '_'
 !
 ! contents :
@@ -520,7 +521,9 @@
 	call compress_string(string)
 	id = strings_get_id(string)
 	if( id /= 0 ) then
-	  write(6,*) ivar,'  ',name,'  ',string
+	  write(6,*) 'error adding variable ',ivar
+	  write(6,*) ivar,'  ',trim(name),'  ',trim(string)
+	  write(6,*) 'info on offending variable: '
 	  call strings_info(id)
 	  stop 'error stop strings_add_new: name already present'
 	end if
@@ -1237,6 +1240,116 @@
 !****************************************************************
 !****************************************************************
 
+	subroutine read_bfm_namelist
+
+	use shyfem_strings
+
+	implicit none
+
+	integer ios,varid
+	character*80 file
+	character*256 line,lastline
+	character*3 short
+	character*80 long
+
+	file='shyfem_vars.py'
+	lastline = ' '
+
+	open(1,file=file,status='old',form='formatted',iostat=ios)
+	if( ios /= 0 ) return
+
+	write(6,*) 'reading bfm namelist ',trim(file)
+
+	do
+	  read(1,'(a)',iostat=ios) line
+	  if( ios /= 0 ) goto 99
+	  if( line(1:6) == ' bfm={' ) exit
+	  if( line(1:5) == 'bfm={' ) exit
+	  lastline = line
+	  !write(6,*) trim(lastline)
+	end do
+
+	write(6,'(a)') trim(lastline)
+	write(6,*) 'bfm line found'
+	line(1:10) = ' '
+
+	do
+	  call parse_bfm_line(line,varid,short,long)
+	  call strings_add_new(long,varid)
+	  call strings_set_short(varid,short)
+	  read(1,'(a)',iostat=ios) line
+	  if( ios /= 0 ) goto 99
+	  if( line(1:2) == ' }' ) exit
+	  if( line(1:1) == '}' ) exit
+	end do
+
+	write(6,*) 'finished reading bfm namelist '
+	close(1)
+
+	return
+   99	continue
+	write(6,*) 'iostat = ',ios
+	write(6,*) trim(lastline)
+	stop 'error stop read_bfm_namelist: error reading namelist'
+	end subroutine
+
+!****************************************************************
+
+	subroutine parse_bfm_line(line,varid,short,long)
+
+	implicit none
+
+	character*(*) line
+	integer varid
+	character*(*) short
+	character*(*) long
+
+	integer is,ioff,l,ll,ls
+	character*256 string
+	character*80 svarid
+	double precision d(1)
+
+	integer istos,istot,iscand
+
+	ioff = 1
+	ls = len(short)
+	ll = len(long)
+
+	is = istot(line,string,ioff)
+	!write(6,*) is,ioff,trim(string)
+	svarid=string(6:8)
+
+	is = iscand(svarid,d,1)
+	if( is /= 1 ) goto 99
+	varid = nint(d(1))
+	!write(6,*) 'varid: ',trim(svarid),varid
+
+	is = istot(line,string,ioff)
+	!write(6,*) is,ioff,trim(string)
+
+	is = istot(line,string,ioff)
+	short = string(1:ls)
+	!write(6,*) is,ioff,trim(string)
+
+	string = line(ioff:)
+	long = adjustl(string(1:ll))
+	!write(6,*) is,ioff,trim(string)
+	!write(6,*) 'final line'
+	!write(6,*) line
+	
+	!write(6,*) 'final:'
+	write(6,*) varid,'  ',short,'  ',trim(long)
+
+	return
+   99	continue
+	write(6,*) 'cannot parse: ',trim(svarid)
+	stop 'error stop parse_bfm_line: cannot parse'
+	end subroutine
+
+!****************************************************************
+!****************************************************************
+!****************************************************************
+
 	subroutine populate_strings
 
 ! populates string information
@@ -1462,6 +1575,10 @@
 !---------------------------------------------------------------------
 
 	!call strings_info_all
+	call read_bfm_namelist
+
+!---------------------------------------------------------------------
+
 	call strings_check_consistency
 
 !---------------------------------------------------------------------

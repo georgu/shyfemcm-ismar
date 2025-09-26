@@ -62,11 +62,13 @@ OBJS = ncf_util.o subclo.o ncf_dim_coords.o convert.o
 OBJS_BASE = ncf_util.o ncf_dim_coords.o subclo.o convert.o
 OBJS_INFO = ncf_util.o subclo.o
 OBJS_UGRID = ncf_util.o subclo.o convert.o
-OBJS_ELAB = ncf_util.o subclo.o
+OBJS_ELAB = ncf_util.o subclo.o convert.o 
 OBJS_BGC = ncf_util.o ncf_dim_coords.o subclo.o convert.o bgc_util.o subgeo.o
 OBJS_GR = ncf_util.o subclo.o
 OBJS_TIME = ncf_tutil.o subiso8601.o subdts.o
+OBJS_DIMS = ncf_dim_coords.o
 OBJS_BGC += $(OBJS_TIME)
+OBJS_ELAB += $(OBJS_TIME) $(OBJS_DIMS)
 
 EXES = gr gw ncinfo ncelab
 EXES = ncinfo ncbgc ncelab ncugrid grnew

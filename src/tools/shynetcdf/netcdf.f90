@@ -77,6 +77,7 @@
 ! 01.04.2025	ggu	handle variables with no CL description
 ! 07.04.2025	ggu	new routine handle_time_string()
 ! 17.06.2025	ggu	deal with description == 'unknown'
+! 19.06.2025	ggu	new routine nc_check_file_format()
 !
 ! notes :
 !
@@ -1853,7 +1854,7 @@
 	if( nc_has_err(retval) ) return	!no such attribute name
 
 	if( xtype .eq. 12 ) then
-	  write(6,*) 'this is a netcdf-4 which contains string values'
+	  write(6,*) 'this is a netcdf-4 file which contains string values'
 	  write(6,*) 'this file cannot be read by the present routines'
 	  write(6,*) 'please convert this file to netcdf-3 with ncks:'
 	  write(6,*) '   ncks -3 nc4-file.nc nc3-file.nc'
@@ -1886,6 +1887,46 @@
    99	continue
 	write(6,*) 'len = ',len,'  max possible is 1000'
 	stop 'error stop nc_get_var_attrib: len > 1000'
+	end
+
+!*****************************************************************
+
+	subroutine nc_check_file_format(ncid,iformat_max,iformat)
+
+	use netcdf_params
+
+	implicit none
+
+	integer ncid
+	integer iformat_max	!maximum format that can be handled
+	integer iformat
+
+	integer nvars,xtype,len,var_id
+	integer retval
+	logical bstop
+	character*20 aname
+
+	aname = 'standard_name'
+	iformat = 3
+	bstop = ( iformat_max <= 3 )
+
+	call nc_get_var_totnum(ncid,nvars)
+
+	do var_id=1,nvars
+	  retval = nf_inq_att(ncid,var_id,aname,xtype,len)
+	  if( nc_has_err(retval) ) cycle
+	  if( xtype == 12 ) iformat = 4
+	end do
+
+	if( iformat > iformat_max ) then
+	  write(6,*) 'this is a netcdf-4 file which contains string values'
+	  write(6,*) 'this file cannot be read by the present routines'
+	  write(6,*) 'please convert this file to netcdf-3 with ncks:'
+	  write(6,*) '   ncks -3 nc4-file.nc nc3-file.nc'
+	  write(6,*) 'you might have to install the nco package'
+	  stop 'error stop nc_check_file_format: string format unsupported'
+	end if
+
 	end
 
 !*****************************************************************

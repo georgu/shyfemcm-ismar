@@ -77,6 +77,7 @@
 ! 23.06.2021	ggu	more documentation
 ! 27.01.2022	ggu	new routine for skipping record, find last record
 ! 18.03.2025	ggu	deal with lmax == 0 in writing record
+! 24.06.2025	ggu	in fem_is_nan() use intrinsic isnan()
 !
 ! notes :
 !
@@ -1290,6 +1291,9 @@
         integer itot
 
         itot = 0
+
+	fem_is_nan = isnan(val)
+	return
 
         if( val .gt. 0. ) itot = itot + 1
         if( val .lt. 0. ) itot = itot + 1

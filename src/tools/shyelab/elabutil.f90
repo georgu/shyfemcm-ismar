@@ -488,8 +488,9 @@
      &			,'convert time column to ISO string')
           call clo_add_option('convsec',.false. &
      &			,'convert ISO time column to seconds')
-          call clo_add_option('date0',' ' &
+          call clo_add_option('date0 dstring',' ' &
      &			,'reference date for conversion of time column')
+          call clo_add_com('    dstring has format YYYY-MM-DD[::hh[:mm[:dd]]]')
 	end if
 
 	end subroutine elabutil_set_extract_options
@@ -502,6 +503,7 @@
 
 	if( clo_has_option('facts') ) return
 
+        call clo_add_sep('factors and offsets')
         call clo_add_option('facts fstring',' ' &
      &			,'apply factors to data in data-file')
         call clo_add_option('offset ostring',' ' &
