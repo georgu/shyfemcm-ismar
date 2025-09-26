@@ -72,6 +72,7 @@
 ! 30.03.2022	ggu	bug: in write_wwm nlev was not set before call
 ! 09.05.2023    lrp     introduce top layer index variable
 ! 25.01.2024    ggu     in parwaves() introduced OMP parallelization
+! 25.09.2025    ggu     use aver_wave_dir() to average wave direction
 !
 !**************************************************************
 ! DOCS  START   S_wave
