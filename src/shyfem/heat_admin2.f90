@@ -266,6 +266,7 @@
 	integer, save :: kdebug = 0		!debug for this node
 	integer, save :: kspecial = 0		!special output for this node
 	logical, save :: bdebug = .false.
+	logical, save :: bfluxdebug = .true.
 	logical, save :: baverevap = .false.
 	logical, save :: bwind = .false.
 	logical, save :: bice = .false.
@@ -357,7 +358,6 @@
 
           levdbg = nint(getpar('levdbg'))
 	  bdebug = levdbg .ge. 2 
-
 	end if
 
 	icall = icall + 1
@@ -642,6 +642,8 @@
 
 	end do
 
+	if( bfluxdebug ) call debug_fluxes(aline)
+
 	dq = ddq
 
 !---------------------------------------------------------
@@ -652,6 +654,7 @@
 	  call aver_nodal(evapv,evaver)	!in evaver is average of evaporation m/s
 	  write(678,*) dtime,evaver
 	end if
+
 
 !---------------------------------------------------------
 ! skin temperature and special output
@@ -830,6 +833,47 @@
           call shy_sync(id)
         end if
 
+	end
+
+!*****************************************************************************
+
+	subroutine debug_fluxes(aline)
+
+	use mod_meteo
+
+	implicit none
+
+	character*20 aline
+
+	integer, save :: icall = 0
+	integer, save :: k1,k2
+	integer k
+
+	integer ipint
+
+	if( icall == 0 ) then
+          k = 10337
+          k = ipint(k)
+          if( k <= 0 ) stop 'error k1'
+          k1 = k
+
+	  k = 8636
+          k = ipint(k)
+          if( k <= 0 ) stop 'error k2'
+          k2 = k
+        end if
+
+	icall = icall + 1
+
+	k = k1
+	write(661,1000) aline,evapv(k),qsensv(k),qlatv(k),qlongv(k)
+	k = k2
+	write(662,1000) aline,evapv(k),qsensv(k),qlatv(k),qlongv(k)
+	flush(661)
+	flush(662)
+
+	return
+ 1000	format(a20,6f10.2)
 	end
 
 !*****************************************************************************
