@@ -55,6 +55,7 @@
 ! 28.04.2023    ggu     update function calls for belem
 ! 03.10.2024    ggu     added var_dim
 ! 01.10.2025    ggu     handle ncdate0
+! 03.10.2025    ggu     handle sumvar with specific vars
 !
 !***************************************************************
 !
@@ -493,8 +494,7 @@
 	    if( bhydro ) then
 	      ! nothing to be done
 	    else if( bsumvar ) then
-              cv3all(:,:,0) = 0.
-              cv3all(:,:,0) = sum(cv3all,dim=3)
+	      call handle_sumvar(nlvddi,nndim,nvar,cv3all)
               ivar = 10
 	      belem = .false.
 	      call shy_write_output_record(idout,dtime,ivar &
@@ -652,6 +652,32 @@
 !***************************************************************
 !***************************************************************
 
+	subroutine handle_sumvar(nlvddi,nndim,nvar,cv3all)
+
+	use elabutil
+
+	implicit none
+
+	integer nlvddi,nndim,nvar
+	integer ivars(nvar)
+	real cv3all(nlvddi,nndim,0:nvar)
+
+	integer iv,ntot
+
+        cv3all(:,:,0) = 0.
+	ntot = sum(idsumvar)
+	
+	if( ntot == nvar ) then			!sum all
+          cv3all(:,:,0) = sum(cv3all,dim=3)
+	else
+	  do iv=1,nvar
+	    if( idsumvar(iv) > 0 ) then
+              cv3all(:,:,0) = cv3all(:,:,0) + cv3all(:,:,iv)
+	    end if
+	  end do
+	end if
+
+	end
 
 !***************************************************************
 !***************************************************************

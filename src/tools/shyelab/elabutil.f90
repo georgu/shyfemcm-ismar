@@ -175,12 +175,16 @@
 	logical, save :: bmax			= .false.
 	logical, save :: bstd			= .false.
 	logical, save :: brms			= .false.
-	logical, save :: bsumvar		= .false.
 	double precision, save :: threshold	= flag_p
 	real, save :: fact			= 1
 	integer, save :: ifreq			= 0
 	logical, save :: b2d			= .false.
 	logical, save :: bvorticity		= .false.
+
+	logical, save :: bsumvar		= .false.
+        character*80, save :: sumvarid		= ' '
+        character*80, save :: sumvarnum		= ' '
+        integer,allocatable,save :: idsumvar(:)
 
 	real, save :: perc			= -1.		!percentile
 
@@ -621,7 +625,6 @@
         call clo_add_option('max',.false.,'maximum of records')
 	call clo_add_option('std',.false.,'standard deviation of records')
         call clo_add_option('rms',.false.,'root mean square of records')
-        call clo_add_option('sumvar',.false.,'sum over variables')
 	call clo_add_option('threshold t',flag &
      &				,'compute records over threshold t')
 	call clo_add_option('percentile p',perc &
@@ -629,6 +632,14 @@
 	call clo_add_option('fact fact',1.,'multiply values by fact')
 	call clo_add_option('freq n',0. &
      &			,'frequency for aver/sum/min/max/std/rms')
+
+        call clo_add_option('sumvar',.false.,'sum over all variables')
+        call clo_add_option('sumvarid varids',' ' &
+     &				,'sum over variables with id in varids')
+        call clo_add_option('sumvarnum varnums',' ' &
+     &				,'sum over variables with num in varnums')
+        call clo_add_com('    varids and varnums are comma separated ' &
+     &				// 'lists of numbers')
 
 	call clo_add_option('2d',.false.,'average vertically to 2d field')
 	call clo_add_option('vorticity',.false. &
@@ -817,6 +828,8 @@
           call clo_get_option('std',bstd)
           call clo_get_option('rms',brms)
           call clo_get_option('sumvar',bsumvar)
+          call clo_get_option('sumvarid',sumvarid)
+          call clo_get_option('sumvarnum',sumvarnum)
           call clo_get_option('threshold',threshold)
           call clo_get_option('fact',fact)
           call clo_get_option('freq',ifreq)
@@ -908,6 +921,9 @@
 	barea = ( areafile /= ' ' )
 	bcheck = ( scheck /= ' ' )
 	bresample = ( rbounds /= ' ' )
+
+	if( sumvarid /= ' ') bsumvar = .true.
+	if( sumvarnum /= ' ') bsumvar = .true.
 
         boutput = bout
         boutput = boutput .or. b2d .or. bvorticity

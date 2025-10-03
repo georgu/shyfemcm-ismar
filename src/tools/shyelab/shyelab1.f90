@@ -80,6 +80,7 @@
 ! 29.09.2023    ggu     new atime0out for correct concatenating of files
 ! 17.10.2024    ggu     for shy_make_basin_aver() allow for percentile
 ! 01.04.2025    ggu     better error message
+! 03.10.2025    ggu     handle sumvar with specific vars
 !
 !**************************************************************
 
@@ -309,6 +310,8 @@
 	call initialize_nodes	!single node output
 	call initialize_extract(sextract)	!initialize extracting records
 
+	call initialize_sumvar(nvar,ivars)
+
 	!--------------------------------------------------------------
 	! time averaging
 	!--------------------------------------------------------------
@@ -353,11 +356,11 @@
 
 	ftype_out = ftype
 	if( bsumvar ) then
-	  call shyelab_init_output(id,idout,ftype,1,(/10/))
+	  call shyelab_init_output(id,idout,ftype,1,(/10/))	!opens as tracer
 	else if( binfluencemap ) then
 	  call shyelab_init_output(id,idout,ftype,1,(/75/))
 	else if( bvorticity ) then
-	  if( ftype /= 1 ) goto 70
+	  if( ftype /= 1 ) goto 70		!we need hydro file
 	  ftype_out = 2
 	  call shyelab_init_output(id,idout,ftype_out,1,(/19/))
 	else
@@ -892,6 +895,66 @@
 
 !***************************************************************
 !***************************************************************
+!***************************************************************
+
+	subroutine initialize_sumvar(nvar,ivars)
+
+	use elabutil
+
+	implicit none
+
+	integer nvar
+	integer ivars(nvar)
+
+        integer i,n,id,num,iv
+        integer ntot
+        real,allocatable :: f(:)
+
+	integer iscanf
+
+        allocate(idsumvar(nvar))
+        allocate(f(nvar))
+        idsumvar = 0
+	ntot = 0
+
+        if( sumvarid /= ' ' ) then
+          n = iscanf(sumvarnum,f,nvar)
+          if( n < 0 ) goto 99
+          ntot = ntot + n
+          do i=1,n
+            num = nint(f(i))
+            idsumvar(num) = 1
+          end do
+        end if
+        if( sumvarid /= ' ' ) then
+          n = iscanf(sumvarid,f,nvar)
+          if( n < 0 ) goto 99
+          ntot = ntot + n
+          do i=1,n
+            id = nint(f(i))
+	    do iv=1,nvar
+	      if( ivars(iv) == id ) exit
+	    end do
+	    if( iv > nvar ) goto 98
+	    idsumvar(iv) = 1
+          end do
+        end if
+
+	if( bsumvar .and. ntot == 0 ) then	!summ all variables
+	  idsumvar = 1
+	end if
+
+        return
+   98   continue
+        write(6,*) 'id not in available variables: ',id
+        stop 'error stop handle_sumvar: id error'
+   99   continue
+        write(6,*) 'error in list of numbers:'
+        write(6,*) 'sumvarid: ',trim(sumvarid)
+        write(6,*) 'sumvarnum: ',trim(sumvarnum)
+        stop 'error stop handle_sumvar: list error'
+	end
+
 !***************************************************************
 
 	subroutine check_diff(nlv,nn,nvar,cv3all,deps,ndiff)
