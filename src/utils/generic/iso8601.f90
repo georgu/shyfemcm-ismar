@@ -37,6 +37,7 @@
 ! 16.02.2019	ggu	changed VERS_7_5_60
 ! 21.10.2021	ggu	allow for short version of date: YYYY-M-D
 ! 07.02.2024	ggu	bug fix for YYYY-M-D (bless)
+! 01.10.2025	ggu	new routine complete_date()
 !
 ! notes :
 !
@@ -51,7 +52,7 @@
 ! separator can be T, ::, or blanks
 !
 ! mixed representation (date in extend and time in basic etc..) is not allowed
-! date must always given fully (until day)
+! date must be always given fully (until day)
 ! time can be abbreviated (hh, hh:mm, hhmm)
 !
 ! usage :
@@ -174,6 +175,8 @@
 	    nl = 2
 	  end if
 	end if
+
+	!write(6,*) 'dt: ',dt(4:6)
 
 !	-------------------------------------------------------
 !	parse rest
@@ -412,6 +415,73 @@
 
 	end subroutine
 
+!*********************************************************************
+!*********************************************************************
+!*********************************************************************
+
+	subroutine complete_date(string,date,ierr)
+
+! completes an incomplete description of date to full date
+!
+! example:
+!		25		-> 2025-01-01::00:00:00
+!		2025		-> 2025-01-01::00:00:00
+!		2025-03		-> 2025-03-01::00:00:00
+!		2025-03-15	-> 2025-03-15::00:00:00
+
+	implicit none
+
+	character*(*), intent(in) :: string
+	character*(*), intent(out) :: date
+	integer, intent(out) :: ierr
+
+	integer i,j
+	integer dt(8)
+	real f(3)
+	character*80 s(3)
+	character*1 sep
+
+	integer iscanf
+	integer iscanp
+
+	dt = 0
+	ierr = 13
+	sep = '-'
+
+	i = index(string,':')
+	if( i /= 0 ) then	!string has somehow time information
+	  call string2dt(string,dt,ierr)
+	  call dt2string(dt,date)
+	  if( ierr /= 0 ) return
+	else			!no time information
+	  dt(2) = 1
+	  dt(3) = 1
+	  i = iscanp(string,s,sep,3)
+	  if( i <= 0 ) return	!return with error
+	  if( i >= 1 ) then	!has year
+	    j = iscanf(s(1),f,1)
+	    if( j /= 1 ) return
+	    dt(1) = nint(f(1))
+	  end if
+	  if( i >= 2 ) then	!has year and month
+	    j = iscanf(s(2),f,1)
+	    if( j /= 1 ) return
+	    dt(2) = nint(f(1))
+	  end if
+	  if( i >= 3 ) then	!has year and month
+	    j = iscanf(s(3),f,1)
+	    if( j /= 1 ) return
+	    dt(3) = nint(f(1))
+	  end if
+	  if( i >= 4 ) return
+	  if( dt(1) < 1000 ) dt(1) = dt(1) + 2000	!short year
+	  call dt2string(dt,date)
+	end if
+
+	ierr = 0
+
+	end
+
 !=====================================================================
 	end module iso8601
 !=====================================================================
@@ -426,6 +496,7 @@
 
 	integer ierr,dt(8)
 
+	write(6,*) 'test_iso8601_check'
 	call test_iso8601_check('2017-04-23')
 	call test_iso8601_check('2017-04-23::')
 	call test_iso8601_check('2017-04-23::12')
@@ -453,6 +524,18 @@
 	call test_iso8601_check('2017-04-23 00:30:00 UTC')
 	call test_iso8601_check('2017-04-23T12:30:45Z')
 
+	write(6,*) 'test_complete_check'
+	call test_complete_check('17','2017-01-01::00:00:00')
+	call test_complete_check('2017','2017-01-01::00:00:00')
+	call test_complete_check('2017-03','2017-03-01::00:00:00')
+	call test_complete_check('2017-03-','2017-03-01::00:00:00')
+	call test_complete_check('2017-03-15','2017-03-15::00:00:00')
+	call test_complete_check('2017-03-15::','2017-03-15::00:00:00')
+	call test_complete_check('2017-03-15::12','2017-03-15::12:00:00')
+	call test_complete_check('2017-03-15::12:','2017-03-15::12:00:00')
+	call test_complete_check('2017-03-15::12:30','2017-03-15::12:30:00')
+	call test_complete_check('2017-03-15::12:30:30','2017-03-15::12:30:30')
+
 	end
 
 !*********************************************************************
@@ -464,10 +547,36 @@
 	implicit none
 
 	character*(*) string
+
 	integer ierr,dt(8)
 
 	call string2dt(string,dt,ierr)
 	write(6,'(9i5,2a)') ierr,dt,'  ',trim(string)
+
+	end
+
+!*********************************************************************
+
+	subroutine test_complete_check(string,sexpect)
+
+	use iso8601
+
+	implicit none
+
+	character*(*) string
+	character*(*) sexpect
+
+	integer ierr
+	character*80 date
+
+	call complete_date(string,date,ierr)
+	write(6,'(i5,4a)') ierr,'  ',trim(string),'  ',trim(date)
+	if( date /= sexpect ) then
+	  write(6,*) 'string:  ',trim(string)
+	  write(6,*) 'date:    ',trim(date)
+	  write(6,*) 'sexpect: ',trim(sexpect)
+	  stop 'error stop test_complete_check: date /= expected'
+	end if
 
 	end
 

@@ -91,6 +91,7 @@
 ! 05.08.2024    ggu     new option ncglobal
 ! 17.10.2024    ggu     new option percentile
 ! 24.10.2024    ggu     new option smooth
+! 01.10.2025    ggu     new option ncdate0
 !
 !************************************************************
 
@@ -206,6 +207,7 @@
         character*80, save :: sextract		= ' '
 
         character*80, save :: sncglobal		= ' '
+        character*80, save :: ncdate0		= ' '
 
 	integer, save :: istep			= 0
 	integer, save :: avermode		= 0
@@ -369,7 +371,7 @@
         call clo_add_option('changetime difftime',0. &
      &                  ,'add difftime to time record (difftime [s])')
 
-	call clo_add_com('    time is either YYYY-MM-DD[::hh[:mm[:ss]]]')
+	call clo_add_com('    difftime is either YYYY-MM-DD[::hh[:mm[:ss]]]')
 	call clo_add_com('    or integer for relative time')
 
         call clo_add_option('rmin rec',1. &
@@ -422,8 +424,11 @@
 
         call clo_add_option('ncglobal file',' ' &
      &		,'file containing extra global options for netcdf files')
+        call clo_add_option('ncdate0 date',' ' &
+     &		,'sets reference date for netcdf files')
 
         call clo_add_com('    file contains lines with "key: text" information')
+        call clo_add_com('    date is YYYY[-MM[-DD[::hh[:mm[:ss]]]]]')
 
 	end subroutine elabutil_set_out_options
 
@@ -488,8 +493,9 @@
      &			,'convert time column to ISO string')
           call clo_add_option('convsec',.false. &
      &			,'convert ISO time column to seconds')
-          call clo_add_option('date0',' ' &
+          call clo_add_option('date0 date',' ' &
      &			,'reference date for conversion of time column')
+          call clo_add_com('    date is YYYY[-MM[-DD[::hh[:mm[:ss]]]]]')
 	end if
 
 	end subroutine elabutil_set_extract_options
@@ -755,6 +761,7 @@
         call clo_get_option('outformat',outformat)
         call clo_get_option('catmode',catmode)
         call clo_get_option('ncglobal',sncglobal)
+        call clo_get_option('ncdate0',ncdate0)
 
         call clo_get_option('split',bsplit)
 	if( bshowall .or. bflxfile .or. bextfile ) then

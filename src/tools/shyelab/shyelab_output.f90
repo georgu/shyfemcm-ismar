@@ -54,6 +54,7 @@
 ! 28.01.2020	ggu	changes for vorticity
 ! 28.04.2023    ggu     update function calls for belem
 ! 03.10.2024    ggu     added var_dim
+! 01.10.2025    ggu     handle ncdate0
 !
 !***************************************************************
 !
@@ -118,6 +119,7 @@
 	use shyelab_out
 	use shyfile
         use mod_offline
+	use iso8601
 
 	implicit none
 
@@ -131,7 +133,7 @@
 	integer ftype_out
 	logical bshy
 	character*60 file,form
-	character*80 string,title
+	character*80 string,title,saux
 	integer ifileo
 
 	idout = 0
@@ -209,6 +211,9 @@
 	  else if( outformat == 'nc' ) then
 	    call shy_get_title(id,title)
 	    call nc_set_quiet(bquiet)
+	    call complete_date(ncdate0,saux,ierr)
+	    if( ierr /= 0 ) goto 71
+	    call nc_set_ref_date(saux)
 	    call nc_output_set_vars(breg,nxreg,nyreg,hcoord,fmreg,xlon,ylat)
 	    call nc_output_init(ncid,title,nvar,ivars,b2d,sncglobal)
 	    idout = ncid
@@ -224,6 +229,9 @@
 	end if
 
 	return
+   71	continue
+        write(6,*) 'error parsing ncdate0: ',trim(ncdate0)
+        stop 'error stop shyelab_init_output: ncdate0'
    74	continue
         write(6,*) 'error opening file ',trim(file)
         stop 'error stop shyelab_init_output: opening file'

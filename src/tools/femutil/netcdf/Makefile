@@ -67,6 +67,7 @@ OBJS_BGC = ncf_util.o ncf_dim_coords.o subclo.o convert.o bgc_util.o subgeo.o
 OBJS_GR = ncf_util.o subclo.o
 OBJS_TIME = ncf_tutil.o subiso8601.o subdts.o
 OBJS_BGC += $(OBJS_TIME)
+OBJS_INFO += $(OBJS_TIME)
 
 EXES = gr gw ncinfo ncelab
 EXES = ncinfo ncbgc ncelab ncugrid grnew

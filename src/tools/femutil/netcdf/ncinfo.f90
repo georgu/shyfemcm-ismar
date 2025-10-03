@@ -26,6 +26,7 @@
 !
 ! 03.03.2023    ggu     created
 ! 15.01.2025    ggu     adjourned
+! 01.10.2025    ggu     new routine print_time() and option -time
 
 !===================================================================
 	module mod_ncinfo
@@ -35,6 +36,7 @@
 	logical, save :: bverbose = .false.
 	logical, save :: bquiet = .false.
 	logical, save :: bsilent = .false.
+	logical, save :: btime = .false.
 	character*80, save :: variable
 	character*80, save :: attribute
 
@@ -177,6 +179,10 @@
 	  call exit(5)
 	end if
 
+	if( btime ) then
+	  call print_time(ncid)
+	end if
+
 !---------------------------------------------------------------------
 ! close netcdf file
 !---------------------------------------------------------------------
@@ -186,6 +192,55 @@
 !---------------------------------------------------------------------
 ! end of routine
 !---------------------------------------------------------------------
+
+	end
+
+!*********************************************************************
+
+	subroutine print_time(ncid)
+
+! print time records - must still be simplified
+!
+! time coordinate is hard coded
+
+	use ncf
+
+	implicit none
+
+	integer ncid
+
+	integer i,ierr
+	integer varid,attid
+	character*80 varname,attname,string,aline
+	type(var_item) :: vitem
+	double precision atime,atime0,dtime
+
+	varname = 'time'
+	attname = 'units'
+	call ncf_var_id(ncid,varname,varid)
+	call ncf_var_inf(ncid,varid,vitem)
+	call ncf_var_get(ncid,vitem)
+	!call ncf_print_variable(ncid,vitem)
+	call ncf_att_id(ncid,varid,attname,attid)
+	call ncf_att_name_string(ncid,varid,attname,string)
+	!write(6,*) trim(string)
+	i = index(string,'since')
+	string = string(i+6:)
+	i = index(string,'UTC')
+	string = string(:i-2)
+	!write(6,*) trim(string)
+	i = index(string,' ')
+	string = string(:i-1) // '::' // string(i+1:)
+	!write(6,*) trim(string)
+	call dts_string2time(string,atime0,ierr)
+	if( ierr /= 0 ) stop 'error stop print_time: converting time'
+
+	do i=1,vitem%len
+	  dtime = vitem%value(i)
+	  atime = atime0 + dtime
+	  call dts_format_abs_time(atime,aline)
+	  write(6,*) vitem%value(i),atime,'  ',trim(aline)
+	end do
 
 	end
 
@@ -215,6 +270,7 @@
         call clo_add_option('info',.false.,'give info on nc-file')
         call clo_add_option('var var',' ','info on variable')
         call clo_add_option('att att',' ','info on attribute')
+        call clo_add_option('time',.false.,'writes time records')
 
         call clo_add_com('exit status 0 is success')
 
@@ -226,6 +282,7 @@
         call clo_get_option('info',binfo)
         call clo_get_option('var',variable)
         call clo_get_option('att',attribute)
+        call clo_get_option('time',btime)
 
         call clo_check_files(1)
         call clo_get_file(1,ncfile)
