@@ -67,6 +67,7 @@
 ! 25.11.2024    ggu     can use shy_[sg]et_simpar() with flexible nsimpar
 ! 04.12.2024    ggu     new routine shy_get_status()
 ! 10.04.2025    ggu     new nfix introduced for fixed vertical structure
+! 03.10.2025    ggu     flush unit
 !
 !**************************************************************
 !**************************************************************
@@ -1599,6 +1600,8 @@
         write(iunit,err=99) pentry(id)%ilhkv
         write(iunit,err=99) 
 
+	flush(iunit)
+
 	return
    99	continue
 	ierr = 51
@@ -1673,6 +1676,8 @@
 	end if
 
 	if( b3d ) deallocate(il)
+
+	flush(iunit)
 
 	return
    99	continue

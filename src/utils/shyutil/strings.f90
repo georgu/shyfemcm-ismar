@@ -68,6 +68,7 @@
 ! 01.04.2025	ggu	ivar values and range for BFM model
 ! 24.04.2025	ggu	new entries for sensible, latent and long wave heat flux
 ! 15.09.2025	ggu	new id_tentative, do not compress '_'
+! 03.10.2025	ggu	new routine ivar2short() and variable 78
 !
 ! contents :
 !
@@ -104,6 +105,7 @@
 !
 !       subroutine string2ivar(string,ivar)
 !       subroutine ivar2string(ivar,string,isub)
+!       subroutine ivar2short(ivar,short)
 !	subroutine ivar2filename(ivar,filename)
 !	subroutine ivar2femstring(ivar,femstring)
 !
@@ -809,6 +811,21 @@
 	end
 
 !****************************************************************
+
+        subroutine ivar2short(ivar,short)
+
+	use shyfem_strings
+
+        implicit none
+
+        integer ivar
+        character*(*) short
+
+	call strings_get_short_name(ivar,short)		!new call
+
+	end
+
+!****************************************************************
 !****************************************************************
 !****************************************************************
 
@@ -1310,6 +1327,7 @@
 	call strings_add_new('general index',75)
 	call strings_add_new('general type',76)
 	call strings_add_new('general distance',77)
+	call strings_add_new('generic derived variable',78)
 	call strings_add_new('lagrangian',80)
 	call strings_add_new('lagrangian (general)',80)
 	call strings_add_new('lagrangian age',81)
@@ -1410,6 +1428,7 @@
 	call strings_set_short(75,'index')
 	call strings_set_short(76,'type')
 	call strings_set_short(77,'distance')
+	call strings_set_short(78,'genvar')
 	call strings_set_short(80,'lgr')
 	call strings_set_short(81,'lagage')
 	call strings_set_short(82,'lagdep')

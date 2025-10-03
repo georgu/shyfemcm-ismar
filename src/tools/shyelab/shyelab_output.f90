@@ -55,7 +55,7 @@
 ! 28.04.2023    ggu     update function calls for belem
 ! 03.10.2024    ggu     added var_dim
 ! 01.10.2025    ggu     handle ncdate0
-! 03.10.2025    ggu     handle sumvar with specific vars
+! 03.10.2025    ggu     handle sumvar with specific vars, use 78 for sumvar
 !
 !***************************************************************
 !
@@ -495,7 +495,7 @@
 	      ! nothing to be done
 	    else if( bsumvar ) then
 	      call handle_sumvar(nlvddi,nndim,nvar,cv3all)
-              ivar = 10
+              ivar = 78
 	      belem = .false.
 	      call shy_write_output_record(idout,dtime,ivar &
      &					,belem,n,m &

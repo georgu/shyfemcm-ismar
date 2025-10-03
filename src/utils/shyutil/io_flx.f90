@@ -52,6 +52,7 @@
 ! 03.03.2018	ggu	determine nvar for versions < 6
 ! 03.04.2018	ggu	changed VERS_7_5_43
 ! 16.02.2019	ggu	changed VERS_7_5_60
+! 03.10.2025    ggu     flush unit
 !
 !************************************************************
 
@@ -463,6 +464,8 @@
 	write(iunit,iostat=ierr)	nsect,kfluxm,idtflx,nlmax,nvar
 	if( ierr /= 0 ) return
 
+	flush(iunit)
+
 	end
 
 !*********************************************************
@@ -495,6 +498,8 @@
 	write(iunit,iostat=ierr)	strings
 	if( ierr /= 0 ) return
 
+	flush(iunit)
+
 	end
 
 !*********************************************************
@@ -518,6 +523,8 @@
      &                  ,(nlayers(i) &
      &                  ,((fluxes(l,j,i),l=0,nlayers(i)),j=1,3) &
      &                  ,i=1,nsect)
+
+	flush(iunit)
 
 	end
 
