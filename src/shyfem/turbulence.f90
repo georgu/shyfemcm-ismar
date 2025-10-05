@@ -76,6 +76,7 @@
 ! 02.05.2023    ggu     fix mpi bug for nlv==1
 ! 09.05.2023    lrp     introduce top layer index variable
 ! 06.06.2023    ggu     minor change writing n2max
+! 05.10.2025	ggu	in gotm_internal_init() initialize only active layers
 !
 !**************************************************************
 
@@ -690,9 +691,13 @@
 
 ! initializes gotm arrays
 
+	use basin
+	use levels
 	use mod_gotm_aux
 
 	implicit none
+
+	integer k,l,lmax
 
         double precision, parameter    :: num_min  = 1.e-6
         double precision, parameter    :: nuh_min  = 1.e-6
@@ -700,11 +705,22 @@
         double precision, parameter    :: eps_min  = 1.e-12
         double precision, parameter    :: rls_min  = 1.e-10
 
-        numv_gotm = num_min
-        nuhv_gotm = nuh_min
-        tken_gotm = tken_min
-        eps_gotm  = eps_min
-        rls_gotm  = rls_min
+        numv_gotm = 0.
+        nuhv_gotm = 0.
+        tken_gotm = 0.
+        eps_gotm = 0.
+        rls_gotm = 0.
+
+	do k=1,nkn
+	  lmax = ilhkv(k)
+	  do l=0,lmax
+            numv_gotm(l,k) = num_min
+            nuhv_gotm(l,k) = nuh_min
+            tken_gotm(l,k) = tken_min
+            eps_gotm(l,k)  = eps_min
+            rls_gotm(l,k)  = rls_min
+	  end do
+	end do
 
 	end
 

@@ -42,6 +42,7 @@
 ! 25.06.2021	ggu	better legend for node profiles
 ! 09.05.2023    lrp     introduce top layer index variable
 ! 05.06.2023    lrp     introduce z-star
+! 03.10.2025    ggu     enlarge printed field
 !
 !***************************************************************
 
@@ -500,6 +501,13 @@
 ! open files
 !-----------------------------------------------------------------
 
+!	units are in ius(iv,j,what) where iv is variable, j is node, and what is
+!		1 surface
+!		2 2d
+!		3 3d
+!		4 3d-profile
+!		5 all nodes in one file
+
 	if( icall == 0 ) then
 	  
 	  allocate(ius(nvar,nnodes,5))
@@ -566,7 +574,7 @@
           h = hkv(ki)
           z = cv3all(1,ki,0)
 	  format = ' '
-	  write(format,'(a,i3,a)') '(a20,',lmax,'f8.3)'
+	  write(format,'(a,i3,a)') '(a20,',lmax,'f10.3)' !number of fields
 
 	  do iv=1,nvar
 	    ivar = ivars(iv)

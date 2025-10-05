@@ -91,6 +91,7 @@
 ! 05.08.2024    ggu     new option ncglobal
 ! 17.10.2024    ggu     new option percentile
 ! 24.10.2024    ggu     new option smooth
+! 01.10.2025    ggu     new option ncdate0
 !
 !************************************************************
 
@@ -174,12 +175,16 @@
 	logical, save :: bmax			= .false.
 	logical, save :: bstd			= .false.
 	logical, save :: brms			= .false.
-	logical, save :: bsumvar		= .false.
 	double precision, save :: threshold	= flag_p
 	real, save :: fact			= 1
 	integer, save :: ifreq			= 0
 	logical, save :: b2d			= .false.
 	logical, save :: bvorticity		= .false.
+
+	logical, save :: bsumvar		= .false.
+        character*80, save :: sumvarid		= ' '
+        character*80, save :: sumvarnum		= ' '
+        integer,allocatable,save :: idsumvar(:)
 
 	real, save :: perc			= -1.		!percentile
 
@@ -206,6 +211,7 @@
         character*80, save :: sextract		= ' '
 
         character*80, save :: sncglobal		= ' '
+        character*80, save :: ncdate0		= ' '
 
 	integer, save :: istep			= 0
 	integer, save :: avermode		= 0
@@ -369,7 +375,7 @@
         call clo_add_option('changetime difftime',0. &
      &                  ,'add difftime to time record (difftime [s])')
 
-	call clo_add_com('    time is either YYYY-MM-DD[::hh[:mm[:ss]]]')
+	call clo_add_com('    difftime is either YYYY-MM-DD[::hh[:mm[:ss]]]')
 	call clo_add_com('    or integer for relative time')
 
         call clo_add_option('rmin rec',1. &
@@ -422,8 +428,11 @@
 
         call clo_add_option('ncglobal file',' ' &
      &		,'file containing extra global options for netcdf files')
+        call clo_add_option('ncdate0 date',' ' &
+     &		,'sets reference date for netcdf files')
 
         call clo_add_com('    file contains lines with "key: text" information')
+        call clo_add_com('    date is YYYY[-MM[-DD[::hh[:mm[:ss]]]]]')
 
 	end subroutine elabutil_set_out_options
 
@@ -488,9 +497,9 @@
      &			,'convert time column to ISO string')
           call clo_add_option('convsec',.false. &
      &			,'convert ISO time column to seconds')
-          call clo_add_option('date0 dstring',' ' &
+          call clo_add_option('date0 date',' ' &
      &			,'reference date for conversion of time column')
-          call clo_add_com('    dstring has format YYYY-MM-DD[::hh[:mm[:dd]]]')
+          call clo_add_com('    date is YYYY[-MM[-DD[::hh[:mm[:ss]]]]]')
 	end if
 
 	end subroutine elabutil_set_extract_options
@@ -617,7 +626,6 @@
         call clo_add_option('max',.false.,'maximum of records')
 	call clo_add_option('std',.false.,'standard deviation of records')
         call clo_add_option('rms',.false.,'root mean square of records')
-        call clo_add_option('sumvar',.false.,'sum over variables')
 	call clo_add_option('threshold t',flag &
      &				,'compute records over threshold t')
 	call clo_add_option('percentile p',perc &
@@ -625,6 +633,14 @@
 	call clo_add_option('fact fact',1.,'multiply values by fact')
 	call clo_add_option('freq n',0. &
      &			,'frequency for aver/sum/min/max/std/rms')
+
+        call clo_add_option('sumvar',.false.,'sum over all variables')
+        call clo_add_option('sumvarid varids',' ' &
+     &				,'sum over variables with id in varids')
+        call clo_add_option('sumvarnum varnums',' ' &
+     &				,'sum over variables with num in varnums')
+        call clo_add_com('    varids and varnums are comma separated ' &
+     &				// 'lists of numbers')
 
 	call clo_add_option('2d',.false.,'average vertically to 2d field')
 	call clo_add_option('vorticity',.false. &
@@ -757,6 +773,7 @@
         call clo_get_option('outformat',outformat)
         call clo_get_option('catmode',catmode)
         call clo_get_option('ncglobal',sncglobal)
+        call clo_get_option('ncdate0',ncdate0)
 
         call clo_get_option('split',bsplit)
 	if( bshowall .or. bflxfile .or. bextfile ) then
@@ -812,6 +829,8 @@
           call clo_get_option('std',bstd)
           call clo_get_option('rms',brms)
           call clo_get_option('sumvar',bsumvar)
+          call clo_get_option('sumvarid',sumvarid)
+          call clo_get_option('sumvarnum',sumvarnum)
           call clo_get_option('threshold',threshold)
           call clo_get_option('fact',fact)
           call clo_get_option('freq',ifreq)
@@ -903,6 +922,9 @@
 	barea = ( areafile /= ' ' )
 	bcheck = ( scheck /= ' ' )
 	bresample = ( rbounds /= ' ' )
+
+	if( sumvarid /= ' ') bsumvar = .true.
+	if( sumvarnum /= ' ') bsumvar = .true.
 
         boutput = bout
         boutput = boutput .or. b2d .or. bvorticity

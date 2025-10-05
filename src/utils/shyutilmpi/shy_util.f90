@@ -74,6 +74,7 @@
 ! 07.12.2024    ggu     reduce only to root (not all)
 ! 01.04.2025    ggu     write subrange of variables
 ! 10.04.2025    ggu     new routine shyfem_init_scalar_fix_file() (nfix)
+! 03.10.2025    ggu     for description return and print also short
 !
 ! contents :
 !
@@ -791,7 +792,7 @@
 
 !****************************************************************
 
-	subroutine shy_get_string_descriptions(id,nvar,ivars,strings)
+	subroutine shy_get_string_descriptions(id,nvar,ivars,strings,shorts)
 
 	use shyfile
 
@@ -801,8 +802,9 @@
 	integer nvar
 	integer ivars(nvar)
 	character*(*) strings(nvar)
+	character*(*) shorts(nvar)
 
-	integer irec,nrec,ierr,i,isub
+	integer irec,nrec,ierr,i,isub,iv
 	integer ftype
 	integer ivar,n,m,lmax
 	double precision dtime
@@ -824,6 +826,9 @@
 	  strings(2) = 'water level (elemental)'
 	  strings(3) = 'transport (velocity) x'
 	  strings(4) = 'transport (velocity) y'
+	  do iv=1,nvar
+	    call ivar2short(ivars(iv),shorts(iv))
+	  end do
 	else
 	  irec = 0
 	  nrec = 0
@@ -835,6 +840,7 @@
 	    irec = irec + 1
 	    ivars(irec) = ivar
 	    call ivar2string(ivar,strings(irec),isub)
+	    call ivar2short(ivar,shorts(irec))
 	    if( isub > 0 ) then
 	      write(saux,'(i5)') isub
 	      saux = adjustl(saux)
@@ -934,25 +940,49 @@
 
 !****************************************************************
 
-	subroutine shy_print_descriptions(nvar,ivars,strings)
+	subroutine shy_print_descriptions(nvar,ivars,strings,shorts)
 
 	implicit none
 
 	integer nvar
 	integer ivars(nvar)
 	character*(*) strings(nvar)
+	character*(*) shorts(nvar)
 
-	integer iv,ivar
+	integer iv,ivar,ns,iaux
+	logical bvel
 	character*6 aux
+	character*80 string,short
+	character*80 tshort
 
         write(6,*) 'total number of available variables: ',nvar
-        write(6,*) '   varnum     varid      varname'
+
+	ns = 0
+	bvel = .false.
+	do iv=1,nvar
+          ivar = ivars(iv)
+	  short = shorts(iv)
+	  ns = max(ns,len_trim(short))
+	  if( ivar == 3 ) bvel = .true.
+	end do
+	ns = max(ns,5)		!minimum 5
+
+	iaux = 1
+	if( bvel ) iaux = 6	!keep space for hydro file
+	aux = ' '
+	tshort = ' '
+	tshort(ns-5+1:) = 'short'
+        write(6,*) 'varnum varid ' // aux(1:iaux-1) &
+     &				// trim(tshort) // ' varname'
 
         do iv=1,nvar
           ivar = ivars(iv)
 	  aux = ' '
 	  if( ivar == 3 ) aux = ' (2)  '
-          write(6,'(2i10,a,a)') iv,ivar,aux,trim(strings(iv))
+	  short = shorts(iv)
+	  string = strings(iv)
+          write(6,'(1x,2i6,a,a,a,a)') iv,ivar,aux(1:iaux) &
+     &			,short(1:ns),' ',trim(string)
         end do
 
 	end

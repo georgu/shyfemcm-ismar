@@ -44,6 +44,7 @@
 ! 18.12.2018	ggu	changed VERS_7_5_52
 ! 16.02.2019	ggu	changed VERS_7_5_60
 ! 18.06.2025	ggu	new version 9, handle version 8 (old and new)
+! 03.10.2025    ggu     flush unit
 !
 ! notes :
 !
@@ -515,6 +516,8 @@
 	write(iunit,iostat=ierr) knausm,lmax,nvar
 	if( ierr /= 0 ) return
 
+	flush(iunit)
+
 	end
 
 !*********************************************************
@@ -549,6 +552,8 @@
 	if( ierr /= 0 ) return
 	write(iunit,iostat=ierr) hlv
 	if( ierr /= 0 ) return
+
+	flush(iunit)
 
 	end
 
@@ -588,6 +593,8 @@
 	  write(iunit,iostat=ierr) atime,ivar,m,lmax,nlin &
      &                                  ,(rlin(i),i=1,nlin)
 	end if
+
+	flush(iunit)
 
 	end
 
