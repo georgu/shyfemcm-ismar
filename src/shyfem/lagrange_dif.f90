@@ -48,6 +48,7 @@
 ! 13.03.2019	ggu	changed VERS_7_5_61
 ! 11.09.2024    lrp     rename gasdev to shygasdev (compatibility with wrf) 
 ! 16.09.2024    ggu     for bhdiff use abs(ie) in call to xy2xi()
+! 07.10.2025    ggu     in diff_get_vert() call exxpp with lmax+1 (bug)
 !
 !************************************************************
 !
@@ -393,7 +394,7 @@
 
 	wdr = wde(0:lmax,iel)
 	iact = 0
-	wdzp = exxpp(2,lmax,hle,wdr,zp,iact)
+	wdzp = exxpp(2,lmax+1,hle,wdr,zp,iact)
 
 	!-----------------------------------------------
 	! compute vertical velocity due to diffusion

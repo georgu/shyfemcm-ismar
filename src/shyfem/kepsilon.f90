@@ -38,6 +38,7 @@
 ! 18.12.2015	ggu	changed VERS_7_3_17
 ! 31.08.2018	ggu	changed VERS_7_5_49
 ! 16.02.2019	ggu	changed VERS_7_5_60
+! 07.10.2025	ggu	in keps() use rhoaux instead of rho
 !
 ! notes :
 !
@@ -371,6 +372,7 @@
 	real ps,gg,forc
 	real a,su,sb,k2,reps
 	real ceps3
+	real rhoaux
 
 	real b(nlevdi)			!buoyancy
 	real n2(0:nlevdi)		!Brunt-V. frequency
@@ -501,12 +503,15 @@
 	aa(0) = 0.
 	bb(0) = 1.
 	cc(0) = 0.
-	rr(0) = (taus/rho(1))**1.5 * 0.00002 / karman   !ERROR corrected
-	rr(0) = (taus/rho(1))**1.5 / (dzk(1)*karman)   !ERROR corrected
+	!write(6,*)l,lmax,rho(1),karman
+	rhoaux = rho0 + rho(1)
+	rr(0) = (taus/rhoaux)**1.5 * 0.00002 / karman   !ERROR corrected
+	rr(0) = (taus/rhoaux)**1.5 / (dzk(1)*karman)   !ERROR corrected
 	aa(lmax) = 0.
 	bb(lmax) = 1.
 	cc(lmax) = 0.
-	rr(lmax) = (taub/rho(lmax))**1.5 / (dzk(lmax)*karman)
+	rhoaux = rho0 + rho(lmax)
+	rr(lmax) = (taub/rhoaux)**1.5 / (dzk(lmax)*karman)
 
 !	---------------------------------
 !	solve system
@@ -548,11 +553,13 @@
 	aa(0) = 0.
 	bb(0) = 1.
 	cc(0) = 0.
-	rr(0) = taus / ( rho(1)*sqrtcmu )
+	rhoaux = rho0 + rho(1)
+	rr(0) = taus / ( rhoaux*sqrtcmu )
 	aa(lmax) = 0.
 	bb(lmax) = 1.
 	cc(lmax) = 0.
-	rr(lmax) = taub / ( rho(lmax)*sqrtcmu )
+	rhoaux = rho0 + rho(lmax)
+	rr(lmax) = taub / ( rhoaux*sqrtcmu )
 
 !	---------------------------------
 !	solve system

@@ -62,6 +62,7 @@
 ! 30.05.2014	ggu	changed VERS_6_1_76
 ! 16.02.2019	ggu	changed VERS_7_5_60
 ! 25.01.2025	ggu	new routine buspline() for uniform cubic b-spline
+! 07.10.2025	ggu	in exxpp check for nmax >= nintp
 !
 !**************************************************
 !
@@ -440,7 +441,7 @@
 	real exxpp	!extrapolated values
 	integer nintp	!number of values to use (4 for cubic, 2 for linear)
 	integer nmax	!length of data arrays
-        real x(1),y(1)	!data arrays
+        real x(nmax),y(nmax)	!data arrays
 	real xe		!x-value for which y-value has to be interpolated
 	integer iact	!element closest to xe (of last call on entry)
 			!must be 0 for initialization
@@ -455,6 +456,14 @@
 
 	bdebug = .true.
 	bdebug = .false.
+
+	if( nmax < nintp ) then
+	  write(6,*) x
+	  write(6,*) y
+	  write(6,*) xe
+	  write(6,*) 'need at least nintp values for nmax: ',nintp,nmax
+	  stop 'error stop exxpp: nmax < nintp'
+	end if
 
 !----------------------------------------------------------
 ! start searching from first element in x

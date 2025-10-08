@@ -7,6 +7,44 @@
 #
 #------------------------------------------------------------------------
 
+actual to be done:
+
+	spatially variable friction coefficient to be read from file
+	che restart results (with and without restart)
+	check mass conservation on salt marshes
+		only evaporation or rain
+		also with moving water
+	check temperature pattern on CL
+	read parameters for eutro from file
+
+07.10.2025
+==========
+
+construct weutro parameter file
+some bugs in lagrangian model (find_segment, exxpp)
+
+06.10.2025
+==========
+
+restart files with and without mpi are now bit-to-bit compatible 
+	problem was with initialization of gotm variables
+starting from restart file still gives different results
+	could be evapv or rain
+
+01.10.2025
+==========
+
+shyelab
+	extracts correctly bfm variables
+	writes netcdf files for bfm variables
+	new option -ncdate0
+	in addition to -sumvar new options -sumvarid and -sumvarnum
+	enlarged digits for write more digits for variables with high values
+
+zstar works with wet&dry
+
+eutro runs for old simulation
+
 18.09.2025
 ==========
 

@@ -85,6 +85,7 @@
 ! 29.09.2020	ggu	added dimension check in get_nodes/elems_around()
 ! 22.04.2022	ggu	new locator functions using passed nen3v
 ! 07.11.2024	ggu	new framework for connection
+! 07.10.2025	ggu	bug fix in find_elems_to_segment()
 !
 !****************************************************************
 !****************************************************************
@@ -631,19 +632,21 @@
 
         integer k,ipf,ipl,ip,ip2
 	integer i,iee1,iee2,n
+	integer n1,n2
 
 	ie1 = 0
 	ie2 = 0
 	
-	n = nlist(0,k1)
-	do i=1,n
+	n1 = nlist(0,k1)
+	n2 = nlist(0,k2)
+	do i=1,n1
 	  k = nlist(i,k1)
 	  if( k .eq. k2 ) then
-	    ie1 = elist(i,k)
+	    ie1 = elist(i,k2)
 	    if( i == 1 ) then
-	      ie2 = elist(n,k)		!last element - if border is 0
+	      ie2 = elist(n2,k2)	!last element - if border is 0 (bug fix)
 	    else
-	      ie2 = elist(i-1,k)	!previous element
+	      ie2 = elist(i-1,k2)	!previous element
 	    end if
 	    exit
 	  end if

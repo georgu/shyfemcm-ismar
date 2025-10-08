@@ -851,6 +851,8 @@
 
 	integer ipint
 
+	return
+
 	if( icall == 0 ) then
           k = 10337
           k = ipint(k)

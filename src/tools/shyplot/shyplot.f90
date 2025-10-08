@@ -82,6 +82,7 @@
 ! 10.09.2024    ggu     bug fix avoiding divide by zero in mod(irec,ifreq) /= 0
 ! 16.09.2024    ggu     same as above also for lgr plotting
 ! 18.09.2024    ggu     new parameters bcolplot, lgrcol, lgrtyp, plot age
+! 07.10.2025    ggu     use shorts in call to description
 !
 ! notes :
 !
@@ -769,6 +770,7 @@
 	integer, allocatable :: il(:)
 	integer, allocatable :: ivars(:)
 	character*80, allocatable :: strings(:)
+	character*80, allocatable :: shorts(:)
 
 	logical bhydro,bscalar,bsect,bvect,bvel,bcycle,belem
 	logical bregplot,bregdata
@@ -908,7 +910,7 @@
 	allocate(cv3(nlv,nndim))
 	allocate(cv3all(nlv,nndim,0:nvar))
 	allocate(idims(4,nvar))
-	allocate(ivars(nvar),strings(nvar))
+	allocate(ivars(nvar),strings(nvar),shorts(nvar))
 
 	!--------------------------------------------------------------
 	! set up aux arrays, sigma/z info and depth values
@@ -936,8 +938,8 @@
 
 	call init_plot
 
-	call shy_get_string_descriptions(id,nvar,ivars,strings)
-	call choose_var(nvar,ivars,strings,varline,ivarplot,bvect)
+	call shy_get_string_descriptions(id,nvar,ivars,strings,shorts)
+	call choose_var(nvar,ivars,strings,shorts,varline,ivarplot,bvect)
 
 	bsect = getisec() /= 0
 	call setlev(layer)
@@ -1197,6 +1199,7 @@
         !integer,allocatable :: ilhkv(:)
         integer,allocatable :: ivars(:)
         character*80, allocatable :: strings(:)
+        character*80, allocatable :: shorts(:)
 
 	integer getisec
 	real getpar
@@ -1342,6 +1345,7 @@
         lmax0 = lmax
         np0 = np
         allocate(strings(nvar))
+        allocate(shorts(nvar))
         allocate(ivars(nvar))
         allocate(dext(nvar))
         allocate(data2d(np))
@@ -1364,7 +1368,7 @@
 	  call string2ivar(strings(i),ivars(i))
         end do
 
-	call choose_var(nvar,ivars,strings,varline,ivarplot,bvect)
+	call choose_var(nvar,ivars,strings,shorts,varline,ivarplot,bvect)
 	call get_vars_to_plot(nvar,ivars,ivar3,ivarplot,bvect,ivnum,ivs)
 	call set_ivel(ivar3,ivel)
 	bvel = ivel > 0
@@ -1963,7 +1967,7 @@
 
 !*****************************************************************
 
-	subroutine choose_var(nvar,ivars,strings,varline,ivarplot,bvect)
+	subroutine choose_var(nvar,ivars,strings,shorts,varline,ivarplot,bvect)
 
 	use plotutil
 	use levels
@@ -1981,6 +1985,7 @@
 	integer nvar
 	integer ivars(nvar)
 	character*80 strings(nvar)
+	character*80 shorts(nvar)
 	character*80 varline
 	integer ivarplot(2)
 
@@ -1993,7 +1998,7 @@
 !	---------------------------------------------------
 
 	if( .not. bquiet ) then
-	  call shy_print_descriptions(nvar,ivars,strings)
+	  call shy_print_descriptions(nvar,ivars,strings,shorts)
 	end if
 
 !	---------------------------------------------------
