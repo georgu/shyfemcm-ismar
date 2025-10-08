@@ -56,6 +56,7 @@
 ! 03.10.2024    ggu     added var_dim
 ! 01.10.2025    ggu     handle ncdate0
 ! 03.10.2025    ggu     handle sumvar with specific vars, use 78 for sumvar
+! 08.10.2025    ggu     bug fix for ncdate0
 !
 !***************************************************************
 !
@@ -212,9 +213,11 @@
 	  else if( outformat == 'nc' ) then
 	    call shy_get_title(id,title)
 	    call nc_set_quiet(bquiet)
-	    call complete_date(ncdate0,saux,ierr)
-	    if( ierr /= 0 ) goto 71
-	    call nc_set_ref_date(saux)
+	    if( ncdate0 /= ' ' ) then
+	      call complete_date(ncdate0,saux,ierr)
+	      if( ierr /= 0 ) goto 71
+	      call nc_set_ref_date(saux)
+	    end if
 	    call nc_output_set_vars(breg,nxreg,nyreg,hcoord,fmreg,xlon,ylat)
 	    call nc_output_init(ncid,title,nvar,ivars,b2d,sncglobal)
 	    idout = ncid
