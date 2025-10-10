@@ -77,6 +77,7 @@
 ! 09.05.2023    lrp     introduce top layer index variable
 ! 06.06.2023    ggu     minor change writing n2max
 ! 05.10.2025	ggu	in gotm_internal_init() initialize only active layers
+! 10.10.2025	ggu	new parameter rilimit to limit Richardson number
 !
 !**************************************************************
 
@@ -141,19 +142,21 @@
 	real richard(nlvdi,nkn)
 	real h(nlvdi)
 
+	double precision, parameter :: rilimit = 0	!limit for Ri number
 
 	integer k,l
 	integer nlev,flev
 	integer mode
+	integer icount
 	real ri,vis,dif
-	real diftur,vistur
+	real, save :: diftur,vistur
 	real a,b,alpha,beta
 
 	real getpar
 
-	integer icall
-	save icall
-	data icall / 0 /
+	logical, save :: brilimit
+	integer, save :: icall = 0
+	real rimax
 
 !------------------------------------------------------
 ! initialization
@@ -163,6 +166,9 @@
 
 	if( icall .eq. 0 ) then
 	  write(*,*) 'starting Munk Anderson turbulence model'
+	  vistur = getpar('vistur')
+	  diftur = getpar('diftur')
+	  brilimit = rilimit > 0.
 	end if
 
 	icall = icall + 1
@@ -182,8 +188,8 @@
 	b = 3.33
 	alpha = -1./2.
 	beta = -3./2.
-	vistur = getpar('vistur')
-	diftur = getpar('diftur')
+	rimax = 0.
+	icount = 0
 
 !------------------------------------------------------
 ! compute richardson number for each water column
@@ -196,6 +202,12 @@
 
 	    do l=flev,nlev-1
 	      ri = buoyf2(l,k) / shearf2(l,k)
+	      if( brilimit ) then
+	        if( ri > rilimit ) icount = icount + 1
+	        ri = max(ri,0.)			!otherwise floating point error
+	        ri = min(ri,rilimit)			!Ri too big
+	      end if
+	      rimax = max(rimax,ri)
 	      vis = vistur*(1.+a*ri)**alpha
 	      dif = diftur*(1.+b*ri)**beta
 
@@ -219,6 +231,8 @@
             end if
 
 	end do
+
+	!write(6,*) 'rimax = ',rimax,icount,(nlvdi-1)*nkn
 
 !------------------------------------------------------
 ! end of routine
@@ -249,6 +263,7 @@
 
 	double precision dt
 	double precision u_taus,u_taub
+	double precision ri,rimax
 
 	double precision hh(0:nlvdi)
 	double precision nn(0:nlvdi), ss(0:nlvdi)
@@ -267,6 +282,7 @@
 
 	real taub(nkn)
 
+	integer icount
 	integer iunit,iudbg,kdebug,iuout,iwhat
 	integer ioutfreq,ks
 	integer k,l
@@ -283,6 +299,8 @@
 	integer nltot,iudeb
 	logical bwrite
 
+	!double precision, parameter :: rilimit = 20	!limit for Ri number
+	double precision, parameter :: rilimit = 0	!limit for Ri number
 	double precision, parameter :: dz0min = 1.1	!min value for dz0=d/z0
 	real, parameter :: charnock_val=1400.	!emp. Charnock constant
 
@@ -297,6 +315,7 @@
 
 	character*80 fn	
 	integer, save :: icall = 0
+	logical, save :: brilimit
 
 	integer, save	:: levdbg
 
@@ -339,6 +358,8 @@
 	  czdef = getpar('czdef')
 	  bwave = has_waves()
           levdbg = nint(getpar('levdbg'))
+
+	  brilimit = rilimit > 0.
 
 !         --------------------------------------------------------
 !         Initializes gotm arrays 
@@ -407,6 +428,8 @@
 ! call gotm for each water column
 !------------------------------------------------------
 
+	icount = 0
+	rimax = 0.
 	rlmax = 0.
 	nltot = 0
 	bdeb = .false.
@@ -433,6 +456,13 @@
 	      laux = nlev - l
 	      nn(laux) = buoyf2(l,k)
 	      ss(laux) = shearf2(l,k)
+	      ri = nn(laux) / ss(laux)
+	      if( brilimit ) then
+	        rimax = max(rimax,ri)
+	        if( ri > rilimit ) icount = icount + 1
+	        if( ri > rilimit ) nn(laux) = rilimit * ss(laux)
+	        if( ri < 0. ) nn(laux) = 0.
+	      end if
 	    end do
 	    nn(0) = 0.
 	    nn(numOfLev) = 0.
@@ -616,6 +646,8 @@
 	  write(188,*) it,nlev,(visv(l,ks),l=flev,nlev)
 	  write(189,*) it,nlev,(difv(l,ks),l=flev,nlev)
 	end if
+
+	!write(6,*) 'rimax: ',rimax,icount
 
 !------------------------------------------------------
 ! end of routine

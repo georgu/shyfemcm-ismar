@@ -87,6 +87,7 @@ OBJ := \
 	shyelab_nodes.o \
 	shyelab_proj.o \
 	shyelab_extract.o \
+	femutil.o \
 	shyelab1.o \
 	extelab1.o \
 	flxelab1.o \

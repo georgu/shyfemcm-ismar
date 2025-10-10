@@ -68,6 +68,7 @@
 ! 04.12.2024    ggu     new routine shy_get_status()
 ! 10.04.2025    ggu     new nfix introduced for fixed vertical structure
 ! 03.10.2025    ggu     flush unit
+! 10.10.2025    ggu     better error message
 !
 !**************************************************************
 !**************************************************************
@@ -712,6 +713,8 @@
 	character*(*), optional :: text
 
 	character*80 file
+	character*80 type
+	integer ftype
 
 	!call shy_get_filename(id,file)
 
@@ -721,11 +724,22 @@
 	  write(6,*) 'information on shy file:'
 	end if
 
+	ftype = pentry(id)%ftype
+	if( ftype == 1 ) then
+	  type = '(hydro records)'
+	else if( ftype == 2 ) then
+	  type = '(scalar on nodes)'
+	else if( ftype == 3 ) then
+	  type = '(scalar on elements)'
+	else
+	  type = '(unknown)'
+	end if
+
         write(6,*) 'id:       ',id
         write(6,*) 'filename: ',trim(pentry(id)%filename)
         write(6,*) 'iunit:    ',pentry(id)%iunit
         write(6,*) 'nvers:    ',pentry(id)%nvers
-        write(6,*) 'ftype:    ',pentry(id)%ftype
+        write(6,*) 'ftype:    ',pentry(id)%ftype,'  ',trim(type)
         write(6,*) 'nkn:      ',pentry(id)%nkn
         write(6,*) 'nel:      ',pentry(id)%nel
         write(6,*) 'npr:      ',pentry(id)%npr
@@ -1421,11 +1435,17 @@
 	allocate(il(n))
 	if( belem ) then
 	  nel = pentry(id)%nel
-	  if( n /= nel ) stop 'error stop shy_read_record: n/=nel'
+	  if( n /= nel ) then
+	    write(6,*) 'n,nel: ',n,nel
+	    stop 'error stop shy_read_record: n/=nel'
+	  end if
 	  il = pentry(id)%ilhv
 	else
 	  nkn = pentry(id)%nkn
-	  if( n /= nkn ) stop 'error stop shy_read_record: n/=nkn'
+	  if( n /= nkn ) then
+	    write(6,*) 'n,nkn: ',n,nkn
+	    stop 'error stop shy_read_record: n/=nkn'
+	  end if
 	  il = pentry(id)%ilhkv
 	end if
 	if( nfix > 0 ) then

@@ -83,6 +83,7 @@
 ! 16.09.2024    ggu     same as above also for lgr plotting
 ! 18.09.2024    ggu     new parameters bcolplot, lgrcol, lgrtyp, plot age
 ! 07.10.2025    ggu     use shorts in call to description
+! 10.10.2025    ggu     get shorts for description
 !
 ! notes :
 !
@@ -1366,6 +1367,7 @@
           if( ierr .ne. 0 ) goto 97
           strings(i) = string
 	  call string2ivar(strings(i),ivars(i))
+	  call ivar2short(ivars(i),shorts(i))
         end do
 
 	call choose_var(nvar,ivars,strings,shorts,varline,ivarplot,bvect)

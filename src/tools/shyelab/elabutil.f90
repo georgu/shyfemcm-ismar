@@ -92,6 +92,7 @@
 ! 17.10.2024    ggu     new option percentile
 ! 24.10.2024    ggu     new option smooth
 ! 01.10.2025    ggu     new option ncdate0
+! 10.10.2025    ggu     new smooth option for fem files
 !
 !************************************************************
 
@@ -512,7 +513,7 @@
 
 	if( clo_has_option('facts') ) return
 
-        call clo_add_sep('factors and offsets')
+        call clo_add_sep('factor and offset transformations')
         call clo_add_option('facts fstring',' ' &
      &			,'apply factors to data in data-file')
         call clo_add_option('offset ostring',' ' &
@@ -520,6 +521,11 @@
         call clo_add_com('    fstring and ostring is comma' &
      &			// ' separated factors,' &
      &                  // ' empty for no change')
+
+	if( bfemfile ) then
+	  call clo_add_option('smooth alpha,loop',ssmooth &
+     &			,'smooths field with alpha and loop')
+	end if
 
 	end subroutine elabutil_set_facts_options
 
@@ -817,6 +823,7 @@
           call clo_get_option('reg',regstring)
           call clo_get_option('regexpand',regexpand)
           call clo_get_option('resample',rbounds)
+          call clo_get_option('smooth',ssmooth)
 	end if
 
 	if( bshowall .or. bshyfile ) then

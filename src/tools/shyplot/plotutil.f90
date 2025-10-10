@@ -189,7 +189,8 @@
 
         call clo_add_com('  file can be the following:')
         call clo_add_com('    shy-file to plot results')
-        call clo_add_com('    bas-file to plot bathymetry and grid')
+        call clo_add_com('    fem-file to plot regular forcing files')
+        call clo_add_com('    bas- or grd-file to plot bathymetry and grid')
         call clo_add_com('    one or more str-files for instructions')
 
 	end subroutine plotutil_set_options

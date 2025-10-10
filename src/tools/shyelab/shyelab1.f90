@@ -82,6 +82,7 @@
 ! 01.04.2025    ggu     better error message
 ! 03.10.2025    ggu     handle sumvar with specific vars
 ! 03.10.2025    ggu     more on sumvar
+! 10.10.2025    ggu     bug fix for vorticity computation (belem was true)
 !
 !**************************************************************
 
@@ -545,6 +546,7 @@
 	 if( bvorticity ) then
            ivar = 19
 	   iv = 1
+	   belem = .false.	!vorticity is on nodes
            call compute_vorticity(nndim,cv3all,cv3)
 	   call shyelab_record_output(id,idout,dtime,ivar,iv &
      &						,belem,nkn,1 &
