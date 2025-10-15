@@ -123,6 +123,8 @@
 	logical, save :: bwrite			= .false.
 	logical, save :: bsdebug		= .false.
 
+	logical, save :: bverbose		= .false.	!same as bverb
+
         character*80, save :: stmin		= ' '
         character*80, save :: stmax		= ' '
 	logical, save :: binclusive		= .false.
@@ -960,6 +962,8 @@
 	if( bwrite ) bverb = .true.
 	if( bsdebug ) bverb = .true.
 	if( bsilent ) bquiet = .true.
+
+	bverbose = bverb
 
 	if( bsplitall ) bsplit = .true.
 

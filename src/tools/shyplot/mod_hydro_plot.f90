@@ -36,6 +36,7 @@
 ! 19.04.2018	ggu	changed VERS_7_5_45
 ! 18.12.2018	ggu	changed VERS_7_5_52
 ! 21.05.2019	ggu	changed VERS_7_5_62
+! 13.10.2025	ggu	introduced uvreg
 
 !==================================================================
 	module mod_hydro_plot
@@ -72,6 +73,7 @@
 
 	real, allocatable, save :: ureg(:,:)
 	real, allocatable, save :: vreg(:,:)
+	real, allocatable, save :: uvreg(:,:)
 
         real, allocatable, save :: arfvlv(:)
         real, allocatable, save :: hetv(:)
@@ -190,6 +192,7 @@
         if( nx_hydro_plot > 0 ) then
           deallocate(ureg)
           deallocate(vreg)
+          deallocate(uvreg)
 	end if
 
         nx_hydro_plot = nx
@@ -199,6 +202,7 @@
 
         allocate(ureg(nx,ny))
         allocate(vreg(nx,ny))
+        allocate(uvreg(nx,ny))
 	
 	end subroutine mod_hydro_plot_regular_init
 

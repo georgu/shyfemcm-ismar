@@ -23,27 +23,28 @@
 !
 !--------------------------------------------------------------------------
 
-c general utilities for output files
-c
-c revision log :
-c
-c 03.06.2011	ggu	copied from ousutil.f
-c 07.11.2011	ggu	layer thickness for hybrid coordinates
-c 14.11.2011	ggu	sigma layer routines copied to sigmautil.f
-c 22.11.2011	ggu	changed VERS_6_1_37
-c 25.01.2013	ggu	new routine level_k2e()
-c 05.09.2013	ggu	new routine compute_levels_on_element()
-c 12.09.2013	ggu	changed VERS_6_1_67
-c 05.06.2015	ggu	changed VERS_7_1_12
-c 28.04.2016	ggu	changed VERS_7_5_9
-c 16.10.2018	ggu	changed VERS_7_5_50
-c 16.02.2019	ggu	changed VERS_7_5_60
-c
-c******************************************************************
+! general utilities for output files
+!
+! revision log :
+!
+! 03.06.2011	ggu	copied from ousutil.f
+! 07.11.2011	ggu	layer thickness for hybrid coordinates
+! 14.11.2011	ggu	sigma layer routines copied to sigmautil.f
+! 22.11.2011	ggu	changed VERS_6_1_37
+! 25.01.2013	ggu	new routine level_k2e()
+! 05.09.2013	ggu	new routine compute_levels_on_element()
+! 12.09.2013	ggu	changed VERS_6_1_67
+! 05.06.2015	ggu	changed VERS_7_1_12
+! 28.04.2016	ggu	changed VERS_7_5_9
+! 16.10.2018	ggu	changed VERS_7_5_50
+! 16.02.2019	ggu	changed VERS_7_5_60
+! 13.10.2025	ggu	changed to f90 style
+!
+!******************************************************************
 
         subroutine get_records_from_stdin(ndim,irec,ball)
 
-c gets records to extract from stdin
+! gets records to extract from stdin
 
         implicit none
 
@@ -88,11 +89,11 @@ c gets records to extract from stdin
 
         end
 
-c******************************************************************
+!******************************************************************
 
         subroutine get_nodes_from_stdin(ndim,nnodes,nodesi,nodese)
 
-c gets records to extract from stdin
+! gets records to extract from stdin
 
         implicit none
 
@@ -142,11 +143,11 @@ c gets records to extract from stdin
 
         end
 
-c******************************************************************
+!******************************************************************
 
 	subroutine level_e2k(nkn,nel,nen3v,ilhv,ilhkv)
 
-c computes ilhkv from ilhv
+! computes ilhkv from ilhv
 
 	implicit none
 
@@ -171,11 +172,11 @@ c computes ilhkv from ilhv
 
 	end
 
-c******************************************************************
+!******************************************************************
 
 	subroutine level_k2e(nkn,nel,nen3v,ilhkv,ilhv)
 
-c computes ilhv from ilhkv - is not exact (need hev to do better)
+! computes ilhv from ilhkv - is not exact (need hev to do better)
 
 	implicit none
 
@@ -202,7 +203,7 @@ c computes ilhv from ilhkv - is not exact (need hev to do better)
 
 	end
 
-c******************************************************************
+!******************************************************************
 
 	subroutine compute_levels_on_element(ie,zenv,zeta)
 
@@ -224,23 +225,23 @@ c******************************************************************
 
 	end
 
-c******************************************************************
+!******************************************************************
 
         subroutine write_connections(nkn,nel,nen3v,xgv,ygv)
 
-c writes FEM connectivity
-c
-c there are nkn nodes and nel elements
-c elements are always made out of 3 nodes
-c
-c legend:
-c
-c nkn                   total number of nodes
-c nel                   total number of elements
-c k                     node number [1...nkn]
-c ie                    element number [1...nel]
-c xgv(k),ygv(k)         coordinates of node k
-c (nen3v(ii,ie),ii=1,3) element connectivity - nodes of element ie
+! writes FEM connectivity
+!
+! there are nkn nodes and nel elements
+! elements are always made out of 3 nodes
+!
+! legend:
+!
+! nkn                   total number of nodes
+! nel                   total number of elements
+! k                     node number [1...nkn]
+! ie                    element number [1...nel]
+! xgv(k),ygv(k)         coordinates of node k
+! (nen3v(ii,ie),ii=1,3) element connectivity - nodes of element ie
 
         implicit none
 
@@ -266,7 +267,7 @@ c (nen3v(ii,ie),ii=1,3) element connectivity - nodes of element ie
 
         end
 
-c******************************************************************
+!******************************************************************
 
         subroutine make_name_with_time(pre,post,it,name)
 
@@ -293,7 +294,7 @@ c******************************************************************
 
         end
 
-c******************************************************************
-c******************************************************************
-c******************************************************************
+!******************************************************************
+!******************************************************************
+!******************************************************************
 

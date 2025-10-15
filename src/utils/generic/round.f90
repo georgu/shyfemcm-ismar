@@ -36,6 +36,8 @@
 !
 ! subroutine logvals(amin,amax,idiv,ntk,rval,aval)	computes log scale vals
 !
+! subroutine frac_pos(r,np)		computes number of fract. digits of r
+!
 ! revision log :
 !
 ! 16.02.1999	ggu	bpixel: write bounding box to ps file (as comment)
@@ -96,6 +98,7 @@
 ! 21.05.2019	ggu	changed VERS_7_5_62
 ! 13.02.2020	ggu	rounding routines in this extra file copied
 ! 18.09.2024	ggu	changes in logvals() to honor nticks
+! 13.10.2025	ggu	new routine frac_pos()
 !
 !*************************************************************
 
@@ -450,15 +453,17 @@
 	real r
 
 	integer i
-	real eps,fact,rr,rsub
+	real fact,rr,rsub
 	real, save :: rdata(10) =  (/0.25,0.5,1.,1.,1.,2.,1.,2.,3.,2.5/)
-
-	eps = 1.e-5
+	real, save :: eps = 1.e-5
 
 	fact = 1.
 	rr = r
 
-	if( rr > 1 ) then
+	if( rr == 0 ) then
+	  rnextsub = 0
+	  return
+	else if( rr > 1 ) then
 	  do while( rr/10. > 1 )
 	    fact = fact*10.
 	    rr = rr / 10.
@@ -616,6 +621,36 @@
    99   continue
         write(6,*) 'idiv = ',idiv
         stop 'error stop logval_adjust: idiv'
+        end
+
+!************************************************************
+
+        subroutine frac_pos(r,np)
+
+! computes number of fractional digits of r
+
+        implicit none
+
+        real r
+        integer np
+
+        real eps
+        integer ieps,ir
+
+        eps = 1.e-5
+        ieps = 100000
+
+        np = 0
+        ir = nint(ieps*abs(r))
+        if( ir .eq. 0 ) return
+        np = 5
+
+        do while( 10*(ir/10) .eq. ir )
+          ir = ir/10
+          np = np - 1
+          !write(6,*) 'new pos: ',ir,np
+        end do
+
         end
 
 !************************************************************

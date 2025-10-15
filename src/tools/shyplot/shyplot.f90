@@ -84,6 +84,7 @@
 ! 18.09.2024    ggu     new parameters bcolplot, lgrcol, lgrtyp, plot age
 ! 07.10.2025    ggu     use shorts in call to description
 ! 10.10.2025    ggu     get shorts for description
+! 13.10.2025    ggu     set spherical for bas plotting, new bintp
 !
 ! notes :
 !
@@ -130,7 +131,8 @@
 
 	implicit none
 
-	integer ivar
+	integer ivar,isphe
+	real getpar
 
         call read_command_line_file(basfilename)
 
@@ -138,10 +140,13 @@
 
 	call bash_verbose(bsdebug)
 	call ev_set_verbose(.not.bquiet)
-        !call ev_init(nel)
-        call set_ev
 
+	call bas_check_spherical
+	call bas_get_spherical(isphe)
+        call set_coords_ev(isphe)
+        call set_ev
         call set_geom
+        call get_coords_ev(isphe)
 
         call mod_depth_init(nkn,nel)
         call mod_hydro_plot_init(nkn,nel,1,nel)
@@ -774,7 +779,7 @@
 	character*80, allocatable :: shorts(:)
 
 	logical bhydro,bscalar,bsect,bvect,bvel,bcycle,belem
-	logical bregplot,bregdata
+	logical bregplot,bregdata,bintp
 	logical btime
 	integer nx,ny
 	integer irec,nplot,nread,nin,nold
@@ -1099,7 +1104,8 @@
 	 if( bsect ) then
 	   call plot_sect(bvel,cv3)
 	 else if( bvel ) then
-	   call plovect(ivel,'3D ',bregdata)
+	   bintp = .true.
+	   call plovect(ivel,'3D ',bregdata,bintp)
 	 else
            call plo_scal_val(n,cv2,varline)
 	 end if
@@ -1183,7 +1189,7 @@
 	integer datetime(2)
 	integer itype(2)
 	integer ivarplot(2),ivs(2)
-	real x0,y0,dx,dy
+	real x0,y0,dx,dy,x1,y1
 	real regpar(7)
 	real flag
 	double precision dtime,atime,atime0
@@ -1341,6 +1347,10 @@
 	    !goto 94
 	  end if
 	end if
+
+	call bash_set_regpar(regpar)
+	if( bregall ) call bash_set_regall(.true.)
+	call basinit
 
         nvar0 = nvar
         lmax0 = lmax
@@ -1561,7 +1571,7 @@
 	  if( bregdata ) then
 	    call reset_mask
 	    if( bvect ) then
-	      call plovect(ivel,'3D ',bregdata)
+	      call plovect(ivel,'3D ',bregdata,bintp)
 	    else
 	      call ploreg(np,data2d,regpar,varline,bintp)
 	    end if
@@ -1573,7 +1583,7 @@
             call adjust_layer_index(nel,nlv,hev,hlv,ilhv)
 	    call make_mask(layer)
 	    if( bvect ) then
-	      call plovect(ivel,'3D ',bregdata)
+	      call plovect(ivel,'3D ',bregdata,bintp)
 	    else
 	      call ploval(np,data2d,varline)
 	    end if

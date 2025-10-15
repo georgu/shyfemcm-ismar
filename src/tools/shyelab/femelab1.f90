@@ -509,7 +509,9 @@
 	      nx = nint(regpar(1))
 	      ny = nint(regpar(2))
 	      flag = regpar(7)
-	      write(6,'(a,4i4,f10.2)') 'smoothing: ',nlvdi,nx,ny,sloop,salpha
+	      if( bverbose ) then
+	        write(6,'(a,4i4,f10.2)') 'smoothing: ',nlvdi,nx,ny,sloop,salpha
+	      end if
               call smooth_regular(nlvdi,nx,ny,data,flag,salpha,sloop)
 	    end if
 	  end do

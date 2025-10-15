@@ -145,6 +145,7 @@
 !  21.10.2021	ggu	allow for vertical velocity overlay
 !  01.02.2023	ggu	use real area in plobox()
 !  08.03.2025	ggu	plot nodal code
+!  13.10.2025	ggu	introduced bintp
 ! 
 !  notes :
 ! 
@@ -629,7 +630,7 @@
 	integer np
 	real, allocatable :: pa(:)
 
-	if( bintp ) then
+	if( bintp ) then	!regular values are interpolated onto basin grid
 	  np = nkn
 	  allocate(pa(np))
 	  call getreg(regpar,nx,ny,x0,y0,dx,dy,flag)
@@ -650,7 +651,8 @@
 	  pa = preg
 	end if
 
-	call setreg_grid(regpar)
+	!write(6,*) 'ploreg: ',np,bintp
+	call bash_set_regpar(regpar)
 
 	call qstart
         call annotes(title)
@@ -1079,13 +1081,18 @@
 	integer ivel			!what to plot
         character*(*) title
 
-	call plovect(ivel,title,.false.)
+	logical bregdata,bintp
+
+	bregdata = .false.		!data is not regular
+	bintp = .true.			!data is on fem grid
+
+	call plovect(ivel,title,bregdata,bintp)
 
 	end
 
 ! **********************************************************
 
-	subroutine plovect(ivel,title,bregdata)
+	subroutine plovect(ivel,title,bregdata,bintp)
 
 !  plots entity with vectors
 ! 
@@ -1111,6 +1118,7 @@
 	integer ivel			!what to plot
         character*(*) title		!title for annotation
 	logical bregdata		!is data on regular grid?
+	logical bintp			!if regular interpolate on fem grid
 
 	real uvmod(nkn)
 
@@ -1122,10 +1130,10 @@
         character*80 anoline
         character*80 spcvel
 	integer ie,k
-	integer i,j,nnn
+	integer i,j,nnn,nn,np
 	integer level
 	integer ioverl,inorm
-	real u,v,xm,ym
+	real u,v,xm,ym,uv
 	real x0,y0,dx,dy,flag
 	real ut,vt
 	real href,scale
@@ -1228,8 +1236,7 @@
 	else				!see if we have to plot regular
 	  call prepare_regular(nx,ny,bregplot)
 	end if
-	!if( bregplot ) write(6,*) 'plotting on regular grid'
-	!write(6,*) 'bregdata,bregplot: ',bregdata,bregplot
+	!if( bregplot ) write(6,*) 'plot on regular grid: ',bregdata,bregplot
 
 ! ------------------------------------------------------------------
 !  prepare for velocity or transport
@@ -1299,15 +1306,17 @@
 	  call mod_hydro_plot_regular_init(nx,ny)
 	  ureg = reshape(uvnode(:),(/nx,ny/))
 	  vreg = reshape(vvnode(:),(/nx,ny/))
-	  bhasbasin = basin_has_read_basin()
-	  if( bhasbasin ) then		!FIXME - might still be wrong
+	  if( bintp ) then		!interpolate reg data onto fem grid
 	    call am2av(ureg,uvnode,nx,ny)
 	    call am2av(vreg,vvnode,nx,ny)
-	  else
-	    uvnode = 0.
-	    vvnode = 0.
+	    np = nkn
+	  else				!use regular grid for plotting
+	    np = nx*ny
+	    uvnode(1:np) = reshape(ureg(:,:),(/nx*ny/))
+	    vvnode(1:np) = reshape(vreg(:,:),(/nx*ny/))
 	  end if
 	else if( bregplot ) then
+	  np = nx*ny
 	  call av2amk(bwater,uvnode,ureg,nx,ny)
 	  call av2amk(bwater,vvnode,vreg,nx,ny)
 	end if
@@ -1316,7 +1325,7 @@
 !  compute modulus and maximum of velocity
 ! ------------------------------------------------------------------
 
-	call moduv(uvnode,vvnode,uvmod,nkn,uvmax,uvmed) !compute mod/max/aver
+	call moduv(uvnode,vvnode,uvmod,np,uvmax,uvmed) !compute mod/max/aver
 
 	if( .not. bbound ) then		!set boundary vectors to 0
 	  call bnd2val(uvnode,0.)	
@@ -1340,12 +1349,19 @@
             write(6,*) 'ioverl = ',ioverl
             stop 'error stop plo2vel: value not allowed for ioverl'
 	  end if
-	  call get_minmax_flag(uvover,nkn,pmin,pmax,flag)
+	  call get_minmax_flag(uvover,np,pmin,pmax,flag)
 	  call apply_dry_mask(bkwater,uvover,nkn,flag)
 	  call colauto(pmin,pmax)
 	  if( bverb ) write(6,*) 'overlay color... ',pmin,pmax
           call qcomm('Plotting overlay')
-          call isoline(uvover,nkn,0.,2)
+          !call isoline(uvover,np,0.,2)
+	  if( bintp ) then	!values have been interpolated onto fem grid
+            call qcomm('Plotting interpolated regular grid')
+            call isoline(uvover,np,0.,2)
+	  else
+            call qcomm('Plotting regular grid')
+            call isoreg(uvover,np,regpar,0.,2)
+	  end if
 	end if
 
 	call plot_dry_areas
@@ -1394,6 +1410,8 @@
 	    do i=1,nx
 	      u = ureg(i,j)
 	      v = vreg(i,j)
+	      uv = sqrt(u*u+v*v)
+	      uvreg(i,j) = uv
 	      if( u > flag .and. v > flag ) then
 		xm = x0 + (i-1) * dx
 		ym = y0 + (j-1) * dy
@@ -1687,7 +1705,7 @@
 	call qstart
 	call bash(0)
 	call bash(2)
-        call reggrid(10,0.,0.5)
+        call plot_reg_grid(10,0.,0.5)
 	call qend
 
 !  here only debug (node and element numbers)
@@ -1697,28 +1715,28 @@
 	call qstart
 	call bash(0)
 	call bash(3)
-	call basin_number(1)	!external node
+	call plot_basin_number(1)	!external node
 	call bash(2)
 	call qend
 
 	call qstart
 	call bash(0)
 	call bash(3)
-	call basin_number(2)	!external element
+	call plot_basin_number(2)	!external element
 	call bash(2)
 	call qend
 
 	call qstart
 	call bash(0)
 	call bash(3)
-	call basin_number(-1)	!internal node
+	call plot_basin_number(-1)	!internal node
 	call bash(2)
 	call qend
 
 	call qstart
 	call bash(0)
 	call bash(3)
-	call basin_number(-2)	!internal element
+	call plot_basin_number(-2)	!internal element
 	call bash(2)
 	call qend
 
@@ -1970,7 +1988,7 @@
 	call qstart
 
         call plot_basin(0)
-	call frame(0)
+	call plot_frame(0)
 
         call qcomm('Plotting elements')
 	do ie=1,nel

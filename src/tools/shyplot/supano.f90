@@ -1503,6 +1503,8 @@
 
 !  plots date legend
 
+	use plotutil
+
         implicit none
 
         integer it,iday,ihour
@@ -1544,7 +1546,9 @@
           date = nint(dgetpar('date'))
           time = nint(dgetpar('time'))
 	  if( date .ne. -1 ) then	!if given overwrites date in sim
-	    write(6,*) 'initializing date and time: ',date,time
+	    if( .not. bquiet ) then
+	      write(6,*) 'initializing date and time: ',date,time
+	    end if
             call dtsini(date,time)
 	  end if
 
@@ -1554,7 +1558,6 @@
           tzshow = getpar('tzshow')
 
 	  call make_absolute1(xdate,ydate)
-	  !write(6,*) '%%%%%%%%%%%%% ',xdate,ydate,idate,date
 
           icall = 1
         end if

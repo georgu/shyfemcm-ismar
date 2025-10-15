@@ -148,6 +148,7 @@
 ! 11.04.2022	ggu	new routine condense_valid_coordinates for single nodes
 ! 25.11.2022	ggu	new routine recollocate_nodes() and ipg array
 ! 20.02.2025	ggu	new routine create_reg()
+! 13.10.2025	ggu	new routine getreg_dim()
 !
 ! notes :
 !
@@ -365,6 +366,32 @@
 	dx = regpar(5)
 	dy = regpar(6)
 	flag = regpar(7)
+
+	end
+
+!******************************************************
+
+	subroutine getreg_dim(regpar,x0,y0,x1,y1)
+
+! returns dimension of regular grid
+
+	implicit none
+
+	real regpar(7)
+	real x0,y0,x1,y1
+
+	integer nx,ny
+	real dx,dy,flag
+
+	nx = nint(regpar(1))
+	ny = nint(regpar(2))
+	x0 = regpar(3)
+	y0 = regpar(4)
+	dx = regpar(5)
+	dy = regpar(6)
+
+	x1 = x0 + (nx-1)*dx
+	y1 = y0 + (ny-1)*dy
 
 	end
 

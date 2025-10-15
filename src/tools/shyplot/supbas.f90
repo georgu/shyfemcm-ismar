@@ -23,35 +23,46 @@
 !
 !--------------------------------------------------------------------------
 
-!  routines for plotting basin
+! routines for plotting basin
 ! 
-!  contents :
+! contents :
 ! 
-!  subroutine basinit			internal initialization
+! subroutine basinit			internal initialization
+! subroutine determine_frame_dimensions finds dimension of frame
+! subroutine determine_typical_length_scale   computes length scale for basin
 ! 
-!  subroutine bash(mode)			plots basin (shell)
+! subroutine bash(mode)			plots basin (shell)
 ! 
-!  subroutine basin(mode)		plots basin
-!  subroutine bpixel			writes the pixel size as a comment 
-!  subroutine frame(mode)		plots frame
-!  subroutine basmima(mode)		computes min/max of basin
-!  subroutine setbas(x0,y0,x1,y1)	sets min/max of basin to plot
-!  subroutine getbas(x0,y0,x1,y1)	gets min/max of basin to plot
-!  subroutine boundline			plots boundary line for lagoon
+! subroutine plot_basin(mode)		plots basin
+! subroutine plot_basin_number(mode)	plots basin with node/element numbers
+! subroutine bpixel			writes the pixel size as a comment 
+! subroutine plot_frame(mode)		plots frame around plot
+!
+! subroutine basmima(mode)		computes min/max of basin
+! subroutine setbas(x0,y0,x1,y1)	sets min/max of basin to plot
+! subroutine getbas(x0,y0,x1,y1)	gets min/max of basin to plot
+! subroutine plot_boundline		plots boundary line for basin
 ! 
-!  subroutine reggrid(ngrid,dist,gray)	plots regular grid
+! subroutine handle_spherical		handles spherical coordinates
+! subroutine spherical_fact(fact,afact) computes factors for spherical coords
+!
+! subroutine handle_reg_grid		handles plotting of regular grid
+! subroutine compute_reg_grid(bverb,dreg,imicro) find best regular grid
+! subroutine plot_reg_grid(ngrid,dist,gray) plots regular grid on top of basin
+!
+! subroutine handle_bw_frame		handles labeling of regular grid
+! subroutine plot_bw_frame(imicro,x0,y0,dx,dy,xmin,xmax,ymin,ymax)
+!					plot black/white frame around grid
+! subroutine plot_box(ic,x1,y1,x2,y2)	plots rectangular box
 ! 
-!  subroutine basscale(dist)		computes typical length scale for basin
-! 
-!  function roundm(r,mode)		rounds r to the closest value
-!  function rround(r,rmaster,mode)	rounds r to next rmaster value
-!  function rdist(xmin,ymin,xmax,ymax)	computes gridspacing 
-!  function divdist(x,n,mode)		divides x into n equal pieces
-! 
-!  subroutine handle_spherical		handles spherical coordinates
-!  subroutine plot_reg_grid		handles plotting of regular grid
-!  subroutine label_bw_frame		handles labeling of regular grid
-! 
+! subroutine setreg_grid(regpar)	sets regular grid values
+! subroutine plot_regular_points	plots regular points
+! subroutine plot_obs_points(mode,file,text) plots special points (obs/meteo)
+! subroutine plot_plus(x,y,dx,dy)	plots a plus char
+! subroutine plot_cross(x,y,dx,dy)	plots a cross char
+! subroutine plot_islands(cgray)	plots islands in gray
+! subroutine plot_outer_area(n,xa,ya)	plots outer area
+!
 !  revision log :
 ! 
 !  16.02.1999	ggu	bpixel: write bounding box to ps file (as comment)
@@ -111,19 +122,32 @@
 !  13.03.2019	ggu	changed VERS_7_5_61
 !  21.05.2019	ggu	changed VERS_7_5_62
 !  13.02.2020	ggu	rounding routines into new file subround.f
-!  10.11.2021    ggu     avoid warning for stack size
+!  10.11.2021   ggu     avoid warning for stack size
+!  14.10.2025   ggu     big overhaul of routines
 ! 
 !  notes :
 ! 
-!  rules for regular frame around plot:
+!  reg_grid is regular grid plotted over basin (reggrd and reggry)
+!
+!  rules for regular bw_frame around plot:
 ! 
-!  if reggrd is given		-> use this value
-!  if reggrd == 0		-> do not plot frame
-!  else (reggrd==-1)
-!  if no legend is requested	-> do not plot frame
-!  if legend is requested
-! 	if spherical		-> plot frame and no scale/north
-! 	else			-> plot scale/north and no frame
+!  if reggrd > 0
+!	-> use this value
+!  else if reggrd == 0		
+!	-> do not plot frame
+!  else if reggrd == -1
+!	-> automatically determine
+!  end if
+!
+!  if no legend is requested
+!	-> do not plot frame
+!  else if legend is requested
+! 	if spherical		
+!		-> plot bw_frame and no scale/north
+! 	else			
+!		-> plot scale/north and no bw_frame
+!	end if
+!  end if
 ! 
 ! *************************************************************
 
@@ -132,9 +156,85 @@
 	implicit none
 
 	logical, save :: bbverb = .true.
-	real, save :: xmin,ymin,xmax,ymax
+	logical, save :: breg = .false.		!regular grid is available
+	logical, save :: bbasin = .false.	!basin has been read
+	logical, save :: ball = .false.		!plot whole regular grid
+
+	real, save :: regp(7)
+	real, save :: xmin,ymin,xmax,ymax	!plotting area
 
 	end module mod_bash
+
+! *************************************************************
+
+	subroutine bash_set_regpar(regpar)
+
+	use mod_bash
+
+	implicit none
+
+	real regpar(7)
+
+	breg = .true.
+	regp = regpar
+
+	end
+
+! *************************************************************
+
+	subroutine bash_set_regular(bregular)
+
+	use mod_bash
+
+	implicit none
+
+	logical bregular
+
+	breg = bregular
+
+	end
+
+! *************************************************************
+
+	subroutine bash_get_regular_minmax(xpmin,ypmin,xpmax,ypmax)
+
+	use mod_bash
+
+	implicit none
+
+	real xpmin,ypmin,xpmax,ypmax
+
+	integer nx,ny
+	real dx,dy
+
+	if( .not. breg ) then
+	  stop 'error stop bash_get_regular_minmax: not regular'
+	end if
+
+        nx = nint(regp(1))
+        ny = nint(regp(2))
+        xpmin = regp(3)
+        ypmin = regp(4)
+        dx = regp(5)
+        dy = regp(6)
+	xpmax = xmin + (nx-1)*dx
+	ypmax = ymin + (ny-1)*dy
+
+	end
+
+! *************************************************************
+
+	subroutine bash_set_regall(bregall)
+
+	use mod_bash
+
+	implicit none
+
+	logical bregall
+
+	ball = bregall
+
+	end
 
 ! *************************************************************
 
@@ -151,6 +251,8 @@
 	end
 
 ! *************************************************************
+! *************************************************************
+! *************************************************************
 
 	subroutine basinit
 
@@ -166,11 +268,126 @@
 
 	binit = .true.
 
-	call basmima(0)		!compute exact dimensions as default
-	call bastlscale		!computes typical length scale
+	call determine_frame_dimensions
+	call determine_typical_length_scale
 
 	end
 
+! **************************************************************
+
+	subroutine determine_frame_dimensions
+
+! finds dimension of frame
+
+	use mod_bash
+	use basin
+
+	implicit none
+
+	integer nx,ny
+	real dx,dy
+	real x0,y0,x1,y1
+	logical inboxdim
+
+	if( basin_has_read_basin() ) then
+	  bbasin = .true.
+	  call basmima(0)		!compute exact dimensions as default
+	  if( breg .and. ball ) then
+	    call bash_get_regular_minmax(xmin,ymin,xmax,ymax)
+	  end if
+	else if ( breg ) then
+	  call bash_get_regular_minmax(xmin,ymin,xmax,ymax)
+	else
+	  stop 'error stop determine_frame_dimensions: cannot find min/max'
+	end if
+
+	if( inboxdim(' ',x0,y0,x1,y1) ) then	!size of plotting is given
+	  call setbas(x0,y0,x1,y1)
+	end if
+	  
+	call getbas(xmin,ymin,xmax,ymax)
+
+	end
+
+! *************************************************************
+
+	subroutine determine_typical_length_scale
+
+!  computes typical length scale for basin
+! 
+!  dxygrd is used first
+!  then typls is used if given
+!  else it is computed from grid
+
+	use basin, only : nkn,nel,ngr,mbw
+	use mod_bash
+
+	implicit none
+
+	logical bdebug
+	integer ie
+	real area,ao
+	real dist,typls			!typical length scale
+	real fact,afact
+	real dxygrd
+	real dx,dy
+	double precision acu
+
+	real getpar,aomega_elem
+
+	bdebug = .false.
+
+	if( bbasin ) then
+	  acu = 0.
+	  do ie=1,nel
+	    ao = aomega_elem(ie)
+	    acu = acu + ao
+	  end do
+	  area = 24. * acu / nel	!a little bit bigger than one element
+	  call spherical_fact(fact,afact)  !correct for spherical coordinates
+	else if( breg ) then
+	  area = (xmax-xmin)*(ymax-ymin)
+	  dx = regp(5)
+	  dy = regp(6)
+	  area = dx*dy
+	  afact = 100			!empirical
+	else
+	  stop 'error stop determine_typical_length_scale: impossible'
+	end if
+
+	dist = sqrt(area/afact)
+
+	typls = getpar('typls')
+	dxygrd = getpar('dxygrd')
+	if( dxygrd .gt. 0. ) then
+	  typls = dxygrd
+	else if( typls .gt. 0. ) then
+	  typls = typls
+	else
+	  typls = dist
+	end if
+	!typls = 0.25
+	!typls = 0.012
+	call putpar('typls',typls)
+
+	if( bdebug ) then
+	write(6,*) '=============================='
+	write(6,*) 'ggguuu breg: ',breg,bbasin
+	write(6,*) 'ggguuu area: ',area,afact,dxygrd
+	write(6,*) 'ggguuu typls: ',typls,dist
+	write(6,*) 'ggguuu xyminmax: ',xmin,ymin,xmax,ymax
+	write(6,*) '=============================='
+	end if
+
+	if( bbverb ) then
+	  write(6,*) 'typical length scale for basin: ',dist
+	  write(6,*) 'typical length scale used     : ',typls
+	end if
+
+	end
+
+! **************************************************************
+! **************************************************************
 ! **************************************************************
 
 	subroutine bash(mode)
@@ -178,13 +395,13 @@
 ! plots basin (shell)
 !
 ! mode	
-!	0: only scaling  
+!	0: only scaling, annotation, and bw_frame
 !	1: net  
-!	2: boundary and legend
+!	2: boundary line, frame, reg_grid, and legend
 !	3: net in gray (for bathymetry - use bgray)
 !	4: net in gray (for scalar and velocities - use bsgray)
 !
-! call first with mode == 0 (scaling9
+! call first with mode == 0 (scaling)
 ! then call with desired mode
 ! must be called with mode == 2 before closing the plot
 
@@ -220,12 +437,12 @@
 
 	if( mode .eq. 0 ) then
 
-	  call basmima(0)
-	  if( inboxdim(' ',x0,y0,x1,y1) ) then	!size of plotting is given
-	    call setbas(x0,y0,x1,y1)
-	  end if
+	  !call basmima(0)
+	  !if( inboxdim(' ',x0,y0,x1,y1) ) then	!size of plotting is given
+	  !  call setbas(x0,y0,x1,y1)
+	  !end if
 
-	  call getbas(x0,y0,x1,y1)		!bug fix 2.3.2005
+	  !call getbas(x0,y0,x1,y1)		!bug fix 2.3.2005
 
 	  !--------------------------------------
 	  ! prepare regular grid
@@ -238,7 +455,7 @@
 
 	  call annote		!annotation
 	  call plot_basin(0)	!scaling
-	  call label_bw_frame
+	  call handle_bw_frame
 	  call plot_islands(cgray)
 
 	  return
@@ -262,14 +479,14 @@
 	! boundary line and islands
 	!--------------------------------------
 
-	call boundline
+	call plot_boundline
 
 	!--------------------------------------
 	! frame
 	!--------------------------------------
 
-	call frame(0)
-	call plot_reg_grid
+	call plot_frame(0)
+	call handle_reg_grid
 
 	!--------------------------------------
 	! user defined legend
@@ -404,7 +621,7 @@
 
 ! *************************************************************
 
-	subroutine basin_number(mode)
+	subroutine plot_basin_number(mode)
 
 !  plots basin with node and element numbers
 ! 
@@ -470,7 +687,7 @@
 	else
 
 	  write(6,*) mode
-	  stop 'error stop basin_number: mode'
+	  stop 'error stop plot_basin_number: mode'
 
 	end if
 
@@ -514,9 +731,9 @@
 
 ! *****************************************************************
 
-	subroutine frame(mode)
+	subroutine plot_frame(mode)
 
-!  plots frame
+!  plots frame around plot
 ! 
 !  0: just box around plot (only mode allowed)
 
@@ -549,7 +766,7 @@
 
 	if( mode .eq. 0 ) return
 
-	stop 'error stop frame: only mode == 0 is allowed'
+	stop 'error stop plot_frame: only mode == 0 is allowed'
 	end
 
 ! *************************************************************
@@ -573,7 +790,14 @@
 
 	real rdist,rround
 
-	call basinit
+	!call basinit
+	if( .not. basin_has_read_basin() ) then
+	  xmin = 0.
+	  ymin = 0.
+	  xmax = 0.
+	  ymax = 0.
+	  return
+	end if
 
 	xmin = xgv(1)
 	xmax = xgv(1)
@@ -641,9 +865,9 @@
 
 ! *************************************************************
 
-	subroutine boundline
+	subroutine plot_boundline
 
-!  plots boundary line for lagoon
+!  plots boundary line for basin
 
 	implicit none
 
@@ -685,14 +909,162 @@
 	return
    99	continue
 	write(6,*) 'error reading boundary line file: ',trim(bndlin)
-	stop 'error stop boundline'
+	stop 'error stop plot_boundline'
+	end
+
+! **************************************************************
+
+	subroutine handle_spherical
+
+!  handles spherical coordinates
+
+	use mod_bash
+
+	implicit none
+
+	real fact,afact
+	logical is_spherical
+
+	call spherical_fact(fact,afact)
+
+	call qfact(fact,1.0)
+
+	if( bbverb ) then
+          if( is_spherical() ) then
+	    write(6,*) 'Using factor for spherical coordinates: ',fact
+	  else
+	    write(6,*) 'Using factor for coordinates: ',fact
+	  end if
+	end if
+
+	end
+
+! **************************************************************
+
+	subroutine spherical_fact(fact,afact)
+
+!  computes factors for for spherical coordinates
+
+	implicit none
+
+	real fact	!factor in x direction
+	real afact	!area factor between geo and cartesian coordinates
+
+	real geomile,onedeg
+	parameter( geomile = 1855.325 , onedeg = 60.*geomile )
+
+	real y,pi,rad
+	real x0,y0,x1,y1
+
+	real getpar
+	logical is_spherical
+
+	fact = 1.
+	afact = 1.
+
+        if( .not. is_spherical() ) return	!only for spherical
+
+	call getbas(x0,y0,x1,y1)
+	y = 0.5*(y0+y1)
+	pi = 4.*atan(1.)
+	rad = pi/180.
+
+	fact = cos(y*rad)
+	afact = fact * onedeg * onedeg
+
+	end
+
+! **************************************************************
+! **************************************************************
+! **************************************************************
+
+	subroutine handle_reg_grid
+
+!  handles plotting of regular grid
+
+	use mod_bash
+
+	implicit none
+
+	integer ngrid
+	real reggrd
+	real reggry
+	real dreg
+	integer imicro
+
+	real getpar
+
+	if( bbverb ) write(6,*) 'starting handle_reg_grid...'
+
+	reggrd = getpar('reggrd')
+	reggry = getpar('reggry')
+
+	call compute_reg_grid(bbverb,reggrd,imicro)
+
+	if( reggrd > 0 .and. reggry < 1. ) then
+	  ngrid = 0
+	  call plot_reg_grid(ngrid,reggrd,reggry)
+	end if
+
+	if( bbverb ) write(6,*) 'ending handle_reg_grid...'
+
+	end
+
+! **************************************************************
+
+	subroutine compute_reg_grid(bverb,dreg,imicro)
+
+!  tries to find best regular grid spacing value
+!
+! is called both in handle_reg_grid() and handle_bw_frame()
+
+	implicit none
+
+	logical bverb
+	real dreg		!is reggrd in calling programs
+	integer imicro
+
+	real x0,y0,x1,y1
+	real dx,dy,dxy
+	real dsreg
+
+	logical is_spherical,is_box_given
+	real rnext,rnextsub
+
+	dsreg = 0
+	imicro = 0
+
+        if( .not. is_spherical() ) then		!only for non-spherical
+	  if( dreg .lt. 0. ) dreg = 0.
+	end if
+
+	if( dreg == 0 ) return
+
+	call getbas(x0,y0,x1,y1)
+
+	dx = x1 - x0
+	dy = y1 - y0
+	dxy = min(dx,dy)	!use smaller side
+
+	dxy = dxy/4.		!around 4 grid lines
+
+	if( dreg < 0 ) dreg = rnext(dxy,1)	!compute only if not given
+	if( dreg == 0 ) return
+	dsreg = rnextsub(dreg)
+	imicro = nint(dreg/dsreg)
+
+	if( bverb ) then
+	  write(6,*) 'reg,micro: ',dreg,dsreg,imicro
+	  write(6,*) 'new reggrd: ',dreg,x0,x1,y0,y1
+	end if
+
 	end
 
 ! *************************************************************
 
-	subroutine reggrid(ngrid,dist,gray)
+	subroutine plot_reg_grid(ngrid,dist,gray)
 
-!  plots regular grid
+!  plots regular grid on top of basin
 ! 
 !  if ngrid > 0                          use ngrid
 !  if ngrid <= 0 and dist > 0.           use dist
@@ -758,302 +1130,11 @@
 
 	end
 
-! *************************************************************
-
-	subroutine bastlscale
-
-!  computes typical length scale for basin
-! 
-!  dxygrd is used first
-!  then typls is used if given
-!  else it is computed from grid
-
-	use basin, only : nkn,nel,ngr,mbw
-	use mod_bash
-
-	implicit none
-
-	integer ie
-	real area,ao
-	real dist,typls			!typical length scale
-	real fact,afact
-	real dxygrd
-	double precision acu
-
-	real getpar,aomega_elem
-
-	acu = 0.
-	do ie=1,nel
-	  ao = aomega_elem(ie)
-	  acu = acu + ao
-	end do
-	area = 24. * acu / nel		!a little bit bigger than one element
-
-	call spherical_fact(fact,afact)	!correct for spherical coordinates
-	dist = sqrt(area/afact)
-
-	typls = getpar('typls')
-	dxygrd = getpar('dxygrd')
-	if( dxygrd .gt. 0. ) then
-	  typls = dxygrd
-	else if( typls .gt. 0. ) then
-	  typls = typls
-	else
-	  typls = dist
-	end if
-	call putpar('typls',typls)
-
-	if( bbverb ) then
-	  write(6,*) 'typical length scale for basin: ',dist
-	  write(6,*) 'typical length scale used     : ',typls
-	end if
-
-	end
-
-! ***************************************************
-! ***************************************************
-! ***************************************************
-
-	subroutine frac_pos(r,np)
-
-!  computes number of fractional digits of real r
-
-	implicit none
-
-	real r
-	integer np
-
-	real eps
-	integer ieps,ir
-
-	eps = 1.e-5
-	ieps = 100000
-
-	np = 0
-	ir = nint(ieps*abs(r))
-	if( ir .eq. 0 ) return
-	np = 5
-
-	do while( 10*(ir/10) .eq. ir )
-	  ir = ir/10
-	  np = np - 1
-	  !write(6,*) 'new pos: ',ir,np
-	end do
-
-	end
-
-! **************************************************************
-
-	subroutine frac_pos1(r,np)
-
-!  computes number of fractional digits of real r
-
-	implicit none
-
-	real r
-	integer np
-
-	real rr,ri
-	real eps
-	integer ieps
-
-	eps = 1.e-5
-	ieps = nint(1./eps)
-
-	rr = r
-
-	rr = abs(r)
-	rr = eps*nint(rr/eps)
-	ri = float(int(rr))
-	np = 0
-	write(6,*) 'in frac_pos: ',r,rr,ri,np
-
-	do while( abs(rr-ri) .gt. eps )
-	  !write(6,*) np,r,rr
-	  np = np + 1
-	  if( np .gt. 5 ) goto 99
-	  rr = rr * 10.
-	  ri = float(int(rr))
-	  write(6,*) 'in frac_pos: ',r,rr,ri,np
-	end do
-
-	return
-   99	continue
-	write(6,*) np,r,rr,ri,rr-ri
-	stop 'error stop frac_pos: internal error'
-	end
-
 ! **************************************************************
 ! **************************************************************
 ! **************************************************************
 
-	subroutine spherical_fact(fact,afact)
-
-!  computes factors for for spherical coordinates
-
-	implicit none
-
-	real fact	!factor in x direction
-	real afact	!area factor between geo and cartesian coordinates
-
-	real geomile,onedeg
-	parameter( geomile = 1855.325 , onedeg = 60.*geomile )
-
-	real y,pi,rad
-	real x0,y0,x1,y1
-
-	real getpar
-	logical is_spherical
-
-	fact = 1.
-	afact = 1.
-
-        if( .not. is_spherical() ) return	!only for spherical
-
-	call getbas(x0,y0,x1,y1)
-	y = 0.5*(y0+y1)
-	pi = 4.*atan(1.)
-	rad = pi/180.
-
-	fact = cos(y*rad)
-	afact = fact * onedeg * onedeg
-
-	end
-
-! **************************************************************
-
-	subroutine handle_spherical
-
-!  handles spherical coordinates
-
-	use mod_bash
-
-	implicit none
-
-	real fact,afact
-	logical is_spherical
-
-	call spherical_fact(fact,afact)
-
-	call qfact(fact,1.0)
-
-	if( bbverb ) then
-          if( is_spherical() ) then
-	    write(6,*) 'Using factor for spherical coordinates: ',fact
-	  else
-	    write(6,*) 'Using factor for coordinates: ',fact
-	  end if
-	end if
-
-	end
-
-! **************************************************************
-! **************************************************************
-! **************************************************************
-
-	subroutine adjust_reg_grid_spacing(bverb,dreg,imicro)
-
-!  checks if regular grid should be written
-
-	implicit none
-
-	logical bverb
-	real dreg
-	integer imicro
-
-	logical is_spherical,is_box_given
-
-	!if( dreg .ge. 0. ) return		!already given
-        if( .not. is_spherical() ) then		!only for spherical
-	  if( dreg .lt. 0. ) dreg = 0.
-	  return
-	end if
-	!if( .not. is_box_given('leg') ) return	!no legend was requested
-
-	call compute_reg_grid_spacing(bverb,dreg,imicro)
-
-	end
-
-! **************************************************************
-
-	subroutine compute_reg_grid_spacing(bverb,dreg,imicro)
-
-!  tries to find best regular grid spacing value
-
-	implicit none
-
-	logical bverb
-	real dreg
-	integer imicro
-
-	real x0,y0,x1,y1
-	real dx,dy,dxy
-	real dsreg
-
-	real rnext,rnextsub
-
-	call getbas(x0,y0,x1,y1)
-
-	dx = x1 - x0
-	dy = y1 - y0
-	dxy = min(dx,dy)	!use smaller side
-
-	dxy = dxy/4.		!around 4 grid lines
-
-	if( dreg < 0 ) dreg = rnext(dxy,1)	!compute only if not given
-	dsreg = rnextsub(dreg)
-	imicro = nint(dreg/dsreg)
-
-	if( bverb ) then
-	  write(6,*) 'reg,micro: ',dreg,dsreg,imicro
-	  write(6,*) 'new reggrd: ',dreg,x0,x1,y0,y1
-	end if
-
-	end
-
-! **************************************************************
-
-	subroutine plot_reg_grid
-
-!  handles plotting of regular grid
-
-	use mod_bash
-
-	implicit none
-
-	integer ngrid
-	real reggrd
-	real reggry
-	real dreg
-	integer imicro
-
-	real getpar
-
-	if( bbverb ) write(6,*) 'starting plot_reg_grid...'
-
-	reggrd = getpar('reggrd')
-	reggry = getpar('reggry')
-
-	call adjust_reg_grid_spacing(bbverb,reggrd,imicro)
-
-	!write(6,*) 'ggguuu: ',reggrd,reggry
-
-	!if( reggrd .le. 0. ) goto 1
-	!if( reggry .ge. 1. ) goto 1	!no white painting
-
-	if( reggrd > 0 .and. reggry < 1. ) then
-	  ngrid = 0
-	  call reggrid(ngrid,reggrd,reggry)
-	end if
-
-!    1	continue
-	if( bbverb ) write(6,*) 'ending plot_reg_grid...'
-
-	end
-
-! **************************************************************
-
-	subroutine label_bw_frame
+	subroutine handle_bw_frame
 
 !  handles labeling of frame
 	
@@ -1085,26 +1166,27 @@
 
 	call basinit
 
-	if( bbverb ) write(6,*) 'starting label_bw_frame...'
+	if( bbverb ) write(6,*) 'starting handle_bw_frame...'
 
-	!size = 0.5	                               
-	fextra_space = 0.4                         !factor for space between text and outer line
-	mm_per_point = 0.352777778                 !mm per point of font size
-	size = (fs_bw_frame * mm_per_point)/10.    !fs_bw_frame (font size) is defined in module plot_fonts
-	size = size + size * fextra_space		   !space around plot for labeling in cm													
-	ftext  = 2.5	                           !factor to shift text vertically (from inner line)	
-	nxymax = 50	                               !not more than these number of reg grids
+	!fs_bw_frame (font size) is defined in module plot_fonts
+
+	fextra_space = 0.4   !factor for space between text and outer line
+	mm_per_point = 0.352777778              !mm per point of font size
+	size = (fs_bw_frame * mm_per_point)/10.
+	size = size + size * fextra_space   !space around plot for labeling [cm]													
+	ftext  = 2.5	     !factor to shift text vertically (from inner line)	
+	nxymax = 50	     !not more than these number of reg grids
 
 	reggrd = getpar('reggrd')
 	imicro = nint(getpar('regdst'))
 
 	if( bdebug ) write(6,*) 'reggrd,imicro (1): ',reggrd,imicro
-	call adjust_reg_grid_spacing(bbverb,reggrd,imicro)	!check if automatic
+	call compute_reg_grid(bbverb,reggrd,imicro)	!check if automatic
 	if( bdebug ) write(6,*) 'reggrd,imicro (2): ',reggrd,imicro
 
 	if( reggrd .eq. 0. ) return
 
-	call frame(0)
+	call plot_frame(0)
 
 	call qgetvp(xvmin,yvmin,xvmax,yvmax)
 
@@ -1120,7 +1202,7 @@
 	dist = reggrd
 	call frac_pos(dist,nc)
 	if( nc .eq. 0 ) nc = -1
-	if( bbverb ) write(6,*) 'label_bw_frame: ',dist,nc,imicro
+	if( bbverb ) write(6,*) 'handle_bw_frame: ',dist,nc,imicro
 
 	xdmin = rround(xmin,dist,-1)
 	xdmax = rround(xmax,dist,+1)
@@ -1178,12 +1260,12 @@
 
 	call qsetvp(xvmin,yvmin,xvmax,yvmax)
 
-	if( bbverb ) write(6,*) 'ending label_bw_frame...'
+	if( bbverb ) write(6,*) 'ending handle_bw_frame...'
 
 	return
    99	continue
 	write(6,*) 'nx,ny: ',nx,ny
-	stop 'error stop label_bw_frame: nx,ny too high'
+	stop 'error stop handle_bw_frame: nx,ny too high'
 	end
 
 ! **************************************************************
@@ -1253,8 +1335,8 @@
 	do while( x .lt. xmax )
 	  i = mod(i+1,2)
 	  xn = min(x+ddx,xmax)
-	  call make_box(i,x,ymax,xn,ymax+hy)
-	  call make_box(i,x,ymin,xn,ymin-hy)
+	  call plot_box(i,x,ymax,xn,ymax+hy)
+	  call plot_box(i,x,ymin,xn,ymin-hy)
 	  x = x + ddx
 	end do
 
@@ -1264,8 +1346,8 @@
 	do while( x .gt. xmin )
 	  i = mod(i+1,2)
 	  xn = max(x-ddx,xmin)
-	  call make_box(i,xn,ymax,x,ymax+hy)
-	  call make_box(i,xn,ymin,x,ymin-hy)
+	  call plot_box(i,xn,ymax,x,ymax+hy)
+	  call plot_box(i,xn,ymin,x,ymin-hy)
 	  x = x - ddx
 	end do
 
@@ -1274,10 +1356,10 @@
 ! ------------------------------------------------------------
 
 	if( imicro .ge. 0 ) then
-	  call make_box(0,xmin-hx,ymax,xmin,ymax+hy)
-	  call make_box(0,xmax,ymax,xmax+hx,ymax+hy)
-	  call make_box(0,xmin-hx,ymin-hy,xmin,ymin)
-	  call make_box(0,xmax,ymin-hy,xmax+hx,ymin)
+	  call plot_box(0,xmin-hx,ymax,xmin,ymax+hy)
+	  call plot_box(0,xmax,ymax,xmax+hx,ymax+hy)
+	  call plot_box(0,xmin-hx,ymin-hy,xmin,ymin)
+	  call plot_box(0,xmax,ymin-hy,xmax+hx,ymin)
 	end if
 
 ! ------------------------------------------------------------
@@ -1304,8 +1386,8 @@
 	do while( y .lt. ymax )
 	  i = mod(i+1,2)
 	  yn = min(y+ddy,ymax)
-	  call make_box(i,xmin-hx,y,xmin,yn)
-	  call make_box(i,xmax,y,xmax+hx,yn)
+	  call plot_box(i,xmin-hx,y,xmin,yn)
+	  call plot_box(i,xmax,y,xmax+hx,yn)
 	  y = y + ddy
 	end do
 
@@ -1315,8 +1397,8 @@
 	do while( y .gt. ymin )
 	  i = mod(i+1,2)
 	  yn = max(y-ddy,ymin)
-	  call make_box(i,xmin-hx,yn,xmin,y)
-	  call make_box(i,xmax,yn,xmax+hx,y)
+	  call plot_box(i,xmin-hx,yn,xmin,y)
+	  call plot_box(i,xmax,yn,xmax+hx,y)
 	  y = y - ddy
 	end do
 
@@ -1332,7 +1414,11 @@
 
 ! **************************************************************
 
-	subroutine make_box(ic,x1,y1,x2,y2)
+	subroutine plot_box(ic,x1,y1,x2,y2)
+
+! plots rectangular box
+!
+! if ic == 1 fills rectangle
 
 	implicit none
 
@@ -1354,26 +1440,11 @@
 ! **************************************************************
 ! **************************************************************
 
-        subroutine setreg_grid(regpar)
-
-	use supout
-
-        implicit none
-
-        real regpar(7)
-
-        regp = regpar
-
-        end
-
-! **************************************************************
-
 	subroutine plot_regular_points
 
-!  plots regular points
+! plots regular points
 
 	use mod_bash
-	use supout
 
 	implicit none
 
@@ -1451,10 +1522,10 @@
 
 	subroutine plot_obs_points(mode,file,text)
 
-!  plots special points from observation/meteo file
+! plots special points from observation/meteo file
 ! 
-!  name of coords.dat has to passed into the subroutine
-!  if sea_land.dat exists it is used, otherwise we can do without
+! name of coords.dat has to passed into the subroutine
+! if sea_land.dat exists it is used, otherwise we can do without
 
 	implicit none
 
@@ -1583,6 +1654,8 @@
 
 	subroutine plot_plus(x,y,dx,dy)
 
+! plots a plus char
+
 	implicit none
 
 	real x,y,dx,dy
@@ -1592,7 +1665,11 @@
 
 	end
 
+! **************************************************************
+
 	subroutine plot_cross(x,y,dx,dy)
+
+! plots a cross char
 
 	implicit none
 
@@ -1607,7 +1684,7 @@
 
 	subroutine plot_islands(cgray)
 
-!  plots islands gray
+! plots islands in gray
 
 	use mod_geom
 	use basin
@@ -1669,7 +1746,7 @@
 	    if( area < 0 ) then	!real island
 	      call qafill(n,xa,ya)
 	    else if( bouter ) then
-	      call plot_outer(n,xa,ya)
+	      call plot_outer_area(n,xa,ya)
 	    end if
 	  end if
 	end do
@@ -1685,9 +1762,9 @@
 
 ! **************************************************************
 
-	subroutine plot_outer(n,xa,ya)
+	subroutine plot_outer_area(n,xa,ya)
 
-!  plots outer island
+! plots outer area
 
 	use mod_bash
 
@@ -1703,6 +1780,10 @@
 	dx = xmax - xmin
 	dy = ymax - ymin
 
+!	-------------------------------------------
+!	look for lowest y value in ya
+!	-------------------------------------------
+
 	ilow = 0
 	ylow = ya(1) + 1.
 	do i=1,n
@@ -1713,11 +1794,23 @@
 	end do
 	xlow = xa(ilow)
 
+!	-------------------------------------------
+!	in (xlow,ylow) are coordinates for lowest y value
+!	-------------------------------------------
+
+!	-------------------------------------------
+!	copy points until (xlow,ylow)
+!	-------------------------------------------
+
 	do i=1,ilow
 	  xn(i) = xa(i)
 	  yn(i) = ya(i)
 	end do
 	
+!	-------------------------------------------
+!	add points to comprise whole domain
+!	-------------------------------------------
+
 	i = ilow
 
 	i = i + 1
@@ -1744,12 +1837,24 @@
 	xn(i) = xlow
 	yn(i) = ymin - dy
 
+!	-------------------------------------------
+!	add remaining points
+!	-------------------------------------------
+
 	do i=ilow,n
 	  xn(i+7) = xa(i)
 	  yn(i+7) = ya(i)
 	end do
 
+!	-------------------------------------------
+!	fill the area (outer area of basin)
+!	-------------------------------------------
+
 	call qafill(n+6,xn,yn)
+
+!	-------------------------------------------
+!	end of routine remaining points
+!	-------------------------------------------
 
 	end
 

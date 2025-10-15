@@ -817,6 +817,7 @@
 		stop 'error stop femopen: error reading hlv'
 	end if
 
+	call bash_set_regpar(regpar)	!save for later
 	call level_k2e_sh
 	call init_sigma_info(nlv,hlv)		!sets up hlv
 
@@ -850,6 +851,7 @@
 
 	use levels
 	use supout
+	use mod_bash
 
 	implicit none
 
@@ -955,7 +957,7 @@
 	  ip = min(2,ip)
 	  call fem_interpolate(nlvddi,nkn,np,ip,regpar,ilhkv &
      &					,p3read,array)
-	  regp = regpar		!save for later
+	  call bash_set_regpar(regpar)	!save for later
 	else
 	  array = p3read
 	end if
