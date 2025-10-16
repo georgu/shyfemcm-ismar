@@ -34,6 +34,7 @@ ifeq ($(ECOLOGICAL),EUTRO)
 		weutro_shell.o \
 		weutro_ulva.o \
 		weutro_wdia.o \
+		weutro_param.o \
 
 endif
 

@@ -62,6 +62,7 @@
 ! 31.08.2018	ggu	changed VERS_7_5_49
 ! 16.02.2019	ggu	changed VERS_7_5_60
 ! 13.03.2019	ggu	changed VERS_7_5_61
+! 16.10.2025	ggu	read parameters from namelist - handle_param_init()
 !
 ! notes :
 !
@@ -146,42 +147,70 @@
 !********************************************************************
 !********************************************************************
 
+	subroutine handle_param_init
+
+	implicit none
+
+	character*80, save :: wparam_in = 'weutro.nml'
+	character*80, save :: wparam_out = 'weutro_out.txt'
+
+	logical bexist
+	integer iu
+
+	write(6,*) 'initializing parameters for weutro'
+
+	call param_init		!read hard coded paramer list
+
+	inquire(file=wparam_in,exist=bexist)
+	if( bexist ) then
+	  write(6,*) 'reading weutro parameter file: ',trim(wparam_in)
+	  call read_weutro_param
+	end if
+
+	write(6,*) 'writing weutro parameters: ',trim(wparam_out)
+	open(iu,file=wparam_out,status='unknown',form='formatted')
+	call write_weutro_param(iu)
+	close(iu)
+
+	end
+
+!********************************************************************
+
       subroutine param_init
 
       implicit none
       INCLUDE 'weutro.h'
 
-! initialization of parameters
+	real iavpar
+
+!! initialization of parameters
 
 !       BYPASS OPTIONS FOR SYSTEMS 1-9. 1=BYPASS 0=SIMULATE
       
 
         PI = 3.14159
 
-!--------------------------------------------------------------
-!       please do not change anything in this subroutine below this point
-!       all changes to parameters should be done in a custom subroutine
-!       see param_venezia or param_taranto for example
-!--------------------------------------------------------------
+!!--------------------------------------------------------------
+!!       please do not change anything in this subroutine below this point
+!!       all changes to parameters should be done in a custom subroutine
+!!       see param_venezia or param_taranto for example
+!!--------------------------------------------------------------
 
-!       start parameter values
+!!       start parameter values
 
 !--------------------------------------------------------------
 !       general parameters
 !--------------------------------------------------------------
 
-      graztype=1        !if graztype=1 simulate zoop. variable
-                  !if graztype=0  use wasp formulation
-                  !Set initial value of variable zoo=0
-      
-!      if CCHLX is variable in the segments, introduce each value else
+!!      !if graztype=0  use wasp formulation
+!!      !Set initial value of variable zoo=0
+!!      !NUTLIM Default=0  ! GGU new value (was 1) ?
+!!      !if CCHLX is variable in the segments, introduce each value else
 
-        CCHL=50      !range 20-50
-      CCHLX(1) = CCHL
-
-        NUTLIM=1.       !nutrient limitation option 0=minimum, 1=multiplicative.
-                  ! Default=0
-                        ! GGU new value (was 1) ?
+        graztype=1   !type of grazing, simulate=1  forcing=0
+        NUTLIM=1.    !nutrient limitation 0=minimum, 1=multiplicative.
+        CCHL=50      !carbon to chlorophyll ratio mg carbon/mb chl a range 20-50
+	CCHLX(1) = CCHL
 
 !--------------------------------------------------------------
 !       subroutine phyto
@@ -189,148 +218,159 @@
 
 !------ growth and respiration
 
-!      K1RT=1.045       !wasp orig      
-!      K1RC=0.125      !wasp orig
-      K1RT=1.068      !adapting the curve to dejak model
-      K1RC=0.096      !adapting the curve to dejak model
-        K1T=1.068      
-        K1C=2.               !GGU new value (was 1.5) ?
+!       K1RT=1.045      !wasp orig      
+!       K1RC=0.125      !wasp orig
+!       K1RT=1.068      !adapting the curve to dejak model
+!       K1RC=0.096      !adapting the curve to dejak model
+!       K1C=2.          !GGU new value (was 1.5) ?
+!       KMPHYT=1.
 
-!      KMPHYT=1.
-      KMPHYT=0.
+        K1RT=1.068      !respiration temperature coefficient unitless
+        K1RC=0.096      !respiration rate constant endogenous term day-1
+        K1T=1.068       !growth rate temperature coeff WHEN SYSBY(4)=1
+        K1C=2.          !maximum growth rate day-1 WHEN SYSBY(4)=1
+        KMPHYT=0.       !half saturation constant for phytop. (eutroint)
 
 !------ decomposition
 
-        KPZDC=0.02      !verify the value
-        KPZDT=1.08      !Default=1.0
+        KPZDC=0.02      !decomp rate constant in sediment at 20 C, per day
+        KPZDT=1.08      !decomposition temperaure coefficient in sediment day-1
 
 !------ nutrients limitation
 
-!        KMNG1=0.025      !for standard model application
-                  !use a large KMNG1 (when KMNG1=0 PNH3G1=1.0)
-        KMNG1=0.05      !from dejak model Venice lagoon
-        KMPG1=0.01       
+!       KMNG1=0.025     !for standard model application
+!!                      !use a large KMNG1 (when KMNG1=0 PNH3G1=1.0)
+!       KMNG1=0.05      !from dejak model Venice lagoon
+!!      F(10,10,1)      !spatially variable dissolved fraction of inorganic P
+!!      attenzione: nel benthic layer asume valori diversi (0.045-0.001)
 
-!      F(10,10,1) !spatially variable dissolved fraction of inorganic P
-      FOPO4=0.9 !spatially variable dissolved fraction of inorganic P
-         
-!      attenzione: nel benthic layer asume valori diversi (0.045-0.001)
+        KMNG1=0.05      !N half saturn const for phyto growth microg N/L
+        KMPG1=0.01      !P half saturn const for phyto growth microg P/L 
+        FOPO4=0.9       !spatially variable dissolved fraction of inorganic P
 
 !------ grazing - zooplankton as a forcing
 
-        K1G=0.            
-!        K1G=0.08            
-!        K1D=0.02       !wasp orig
-      K1D=0.12      !from dejak model Venice Lagoon 
-!        K1D=0.2         !prova 12sett
-      ZOO=0.7      
-!      if fraction is variable in segments, input each value, else:
-      ZOOSG(1)=1.
+!       K1G=0.08            
+!       K1D=0.02        !wasp orig, 0.12 from dejak model Venice Lagoon
+!!      if fraction is variable in segments, input each value, else:
+
+        K1G=0.          !K1G=grazing rate on Phytop. per unit Zoop.L/mgC-day
+        K1D=0.12        !unknown
+        ZOO=0.7         !ZOO=time funct or const, zooplankton population mg C/L
+        ZOOSG(1)=1.	!fraction of herbivorous zooplankto
 
 !------ grazing - zooplankton as a variable
 
-!      KGRZ=1.44      !max grazing rate day-1
-        KGRZ=2.         !prova 12sett
-      KPHYZ=0.5      !
-!      EFF=0.5            !zoo-phyto digestion efficiency
-      EFF=0.7
-      KDZ=0.192      !zoo death (with excrection)
+!       KGRZ=1.44       !max grazing rate day-1
+!       KGRZ=2.         !prova 12sett
+!       EFF=0.5         !zoo-phyto digestion efficiency
+
+        KGRZ=2.         !grazing rate constant day-1
+        KPHYZ=0.5       !half saturation constant for phytop in grazing
+        EFF=0.7         !grazing efficiency for zooplankton growth
+        KDZ=0.192       !death rate for zooplankton (with excrection)
 
 !--------------------------------------------------------------
-!       subroutine organop, inorganp (P=phosphorous)
+!       subroutine phosphorus (organop, inorganp, P for phosphorous)
 !--------------------------------------------------------------
 
-        PCRB=0.025 !mgP/mgC
-        FOP=0.5            !unitless
-        K58T=1.08      !unitless      
-        K58C=0.22      !day-1 
-        KOPDC=0.0004      !day-1
-        KOPDT=1.08      !unitless
-      KPO4=1.0      !microg. P/L
+        PCRB=0.025   !P/C ratio mgP/mgC
+        FOP=0.5      !fraction of dead/respired phyto recycled to organic P [1]
+        K58T=1.08    !temp coeff: mineralization of dissolved org P unitless
+        K58C=0.22    !rate for mineralization of dissolved organic P day-1 
+        KOPDC=0.0004 !rate for mineralization  of organic P in sediment day-1
+        KOPDT=1.08   !temp coeff for mineralization  of org P in sed unitless
+        KPO4=1.0     !half saturation constant for P microgP/L
 
 !--------------------------------------------------------------
-!       subroutine organicn, ammonia, nitrate
+!       subroutine nitrogen (organicn, ammonia, nitrate)
 !--------------------------------------------------------------
 
-      NCRB=0.115      !mg N/mg C
-             FON=0.5     
-!            K1320C=0.1      !0.09-0.13 day-1 wasp orig 
-      K1320C=0.05      !from dejak model lagoon of Venice
-        K1320T=1.08      !unitless
-        K140C=0.09      !day-1
-        K140T=1.045      !unitless
-        KNIT=2.            !mgO2/L 
-        KNO3=0.1      !mgO2/L       
-        K1013C=0.075    !day-1
-        K1013T=1.08    !unitless
-        KONDC=0.0004    !day-1     
-        KONDT=1.08      !unitles
+!       K1320C=0.1      !0.09-0.13 day-1 wasp orig, dejak model 0.05 
+
+        NCRB=0.115      !N/C ratio mg N/mg C
+        FON=0.5         !fraction of organic Nitrogen
+        K1320C=0.05     !rate for nitrification
+        K1320T=1.08     !temp coefficient for nitrification unitless
+        K140C=0.09      !rate for denitrification day-1
+        K140T=1.045     !temp coefficient for denitrification unitless
+        KNIT=2.         !half saturation constant for nitrification mgO2/L 
+        KNO3=0.1        !half saturation constant for denitrificatiion mgO2/L 
+        K1013C=0.075    !rate for mineralization dissolved organic nitrgen day-1
+        K1013T=1.08     !temp coefficient for min. dissolved organic N unitless
+        KONDC=0.0004    !rate for mineralization of N in sediment day-1     
+        KONDT=1.08      !temp coeff for mineralization of N in sediment unitless
 
 !--------------------------------------------------------------
 !       subroutine CBOD
 !--------------------------------------------------------------
 
-      OCRB=32./12.      !mg O2/mg C
-        KDC=0.18       !0.16-0.21 day-1
-        KDT=1.047      !unitless
-        KDSC=0.000      !day-1
-        KDST=1.08      !unitless
-        KBOD=0.5      !mg N/L
+        OCRB=2.66         !O/C ratio mg O2/mg C (=32./12.)
+        KDC=0.18          !oxidation rate in water column day-1 (0.16-0.21)
+        KDT=1.047         !temp coeff for oxidation in water column unitless
+        KDSC=0.000        !oxidation rate in sediment at 20 C day-1
+        KDST=1.08         !temp coeff for oxidation in sedim at 20 C unitless
+        KBOD=0.5          !half saturation constant for oxidation mg N/L
 
 !--------------------------------------------------------------
 !       subroutine dissoxyg
 !--------------------------------------------------------------
 
-      WIND=3.             !m/s
-        AIRTMP=22.           !C
-        WTYPE=3.      !1=small 2=medim 3=large
-      XICECVR=1.      !default: 1. no ice
+!!        REARSG(i)=0     !Segment specific reareation rate constant
+!!                        !REARSG  used when rear is not calc from wind or hydro
 
-        K2=0   !4.3      !4.1-4.7 day-1 if k2=0 then use kawind or kahydra      
+        WIND=3.           !wind speed m/s
+        AIRTMP=22.        !air temperature C
+        WTYPE=3.          !water body size 1=small 2=medim 3=large
+        XICECVR=1.        !ice cover, default: 1 for no ice
 
-!        REARSG(i)=0       !Segment specific reareation rate constant
-                        !REARSG  used when  rear is not calc from wind or hydro
-
-                  !FIXME
-       SOD1D(1)=0.0      !g/m2-day 0.2-4.0 sediment oxygen demand for segment
-       SODTA(1)=1.08 
+        K2=0 !reareation rate at 20 C day-1, 4.1-4.7 ,k2=0 use kawind or kahydra
+        SOD1D(1)=0.0      !sediment oxygen demand for segment g/m2-day 0.2-4.0
+        SODTA(1)=1.08     !temp coeff for sediment ox. demand unitless
 
 !--------------------------------------------------------------
 !       light limitation
 !--------------------------------------------------------------
 
+!       IS2=50000.      !optimum light intensity for Steele lux/h
+!       IS2=1200000.    !optimum light intensity for Steele lux/day
+!!      IS2= 20         !prova W/m2/timestep 300 sec!
+
         LGHTSW=3        !LIGHT SWITCH: 1=Di Toro 2=Smith  3=Steele
-!      IS2=50000.      !optimum light intensity for Steele lux/h
-      IS2=1200000.      !optimum light intensity for Steele lux/day
-      IS2= 20            !prova W/m2/timestep 300 sec!
+        IS2=1200000.    !optimum light intensity for Steele lux/day
+
 !--------------------------------------------------------------
 !       subroutine ditoro
 !--------------------------------------------------------------
 
-        FDAY=0.5
-        IS1=300.      !(Ly/day) langleys/day
-        IS1X(1)=IS1      !FIXME
+        FDAY=0.5        !fraction of day that is daylight unitless
+        IS1=300.        !saturation light intensity for phyto used langleys/day
+        IS1X(1) = IS1
 
 !--------------------------------------------------------------
 !       subroutine smith
 !--------------------------------------------------------------
 
-        PHIMX=720.      !mg C/mole photon
-        XKC=0.017      !m2/mg chl a
-        ITOT=500.       !ly/day
-        iav=0.9 *itot/FDAY
-        DTDAY=0.5           !??????verificare, serve a modulare il seno: day
-        NEWDAY=1      !unknown????if G.E. 1 calcolo smith
+!       DTDAY=0.5       !?????? verificare, serve a modulare il seno: day
+!       NEWDAY=1        !unknown???? if G.E. 1 calcolo smith
+
+        PHIMX=720.      !mg C fixed per mole of light absorbed mg C/mole photon
+        XKC=0.017       !chl a, phytop. self light attenuation m2/mg chl a
+        ITOT=500.       !incident solar radiation ly/day
+	iavpar = 0.9    !fraction of light used unitless
+        iav = iavpar*itot/FDAY
+        DTDAY=0.5       !unknown
+        NEWDAY=1        !unknown
 
 !--------------------------------------------------------------
 !       light attenuation
 !--------------------------------------------------------------
 
-! you can have up to 5 KE time functions here default is 1
+!! you can have up to 5 KE time functions here default is 1
 
-      KE(1)=1.
-      KEFN(1)=1
-      KESG(1)=1.5      !m-1 range: 0.1-5
+        KE(1)=1.        !time var extin coeff funct unitless  (ditoro, smith)
+        KEFN(1)=1       !IKE=KEFN=pointer designating time variable
+        KESG(1)=1.5     !non algal light att. m-1 (SKE=KESG(ISEG)) range: 0.1-5
 
       end
 
@@ -512,14 +552,14 @@
 
       implicit none
 
-        call param_init
-        !call param_taranto
-        call param_venezia
+      !call param_taranto
+      !call param_venezia
+      !call param_read        !GGU new for Michol
+      !call param_print
 
-        !call param_read        !GGU new for Michol
-
-        call EUTROINT
-      call param_print
+      call handle_param_init
+      call EUTROINT
+      !call write_weutro_param(0)
 
       end
 
