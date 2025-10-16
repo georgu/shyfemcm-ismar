@@ -1,0 +1,229 @@
+
+!-----------------------------------------------
+! general_parameters
+!
+! graztype       type of grazing, simulate=1  forcing=0
+! NUTLIM         nutrient limitation 0=minimum, 1=multiplicative.
+! CCHL           carbon to chlorophyll ratio mg carbon/mb chl a range 20-50
+! CCHLX(1)       
+!
+!-----------------------------------------------
+
+ &nml_general_parameters
+  graztype    =   1
+  NUTLIM      =   1.
+  CCHL        =   50
+  CCHLX(1)    =   CCHL
+ /
+
+!-----------------------------------------------
+! phyto
+!
+! K1RT           respiration temperature coefficient unitless
+! K1RC           respiration rate constant endogenous term day-1
+! K1T            growth rate temperature coeff WHEN SYSBY(4)=1
+! K1C            maximum growth rate day-1 WHEN SYSBY(4)=1
+! KMPHYT         half saturation constant for phytop. (eutroint)
+! KPZDC          decomp rate constant in sediment at 20 C, per day
+! KPZDT          decomposition temperaure coefficient in sediment day-1
+! KMNG1          N half saturn const for phyto growth microg N/L
+! KMPG1          P half saturn const for phyto growth microg P/L 
+! FOPO4          spatially variable dissolved fraction of inorganic P
+! K1G            K1G=grazing rate on Phytop. per unit Zoop.L/mgC-day
+! K1D            unknown
+! ZOO            ZOO=time funct or const, zooplankton population mg C/L
+! ZOOSG(1)       fraction of herbivorous zooplankto
+! KGRZ           grazing rate constant day-1
+! KPHYZ          half saturation constant for phytop in grazing
+! EFF            grazing efficiency for zooplankton growth
+! KDZ            death rate for zooplankton (with excrection)
+!
+!-----------------------------------------------
+
+ &nml_phyto
+  K1RT        =   1.068
+  K1RC        =   0.096
+  K1T         =   1.068
+  K1C         =   2.
+  KMPHYT      =   0.
+  KPZDC       =   0.02
+  KPZDT       =   1.08
+  KMNG1       =   0.05
+  KMPG1       =   0.01
+  FOPO4       =   0.9
+  K1G         =   0.
+  K1D         =   0.12
+  ZOO         =   0.7
+  ZOOSG(1)    =   1.
+  KGRZ        =   2.
+  KPHYZ       =   0.5
+  EFF         =   0.7
+  KDZ         =   0.192
+ /
+
+!-----------------------------------------------
+! phosphorus
+!
+! PCRB           P/C ratio mgP/mgC
+! FOP            fraction of dead/respired phyto recycled to organic P [1]
+! K58T           temp coeff: mineralization of dissolved org P unitless
+! K58C           rate for mineralization of dissolved organic P day-1 
+! KOPDC          rate for mineralization  of organic P in sediment day-1
+! KOPDT          temp coeff for mineralization  of org P in sed unitless
+! KPO4           half saturation constant for P microgP/L
+!
+!-----------------------------------------------
+
+ &nml_phosphorus
+  PCRB        =   0.025
+  FOP         =   0.5
+  K58T        =   1.08
+  K58C        =   0.22
+  KOPDC       =   0.0004
+  KOPDT       =   1.08
+  KPO4        =   1.0
+ /
+
+!-----------------------------------------------
+! nitrogen
+!
+! NCRB           N/C ratio mg N/mg C
+! FON            fraction of organic Nitrogen
+! K1320C         rate for nitrification
+! K1320T         temp coefficient for nitrification unitless
+! K140C          rate for denitrification day-1
+! K140T          temp coefficient for denitrification unitless
+! KNIT           half saturation constant for nitrification mgO2/L 
+! KNO3           half saturation constant for denitrificatiion mgO2/L 
+! K1013C         rate for mineralization dissolved organic nitrgen day-1
+! K1013T         temp coefficient for min. dissolved organic N unitless
+! KONDC          rate for mineralization of N in sediment day-1     
+! KONDT          temp coeff for mineralization of N in sediment unitless
+!
+!-----------------------------------------------
+
+ &nml_nitrogen
+  NCRB        =   0.115
+  FON         =   0.5
+  K1320C      =   0.05
+  K1320T      =   1.08
+  K140C       =   0.09
+  K140T       =   1.045
+  KNIT        =   2.
+  KNO3        =   0.1
+  K1013C      =   0.075
+  K1013T      =   1.08
+  KONDC       =   0.0004
+  KONDT       =   1.08
+ /
+
+!-----------------------------------------------
+! CBOD
+!
+! OCRB           O/C ratio mg O2/mg C (=32./12.)
+! KDC            oxidation rate in water column day-1 (0.16-0.21)
+! KDT            temp coeff for oxidation in water column unitless
+! KDSC           oxidation rate in sediment at 20 C day-1
+! KDST           temp coeff for oxidation in sedim at 20 C unitless
+! KBOD           half saturation constant for oxidation mg N/L
+!
+!-----------------------------------------------
+
+ &nml_CBOD
+  OCRB        =   2.66
+  KDC         =   0.18
+  KDT         =   1.047
+  KDSC        =   0.000
+  KDST        =   1.08
+  KBOD        =   0.5
+ /
+
+!-----------------------------------------------
+! dissoxyg
+!
+! WIND           wind speed m/s
+! AIRTMP         air temperature C
+! WTYPE          water body size 1=small 2=medim 3=large
+! XICECVR        ice cover, default: 1 for no ice
+! K2             reareation rate at 20 C day-1, 4.1-4.7 ,k2=0 use kawind or kahydra
+! SOD1D(1)       sediment oxygen demand for segment g/m2-day 0.2-4.0
+! SODTA(1)       temp coeff for sediment ox. demand unitless
+!
+!-----------------------------------------------
+
+ &nml_dissoxyg
+  WIND        =   3.
+  AIRTMP      =   22.
+  WTYPE       =   3.
+  XICECVR     =   1.
+  K2          =   0
+  SOD1D(1)    =   0.0
+  SODTA(1)    =   1.08
+ /
+
+!-----------------------------------------------
+! light_limitation
+!
+! LGHTSW         LIGHT SWITCH: 1=Di Toro 2=Smith  3=Steele
+! IS2            optimum light intensity for Steele lux/day
+!
+!-----------------------------------------------
+
+ &nml_light_limitation
+  LGHTSW      =   3
+  IS2         =   1200000.
+ /
+
+!-----------------------------------------------
+! ditoro
+!
+! FDAY           fraction of day that is daylight unitless
+! IS1            saturation light intensity for phyto used langleys/day
+! IS1X(1)        
+!
+!-----------------------------------------------
+
+ &nml_ditoro
+  FDAY        =   0.5
+  IS1         =   300.
+  IS1X(1)     =   IS1
+ /
+
+!-----------------------------------------------
+! smith
+!
+! PHIMX          mg C fixed per mole of light absorbed mg C/mole photon
+! XKC            chl a, phytop. self light attenuation m2/mg chl a
+! ITOT           incident solar radiation ly/day
+! iavpar         fraction of light used unitless
+! iav            
+! DTDAY          unknown
+! NEWDAY         unknown
+!
+!-----------------------------------------------
+
+ &nml_smith
+  PHIMX       =   720.
+  XKC         =   0.017
+  ITOT        =   500.
+  iavpar      =   0.9
+  iav         =   iavpar*itot/FDAY
+  DTDAY       =   0.5
+  NEWDAY      =   1
+ /
+
+!-----------------------------------------------
+! light_attenuation
+!
+! KE(1)          time var extin coeff funct unitless  (ditoro, smith)
+! KEFN(1)        IKE=KEFN=pointer designating time variable
+! KESG(1)        non algal light att. m-1 (SKE=KESG(ISEG)) range: 0.1-5
+!
+!-----------------------------------------------
+
+ &nml_light_attenuation
+  KE(1)       =   1.
+  KEFN(1)     =   1
+  KESG(1)     =   1.5
+ /
+
