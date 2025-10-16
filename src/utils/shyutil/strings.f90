@@ -1437,6 +1437,7 @@
 	call strings_add_new('long wave radiation',49)
 
 	call strings_add_new('bottom stress',60)
+	call strings_add_new('friction parameter',61)
 	call strings_add_new('general index',75)
 	call strings_add_new('general type',76)
 	call strings_add_new('general distance',77)
@@ -1538,6 +1539,7 @@
 	call strings_set_short(49,'qlong')
 
 	call strings_set_short(60,'bstress')
+	call strings_set_short(61,'fric')
 	call strings_set_short(75,'index')
 	call strings_set_short(76,'type')
 	call strings_set_short(77,'distance')

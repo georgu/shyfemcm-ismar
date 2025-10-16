@@ -2083,6 +2083,11 @@
         call addfnm('bfmini',' ')
 	call addfnm('offlin',' ')
 
+! |fricin|	Name of file containing initial values for friction. The values
+!		must be compatible with the friction type given by |ireib|.
+
+        call addfnm('fricin',' ')
+
 ! DOCS	END
 
 !c non-documented -> try first	HACK	-> initial conditions

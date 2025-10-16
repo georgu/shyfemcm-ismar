@@ -75,6 +75,7 @@
 ! 01.04.2025    ggu     write subrange of variables
 ! 10.04.2025    ggu     new routine shyfem_init_scalar_fix_file() (nfix)
 ! 03.10.2025    ggu     for description return and print also short
+! 16.10.2025    ggu     new routines for writing elemental files
 !
 ! contents :
 !
@@ -83,6 +84,8 @@
 ! 
 ! shyfem_init_hydro_file(type,b2d,id)
 ! shyfem_init_scalar_file(type,nvar,b2d,id)
+! shyfem_init_elem_file(type,nvar,b2d,id)
+! shyfem_init_scalar_fix_file(type,nvar,nfix,id)
 ! shyfem_init_lgr_file(type,nvar,b2d,id)
 ! shyfem_init_scalar_file_hlv(type,nvar,nl0,hlv0,id)
 ! 
@@ -94,6 +97,7 @@
 ! shy_write_scalar2d(id,type,dtime,nvar,ivar,c)		!unconditional write 2d
 ! shy_write_scalar_record(id,dtime,ivar,nlvddi,c)	!write scalar 3d
 ! shy_write_scalar_record2d(id,dtime,ivar,c)		!write scalar 2d
+! shy_write_elem_record2d(id,dtime,ivar,c)		!writes 2d elem values
 ! shy_write_hydro_records(id,dtime,nlvddi,z,ze,u,v)	!write hydro
 ! 
 ! shy_sync(id)
@@ -515,6 +519,40 @@
         call shy_set_simul_params(id)
         call shy_make_header(id)
 	call trace_point('end shyfem_init_scalar_file')
+
+        end
+
+!****************************************************************
+
+        subroutine shyfem_init_elem_file(type,nvar,b2d,id)
+
+! initializes elem file with layer structure from str
+
+        use levels
+        use shympi
+	use mod_trace_point
+
+        implicit none
+
+        character*(*) type      !type of file, e.g., hydro, ts, wave
+        integer nvar		!total number of scalars to be written
+        logical b2d		!2d fields
+        integer id		!id for file (return)
+
+        integer ftype,npr,nlg
+        character*80 file,ext,aux
+
+        aux = adjustl(type)
+        ext = '.' // trim(aux) // '.shy'        !no blanks in ext
+        ftype = 3
+        npr = 1
+        nlg = nlv_global
+        if( b2d ) nlg = 1
+
+        call shy_make_output_name(trim(ext),file)
+        call shy_open_output_file(file,npr,nlg,nvar,ftype,id)
+        call shy_set_simul_params(id)
+        call shy_make_header(id)
 
         end
 
@@ -1227,11 +1265,32 @@
 	real c(nkn)
 
 	logical, parameter :: belem = .false.
-	integer iaux
 
 	if( id <= 0 ) return
 
 	call shy_write_output_record(id,dtime,ivar,belem,nkn,1,1,1,c)
+
+	end
+
+!****************************************************************
+
+	subroutine shy_write_elem_record2d(id,dtime,ivar,c)
+
+	use basin
+	use shyfile
+
+	implicit none
+
+	integer id
+	double precision dtime
+	integer ivar
+	real c(nel)
+
+	logical, parameter :: belem = .true.
+
+	if( id <= 0 ) return
+
+	call shy_write_output_record(id,dtime,ivar,belem,nel,1,1,1,c)
 
 	end
 
