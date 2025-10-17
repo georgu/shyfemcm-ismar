@@ -69,6 +69,7 @@
 ! 10.04.2025    ggu     new nfix introduced for fixed vertical structure
 ! 03.10.2025    ggu     flush unit
 ! 10.10.2025    ggu     better error message
+! 17.10.2025    ggu     include ftype == 4
 !
 !**************************************************************
 !**************************************************************
@@ -170,7 +171,8 @@
 ! 0		no type
 ! 1		hydro record (water levels, transports)
 ! 2		scalar values on nodes
-! 3		scalar values on elements
+! 3		lagrangian file
+! 4		scalar values on elements
 !
 ! routines to write and read shy files
 !
@@ -730,6 +732,8 @@
 	else if( ftype == 2 ) then
 	  type = '(scalar on nodes)'
 	else if( ftype == 3 ) then
+	  type = '(lagrangian)'
+	else if( ftype == 4 ) then
 	  type = '(scalar on elements)'
 	else
 	  type = '(unknown)'
@@ -842,7 +846,8 @@
 
 	if( ios /= 0 ) return
 	if( ntype /= idshy ) return
-	if( ftype > 2 ) return
+	if( ftype == 3 ) return		!lgr
+	if( ftype > 4 ) return
 	
 	if( nvers .lt. minvers .or. nvers .gt. maxvers ) return
 

@@ -405,6 +405,7 @@
 	    write(6,*)
 	    write(6,*) 'smoothing with alpha = ',salpha, ' and nloop = ',sloop
 	  end if
+	  if( nn /= nkn ) stop 'error stop shy_smooth: nn/=nkn'
 	end if
 	icall = icall + 1
 

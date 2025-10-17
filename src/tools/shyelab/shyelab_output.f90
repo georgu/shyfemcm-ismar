@@ -333,7 +333,7 @@
 	integer np
 	integer id_out
 	integer ftype
-	logical bscalar,bhydro,bshy
+	logical bscalar,bhydro,bshy,bselem
 	character*60 string
 
 	if( .not. boutput ) return
@@ -342,6 +342,7 @@
 	call shy_get_ftype(id,ftype)
         bhydro = ftype == 1
         bscalar = ftype == 2
+        bselem = ftype == 4
 	bshy = ( outformat == 'shy' .or. outformat == 'native' )
 
 	if( bhydro .and. .not. bshy ) return

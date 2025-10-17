@@ -76,6 +76,7 @@
 ! 10.04.2025    ggu     new routine shyfem_init_scalar_fix_file() (nfix)
 ! 03.10.2025    ggu     for description return and print also short
 ! 16.10.2025    ggu     new routines for writing elemental files
+! 17.10.2025    ggu     in shyfem_init_elem_file() use ftype==4 (bug)
 !
 ! contents :
 !
@@ -544,7 +545,7 @@
 
         aux = adjustl(type)
         ext = '.' // trim(aux) // '.shy'        !no blanks in ext
-        ftype = 3
+        ftype = 4
         npr = 1
         nlg = nlv_global
         if( b2d ) nlg = 1

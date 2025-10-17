@@ -1166,9 +1166,9 @@
 	  call shyfem_init_scalar_file('fric',1,.true.,id)
 	  call shy_write_scalar_record2d(id,dtime,61,val)
 	  call shy_close_output_file(id)
-	  call shyfem_init_elem_file('frice',1,.true.,id)
-	  call shy_write_elem_record2d(id,dtime,61,val)
-	  call shy_close_output_file(id)
+	  !call shyfem_init_elem_file('frice',1,.true.,id)
+	  !call shy_write_elem_record2d(id,dtime,61,val)
+	  !call shy_close_output_file(id)
 	end if
 
         end

@@ -38,6 +38,7 @@
 ! 28.01.2020	ggu	minor changes in error message
 ! 28.04.2023    ggu     update function calls for belem
 ! 03.10.2025    ggu     converted to f90
+! 17.10.2025    ggu     prepared for elemental values
 
 !***************************************************************
 
@@ -262,7 +263,7 @@
 !***************************************************************
 !***************************************************************
 
-        subroutine read_records(id,dtime,bhydro,nvar,nndim,nlvddi       &
+        subroutine read_records(id,dtime,ftype,nvar,nndim,nlvddi       &
      &                          ,ivars,cv3,cv3all,ierr)
 
 	use elabutil
@@ -273,7 +274,7 @@
 
 	integer id
 	double precision dtime
-	logical bhydro
+	integer ftype
 	integer nvar,nndim
 	integer nlvddi
 	integer nkn,nel
@@ -285,6 +286,7 @@
 	integer nexp
 
 	integer iv
+	logical bhydro,bscalar,bselem
 	integer ivar,n,m,lmax
 	logical bfirst,belem
 	double precision dtvar
@@ -297,10 +299,14 @@
 	bzeta = .false.
 	belem = .false.
 
+        bhydro = ftype == 1
+        bscalar = ftype == 2
+        bselem = ftype == 4
+
 	do
 	  iv = iv + 1
 	  if( iv > nvar ) exit
-	  belem = ( bhydro .and. iv >= 2 )
+	  belem = ( bhydro .and. iv >= 2 .or. bselem )
 	  cv3 = 0.
           call shy_read_record(id,dtime,belem                           &
      &                          ,ivar,n,m,lmax,nlvddi,cv3,ierr)

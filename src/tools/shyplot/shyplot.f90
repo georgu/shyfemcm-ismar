@@ -85,6 +85,7 @@
 ! 07.10.2025    ggu     use shorts in call to description
 ! 10.10.2025    ggu     get shorts for description
 ! 13.10.2025    ggu     set spherical for bas plotting, new bintp
+! 17.10.2025    ggu     prepared for elemental values
 !
 ! notes :
 !
@@ -778,7 +779,7 @@
 	character*80, allocatable :: strings(:)
 	character*80, allocatable :: shorts(:)
 
-	logical bhydro,bscalar,bsect,bvect,bvel,bcycle,belem
+	logical bhydro,bscalar,bsect,bvect,bvel,bcycle,belem,bselem
 	logical bregplot,bregdata,bintp
 	logical btime
 	integer nx,ny
@@ -873,13 +874,18 @@
 	znv = 0.
 	zenv = 0.
 
-        isphe = nint(getpar('isphe'))
-        call set_coords_ev(isphe)
+	call bash_verbose(bsdebug)
 	call ev_set_verbose(.not.bquiet)
+        isphe = nint(getpar('isphe'))
+        if( isphe /= -1 ) then
+	  call set_coords_ev(isphe)
+	  call bas_set_spherical(isphe)
+	end if
         call set_ev
         call set_geom
         call get_coords_ev(isphe)
         call putpar('isphe',float(isphe))
+	if( bverb ) write(6,*) 'isphe = ',isphe
 
 	!--------------------------------------------------------------
 	! set time
@@ -898,6 +904,7 @@
 
 	bhydro = ftype == 1
 	bscalar = ftype == 2
+	bselem = ftype == 4
 
 	if( bhydro ) then		!OUS
 	  if( nvar /= 4 ) goto 71
@@ -908,6 +915,10 @@
 	  nndim = nkn
 	  allocate(il(nkn))
 	  il = ilhkv
+        else if( bselem ) then          !EOS
+          nndim = nel
+          allocate(il(nel))
+          il = ilhv
 	else
 	  goto 76	!relax later
 	end if
@@ -987,7 +998,7 @@
 	 ! read new data set
 	 !--------------------------------------------------------------
 
-	 call read_records(id,dtime,bhydro,nvar,nndim,nlvdi,idims &
+	 call read_records(id,dtime,ftype,nvar,nndim,nlvdi,idims &
      &				,cv3,cv3all,ierr)
 
          if(ierr.ne.0) exit
@@ -1315,6 +1326,7 @@
           call set_ev
           call get_coords_ev(isphe)
           call putpar('isphe',float(isphe))
+	  if( bverb ) write(6,*) 'isphe = ',isphe
 
           call set_geom
 

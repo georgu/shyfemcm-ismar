@@ -83,6 +83,7 @@
 ! 03.10.2025    ggu     handle sumvar with specific vars
 ! 03.10.2025    ggu     more on sumvar
 ! 10.10.2025    ggu     bug fix for vorticity computation (belem was true)
+! 17.10.2025    ggu     prepared for elemental values
 !
 !**************************************************************
 
@@ -122,7 +123,7 @@
 	real, allocatable :: sv(:,:)
 	real, allocatable :: dv(:,:)
 
-	logical bhydro,bscalar,belem
+	logical bhydro,bscalar,belem,bselem
 	logical blastrecord,bforce,btskip
 	integer nwrite,nwtime,nread,nelab,nrec,nin,nold,ndiff
 	integer nvers
@@ -242,6 +243,7 @@
 
 	bhydro = ftype == 1
 	bscalar = ftype == 2
+	bselem = ftype == 4
 
 	if( bhydro ) then		!OUS
 	  if( nvar /= 4 ) goto 71
@@ -252,6 +254,10 @@
 	  nndim = nkn
 	  allocate(il(nkn))
 	  il = ilhkv
+	else if( bselem ) then		!EOS
+	  nndim = nel
+	  allocate(il(nel))
+	  il = ilhv
 	else
 	  goto 76	!relax later
 	end if
@@ -393,7 +399,7 @@
 	 ! read new data set
 	 !--------------------------------------------------------------
 
-	 call read_records(id,dtime,bhydro,nvar,nndim,nlvdi,idims &
+	 call read_records(id,dtime,ftype,nvar,nndim,nlvdi,idims &
      &				,cv3,cv3all,ierr)
 
          if(ierr.ne.0) then	!EOF - see if we have to read another file
@@ -415,7 +421,7 @@
 	 !--------------------------------------------------------------
 
 	 if( bdiff ) then
-	   call read_records(iddiff,ddtime,bhydro,nvar,nndim,nlvdi,idims &
+	   call read_records(iddiff,ddtime,ftype,nvar,nndim,nlvdi,idims &
      &				,cv3,cv3diff,ierr)
 	   if( ierr /= 0 ) goto 62
 	   !if( dtime /= ddtime ) goto 61
@@ -480,7 +486,7 @@
 	  ivar = idims(4,iv)
 	  nn = n * m
 
-	  belem = ( bhydro .and. iv > 1 )
+	  belem = ( bhydro .and. iv > 1 .or. bselem )
 
 	  cv3(:,:) = cv3all(:,:,iv)
 
@@ -515,11 +521,17 @@
 	  end if
 
 	  if( baverbas .and. bscalar ) then
-	    call shy_assert(nndim==nkn,'shyelab internal error (123)')
-	    call shy_make_basin_aver(idims(:,iv),nlv,nndim,cv3,ikflag,perc &
+	    if( bscalar ) then
+	      call shy_assert(nndim==nkn,'shyelab internal error (123)')
+	      call shy_make_basin_aver(idims(:,iv),nlv,nndim,cv3,ikflag,perc &
      &                          ,cmin,cmax,cmed,cstd,atot,vtot)
-	    call shy_write_aver(aline,nvar,iv,ivar &
+	      call shy_write_aver(aline,nvar,iv,ivar &
      &				,cmin,cmax,cmed,cstd,atot,vtot)
+	    else if( bselem ) then
+	      stop 'error stop shyelab1: not yet ready for ftype==4'
+	    else
+	      stop 'error stop shyelab1: cannot average'
+	    end if
 	  end if
 
 	 end do		!loop on ivar
@@ -672,7 +684,7 @@
 	write(6,*) 'ftype = ',ftype,'  expecting 1 or 2'
 	call shy_get_filename(id,file)
 	write(6,*) 'file = ',trim(file)
-	stop 'error stop shyelab: ftype'
+	stop 'error stop shyelab: unknown ftype'
    77	continue
 	write(6,*) 'error reading header, ierr = ',ierr
 	call shy_get_filename(id,file)
