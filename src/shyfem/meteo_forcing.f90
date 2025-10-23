@@ -112,6 +112,7 @@
 ! 03.12.2024    lrp     new parameter irain for the coupled model
 ! 25.01.2025    ggu     tentative cubic interpolation for wind (bbspline)
 ! 10.09.2025    ggu     add heat fluxes to meteo output data
+! 21.10.2025    ggu     bug in conversion of rain (BUGZCONV)
 !
 ! notes :
 !
@@ -592,6 +593,8 @@
 
 ! this must be called after meteo_forcing_fem and compute_heat_flux
 ! called in barocl() because only there we have all the data (and new tempv)
+!
+! bug in zconv (BUGZCONV)
 
 	use basin
 	use mod_meteo
@@ -604,7 +607,7 @@
 	integer, save		:: nvar = 0
 	logical, save 		:: b2d = .true.
 	logical, save		:: bwind,bheat,brain,bice,bhflx
-        real, parameter		:: zconv = 86400. / 1000. !convert m/s to mm/day
+        real, parameter		:: zconv = 86400. * 1000. !convert m/s to mm/day
 	real, allocatable	:: maux(:)
 
 	logical has_output_d,next_output_d

@@ -63,6 +63,8 @@
 ! 18.12.2018	ggu	changed VERS_7_5_52
 ! 16.02.2019	ggu	changed VERS_7_5_60
 ! 21.03.2022    ggu     upgraded to da_out
+! 17.10.2025    ggu     new routine scalar_nudging()
+! 21.10.2025    ggu     new routine scalar_nudging_handle()
 !
 !****************************************************************
 
@@ -758,3 +760,181 @@
 	end 
 
 !*******************************************************************
+!*******************************************************************
+!*******************************************************************
+
+	subroutine scalar_nudging_handle(zback)
+
+	use basin
+	use levels
+
+	implicit none
+
+	real zback(nkn)
+
+	real, allocatable :: xobs(:), yobs(:), zobs(:)
+	real, allocatable :: bobs(:)
+	real, allocatable :: zobss(:,:)
+	double precision, allocatable :: times(:)
+	real, allocatable :: zanal(:)
+	logical bback
+	integer iu,nobs
+	integer nintp,nmax,iact,nfirst,i
+	integer nback,nlast,nval
+	integer, save :: icall = 0
+	real rl,rr,rlmax,sigma
+	real taumin,taumax
+	real, parameter :: flag = -999.
+	double precision dtime
+	character*80 file_coords
+	character*80 file_obs
+
+	real rd_intp_neville
+
+	if( nlvdi > 1 ) then
+	  write(6,*) 'nlvdi = ',nlvdi
+	  stop 'error stop scalar_nudging_handle: only 2d ready'
+	end if
+
+!!!! dtime
+
+	nintp = 2
+	iact = 0
+	nback = nkn
+	bback = .true.
+
+	rl = 1500.
+	rr = 0.1	!error observations
+	taumin = 3600.
+	taumax = 86400.
+
+	rlmax = 3.*rl
+	sigma = 100.*rr
+
+	if( icall == -1 ) return
+
+	if( icall == 0 ) then
+
+	  nobs = 0
+	  iu = 1
+	  open(iu,file=file_coords,status='old',form='formatted')
+	  call read_coords(iu,nobs,xobs,yobs)	!only count
+	  if( nobs == 0 ) icall = -1
+	  if( icall == -1 ) return
+	  allocate(xobs(nobs),yobs(nobs),zobs(nobs))
+	  allocate(bobs(nobs))
+	  call read_coords(iu,nobs,xobs,yobs)	!read coords
+	  close(iu)
+
+	  nmax = 0
+	  iu = 1
+	  open(iu,file=file_obs,status='old',form='formatted')
+	  call read_timeseries(iu,nmax,nval,times,zobss)	!only count
+	  if( nmax == 0 ) icall = -1
+	  if( icall == -1 ) return
+	  allocate(times(nmax),zobss(nmax,nval))
+	  zobss = 0
+	  call read_timeseries(iu,nmax,nval,times,zobss)	!read obs
+	  close(iu)
+
+	  allocate(zanal(nkn))
+	end if
+
+	call find_first_x(nintp,nmax,times,dtime,iact,nfirst)
+	nlast = nfirst + nintp - 1
+	do i=1,nobs
+	  if( any(zobss(nfirst:nlast,i) == flag ) ) then
+	    zobs(i) = flag
+	  else
+	    zobs(i) = rd_intp_neville(nintp,times(nfirst),zobss(nfirst,i),dtime)
+	  end if
+	end do
+
+	call opt_intp(nobs,xobs,yobs,zobs,bobs                          &
+     &                  ,nback,bback,xgv,ygv,zback                  &
+     &                  ,rl,rlmax,sigma,rr,zanal)
+
+	end
+
+!*******************************************************************
+
+	subroutine scalar_nudging_init()
+
+	implicit none
+
+	integer, save :: icall = 0
+
+	end
+
+!*******************************************************************
+
+	subroutine scalar_nudging(dt,scal,sobs,rtau)
+
+! does nudging of scalars
+
+	use basin
+	use levels
+
+	implicit none
+
+	real, intent(in) :: dt			!time step
+	real, intent(inout) :: scal(nlvdi,nkn)	!scalar
+	real, intent(in) :: sobs(nlvdi,nkn)	!observation of scalar
+	real, intent(in) :: rtau(nlvdi,nkn)	!inverse of time scale tau
+
+	integer k,l,lmax
+	real r,rr
+
+	do k=1,nkn
+	  lmax = ilhkv(k)
+	  do l=1,lmax
+	    r = dt * rtau(l,k)
+	    rr = 1./(1.+r)
+	    scal(l,k) = rr*scal(l,k) + (1.-rr)*sobs(l,k)
+	  end do
+	end do
+
+	end
+
+!*******************************************************************
+
+	subroutine read_coords(iu,nobs,xobs,yobs)
+
+	implicit none
+
+	integer iu
+	integer nobs
+	real xobs(nobs), yobs(nobs)
+
+	integer i,j
+	integer ios
+	real x,y
+
+	i = 0
+	do
+	  i = i + 1
+	  read(iu,*,iostat=ios) j,x,y
+	  if( ios < 0 ) exit
+	  if( ios > 0 ) goto 99
+	  if( i /= j ) goto 98
+	  if( nobs == 0 ) cycle
+	  if( i > nobs) goto 97
+	  xobs(i) = x
+	  yobs(i) = y
+	end do
+
+	nobs = i
+
+	return
+   97	continue
+	write(6,*) 'i,nobs: ',i,nobs
+	stop 'error stop read_coords: i>nobs'
+   98	continue
+	write(6,*) 'i,j: ',i,j
+	stop 'error stop read_coords: i/=j'
+   99	continue
+	stop 'error stop read_coords: read error'
+	end
+
+!*******************************************************************
+

@@ -28,8 +28,8 @@
 !
 ! contents :
 !
-! function istof(line,f,ioff)			converts string to number
-! function istod(line,d,ioff)			converts string to number
+! function istof(line,f,ioff)			converts next string to number
+! function istod(line,d,ioff)			converts next string to number
 ! function iscand(line,d,max)			converts string to numbers
 ! function iscanf(line,f,max)			converts string to numbers
 ! function iscans(line,s,max)			returns tokens separated by ws

@@ -192,11 +192,11 @@ subnsa.o: ../../../lib/mod/simul.mod
 supano.o: ../../../lib/mod/basin.mod ../../../lib/mod/color.mod \
 		../../../lib/mod/mod_bash.mod \
 		../../../lib/mod/plot_fonts.mod \
+		../../../lib/mod/plotutil.mod \
 		../../../lib/mod/simul.mod 
 supbas.o: ../../../lib/mod/basin.mod ../../../lib/mod/mod_geom.mod \
 		../../../lib/mod/mod_hydro_plot.mod \
-		../../../lib/mod/plot_fonts.mod \
-		../../../lib/mod/supout.mod 
+		../../../lib/mod/plot_fonts.mod 
 supdep.o: ../../../lib/mod/basin.mod ../../../lib/mod/evgeom.mod \
 		../../../lib/mod/levels.mod \
 		../../../lib/mod/mod_depth.mod \
@@ -218,6 +218,7 @@ suplin1.o: ../../../lib/mod/basin.mod ../../../lib/mod/evgeom.mod \
 		../../../lib/mod/mod_hydro_print.mod \
 		../../../lib/mod/mod_hydro_vel.mod 
 supout.o: ../../../lib/mod/basin.mod ../../../lib/mod/levels.mod \
+		../../../lib/mod/mod_bash.mod \
 		../../../lib/mod/mod_depth.mod \
 		../../../lib/mod/mod_hydro.mod \
 		../../../lib/mod/mod_hydro_plot.mod \

@@ -249,6 +249,11 @@ lgrelab1.o: ../../../lib/mod/basin.mod ../../../lib/mod/clo.mod \
 		../../../lib/mod/shyfile.mod \
 		../../../lib/mod/shympi.mod \
 		../../../lib/mod/shyutil.mod 
+shy_util2.o: ../../../lib/mod/clo.mod \
+		../../../lib/mod/elabtime.mod \
+		../../../lib/mod/elabutil.mod \
+		../../../lib/mod/shyfile.mod \
+		../../../lib/mod/shyutil.mod 
 shyelab.o: ../../../lib/mod/clo.mod ../../../lib/mod/elabutil.mod \
 		../../../lib/mod/shyfile.mod 
 shyelab1.o: ../../../lib/mod/basin.mod ../../../lib/mod/clo.mod \
@@ -258,6 +263,7 @@ shyelab1.o: ../../../lib/mod/basin.mod ../../../lib/mod/clo.mod \
 		../../../lib/mod/evgeom.mod \
 		../../../lib/mod/levels.mod \
 		../../../lib/mod/mod_depth.mod \
+		../../../lib/mod/mod_trace_point.mod \
 		../../../lib/mod/shy_extract.mod \
 		../../../lib/mod/shyfile.mod \
 		../../../lib/mod/shympi.mod \
@@ -273,6 +279,7 @@ shyelab_nodes.o: ../../../lib/mod/basin.mod \
 shyelab_output.o: ../../../lib/mod/basin.mod \
 		../../../lib/mod/elabtime.mod \
 		../../../lib/mod/elabutil.mod \
+		../../../lib/mod/iso8601.mod \
 		../../../lib/mod/levels.mod \
 		../../../lib/mod/mod_offline.mod \
 		../../../lib/mod/shyfem_strings.mod \

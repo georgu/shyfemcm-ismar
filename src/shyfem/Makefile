@@ -240,6 +240,7 @@ OBJ = \
       water_ren_time.o atoxi.o toxical.o \
       befor_after.o iostr.o const.o \
       test_zeta.o \
+      suboi.o \
 	$(SOLVER_OBJ) \
 	$(HEAT_OBJ) \
 	substress.o \
@@ -357,6 +358,7 @@ clean: cleanlinks
 	-rm -f a.out
 	-rm -f $(EXES)
 	-rm -f *.tmp *.bak
+	-rm -f fort.*
 
 cleanall: clean
 	-rm -f $(MODDIR)/*.mod
@@ -402,6 +404,7 @@ cleanlinks:
 ../../lib/mod/mod_nudge.mod: nudge.o
 ../../lib/mod/mod_parwaves.mod: waves_admin.o
 ../../lib/mod/mod_renewal_time.mod: water_ren_time.o
+../../lib/mod/mod_rstinf.mod: rstinf.o
 ../../lib/mod/mod_sedtrans05.mod: sedim_util.o
 ../../lib/mod/mod_shyfem.mod: shyfem_subs.o
 ../../lib/mod/mod_subset.mod: subset.o
@@ -873,6 +876,7 @@ rstinf.o: ../../lib/mod/basin.mod ../../lib/mod/clo.mod \
 		../../lib/mod/mod_geom_dynamic.mod \
 		../../lib/mod/mod_hydro.mod \
 		../../lib/mod/mod_hydro_vel.mod \
+		../../lib/mod/mod_restart.mod \
 		../../lib/mod/mod_ts.mod 
 sedim_admin.o: ../../lib/mod/basin.mod ../../lib/mod/evgeom.mod \
 		../../lib/mod/intp_fem_file.mod \

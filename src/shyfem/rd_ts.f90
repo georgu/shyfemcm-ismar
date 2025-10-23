@@ -28,6 +28,7 @@
 ! 23.03.2010	ggu	changed v6.1.1
 ! 16.02.2019	ggu	changed VERS_7_5_60
 ! 21.05.2019	ggu	changed VERS_7_5_62
+! 21.10.2025	ggu	new routine read_timeseries()
 
 !***********************************************************************
 
@@ -75,3 +76,167 @@
 
 !***********************************************************************
 
+        subroutine read_timeseries(iu,nmax,nval,times,values)
+
+        implicit none
+
+        integer iu
+        integer nmax,nval
+        double precision times(nmax)
+        real values(nval,nmax)
+
+	logical bstring
+        integer i,n,nv
+        integer ios,ioff,ierr
+	double precision atime
+	character*20 aline
+	character*256 line
+	double precision d(nval)
+
+	integer iscand,istos,istod,iston,istot
+
+	i = 0
+	n = 0
+        do
+	  i = i + 1
+          read(iu,'(a)',iostat=ios) line
+          if( ios < 0 ) exit
+          if( ios > 0 ) goto 99
+          n = iscand(line,d,0)
+          if( n /= 0 ) exit
+        end do
+	rewind(iu)
+	if( n == 0 ) then	!nothing in file
+	  nmax = 0
+	  nval = 0
+	  return
+	else if ( n > 0 ) then	!relative time (number)
+	  bstring = .false.
+	else			!absolute time (string)
+	  bstring = .true.
+	end if
+
+        i = 0
+	nv = 0
+        do
+	  ioff = 1
+          read(iu,'(a)',iostat=ios) line
+          if( ios < 0 ) exit
+          if( ios > 0 ) goto 99
+          if( bstring ) then
+	    n = istot(line,aline,ioff)
+	    if( n == 0 ) cycle
+	    if( n < 0 ) goto 95
+	    call dts_string2time(aline,atime,ierr)
+	    if( ierr /= 0 ) goto 96
+          else
+            n = istod(line,atime,ioff)
+	    if( n == 0 ) cycle
+	    if( n < 0 ) goto 95
+          end if
+          n = iscand(line(ioff:),d,nval)
+          if( n == 0 ) cycle                    !empty line
+          if( nv == 0 ) nv = n
+          if( nv /= n ) goto 98
+	  i = i + 1
+          if( nmax == 0 ) cycle
+	  if( i > nmax ) goto 97
+          times(i) = atime
+          values(1:nval,i) = d(1:nval)
+        end do
+
+	nval = nv
+        nmax = i
+	rewind(iu)
+
+        return
+   95   continue
+        write(6,*) 'error reading time: ',trim(line)
+        stop 'error stop read_timeseries: error reading time'
+   96   continue
+        write(6,*) 'error parsing time string: ',trim(aline)
+        stop 'error stop read_timeseries: error parsing time'
+   97   continue
+        write(6,*) 'i,nmax: ',i,nmax
+        stop 'error stop read_timeseries: i>nmax'
+   98   continue
+        write(6,*) 'n,nv: ',n,nv
+        stop 'error stop read_timeseries: n/=nv'
+   99   continue
+	write(6,*) 'read error in line ',i
+        stop 'error stop read_timeseries: read error'
+        end
+
+!*******************************************************************
+!*******************************************************************
+!*******************************************************************
+! testing routines
+!*******************************************************************
+!*******************************************************************
+!*******************************************************************
+
+	subroutine test_read_ts
+
+	implicit none
+
+	integer iu,nmax,nval,i
+	double precision, allocatable :: times(:)
+	real, allocatable :: values(:,:)
+
+	write(77,*) 0, 50, 110
+	write(77,*) 3600, 50, 120
+	write(77,*) 
+	write(77,*) 7200, 70, 130
+	write(77,*) 8000
+	write(77,*) 10800, 80, 140
+	close(77)
+
+	call test_read_file(77,4,2)
+
+	write(88,*) '2013-07-01::01:30:00', 200
+	write(88,*) '2013-07-01::02:30:00', 300
+	write(88,*) '2013-07-01::03:30:00', 400
+	write(88,*) '2013-07-01::04:30:00', 500
+	close(88)
+
+	call test_read_file(88,4,1)
+
+	end
+
+!*******************************************************************
+
+	subroutine test_read_file(iu,nmax0,nval0)
+
+	implicit none
+
+	integer iu,nmax0,nval0
+
+	integer nmax,nval,i
+	double precision, allocatable :: times(:)
+	real, allocatable :: values(:,:)
+
+	nmax=0
+	nval=0
+        call read_timeseries(iu,nmax,nval,times,values)
+	write(6,*) 'nmax0,nval0: ',nmax0,nval0
+	write(6,*) 'nmax,nval: ',nmax,nval
+	if( nmax /= nmax0 .or. nval /= nval0 ) stop 'nmax/nval mismatch'
+	allocate(times(nmax),values(nval,nmax))
+        call read_timeseries(iu,nmax,nval,times,values)
+	do i=1,nmax
+	  write(6,*) times(i),values(:,i)
+	end do
+	
+	end
+
+!*******************************************************************
+
+!	program main_test_read_ts
+!	call test_read_ts
+!	end
+
+!*******************************************************************
+!
+! gfortran -cpp rd_ts.f90 ../utils/generic/dts.f90 ../utils/generic/file.f90 ../utils/generic/convert.f90
+!
+!*******************************************************************

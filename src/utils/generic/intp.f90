@@ -63,6 +63,7 @@
 ! 16.02.2019	ggu	changed VERS_7_5_60
 ! 25.01.2025	ggu	new routine buspline() for uniform cubic b-spline
 ! 07.10.2025	ggu	in exxpp check for nmax >= nintp
+! 21.10.2025	ggu	new routine find_first_x()
 !
 !**************************************************
 !
@@ -421,6 +422,98 @@
 
 !*************************************************************
 
+	subroutine find_first_x(nintp,nmax,x,xe,iact,nfirst)
+
+	implicit none
+
+	integer nintp	!number of values to use (4 for cubic, 2 for linear)
+	integer nmax	!length of data arrays
+        double precision x(nmax)!x data arrays
+	double precision xe	!x-value for which y-value must be interpolated
+	integer iact	!element closest to xe (of last call on entry)
+			!must be 0 for initialization
+	integer nfirst	!first element in x array to use for interpolation
+			!0: xe < x(1); nmax+1: xe > x(nmax)
+
+	integer nanf,nend,i
+	integer min,max
+	real xlow,xhigh
+
+!----------------------------------------------------------
+! check if enough values
+!----------------------------------------------------------
+
+	if( nmax < nintp ) then
+	  write(6,*) x
+	  write(6,*) xe
+	  write(6,*) 'need at least nintp values for nmax: ',nintp,nmax
+	  stop 'error stop find_first_x: nmax < nintp'
+	end if
+
+!----------------------------------------------------------
+! check if in bounds
+!----------------------------------------------------------
+
+	nfirst = 0
+	if( xe < x(1) ) return
+	nfirst = nmax + 1
+	if( xe > x(nmax) ) return
+
+!----------------------------------------------------------
+! start searching from first element in x
+!----------------------------------------------------------
+
+        if( iact .le. 0 ) iact=1
+
+!----------------------------------------------------------
+! find to xe closest x-value in vector x
+!----------------------------------------------------------
+
+	do while( iact .lt. nmax )
+          xlow  = abs(x(iact)-xe)
+          xhigh = abs(x(iact+1)-xe)
+          if( xhigh .ge. xlow ) exit
+          iact = iact + 1
+	end do
+
+!----------------------------------------------------------
+! x(iact) is closest value to xe ...now get closest points around xe
+!----------------------------------------------------------
+
+	if( mod(nintp,2) .eq. 0 ) then	!even
+		max = nintp / 2
+		min = max - 1
+	else
+		max = nintp / 2
+		min = max
+	end if
+
+        if( x(iact) .gt. xe ) then
+                nanf=iact-max
+                nend=iact+min
+        else
+                nanf=iact-min
+                nend=iact+max
+        end if
+
+!----------------------------------------------------------
+! handling for the beginning or the end of array x
+!----------------------------------------------------------
+
+        if( nanf .lt. 1 ) then
+                nanf=1
+                nend=nintp
+        else if(nend.gt.nmax) then
+                nanf=nmax-nintp+1
+                nend=nmax
+        end if
+
+	nfirst = nanf
+
+	end
+
+!*************************************************************
+
 	function exxpp(nintp,nmax,x,y,xe,iact)
 
 ! interpolation from array
@@ -478,10 +571,9 @@
 	do while( iact .lt. nmax )
           xlow  = abs(x(iact)-xe)
           xhigh = abs(x(iact+1)-xe)
-          if( xhigh .ge. xlow ) goto 1
+          if( xhigh .ge. xlow ) exit
           iact = iact + 1
 	end do
-    1   continue
 
 !----------------------------------------------------------
 ! x(iact) is closest value to xe ...now get closest points around xe
