@@ -183,18 +183,20 @@ sub is_number
 sub write_fortran
 {
 
+my $sep = "*" x 68;
+$sep = "!" . $sep;
+
 open(FORTRAN,">read_nml.f90");
+
 print FORTRAN "\n";
-print FORTRAN "\tprogram read_nml\n";
-print FORTRAN "\timplicit none\n";
-print FORTRAN "\tcall read_weutro_param\n";
-print FORTRAN "\tcall write_weutro_param(0)\n";
-print FORTRAN "\tend\n";
+print FORTRAN "$sep\n";
 print FORTRAN "\n";
 
-print FORTRAN "\tsubroutine read_weutro_param\n";
+print FORTRAN "\tsubroutine read_weutro_param(param_file)\n";
 print FORTRAN "\n";
 print FORTRAN "\timplicit none\n";
+print FORTRAN "\n";
+print FORTRAN "\tcharacter*(*) param_file\n";
 print FORTRAN "\n";
 print FORTRAN "\tinclude 'weutro.h'\n";
 print FORTRAN "\n";
@@ -209,7 +211,7 @@ print FORTRAN "\n";
 print FORTRAN "\tinteger iu,ios\n";
 print FORTRAN "\n";
 print FORTRAN "\tiu = 1\n";
-print FORTRAN "\topen(iu,file='weutro.nml',status='old')\n";
+print FORTRAN "\topen(iu,file=param_file,status='old')\n";
 print FORTRAN "\n";
 
 write_block(@::read);
@@ -220,6 +222,9 @@ print FORTRAN "\n";
 write_block(@::later);
 print FORTRAN "\n";
 print FORTRAN "\tend\n";
+print FORTRAN "\n";
+
+print FORTRAN "$sep\n";
 print FORTRAN "\n";
 
 print FORTRAN "\tsubroutine write_weutro_param(iunit)\n";
@@ -253,6 +258,18 @@ print FORTRAN "\n";
 print FORTRAN "\tend\n";
 print FORTRAN "\n";
 
+print FORTRAN "$sep\n";
+
+print FORTRAN "\n";
+print FORTRAN "\tprogram read_nml\n";
+print FORTRAN "\timplicit none\n";
+print FORTRAN "\tcall read_weutro_param('weutro.nml')\n";
+print FORTRAN "\tcall write_weutro_param(0)\n";
+print FORTRAN "\tend\n";
+print FORTRAN "\n";
+
+print FORTRAN "$sep\n";
+print FORTRAN "\n";
 }
 
 sub fstatement {

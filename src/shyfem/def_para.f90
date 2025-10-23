@@ -30,9 +30,9 @@
 !
 ! contents :
 !
-! subroutine nlsinh             initializes the hp parameter file
-! subroutine nlsina             initializes the ap parameter file
-! subroutine fnminh             initializes default names
+! subroutine nlsinh             initializes the shyfem parameter sections
+! subroutine nlsina             initializes the post processing parameter file
+! subroutine fnminh             initializes section $name
 !
 ! revision log :
 !
@@ -1978,7 +1978,7 @@
 
 	subroutine fnminh
 
-! initializes default names
+! initializes section $name
 
 	use para
 
@@ -2087,6 +2087,12 @@
 !		must be compatible with the friction type given by |ireib|.
 
         call addfnm('fricin',' ')
+
+! |eutropa|	Name of file containing parameters for the EUTRO model.
+!		This is a namelist. If not given it uses the internal
+!		set of parameters.
+
+        call addfnm('eutropa',' ')
 
 ! DOCS	END
 

@@ -214,6 +214,7 @@
 
         character*10 what,whataux
 	character*2 whatn
+	character*80 param_file		!name of parameter file
 
 	integer k,i,l,lmax
 	integer ibio
@@ -431,6 +432,8 @@
 !	  initialize eco model
 !         --------------------------------------------------
 
+	  call getfnm('eutropa',param_file)	!parameter file
+	  call handle_param_init(param_file)
 	  call eutroini
 
 !         --------------------------------------------------

@@ -1,9 +1,11 @@
 
 !********************************************************************
 
-	subroutine read_weutro_param
+	subroutine read_weutro_param(param_file)
 
 	implicit none
+
+	character*(*) param_file
 
 	include 'weutro.h'
 
@@ -28,7 +30,7 @@
 	integer iu,ios
 
 	iu = 1
-	open(iu,file='weutro.nml',status='old')
+	open(iu,file=param_file,status='old')
 
 	read(iu,nml=nml_general_parameters,iostat=ios)
 	read(iu,nml=nml_phyto,iostat=ios)
@@ -151,7 +153,7 @@
 
 !	program read_nml
 !	implicit none
-!	call read_weutro_param
+!	call read_weutro_param('weutro.nml')
 !	call write_weutro_param(0)
 !	end
 

@@ -147,11 +147,12 @@
 !********************************************************************
 !********************************************************************
 
-	subroutine handle_param_init
+	subroutine handle_param_init(param_file)
 
 	implicit none
 
-	character*80, save :: wparam_in = 'weutro.nml'
+	character*(*) param_file
+
 	character*80, save :: wparam_out = 'weutro_out.txt'
 
 	logical bexist
@@ -161,10 +162,17 @@
 
 	call param_init		!read hard coded paramer list
 
-	inquire(file=wparam_in,exist=bexist)
-	if( bexist ) then
-	  write(6,*) 'reading weutro parameter file: ',trim(wparam_in)
-	  call read_weutro_param
+	if( param_file == ' ' ) then
+	  write(6,*) 'initializing weutro with standard parameters'
+	else
+	  inquire(file=param_file,exist=bexist)
+	  if( bexist ) then
+	    write(6,*) 'reading weutro parameter file: ',trim(param_file)
+	    call read_weutro_param(param_file)
+	  else
+	    write(6,*) 'file not existing: ',trim(param_file)
+	    stop 'error stop handle_param_init: no parameter file'
+	  end if
 	end if
 
 	write(6,*) 'writing weutro parameters: ',trim(wparam_out)
@@ -182,6 +190,8 @@
       INCLUDE 'weutro.h'
 
 	real iavpar
+        common /iavpar/ iavpar
+        save /iavpar/
 
 !! initialization of parameters
 
@@ -557,8 +567,8 @@
       !call param_read        !GGU new for Michol
       !call param_print
 
-      call handle_param_init
       call EUTROINT
+
       !call write_weutro_param(0)
 
       end
