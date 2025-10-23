@@ -37,6 +37,7 @@
 ! 16.02.2019	ggu	changed VERS_7_5_60
 ! 22.11.2020	ggu	some more comments
 ! 20.02.2025	ggu	some refactoring
+! 22.10.2025	ggu	some optimizations
 !
 ! notes :
 !
@@ -74,6 +75,7 @@
 	real,intent(in):: rr(nobs)	!std of observation error matrix
 	real,intent(out):: zanal(nback)	!analysis on return
 
+	logical bmissing(nobs)		!data is missing in this obs points
 	integer ivec(nobs)		!aux vector (n)
 	double precision dobs(nobs)	!increments at obs points (z-h(x^b))
 	double precision rvec(nobs)	!aux vector (n)
@@ -110,6 +112,7 @@
 	sigma2(:) = sigma(:)**2
 	rr2(:) = rr(:)**2
 	zobs1 = zobs			!save zobs to not alter input value
+	bmissing = ( zobs == flag )
 
 !	------------------------------------------
 !	if background not given create it
@@ -124,7 +127,7 @@
 	  no = 0
 	  rmean = 0.
 	  do i=1,n
-	    if( zobs(i) /= flag ) then
+	    if( .not. bmissing(i) ) then
 	      no = no + 1
 	      rmean = rmean + zobs(i)
 	    else
@@ -137,7 +140,7 @@
 	  zback = rmean
 	  bobs = rmean
 
-	  where( zobs1 == flag ) zobs1 = rmean
+	  where( bmissing ) zobs1 = rmean
 
 	  if( bverbose ) then
 	    write(6,*) 'no background field given... using mean: ',rmean
@@ -151,7 +154,8 @@
 !	create observational innovation vector
 !	------------------------------------------
 
-	dobs = zobs1 - bobs
+	dobs = 0.
+	where( .not. bmissing ) dobs = zobs1 - bobs
 
 !	------------------------------------------
 !	set up covariance matrix H P^b H^T
@@ -163,11 +167,11 @@
 
 	rmat = 0.
 	do j=1,n
-	  if( zobs(j) == flag ) cycle
+	  if( bmissing(j) ) cycle
 	  xj = xobs(j)
 	  yj = yobs(j)
 	  do i=1,n
-	    if( zobs(i) == flag ) cycle
+	    if( bmissing(i) ) cycle
 	    xi = xobs(i)
 	    yi = yobs(i)
 	    dist2 = (xi-xj)**2 + (yi-yj)**2
@@ -212,8 +216,9 @@
 !	multiply inverted matrix with observational innovation
 !	------------------------------------------
 
+	rvec = 0.
 	do i=1,n
-	  if( zobs(i) == flag ) cycle
+	  if( bmissing(i) ) cycle
 	  acu = 0.
 	  do j=1,n
 	    acu = acu + rmat(i,j) * dobs(j)
@@ -228,21 +233,16 @@
 	do k=1,nback
 	  xk = xback(k)
 	  yk = yback(k)
-	  iacu = 0
 	  acu = 0.
 	  do j=1,n
-	    if( zobs(j) == flag ) cycle
+	    if( bmissing(j) ) cycle
 	    xj = xobs(j)
 	    yj = yobs(j)
 	    dist2 = (xk-xj)**2 + (yk-yj)**2
 	    r = 0.
-	    if( dist2 .le. rlmax2(j) ) then
-	      iacu = iacu + 1
-	      r = sigma2(j) * exp( -dist2/rl2(j) )
-	    end if
+	    if( dist2 .le. rlmax2(j) ) r = sigma2(j) * exp( -dist2/rl2(j) )
 	    acu = acu + r * rvec(j)
 	  end do
-	  !if( iacu == 0 ) goto 99
 	  zanal(k) = zback(k) + acu
 	end do
 
@@ -250,11 +250,6 @@
 !	end of routine
 !	------------------------------------------
 
-	return
-   99	continue
-	write(6,*) j,acu,rl(j),rlmax(j)
-	write(6,*) 'radius for rlmax too small: no points inside'
-	stop 'error stop opt_intp: rlmax'
 	end
 
 !****************************************************************

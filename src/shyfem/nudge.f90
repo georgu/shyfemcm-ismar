@@ -779,9 +779,10 @@
 	real, allocatable :: zanal(:)
 	logical bback
 	integer iu,nobs
-	integer nintp,nmax,iact,nfirst,i
+	integer nintp,nmax,nfirst,i
 	integer nback,nlast,nval
 	integer, save :: icall = 0
+	integer, save :: iact = 0
 	real rl,rr,rlmax,sigma
 	real taumin,taumax
 	real, parameter :: flag = -999.
@@ -791,27 +792,32 @@
 
 	real rd_intp_neville
 
+	if( icall == -1 ) return
+
+!---------------------------------------------------------------
+! check basics and set parameters
+!---------------------------------------------------------------
+
 	if( nlvdi > 1 ) then
 	  write(6,*) 'nlvdi = ',nlvdi
 	  stop 'error stop scalar_nudging_handle: only 2d ready'
 	end if
 
-!!!! dtime
-
 	nintp = 2
-	iact = 0
 	nback = nkn
 	bback = .true.
 
 	rl = 1500.
 	rr = 0.1	!error observations
-	taumin = 3600.
-	taumax = 86400.
+	!taumin = 3600.
+	!taumax = 86400.
 
 	rlmax = 3.*rl
 	sigma = 100.*rr
 
-	if( icall == -1 ) return
+!---------------------------------------------------------------
+! initialize at first call
+!---------------------------------------------------------------
 
 	if( icall == 0 ) then
 
@@ -837,8 +843,20 @@
 	  call read_timeseries(iu,nmax,nval,times,zobss)	!read obs
 	  close(iu)
 
+	  if( nobs /= nval ) then
+	    write(6,*) 'nobs,nval: ',nobs,nval
+	    write(6,*) 'number of coordinates and observations are different'
+	    stop 'error stop scalar_nudging_handle: nobs/=nval'
+	  end if
+
 	  allocate(zanal(nkn))
 	end if
+
+!---------------------------------------------------------------
+! interpolate observations in time
+!---------------------------------------------------------------
+
+	call get_act_dtime(dtime)
 
 	call find_first_x(nintp,nmax,times,dtime,iact,nfirst)
 	nlast = nfirst + nintp - 1
@@ -850,9 +868,23 @@
 	  end if
 	end do
 
+!---------------------------------------------------------------
+! do optimal interpolation
+!---------------------------------------------------------------
+
 	call opt_intp(nobs,xobs,yobs,zobs,bobs                          &
      &                  ,nback,bback,xgv,ygv,zback                  &
      &                  ,rl,rlmax,sigma,rr,zanal)
+
+!---------------------------------------------------------------
+! copy analysis back to background
+!---------------------------------------------------------------
+
+	zanal = zback
+
+!---------------------------------------------------------------
+! end of routine
+!---------------------------------------------------------------
 
 	end
 
