@@ -65,6 +65,7 @@
 ! 21.03.2022    ggu     upgraded to da_out
 ! 17.10.2025    ggu     new routine scalar_nudging()
 ! 21.10.2025    ggu     new routine scalar_nudging_handle()
+! 24.10.2025    ggu     first draft of nudging ready
 !
 !****************************************************************
 
@@ -772,24 +773,26 @@
 
 	real zback(nkn)
 
-	real, allocatable :: xobs(:), yobs(:), zobs(:)
+	real, save, allocatable :: xobs(:), yobs(:), zobs(:)
 	real, allocatable :: bobs(:)
-	real, allocatable :: zobss(:,:)
-	double precision, allocatable :: times(:)
+	real, save, allocatable :: zobss(:,:)
+	double precision, save, allocatable :: times(:)
 	real, allocatable :: zanal(:)
+	real, save, allocatable :: rl(:),rr(:),rlmax(:),sigma(:)
 	logical bback
-	integer iu,nobs
+	integer iu
 	integer nintp,nmax,nfirst,i
 	integer nback,nlast,nval
 	integer, save :: icall = 0
 	integer, save :: iact = 0
-	real rl,rr,rlmax,sigma
-	real taumin,taumax
+	integer, save :: nobs = 0
+	real rl0,rr0,rlmax0,sigma0
 	real, parameter :: flag = -999.
-	double precision dtime
+	double precision dtime,atime0
 	character*80 file_coords
 	character*80 file_obs
 
+	logical is_time_absolute
 	real rd_intp_neville
 
 	if( icall == -1 ) return
@@ -807,13 +810,11 @@
 	nback = nkn
 	bback = .true.
 
-	rl = 1500.
-	rr = 0.1	!error observations
-	!taumin = 3600.
-	!taumax = 86400.
+	rl0 = 1500.
+	rr0 = 0.1	!error observations
 
-	rlmax = 3.*rl
-	sigma = 100.*rr
+	rlmax0 = 3.*rl0
+	sigma0 = 100.*rr0
 
 !---------------------------------------------------------------
 ! initialize at first call
@@ -843,6 +844,11 @@
 	  call read_timeseries(iu,nmax,nval,times,zobss)	!read obs
 	  close(iu)
 
+	  if( is_time_absolute(times(1)) ) then
+	    call get_absolute_ref_time(atime0)
+	    times = times - atime0		!convert to simulations time
+	  end if
+
 	  if( nobs /= nval ) then
 	    write(6,*) 'nobs,nval: ',nobs,nval
 	    write(6,*) 'number of coordinates and observations are different'
@@ -850,6 +856,12 @@
 	  end if
 
 	  allocate(zanal(nkn))
+
+	  allocate(rl(nobs),rr(nobs),rlmax(nobs),sigma(nobs))
+	  rl = rl0
+	  rr = rr0
+	  rlmax = rlmax0
+	  sigma = sigma0
 	end if
 
 !---------------------------------------------------------------
@@ -867,6 +879,12 @@
 	    zobs(i) = rd_intp_neville(nintp,times(nfirst),zobss(nfirst,i),dtime)
 	  end if
 	end do
+
+!---------------------------------------------------------------
+! compute background values at observation points
+!---------------------------------------------------------------
+
+	call get_bobs(nobs,xobs,yobs,zback,bobs)
 
 !---------------------------------------------------------------
 ! do optimal interpolation
@@ -966,6 +984,72 @@
 	stop 'error stop read_coords: i/=j'
    99	continue
 	stop 'error stop read_coords: read error'
+	end
+
+!*******************************************************************
+
+	subroutine get_bobs(nobs,xobs,yobs,zback,bobs)
+
+! get value of the background grid on observation points
+
+	use basin
+	use levels
+	use shympi
+
+	implicit none
+
+	integer nobs
+	real xobs(nobs)
+	real yobs(nobs)
+	real zback(nlvdi,nkn)
+	real bobs(nobs)
+
+	integer i,ie,n,ii,k
+	integer, save :: icall = 0
+	integer, save, allocatable :: ies(:)	!element where obs point is in
+	integer iaux(nobs)
+	real zp
+	real z(nobs)
+
+	if( icall == 0 ) then
+	  allocate(ies(nobs))
+	  ies = 0
+	  iaux = 0
+
+	  do i=1,nobs
+	    call find_element(xobs(i),yobs(i),ie)
+	    if( ie <= 0 ) cycle
+	    if( ie > nel_unique ) cycle
+	    ies(i) = ie
+	    iaux(i) = 1
+	  end do
+
+	  call shympi_gather_and_sum(iaux)
+	  n = shympi_sum(iaux)
+	  if( any(iaux==0) .or. n /= nobs ) then
+	    write(6,*) n,nobs
+	    write(6,*) iaux
+	    write(6,*) 'some elements could not be found'
+	    stop 'error stop get_bobs: elements not found'
+	  end if
+	end if
+
+	icall = icall + 1
+
+	bobs = 0.
+	do i=1,nobs
+	  ie = ies(i)
+	  if( ie == 0 ) cycle
+	  do ii=1,3
+	    k = nen3v(ii,ie)
+	    z(ii) = zback(1,k)
+	  end do
+	  call femintp(ie,z,xobs(i),yobs(i),zp)
+	  bobs(i) = zp
+	end do
+
+	call shympi_gather_and_sum(bobs)
+
 	end
 
 !*******************************************************************

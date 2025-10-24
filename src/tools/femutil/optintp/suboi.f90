@@ -38,6 +38,7 @@
 ! 22.11.2020	ggu	some more comments
 ! 20.02.2025	ggu	some refactoring
 ! 22.10.2025	ggu	some optimizations
+! 24.10.2025	ggu	some bug fixes
 !
 ! notes :
 !
@@ -50,7 +51,7 @@
 ! computes optimal interpolation
 !
 ! normally only zanal is computed and returned
-! however, if bobs is .true. (background grid is given) then
+! however, if bback is .false. (background grid is not given) then
 ! bobs and zback are initialized to average values and returned back
 !
 ! values of zobs == flag indicate no observation available
@@ -130,8 +131,6 @@
 	    if( .not. bmissing(i) ) then
 	      no = no + 1
 	      rmean = rmean + zobs(i)
-	    else
-	      rr2(i) = ( fact*rr(i) )**2
 	    end if
 	  end do
 	  if( no == 0 ) stop 'error stop: no observations left'
@@ -148,7 +147,11 @@
 
 	end if
 
-	!write(6,*) bback,rmean
+!	------------------------------------------
+!	increase observation error at missing points
+!	------------------------------------------
+
+	where( bmissing ) rr2 = ( fact*rr )**2
 
 !	------------------------------------------
 !	create observational innovation vector

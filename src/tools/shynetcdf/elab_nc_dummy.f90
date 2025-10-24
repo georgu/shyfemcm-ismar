@@ -30,6 +30,7 @@
 ! 16.02.2019	ggu	changed VERS_7_5_60
 ! 21.05.2019	ggu	changed VERS_7_5_62
 ! 17.07.2019	ggu	error in calling nc_output_record()
+! 24.10.2025	ggu	routine nc_set_ref_date() was not defined
 
 !**************************************************************************
 
@@ -153,6 +154,16 @@
         implicit none
 
         logical bquiet
+
+        end
+
+!********************************************************************
+
+        subroutine nc_set_ref_date(date0)
+
+        implicit none
+
+        character*(*) date0
 
         end
 

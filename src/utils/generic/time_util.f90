@@ -120,6 +120,7 @@
 ! 16.02.2020	ggu	new routines get_time_iterations(), get_ddt()
 ! 03.04.2020	ggu	new routine get_real_time()
 ! 18.05.2022	ggu	new routines cpu_time_*()
+! 24.10.2025	ggu	new routine is_time_absolute()
 !
 !**********************************************************************
 !**********************************************************************
@@ -134,6 +135,7 @@
         integer, save :: itunit,idtorig
 
 	double precision, save :: t_act,dt_act,dt_orig,atime0,dtanf,dtend
+	double precision, parameter :: d1000 = 1000*365*86400
 
 	logical, save :: bsync
 
@@ -144,6 +146,23 @@
 	double precision, save :: acutime(ncpu)
 
 	end module femtime
+
+!**********************************************************************
+
+	function is_time_absolute(dtime)
+
+! true if in initialization phase
+
+	use femtime
+
+	implicit none
+
+	logical is_time_absolute
+	double precision dtime
+
+	is_time_absolute = dtime > d1000	! > 1000 years
+
+	end
 
 !**********************************************************************
 
