@@ -39,6 +39,7 @@
 ! 20.02.2025	ggu	some refactoring
 ! 22.10.2025	ggu	some optimizations
 ! 24.10.2025	ggu	some bug fixes
+! 27.10.2025	ggu	changed naming conventions
 !
 ! notes :
 !
@@ -46,7 +47,7 @@
 
         subroutine opt_intp(nobs,xobs,yobs,zobs,bobs                    &
      &                  ,nback,bback,xback,yback,zback                  &
-     &                  ,rl,rlmax,sigma,rr,zanal)
+     &                  ,rl,rlmax,seb,seo,zanal)
 
 ! computes optimal interpolation
 !
@@ -70,20 +71,20 @@
 	real,intent(in):: xback(nback)	!x-coordinates of background
 	real,intent(in):: yback(nback)	!y-coordinates of background
 	real,intent(inout):: zback(nback)	!values of background
-	real,intent(in):: rl(nobs)	!length scale for covariance
+	real,intent(in):: rl(nobs)	!length scale for correlation
 	real,intent(in):: rlmax(nobs)	!max radius to be considered
-	real,intent(in):: sigma(nobs)	!std of background on obs points
-	real,intent(in):: rr(nobs)	!std of observation error matrix
+	real,intent(in):: seb(nobs)	!stderr of background on obs points
+	real,intent(in):: seo(nobs)	!stderr of observation on obs points
 	real,intent(out):: zanal(nback)	!analysis on return
 
 	logical bmissing(nobs)		!data is missing in this obs points
 	integer ivec(nobs)		!aux vector (n)
 	double precision dobs(nobs)	!increments at obs points (z-h(x^b))
 	double precision rvec(nobs)	!aux vector (n)
-	double precision rr2(nobs)	!square of observation error (n)
-	double precision sigma2(nobs)	!square of background field (n)
-	double precision rl2(nobs)	!square of background field (n)
-	double precision rlmax2(nobs)	!square of background field (n)
+	double precision seo2(nobs)	!variance of observation error (n)
+	double precision seb2(nobs)	!variance of background error (n)
+	double precision rl2(nobs)	!square of length scale (n)
+	double precision rlmax2(nobs)	!square of max length (n)
 	double precision rmat(nobs,nobs)!aux matrix (nxn)
 
 	double precision ani,ano,anr,cond
@@ -110,8 +111,8 @@
 
 	rl2(:) = rl(:)**2
 	rlmax2(:) = rlmax(:)**2
-	sigma2(:) = sigma(:)**2
-	rr2(:) = rr(:)**2
+	seb2(:) = seb(:)**2
+	seo2(:) = seo(:)**2
 	zobs1 = zobs			!save zobs to not alter input value
 	bmissing = ( zobs == flag )
 
@@ -151,14 +152,7 @@
 !	increase observation error at missing points
 !	------------------------------------------
 
-	where( bmissing ) rr2 = ( fact*rr )**2
-
-!	------------------------------------------
-!	create observational innovation vector
-!	------------------------------------------
-
-	dobs = 0.
-	where( .not. bmissing ) dobs = zobs1 - bobs
+	where( bmissing ) seo2 = ( fact*seo )**2
 
 !	------------------------------------------
 !	set up covariance matrix H P^b H^T
@@ -179,7 +173,7 @@
 	    yi = yobs(i)
 	    dist2 = (xi-xj)**2 + (yi-yj)**2
 	    r = 0.
-	    if( dist2 <= rlmax2(i) ) r = sigma2(i) * exp( -dist2/rl2(i) )
+	    if( dist2 <= rlmax2(i) ) r = seb2(i) * exp( -dist2/rl2(i) )
 	    rmat(i,j) = r
 	  end do
 	end do
@@ -189,7 +183,7 @@
 !	------------------------------------------
 
 	do j=1,n
-	  rmat(j,j) = rmat(j,j) + rr2(j)
+	  rmat(j,j) = rmat(j,j) + seo2(j)
 	end do
 
 !	------------------------------------------
@@ -214,6 +208,13 @@
           call dmatnorm(anr,rind,n,n)
 	  !write(6,'(a,3f12.4,e12.4)') 'cond: ',ano,ani,cond,anr
 	end if
+
+!	------------------------------------------
+!	create observational innovation vector
+!	------------------------------------------
+
+	dobs = 0.
+	where( .not. bmissing ) dobs = zobs1 - bobs
 
 !	------------------------------------------
 !	multiply inverted matrix with observational innovation
@@ -243,7 +244,7 @@
 	    yj = yobs(j)
 	    dist2 = (xk-xj)**2 + (yk-yj)**2
 	    r = 0.
-	    if( dist2 .le. rlmax2(j) ) r = sigma2(j) * exp( -dist2/rl2(j) )
+	    if( dist2 .le. rlmax2(j) ) r = seb2(j) * exp( -dist2/rl2(j) )
 	    acu = acu + r * rvec(j)
 	  end do
 	  zanal(k) = zback(k) + acu
@@ -284,8 +285,8 @@
 	real bobs(nobs)
 	real rl(nobs)
 	real rlmax(nobs)
-	real rr(nobs)
-	real sigma(nobs)
+	real seo(nobs)
+	real seb(nobs)
 	real xback(nback)
 	real yback(nback)
 	real zback(nback)
@@ -296,8 +297,8 @@
 	bback = .true.
 	rl = 0.1
 	rlmax = 2.0
-	rr = 0.01
-	sigma = 1.
+	seo = 0.01
+	seb = 1.
 
 	do i=1,nobs
 	  xobs(i) = 0.5
@@ -321,7 +322,7 @@
 
         call opt_intp(nobs,xobs,yobs,zobs,bobs                          &
      &                  ,nback,bback,xback,yback,zback                  &
-     &                  ,rl,rlmax,sigma,rr,zanal)
+     &                  ,rl,rlmax,seb,seo,zanal)
 
 	write(6,*) nobs
 	do i=1,nobs
@@ -358,8 +359,8 @@
 	real bobs(nobs)
 	real rl(nobs)
 	real rlmax(nobs)
-	real rr(nobs)
-	real sigma(nobs)
+	real seo(nobs)
+	real seb(nobs)
 	real xback(nback)
 	real yback(nback)
 	real zback(nback)
@@ -371,8 +372,8 @@
 	bback = .false.
 	rl = 0.4
 	rlmax = 2.0
-	rr = 0.01
-	sigma = 1.
+	seo = 0.01
+	seb = 1.
 
 	do i=1,nobs
 	  !x = rand(0)
@@ -404,7 +405,7 @@
 
         call opt_intp(nobs,xobs,yobs,zobs,bobs                          &
      &                  ,nback,bback,xback,yback,zback                  &
-     &                  ,rl,rlmax,sigma,rr,zanal)
+     &                  ,rl,rlmax,seb,seo,zanal)
 
 	write(6,*) nobs
 	do i=1,nobs

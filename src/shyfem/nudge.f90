@@ -66,6 +66,7 @@
 ! 17.10.2025    ggu     new routine scalar_nudging()
 ! 21.10.2025    ggu     new routine scalar_nudging_handle()
 ! 24.10.2025    ggu     first draft of nudging ready
+! 27.10.2025    ggu     pass 3d array, change of names
 !
 !****************************************************************
 
@@ -771,14 +772,15 @@
 
 	implicit none
 
-	real zback(nkn)
+	real zback(nlvdi,nkn)
 
 	real, save, allocatable :: xobs(:), yobs(:), zobs(:)
 	real, allocatable :: bobs(:)
 	real, save, allocatable :: zobss(:,:)
 	double precision, save, allocatable :: times(:)
 	real, allocatable :: zanal(:)
-	real, save, allocatable :: rl(:),rr(:),rlmax(:),sigma(:)
+	real, allocatable :: zback2d(:)
+	real, save, allocatable :: rl(:),rlmax(:),seo(:),seb(:)
 	logical bback
 	integer iu
 	integer nintp,nmax,nfirst,i
@@ -786,9 +788,10 @@
 	integer, save :: icall = 0
 	integer, save :: iact = 0
 	integer, save :: nobs = 0
-	real rl0,rr0,rlmax0,sigma0
+	real rl0,rlmax0,seo0,seb0
 	real, parameter :: flag = -999.
 	double precision dtime,atime0
+	double precision tstart,tend
 	character*80 file_coords
 	character*80 file_obs
 
@@ -811,10 +814,10 @@
 	bback = .true.
 
 	rl0 = 1500.
-	rr0 = 0.1	!error observations
-
 	rlmax0 = 3.*rl0
-	sigma0 = 100.*rr0
+
+	seo0 = 0.1		!standard error observations
+	seb0 = 100.*seo0	!standard error background
 
 !---------------------------------------------------------------
 ! initialize at first call
@@ -846,8 +849,11 @@
 
 	  if( is_time_absolute(times(1)) ) then
 	    call get_absolute_ref_time(atime0)
-	    times = times - atime0		!convert to simulations time
+	    times = times - atime0		!convert to simulation time
 	  end if
+
+	  tstart = times(1)
+	  tend = times(nmax)
 
 	  if( nobs /= nval ) then
 	    write(6,*) 'nobs,nval: ',nobs,nval
@@ -856,19 +862,26 @@
 	  end if
 
 	  allocate(zanal(nkn))
+	  allocate(zback2d(nkn))
 
-	  allocate(rl(nobs),rr(nobs),rlmax(nobs),sigma(nobs))
+	  allocate(rl(nobs),rlmax(nobs),seo(nobs),seb(nobs))
 	  rl = rl0
-	  rr = rr0
 	  rlmax = rlmax0
-	  sigma = sigma0
+	  seo = seo0
+	  seb = seb0
 	end if
+
+!---------------------------------------------------------------
+! see if in observation window
+!---------------------------------------------------------------
+
+	call get_act_dtime(dtime)
+
+	if( dtime < tstart .or. dtime > tend ) return
 
 !---------------------------------------------------------------
 ! interpolate observations in time
 !---------------------------------------------------------------
-
-	call get_act_dtime(dtime)
 
 	call find_first_x(nintp,nmax,times,dtime,iact,nfirst)
 	nlast = nfirst + nintp - 1
@@ -884,21 +897,22 @@
 ! compute background values at observation points
 !---------------------------------------------------------------
 
-	call get_bobs(nobs,xobs,yobs,zback,bobs)
+	zback2d = zback(1,:)
+	call get_bobs(nobs,xobs,yobs,zback2d,bobs)
 
 !---------------------------------------------------------------
 ! do optimal interpolation
 !---------------------------------------------------------------
 
 	call opt_intp(nobs,xobs,yobs,zobs,bobs                          &
-     &                  ,nback,bback,xgv,ygv,zback                  &
-     &                  ,rl,rlmax,sigma,rr,zanal)
+     &                  ,nback,bback,xgv,ygv,zback2d                  &
+     &                  ,rl,rlmax,seb,seo,zanal)
 
 !---------------------------------------------------------------
 ! copy analysis back to background
 !---------------------------------------------------------------
 
-	zanal = zback
+	zback(1,:) = zanal
 
 !---------------------------------------------------------------
 ! end of routine
