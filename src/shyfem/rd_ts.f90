@@ -29,6 +29,7 @@
 ! 16.02.2019	ggu	changed VERS_7_5_60
 ! 21.05.2019	ggu	changed VERS_7_5_62
 ! 21.10.2025	ggu	new routine read_timeseries()
+! 30.10.2025	ggu	invert dimensions in values
 
 !***********************************************************************
 
@@ -83,7 +84,7 @@
         integer iu
         integer nmax,nval
         double precision times(nmax)
-        real values(nval,nmax)
+        real values(nmax,nval)
 
 	logical bstring
         integer i,n,nv
@@ -142,7 +143,7 @@
           if( nmax == 0 ) cycle
 	  if( i > nmax ) goto 97
           times(i) = atime
-          values(1:nval,i) = d(1:nval)
+          values(i,1:nval) = d(1:nval)
         end do
 
 	nval = nv
@@ -221,10 +222,10 @@
 	write(6,*) 'nmax0,nval0: ',nmax0,nval0
 	write(6,*) 'nmax,nval: ',nmax,nval
 	if( nmax /= nmax0 .or. nval /= nval0 ) stop 'nmax/nval mismatch'
-	allocate(times(nmax),values(nval,nmax))
+	allocate(times(nmax),values(nmax,nval))
         call read_timeseries(iu,nmax,nval,times,values)
 	do i=1,nmax
-	  write(6,*) times(i),values(:,i)
+	  write(6,*) times(i),values(i,:)
 	end do
 	
 	end

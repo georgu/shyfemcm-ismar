@@ -67,6 +67,7 @@
 ! 21.10.2025    ggu     new routine scalar_nudging_handle()
 ! 24.10.2025    ggu     first draft of nudging ready
 ! 27.10.2025    ggu     pass 3d array, change of names
+! 30.10.2025    ggu     bug fixes
 !
 !****************************************************************
 
@@ -769,34 +770,36 @@
 
 	use basin
 	use levels
+	use shympi
 
 	implicit none
 
 	real zback(nlvdi,nkn)
 
 	real, save, allocatable :: xobs(:), yobs(:), zobs(:)
-	real, allocatable :: bobs(:)
+	real, save, allocatable :: bobs(:),zaux(:)
 	real, save, allocatable :: zobss(:,:)
 	double precision, save, allocatable :: times(:)
-	real, allocatable :: zanal(:)
-	real, allocatable :: zback2d(:)
+	real, save, allocatable :: zanal(:)
+	real, save, allocatable :: zback2d(:)
 	real, save, allocatable :: rl(:),rlmax(:),seo(:),seb(:)
 	logical bback
 	integer iu
-	integer nintp,nmax,nfirst,i
+	integer nintp,nfirst,i
 	integer nback,nlast,nval
 	integer, save :: icall = 0
 	integer, save :: iact = 0
 	integer, save :: nobs = 0
+	integer, save :: nmax = 0
 	real rl0,rlmax0,seo0,seb0
 	real, parameter :: flag = -999.
 	double precision dtime,atime0
-	double precision tstart,tend
+	double precision, save :: tstart,tend
 	character*80 file_coords
 	character*80 file_obs
 
 	logical is_time_absolute
-	real rd_intp_neville
+	double precision rd_intp_neville
 
 	if( icall == -1 ) return
 
@@ -813,11 +816,14 @@
 	nback = nkn
 	bback = .true.
 
-	rl0 = 1500.
+	rl0 = 1000.
 	rlmax0 = 3.*rl0
 
 	seo0 = 0.1		!standard error observations
 	seb0 = 100.*seo0	!standard error background
+
+	file_obs = 'obsall.txt'
+	file_coords = 'obs_coords.txt'
 
 !---------------------------------------------------------------
 ! initialize at first call
@@ -832,7 +838,8 @@
 	  if( nobs == 0 ) icall = -1
 	  if( icall == -1 ) return
 	  allocate(xobs(nobs),yobs(nobs),zobs(nobs))
-	  allocate(bobs(nobs))
+	  allocate(bobs(nobs),zaux(nobs))
+	  rewind(iu)
 	  call read_coords(iu,nobs,xobs,yobs)	!read coords
 	  close(iu)
 
@@ -844,8 +851,14 @@
 	  if( icall == -1 ) return
 	  allocate(times(nmax),zobss(nmax,nval))
 	  zobss = 0
+	  rewind(iu)
 	  call read_timeseries(iu,nmax,nval,times,zobss)	!read obs
 	  close(iu)
+
+	  !write(666,*) 'first lines of obs',nmax,nval
+	  !do i=1,10
+	  !  write(666,'(i10,5f10.3)') i,zobss(i,:)
+	  !end do
 
 	  if( is_time_absolute(times(1)) ) then
 	    call get_absolute_ref_time(atime0)
@@ -861,6 +874,16 @@
 	    stop 'error stop scalar_nudging_handle: nobs/=nval'
 	  end if
 
+	  write(6,*) 'observations have been read: ',nobs
+
+	  !if( my_id == 0 ) then
+	  !write(666,*) 'observations have been read: ',nobs
+	  !do i=1,nobs
+	  !  write(666,*) i,xobs(i),yobs(i)
+	  !end do
+	  !end if
+	  if( my_id == 0 ) write(666,*) 'starting optintp'
+
 	  allocate(zanal(nkn))
 	  allocate(zback2d(nkn))
 
@@ -871,6 +894,8 @@
 	  seb = seb0
 	end if
 
+	icall = icall + 1
+
 !---------------------------------------------------------------
 ! see if in observation window
 !---------------------------------------------------------------
@@ -878,6 +903,10 @@
 	call get_act_dtime(dtime)
 
 	if( dtime < tstart .or. dtime > tend ) return
+
+	if( my_id == 0 ) then
+	  write(666,*) 'doing optintp',nmax,dtime
+	end if
 
 !---------------------------------------------------------------
 ! interpolate observations in time
@@ -892,6 +921,14 @@
 	    zobs(i) = rd_intp_neville(nintp,times(nfirst),zobss(nfirst,i),dtime)
 	  end if
 	end do
+
+	if( any( (zobs<0.and.zobs/=flag).or.zobs>40) ) then	!to be deleted
+	  write(6,*) 'zobs out of bound'
+	  do i=1,nobs
+	    write(6,*) i,zobs(i)
+	  end do
+	  stop 'error stop zobs'
+	end if
 
 !---------------------------------------------------------------
 ! compute background values at observation points
@@ -912,21 +949,20 @@
 ! copy analysis back to background
 !---------------------------------------------------------------
 
+	call get_bobs(nobs,xobs,yobs,zanal,zaux)
+	if( my_id == 0 ) then
+	  write(666,*) 'final: '
+	  do i=1,nobs
+	    write(666,*) i,zobs(i),bobs(i),zaux(i)
+	  end do
+	end if
+	!if( icall > 10 ) stop
+
 	zback(1,:) = zanal
 
 !---------------------------------------------------------------
 ! end of routine
 !---------------------------------------------------------------
-
-	end
-
-!*******************************************************************
-
-	subroutine scalar_nudging_init()
-
-	implicit none
-
-	integer, save :: icall = 0
 
 	end
 
@@ -973,13 +1009,14 @@
 	integer i,j
 	integer ios
 	real x,y
+	character*80 name
 
 	i = 0
 	do
-	  i = i + 1
 	  read(iu,*,iostat=ios) j,x,y
 	  if( ios < 0 ) exit
 	  if( ios > 0 ) goto 99
+	  i = i + 1
 	  if( i /= j ) goto 98
 	  if( nobs == 0 ) cycle
 	  if( i > nobs) goto 97
@@ -997,6 +1034,9 @@
 	write(6,*) 'i,j: ',i,j
 	stop 'error stop read_coords: i/=j'
    99	continue
+	inquire(iu,name=name)
+	write(6,*) 'reading file ',trim(name)
+	write(6,*) 'read error close to line ',i
 	stop 'error stop read_coords: read error'
 	end
 
@@ -1039,10 +1079,11 @@
 	  end do
 
 	  call shympi_gather_and_sum(iaux)
-	  n = shympi_sum(iaux)
+	  n = sum(iaux)
 	  if( any(iaux==0) .or. n /= nobs ) then
 	    write(6,*) n,nobs
 	    write(6,*) iaux
+	    write(6,*) ies
 	    write(6,*) 'some elements could not be found'
 	    stop 'error stop get_bobs: elements not found'
 	  end if

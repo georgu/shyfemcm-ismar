@@ -18,6 +18,7 @@
 FEMDIR=${SHYFEMDIR:=$HOME/shyfemcm}
 femanim=$FEMDIR/src/tools/anim
 fembin=$FEMDIR/bin
+gps=$FEMDIR/bin/gps/gps.sh
 
 #---------------------------------------------------------------------
 
@@ -98,6 +99,13 @@ TestSoftware()
     elif [ $output = "test" ]; then
       echo "   renaming program is installed..."
     fi
+  fi
+
+  if [ ! -x $gps ]; then
+    echo "*** cannot find gps.sh program (internal error)... aborting"
+    exit 1
+  elif [ $output = "test" ]; then
+    echo "   gps program is installed..."
   fi
 }
 
@@ -196,7 +204,7 @@ fi
 #--------------------------- split and make eps
 
 if [ $make_eps = "YES" ]; then
-  $fembin/gps.sh -split -eps plot.ps
+  $gps -split -eps plot.ps
   rm -f plot.*.ps
 fi
 
@@ -211,9 +219,9 @@ fi
 
 if [ $make_gifs = "YES" ]; then
   if [ $dogif = "YES" ]; then
-    $fembin/gps.sh -gif plot.*.eps
+    $gps -gif plot.*.eps
   else				#go via jpg
-    $fembin/gps.sh -jpg plot.*.eps
+    $gps -jpg plot.*.eps
     for file in plot.*.jpg
     do
       name=`basename $file .jpg`
@@ -225,7 +233,7 @@ if [ $make_gifs = "YES" ]; then
 fi
 
 if [ $make_jpgs = "YES" ]; then
-  $fembin/gps.sh -jpg plot.*.eps
+  $gps -jpg plot.*.eps
 fi
 
 ######################################################
