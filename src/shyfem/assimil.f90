@@ -33,6 +33,7 @@
 ! 24.10.2025    ggu     first draft of assimilation ready
 ! 27.10.2025    ggu     pass 3d array, change of names
 ! 30.10.2025    ggu     bug fixes
+! 07.11.2025    ggu     introduced iuse
 !
 !****************************************************************
 
@@ -58,6 +59,7 @@
 	real, save, allocatable :: zanal(:)
 	real, save, allocatable :: zback2d(:)
 	real, save, allocatable :: rl(:),rlmax(:),seo(:),seb(:)
+	real, save, allocatable :: iuse(:)
 	logical bback
 	integer iu
 	integer nintp,nfirst,i
@@ -166,6 +168,8 @@
 	  allocate(zback2d(nkn))
 
 	  allocate(rl(nobs),rlmax(nobs),seo(nobs),seb(nobs))
+	  allocate(iuse(nobs))
+	  iuse = 1
 	  rl = rl0
 	  rlmax = rlmax0
 	  seo = seo0
@@ -173,6 +177,7 @@
 	end if
 
 	icall = icall + 1
+	iuse(5) = 0
 
 	!call iff_ts_intp(idobs,dtime,zaux2)
 	if( bdebug ) call get_timeline(dtime,aline)
@@ -199,20 +204,8 @@
 ! interpolate observations in time
 !---------------------------------------------------------------
 
-	call find_first_x(nintp,nmax,times,dtime,iact,nfirst)
-	call get_timeline(dtime,aline)
-	!write(667,*) 'from array: ',aline,dtime
-	!write(667,*) times(nfirst:nfirst+1),times(nfirst+1)-times(nfirst)
-	nlast = nfirst + nintp - 1
-	do i=1,nobs
-	  if( any(zobss(nfirst:nlast,i) == flag ) ) then
-	    zobs(i) = flag
-	  else
-	    zobs(i) = rd_intp_neville(nintp,times(nfirst),zobss(nfirst,i),dtime)
-	  end if
-	end do
-
-	call iff_ts_intp(idobs,dtime,zaux2)
+	call iff_ts_intp(idobs,dtime,zobs)
+	where( iuse == 0 ) zobs = flag
 
 !---------------------------------------------------------------
 ! compute background values at observation points
@@ -243,16 +236,10 @@
 	  if( my_id == 0 ) then
 	    write(666,*) 'final: '
 	    do i=1,nobs
-	      write(666,*) i,zobs(i),bobs(i),zaux(i),zaux2(i)
+	      write(666,*) i,zobs(i),bobs(i),zaux(i)
 	    end do
 	  end if
 	  !if( icall > 10 ) stop
-	  if( any(zobs/=zaux2) ) then
-	    write(667,*) 'interpolation is different'
-	    write(667,*) zobs
-	    write(667,*) zaux2
-	    stop 'interpolation is different'
-	  end if
 	end if
 
 	zback(1,:) = zanal
