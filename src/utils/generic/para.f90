@@ -75,7 +75,8 @@
 ! 07.12.2017	ggu	changed VERS_7_5_40
 ! 14.02.2019	ggu	changed VERS_7_5_56
 ! 16.02.2019	ggu	changed VERS_7_5_60
-! 12.03.2019	ggu	new routine para_clean_section(()
+! 12.03.2019	ggu	new routine para_clean_section()
+! 03.11.2025	ggu	new routine para_set_array_value()
 !
 !**************************************************************
 !**************************************************************
@@ -117,16 +118,22 @@
 
 	character*(charlen_para), save, private :: def_section = ' '
 
-        INTERFACE para_get_array_value
-        MODULE PROCEDURE	 para_get_array_value_d    &
-     &				,para_get_array_value_r             &
-     &				,para_get_array_value_i
+        INTERFACE para_add_array_value
+        MODULE PROCEDURE	  para_add_array_value_d             &
+     &				, para_add_array_value_r             &
+     &				, para_add_array_value_i
         END INTERFACE
 
-        INTERFACE para_add_array_value
-        MODULE PROCEDURE	 para_add_array_value_d    &
-     &				,para_add_array_value_r             &
-     &				,para_add_array_value_i
+        INTERFACE para_get_array_value
+        MODULE PROCEDURE	  para_get_array_value_d             &
+     &				, para_get_array_value_r             &
+     &				, para_get_array_value_i
+        END INTERFACE
+
+        INTERFACE para_set_array_value
+        MODULE PROCEDURE	  para_set_array_value_d             &
+     &				, para_set_array_value_r             &
+     &				, para_set_array_value_i
         END INTERFACE
 
 !==================================================================
@@ -261,7 +268,8 @@
 	integer id
 
 	if( id > ndim ) then
-	  stop 'error stop para_init_id: ndim'
+	  write(6,*) id,ndim
+	  stop 'error stop para_init_id: id>ndim'
 	end if
 
 	pentry(id)%name = ' '
@@ -799,6 +807,7 @@
 	if( ndim < n ) then
 	  write(6,*) 'size of array is too big'
 	  write(6,*) ndim,n
+	  write(6,*) 'name = ',trim(name)
 	  stop 'error stop para_get_array_value: size too big'
 	end if
 
@@ -810,6 +819,60 @@
 	end if
 
 	end subroutine para_get_array_value_d
+
+!******************************************************************
+
+	subroutine para_set_array_value_i(name,ndim,values)
+
+	character*(*) name
+	integer ndim
+	integer values(ndim)
+
+	double precision dvalues(ndim)
+
+	call para_set_array_value_d(name,ndim,dvalues)
+	values = nint(dvalues)
+
+	end subroutine para_set_array_value_i
+
+!******************************************************************
+
+	subroutine para_set_array_value_r(name,ndim,values)
+
+	character*(*) name
+	integer ndim
+	real values(ndim)
+
+	double precision dvalues(ndim)
+
+	call para_set_array_value_d(name,ndim,dvalues)
+	values = dvalues
+
+	end subroutine para_set_array_value_r
+
+!******************************************************************
+
+	subroutine para_set_array_value_d(name,ndim,values)
+
+	character*(*) name
+	integer ndim
+	double precision values(ndim)
+
+	integer n
+
+	call para_get_array_size(name,n)
+
+	if( n /= 1 .and. n /= ndim ) then
+	  write(6,*) 'size of array is not compatible: ',n
+	  write(6,*) 'name = ',trim(name)
+	  write(6,*) 'values given must be 1 or ',ndim
+	  stop 'error stop para_set_array_value: incompatible size'
+	end if
+
+	call para_get_array_value_d(name,ndim,n,values)
+	if( n == 1 ) values(:) = values(1)
+
+	end subroutine para_set_array_value_d
 
 !******************************************************************
 

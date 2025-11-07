@@ -240,7 +240,7 @@ OBJ = \
       water_ren_time.o atoxi.o toxical.o \
       befor_after.o iostr.o const.o \
       test_zeta.o \
-      suboi.o \
+      suboi.o nudge_admin.o \
 	$(SOLVER_OBJ) \
 	$(HEAT_OBJ) \
 	substress.o \
@@ -355,6 +355,7 @@ nuopc: nuopc_info nuopc_clean nuopc_shyfem.mk libnuopc
 
 clean: cleanlinks
 	-rm -f *.o
+	-rm -f *.mod
 	-rm -f a.out
 	-rm -f $(EXES)
 	-rm -f *.tmp *.bak
@@ -402,6 +403,7 @@ cleanlinks:
 ../../lib/mod/mod_keps.mod: turbulence_util.o
 ../../lib/mod/mod_lagrange.mod: lagrange_data.o
 ../../lib/mod/mod_nudge.mod: nudge.o
+../../lib/mod/mod_nudge_admin.mod: nudge_admin.o
 ../../lib/mod/mod_parwaves.mod: waves_admin.o
 ../../lib/mod/mod_renewal_time.mod: water_ren_time.o
 ../../lib/mod/mod_rstinf.mod: rstinf.o
@@ -833,6 +835,7 @@ nudge.o: ../../lib/mod/basin.mod ../../lib/mod/intp_fem_file.mod \
 		../../lib/mod/mod_layer_thickness.mod \
 		../../lib/mod/mod_nudging.mod \
 		../../lib/mod/shympi.mod 
+nudge_admin.o: ../../lib/mod/nls.mod ../../lib/mod/para.mod
 nuopc_shyfem_cap.o: ../../lib/mod/esmf.mod \
 		../../lib/mod/mod_shyfem.mod \
 		../../lib/mod/nuopc.mod 

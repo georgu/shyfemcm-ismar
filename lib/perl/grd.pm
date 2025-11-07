@@ -1242,16 +1242,19 @@ sub delete_unused
 {
     my ($self) = @_;
 
-    print STDERR "deleting unused nodes...\n";
+    my $not_used = 0;
 
     $self->make_used();
 
     my $nodes = $self->{nodes};
     foreach my $node (values %$nodes) {
       unless( $node->{used} ) {
+        $not_used++;
         $self->delete_node($node);
       }
     }
+
+    print STDERR "deleting $not_used unused nodes...\n" if $not_used;
 }
 
 sub make_used

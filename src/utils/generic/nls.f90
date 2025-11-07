@@ -79,6 +79,7 @@
 ! 16.02.2019	ggu	changed VERS_7_5_60
 ! 12.03.2019	ggu	before namelist read clean arrays
 ! 16.09.2024	ggu	new routine nls_read_string() to read extra information
+! 03.11.2025	ggu	prepare for string arrays
 !
 ! notes :
 !
@@ -865,12 +866,19 @@
 	  call para_put_array_value(name,value)
 	else if( nls_insert_variable == 3 ) then
 	  call putfnm(name,text)
+	else if( nls_insert_variable == 4 ) then
+	  goto 92
 	else if( nls_insert_variable > 4 ) then
 	  write(6,*) 'iwhat = ',nls_insert_variable
 	  stop 'error stop nls_insert_variable: internal error (1)'
 	end if
 
 	return
+   92   continue
+	write(6,*) 'array strings are not yet allowed:'
+        write(6,*) 'name: ',trim(name)
+        write(6,*) 'section: ',trim(sect)
+        stop 'error stop nls_insert_variable: no string array'
    93   continue
         write(6,*) 'no parameter with this name:'
         write(6,*) 'name: ',trim(name)

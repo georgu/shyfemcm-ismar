@@ -414,6 +414,8 @@
 			call nrdins(section)
 		else if(section.eq.'bound') then
 			call rdbnds(num)
+		else if(section.eq.'nudge') then
+			call rdnudge(num)
 		else if(section.eq.'float') then
 			!call rdfloa(nfldin)
 			call section_deleted(section,'use section $lagrg')
@@ -451,6 +453,7 @@
                 else if(section.eq.'connec')then       !connectivity
                         call nrdins(section)	
 		else					!try modules
+			goto 97
 			call modules(M_READ)
 			if( .not. hasreadsec() ) then	!sec has been handled?
 				goto 97			! -> no
@@ -727,9 +730,11 @@
 !**********************************************************************
 !**********************************************************************
 
-        subroutine getinfo(iunit)
+        subroutine getinfo_0(iunit)
 
-! gets unit of info file
+! gets unit of info filea 
+!
+! routine transferred to info_output.f90 in shyutilmpi
 
         implicit none
 

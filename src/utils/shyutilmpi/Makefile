@@ -88,7 +88,7 @@ LIBLMP  = -L$(LIBDIR) -l$(LIBSHYMPI)
 LIBFMP  = $(LIBDIR)/lib$(LIBSHYMPI).a
 
 LIBL = $(LIBLMP) $(LIBLSU) $(LIBLUT)
-LIBF = $(LIBLMP) $(LIBFSU) $(LIBFUT)
+LIBF = $(LIBFMP) $(LIBFSU) $(LIBFUT)
 
 #--------------------------------------------- test compile
 
@@ -101,6 +101,10 @@ main_dummy:
 	@echo "...running main_dummy"
 	@./main_dummy
 	@-rm -f main_dummy main_dummy.f90 main_dummy.o
+
+test_iff: test_iff.o lib
+	$(F77) $(FFLAGS) -c $@.f90 
+	$(F77) $(FFLAGS) $(INCLUDE) $(LFLAGS) $(ALL) $(LIBL) $@.o -o $@
 
 #--------------------------------------------- clean
 

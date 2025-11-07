@@ -31,6 +31,7 @@
 !
 ! 01.12.2024    ggu     written from scratch
 ! 03.12.2024    ggu     allow for optional format
+! 05.11.2025    ggu     routine getinfo() transferred here from iostr.f90
 !
 !--------------------------------------------------------------------------
 
@@ -141,4 +142,30 @@
 !================================================================
         end module mod_info_output
 !================================================================
+
+        subroutine getinfo(iunit)
+
+! gets unit of info file
+
+        implicit none
+
+        integer iunit
+
+        integer ifemop
+
+        integer, save :: iu = 0
+
+        if( iu .le. 0 ) then
+          iu = ifemop('.inf','formatted','new')
+          if( iu .le. 0 ) then
+            write(6,*) 'error in opening info file'
+            stop 'error stop getinfo'
+          end if
+        end if
+
+        iunit = iu
+
+        end
+
+!**********************************************************************
 
