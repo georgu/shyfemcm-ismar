@@ -118,7 +118,7 @@ cleanobj:
 	-rm -f *_genmod.f90
 
 cleanvar:
-	-rm -f main_dummy main_dummy.f90
+	-rm -f main_dummy main_dummy.f90 test_iff
 	-rm -f a.out core
 	-rm -f *.bak *.tmp
 	-rm -f ggg hhh
@@ -201,6 +201,7 @@ shy_util1.o: ../../../lib/mod/basin.mod \
 		../../../lib/mod/levels.mod \
 		../../../lib/mod/mod_depth.mod \
 		../../../lib/mod/mod_sort.mod 
+test_iff.o: ../../../lib/mod/intp_fem_file.mod
 topo_update.o: ../../../lib/mod/basin.mod \
 		../../../lib/mod/evgeom.mod \
 		../../../lib/mod/mod_geom.mod \

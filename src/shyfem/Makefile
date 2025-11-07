@@ -240,7 +240,8 @@ OBJ = \
       water_ren_time.o atoxi.o toxical.o \
       befor_after.o iostr.o const.o \
       test_zeta.o \
-      suboi.o nudge_admin.o \
+      suboi.o \
+      assimil.o assimil_admin.o \
 	$(SOLVER_OBJ) \
 	$(HEAT_OBJ) \
 	substress.o \
@@ -396,6 +397,7 @@ cleanlinks:
 ../../lib/mod/lgr_sedim_module.mod: lagrange_sedim.o
 ../../lib/mod/lines.mod: line_admin.o
 ../../lib/mod/meteo_forcing_module.mod: meteo_forcing.o
+../../lib/mod/mod_assimil_admin.mod: assimil_admin.o
 ../../lib/mod/mod_bndo.mod: bndo.o
 ../../lib/mod/mod_bstress.mod: substress.o
 ../../lib/mod/mod_conz.mod: conz_common.o
@@ -403,7 +405,6 @@ cleanlinks:
 ../../lib/mod/mod_keps.mod: turbulence_util.o
 ../../lib/mod/mod_lagrange.mod: lagrange_data.o
 ../../lib/mod/mod_nudge.mod: nudge.o
-../../lib/mod/mod_nudge_admin.mod: nudge_admin.o
 ../../lib/mod/mod_parwaves.mod: waves_admin.o
 ../../lib/mod/mod_renewal_time.mod: water_ren_time.o
 ../../lib/mod/mod_rstinf.mod: rstinf.o
@@ -423,6 +424,9 @@ cleanlinks:
 ../../lib/mod/stab.mod: stability.o
 ../../lib/mod/subqfx.mod: heat_admin.o
 ../../lib/mod/tide.mod: tide_utils.o
+assimil.o: ../../lib/mod/basin.mod ../../lib/mod/intp_fem_file.mod \
+		../../lib/mod/levels.mod ../../lib/mod/shympi.mod 
+assimil_admin.o: ../../lib/mod/nls.mod ../../lib/mod/para.mod
 baroclinic.o: ../../lib/mod/basin.mod ../../lib/mod/levels.mod \
 		../../lib/mod/mkonst.mod \
 		../../lib/mod/mod_diff_visc_fric.mod \
@@ -835,7 +839,6 @@ nudge.o: ../../lib/mod/basin.mod ../../lib/mod/intp_fem_file.mod \
 		../../lib/mod/mod_layer_thickness.mod \
 		../../lib/mod/mod_nudging.mod \
 		../../lib/mod/shympi.mod 
-nudge_admin.o: ../../lib/mod/nls.mod ../../lib/mod/para.mod
 nuopc_shyfem_cap.o: ../../lib/mod/esmf.mod \
 		../../lib/mod/mod_shyfem.mod \
 		../../lib/mod/nuopc.mod 

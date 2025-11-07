@@ -360,7 +360,7 @@
 !---------------------------------------------------------------
 !---------------------------------------------------------------
 
-	character*6 section,extra,last
+	character*10 section,extra,last
 	logical bdebug
 	integer nsc,num,iline
 !	integer nrdsec,nrdveci,nrdvecr
@@ -414,8 +414,8 @@
 			call nrdins(section)
 		else if(section.eq.'bound') then
 			call rdbnds(num)
-		else if(section.eq.'nudge') then
-			call rdnudge(num)
+		else if(section.eq.'assimil') then
+			call rdassimil(num)
 		else if(section.eq.'float') then
 			!call rdfloa(nfldin)
 			call section_deleted(section,'use section $lagrg')
