@@ -62,12 +62,11 @@
 	logical bback
 	integer iu
 	integer nintp,nfirst,i
-	integer nback,nlast,nval
+	integer nback,nlast,nval,ivar,iusec,inofc
 	integer, save :: nvar,idobs
 	integer, save :: icall = 0
 	integer, save :: iact = 0
 	integer, save :: nobs = 0
-	integer, save :: nmax = 0
 	real rl0,rlmax0,seo0,seb0
 	real, parameter :: flag = -999.
 	double precision dtime,atime0
@@ -98,15 +97,6 @@
 	nintp = 2
 	nback = nkn
 	bback = .true.
-
-	rl0 = 1000.
-	rlmax0 = 3.*rl0
-
-	seo0 = 0.1		!standard error observations
-	seb0 = 100.*seo0	!standard error background
-
-	file_obs = 'obsall.txt'
-	file_coords = 'obs_coords.txt'
 
 	bwrite = bdebug .and. my_id == 0
 
@@ -144,8 +134,10 @@
 
 	  allocate(passim(idass)%xobs(nobs))
 	  allocate(passim(idass)%yobs(nobs))
+	  allocate(passim(idass)%ies(nobs))
 	  passim(idass)%xobs = xobs
 	  passim(idass)%yobs = yobs
+	  passim(idass)%ies = -1		!still to be initialized
 	  deallocate(xobs,yobs)
 
 	  write(6,*) 'observations have been read: ',nobs
@@ -169,20 +161,24 @@
 
 	nobs = passim(idass)%nobs
 	if( nobs <= 0 ) return
+	ivar = passim(idass)%ivar
+	idobs = passim(idass)%idobs
 
 !---------------------------------------------------------------
 ! see if in observation window
 !---------------------------------------------------------------
 
-	if( bdebug ) call get_timeline(dtime,aline)
-	if( iff_file_has_data(idobs,dtime) ) then
-	  if( bwrite ) write(666,*) 'file has data  ',aline,dtime
-	else
-	  if( bwrite ) write(666,*) 'file has no data  ',aline,dtime
-	  return
+	if( bdebug ) then
+	  call get_timeline(dtime,aline)
+	  if( iff_file_has_data(idobs,dtime) ) then
+	    if( bwrite ) write(666,*) 'file has data  ',aline,dtime,ivar
+	  else
+	    if( bwrite ) write(666,*) 'file has no data  ',aline,dtime,ivar
+	    return
+	  end if
 	end if
 
-	if( bwrite ) write(666,*) 'doing optintp',nmax,dtime
+	if( bwrite ) write(666,*) 'doing optintp',dtime
 
 !---------------------------------------------------------------
 ! allocate arrays
@@ -207,7 +203,7 @@
 !---------------------------------------------------------------
 
 	zback2d = zback(1,:)
-	call get_bobs(nobs,xobs,yobs,zback2d,bobs)
+	call get_bobs(nobs,xobs,yobs,zback2d,bobs,passim(idass)%ies)
 
 !---------------------------------------------------------------
 ! do optimal interpolation
@@ -230,10 +226,19 @@
 !	zaux is analysis at obervation points
 
 	if( bdebug ) then
-	  call get_bobs(nobs,xobs,yobs,zanal,zaux)
+	  call get_bobs(nobs,xobs,yobs,zanal,zaux,passim(idass)%ies)
 	  if( my_id == 0 ) then
-	    write(666,*) 'final optimal interpolation: ',nobs
+	    iusec = sum(passim(idass)%iuse)
+	    inofc = count(zobs/=flag)
+	    write(666,*) 'final optimal interpolation: ',nobs,iusec,inofc,ivar
 	    do i=1,nobs
+	      if( zobs(i) == flag ) then
+		if( bobs(i) /= zaux(i) ) then
+		  write(6,*) i,bobs(i),zaux(i)
+		  stop 'error stop scalar_assimilation: bobs/=zanal'
+		end if
+		cycle
+	      end if
 	      write(666,*) i,zobs(i),bobs(i),zaux(i)
 	    end do
 	  end if
@@ -327,7 +332,7 @@
 
 !*******************************************************************
 
-	subroutine get_bobs(nobs,xobs,yobs,zback,bobs)
+	subroutine get_bobs(nobs,xobs,yobs,zback,bobs,ies)
 
 ! get value of the background grid on observation points
 
@@ -342,16 +347,15 @@
 	real yobs(nobs)
 	real zback(nlvdi,nkn)
 	real bobs(nobs)
+	integer ies(nobs)	!element where obs point is in
 
 	integer i,ie,n,ii,k
 	integer, save :: icall = 0
-	integer, save, allocatable :: ies(:)	!element where obs point is in
 	integer iaux(nobs)
 	real zp
 	real z(nobs)
 
-	if( icall == 0 ) then
-	  allocate(ies(nobs))
+	if( ies(1) == -1 ) then
 	  ies = 0
 	  iaux = 0
 

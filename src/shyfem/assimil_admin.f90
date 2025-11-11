@@ -55,6 +55,7 @@
 	  character*80      :: fileobs
 	  real, allocatable :: xobs(:)
 	  real, allocatable :: yobs(:)
+	  integer, allocatable :: ies(:)
 	end type assim
 
 	type(assim), save, allocatable :: passim(:)
