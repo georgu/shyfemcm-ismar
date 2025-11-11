@@ -164,6 +164,7 @@
 ! 18.03.2020	ggu	admrst() substituted with rst_write_restart()
 ! 13.09.2024    lrp     iatm and coupling with atmospheric model
 ! 15.11.2024    ggu     double for energy introduced
+! 10.11.2025    ggu     new section assimil and routine read_assimil()
 !
 !************************************************************
 
@@ -415,7 +416,7 @@
 		else if(section.eq.'bound') then
 			call rdbnds(num)
 		else if(section.eq.'assimil') then
-			call rdassimil(num)
+			call read_assimil(num)
 		else if(section.eq.'float') then
 			!call rdfloa(nfldin)
 			call section_deleted(section,'use section $lagrg')

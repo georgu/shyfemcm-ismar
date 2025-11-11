@@ -34,6 +34,7 @@
 ! 27.10.2025    ggu     pass 3d array, change of names
 ! 30.10.2025    ggu     bug fixes
 ! 07.11.2025    ggu     introduced iuse
+! 10.11.2025    ggu     general assimilation of scalar variables
 !
 !****************************************************************
 
@@ -41,25 +42,23 @@
 !*******************************************************************
 !*******************************************************************
 
-	subroutine scalar_assimilation(zback)
+	subroutine scalar_assimilation(idass,zback)
 
 	use basin
 	use levels
 	use shympi
 	use intp_fem_file
+	use mod_assimil_admin
 
 	implicit none
 
+	integer idass
 	real zback(nlvdi,nkn)
 
-	real, save, allocatable :: xobs(:), yobs(:)
-	real, save, allocatable :: zobss(:,:)
-	double precision, save, allocatable :: times(:)
-	real, save, allocatable :: bobs(:), zobs(:), zaux(:), zaux2(:)
+	real, allocatable :: xobs(:), yobs(:)
+	real, allocatable :: bobs(:), zobs(:), zaux(:)
 	real, save, allocatable :: zanal(:)
 	real, save, allocatable :: zback2d(:)
-	real, save, allocatable :: rl(:),rlmax(:),seo(:),seb(:)
-	real, save, allocatable :: iuse(:)
 	logical bback
 	integer iu
 	integer nintp,nfirst,i
@@ -83,6 +82,7 @@
 	double precision rd_intp_neville
 
 	if( icall == -1 ) return
+	if( idass == 0 ) return
 
 !---------------------------------------------------------------
 ! check basics and set parameters
@@ -114,7 +114,17 @@
 ! initialize at first call
 !---------------------------------------------------------------
 
-	if( icall == 0 ) then
+	if( icall == 0 ) then		!global initialization
+
+	  allocate(zanal(nkn))
+	  allocate(zback2d(nkn))
+
+	end if
+
+	if( .not. passim(idass)%binit ) then
+
+	  file_obs = passim(idass)%fileobs
+	  file_coords = passim(idass)%filecoords
 
 	  nobs = 0
 	  iu = 1
@@ -122,64 +132,48 @@
 	  call read_coords(iu,nobs,xobs,yobs)	!only count
 	  if( nobs == 0 ) icall = -1
 	  if( icall == -1 ) return
-	  allocate(xobs(nobs),yobs(nobs),zobs(nobs))
-	  allocate(bobs(nobs),zaux(nobs),zaux2(nobs))
+	  allocate(xobs(nobs),yobs(nobs))
 	  rewind(iu)
 	  call read_coords(iu,nobs,xobs,yobs)	!read coords
 	  close(iu)
 
-	  nmax = 0
-	  iu = 1
-	  open(iu,file=file_obs,status='old',form='formatted')
-	  call read_timeseries(iu,nmax,nval,times,zobss)	!only count
-	  if( nmax == 0 ) icall = -1
-	  if( icall == -1 ) return
-	  allocate(times(nmax),zobss(nmax,nval))
-	  zobss = 0
-	  rewind(iu)
-	  call read_timeseries(iu,nmax,nval,times,zobss)	!read obs
-	  close(iu)
-
-	  if( is_time_absolute(times(1)) ) then
-	    call get_absolute_ref_time(atime0)
-	    times = times - atime0		!convert to simulation time
+	  if( nobs /= passim(idass)%nobs ) then
+	    write(6,*) 'nobs: ',nobs,passim(idass)%nobs
+	    stop 'error stop scalar_assimilation: nobs incompatible'
 	  end if
 
-	  tstart = times(1)
-	  tend = times(nmax)
-
-	  if( nobs /= nval ) then
-	    write(6,*) 'nobs,nval: ',nobs,nval
-	    write(6,*) 'number of coordinates and observations are different'
-	    stop 'error stop scalar_assimilation: nobs/=nval'
-	  end if
+	  allocate(passim(idass)%xobs(nobs))
+	  allocate(passim(idass)%yobs(nobs))
+	  passim(idass)%xobs = xobs
+	  passim(idass)%yobs = yobs
+	  deallocate(xobs,yobs)
 
 	  write(6,*) 'observations have been read: ',nobs
 
 	  nvar = nobs
 	  call iff_ts_init(dtime,file_obs,nintp,nvar,idobs)
-	!write(6,*) idobs
+	  passim(idass)%idobs = idobs
 
-	  if( bdebug ) then
-	    if( my_id == 0 ) write(666,*) 'starting optintp: ',nobs
+	  if( nobs /= nvar ) then
+	    write(6,*) 'nobs,nval: ',nobs,nval
+	    write(6,*) 'number of coordinates and observations are different'
+	    stop 'error stop scalar_assimilation: nobs/=nval'
 	  end if
 
-	  allocate(zanal(nkn))
-	  allocate(zback2d(nkn))
+	  if( bwrite ) write(666,*) 'starting optintp: ',nobs
 
-	  allocate(rl(nobs),rlmax(nobs),seo(nobs),seb(nobs))
-	  allocate(iuse(nobs))
-	  iuse = 1
-	  rl = rl0
-	  rlmax = rlmax0
-	  seo = seo0
-	  seb = seb0
+	  passim(idass)%binit = .true.
 	end if
 
 	icall = icall + 1
-	iuse(5) = 0
 
-	!call iff_ts_intp(idobs,dtime,zaux2)
+	nobs = passim(idass)%nobs
+	if( nobs <= 0 ) return
+
+!---------------------------------------------------------------
+! see if in observation window
+!---------------------------------------------------------------
+
 	if( bdebug ) call get_timeline(dtime,aline)
 	if( iff_file_has_data(idobs,dtime) ) then
 	  if( bwrite ) write(666,*) 'file has data  ',aline,dtime
@@ -188,24 +182,25 @@
 	  return
 	end if
 
+	if( bwrite ) write(666,*) 'doing optintp',nmax,dtime
+
 !---------------------------------------------------------------
-! see if in observation window
+! allocate arrays
 !---------------------------------------------------------------
 
-	if( dtime < tstart .or. dtime > tend ) return
+	allocate(xobs(nobs),yobs(nobs))
+	allocate(bobs(nobs),zobs(nobs),zaux(nobs))
 
-	if( bdebug ) then
-	  if( my_id == 0 ) then
-	    write(666,*) 'doing optintp',nmax,dtime
-	  end if
-	end if
+	xobs = passim(idass)%xobs
+	yobs = passim(idass)%yobs
 
 !---------------------------------------------------------------
 ! interpolate observations in time
 !---------------------------------------------------------------
 
+	idobs = passim(idass)%idobs
 	call iff_ts_intp(idobs,dtime,zobs)
-	where( iuse == 0 ) zobs = flag
+	where( passim(idass)%iuse == 0 ) zobs = flag
 
 !---------------------------------------------------------------
 ! compute background values at observation points
@@ -219,28 +214,34 @@
 !---------------------------------------------------------------
 
 	call opt_intp(nobs,xobs,yobs,zobs,bobs                          &
-     &                  ,nback,bback,xgv,ygv,zback2d                  &
-     &                  ,rl,rlmax,seb,seo,zanal)
+     &                  ,nback,bback,xgv,ygv,zback2d			&
+     &                  ,passim(idass)%corlength			&
+     &                  ,passim(idass)%maxlength			&
+     &                  ,passim(idass)%sigback				&
+     &                  ,passim(idass)%sigobs				&
+     &                  ,zanal)
 
 !---------------------------------------------------------------
-! copy analysis back to background
+! write debug message to file
 !---------------------------------------------------------------
 
-!	zobs is old way of observation interpolation
-!	zaux2 is new way of observation interpolation
+!	zobs is observations interpolated at actual time
 !	bobs is background at observation points
 !	zaux is analysis at obervation points
 
 	if( bdebug ) then
 	  call get_bobs(nobs,xobs,yobs,zanal,zaux)
 	  if( my_id == 0 ) then
-	    write(666,*) 'final: '
+	    write(666,*) 'final optimal interpolation: ',nobs
 	    do i=1,nobs
 	      write(666,*) i,zobs(i),bobs(i),zaux(i)
 	    end do
 	  end if
-	  !if( icall > 10 ) stop
 	end if
+
+!---------------------------------------------------------------
+! copy analysis back to background
+!---------------------------------------------------------------
 
 	zback(1,:) = zanal
 
@@ -392,4 +393,144 @@
 	end
 
 !*******************************************************************
+
+        subroutine assimil_ts(tarray,sarray)
+
+	use basin
+	use levels
+	use shympi
+	use mod_assimil_admin
+
+        implicit none
+
+	real tarray(nlvdi,nkn)
+	real sarray(nlvdi,nkn)
+
+	integer, save :: icall = 0
+	integer, save :: idtemp = 0
+	integer, save :: idsalt = 0
+
+	if( icall == -1 ) return
+
+	if( icall == 0 ) then
+	  idtemp = get_id_from_var(12)
+	  idsalt = get_id_from_var(11)
+	end if
+
+	icall = icall + 1
+	
+	if( idtemp /= 0 ) call scalar_assimilation(idtemp,tarray)
+	if( idsalt /= 0 ) call scalar_assimilation(idsalt,sarray)
+
+        end
+
+!*******************************************************************
+
+        subroutine assimil_init_ids(nvar,ivars,ids)
+
+! initializes array ids
+
+	use mod_assimil_admin
+
+	implicit none
+
+	integer, intent(in) 	:: nvar
+	integer, intent(in) 	:: ivars(nvar)
+	integer, intent(inout) 	:: ids(3,nvar)
+
+	integer id,iv,ivar
+	integer idmax
+
+	ids = -1
+	idmax = 0
+	do iv=1,nvar
+	  id = get_id_from_var(ivars(iv))
+	  if( id > 0 ) then
+	    idmax = idmax + 1
+	    ids(1,idmax) = id
+	    ids(2,idmax) = iv
+	    ids(3,idmax) = ivars(iv)
+	  end if
+	end do
+
+	end
+
+!*******************************************************************
+
+        subroutine assimil_3dvars(nvar,ivars,array,ids)
+
+! goes through all variables and checks if assimilation has to be carried out
+!
+! ids on first call must be set to 0
+
+	use basin
+	use levels
+	use shympi
+	use mod_assimil_admin
+
+        implicit none
+
+	integer, intent(in) 	:: nvar
+	integer, intent(in) 	:: ivars(nvar)
+	real, intent(in) 	:: array(nlvdi,nkn,nvar)
+	integer, intent(inout) 	:: ids(3,nvar)
+
+	integer i,id,iv,ivar
+	integer idmax
+
+	if( ids(1,1) == -1 ) return
+
+	if( ids(1,1) == 0 ) call assimil_init_ids(nvar,ivars,ids)
+
+	do i=1,nvar
+	  id = ids(1,i)
+	  if( id < 0 ) exit		!no more variables to assimilate
+	  iv = ids(2,i)
+	  ivar = ids(3,i)
+	  write(6,*) 'doing assimilation for ivar = ',ivar
+	  call scalar_assimilation(id,array(:,:,iv))
+	end do
+
+        end
+
+!*******************************************************************
+
+        subroutine assimil_2dvars(nvar,ivars,array,ids)
+
+! goes through all variables and checks if assimilation has to be carried out
+!
+! ids on first call must be set to 0
+
+	use basin
+	use levels
+	use shympi
+	use mod_assimil_admin
+
+        implicit none
+
+	integer, intent(in) 	:: nvar
+	integer, intent(in) 	:: ivars(nvar)
+	real, intent(in) 	:: array(nkn,nvar)
+	integer, intent(inout) 	:: ids(2,nvar)
+
+	integer i,id,iv,ivar
+	integer idmax
+
+	if( ids(1,1) == -1 ) return
+
+	if( ids(1,1) == 0 ) call assimil_init_ids(nvar,ivars,ids)
+
+	do i=1,nvar
+	  id = ids(1,i)
+	  if( id < 0 ) exit		!no more variables to assimilate
+	  iv = ids(2,i)
+	  ivar = ivars(iv)
+	  write(6,*) 'doing assimilation for ivar = ',ivar
+	  call scalar_assimilation(id,array(:,iv))
+	end do
+
+        end
+
+!*******************************************************************
+
 

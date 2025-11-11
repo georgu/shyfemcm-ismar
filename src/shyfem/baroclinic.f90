@@ -162,6 +162,7 @@
 ! 03.12.2024    ggu     new info_output framework
 ! 05.02.2025    ggu     new info_format for T/S
 ! 24.04.2025    ggu     new value for ibarcl: ibercl == 5
+! 11.11.2025    ggu     general assimilation of T/S
 !
 ! notes :
 !
@@ -500,6 +501,8 @@
 !$OMP TASKWAIT
 
 	  !call ts_dia('after T/D')
+	  !call scalar_nudging_handle(saltv)
+	  call assimil_ts(tempv,saltv)
 
 	end if
 

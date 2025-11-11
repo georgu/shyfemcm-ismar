@@ -1,4 +1,36 @@
 
+!--------------------------------------------------------------------------
+!
+!    Copyright (C) 2025  Georg Umgiesser
+!
+!    This file is part of SHYFEM.
+!
+!    SHYFEM is free software: you can redistribute it and/or modify
+!    it under the terms of the GNU General Public License as published by
+!    the Free Software Foundation, either version 3 of the License, or
+!    (at your option) any later version.
+!
+!    SHYFEM is distributed in the hope that it will be useful,
+!    but WITHOUT ANY WARRANTY; without even the implied warranty of
+!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+!    GNU General Public License for more details.
+!
+!    You should have received a copy of the GNU General Public License
+!    along with SHYFEM. Please see the file COPYING in the main directory.
+!    If not, see <http://www.gnu.org/licenses/>.
+!
+!    Contributions to this file can be found below in the revision log.
+!
+!--------------------------------------------------------------------------
+
+! administration of assimilation routines
+!
+! revision log :
+!
+! 10.11.2025    ggu     general assimilation of scalar variables
+!
+!****************************************************************
+
 !=============================================================
 	module mod_assimil_admin
 !=============================================================
@@ -8,10 +40,13 @@
 	integer, parameter, private :: ndim = 100
 	integer, save, private :: idlast = 0
 
-	type, private :: info
+	type, private :: assim
+	  logical :: binit = .false.
 	  integer :: num
 	  integer :: nobs
 	  integer :: ivar
+	  integer :: idobs
+	  integer, allocatable :: iuse(:)
 	  real, allocatable :: corlength(:)
 	  real, allocatable :: maxlength(:)
 	  real, allocatable :: sigobs(:)
@@ -20,11 +55,9 @@
 	  character*80      :: fileobs
 	  real, allocatable :: xobs(:)
 	  real, allocatable :: yobs(:)
-	  double precision, allocatable :: times(:)
-	  real, allocatable :: zobss(:,:)
-	end type info
+	end type assim
 
-	type(info), save, target, allocatable :: pinfo(:)
+	type(assim), save, allocatable :: passim(:)
 
 !=============================================================
 	contains
@@ -35,7 +68,7 @@
 	integer, save :: icall = 0
 
 	if( icall /= 0 ) return
-	allocate(pinfo(ndim))
+	allocate(passim(ndim))
 	icall = 1
 
 	end
@@ -52,7 +85,7 @@
 	is_num_in_list = .true.
 
 	do i=1,idlast
-	  if( pinfo(i)%num == num ) return
+	  if( passim(i)%num == num ) return
 	end do
 
 	is_num_in_list = .false.
@@ -71,10 +104,30 @@
 	is_var_in_list = .true.
 
 	do i=1,idlast
-	  if( pinfo(i)%ivar == ivar ) return
+	  if( passim(i)%ivar == ivar ) return
 	end do
 
 	is_var_in_list = .false.
+
+	end
+
+!*************************************************************
+
+	function get_id_from_var(ivar)
+
+	integer get_id_from_var
+	integer ivar
+
+	integer i
+
+	get_id_from_var = 0
+
+	do i=1,idlast
+	  if( passim(i)%ivar == ivar ) then
+	    get_id_from_var = i
+	    return
+	  end if
+	end do
 
 	end
 
@@ -92,6 +145,8 @@
 	  stop 'error stop get_new_id: idlast > ndim'
 	end if
 
+	passim(idlast)%binit = .false.
+
 	get_new_id = idlast
 
 	end
@@ -100,7 +155,7 @@
 	end module mod_assimil_admin
 !=============================================================
 
-	subroutine rdassimil(num)
+	subroutine read_assimil(num)
 
 	use mod_assimil_admin
 
@@ -113,21 +168,32 @@
 	if( num <= 0 ) then
 	  write(6,*) 'section assimil ',num,' not allowed'
 	  write(6,*) 'must specify the number of the nudging section'
-	  stop 'error stop rdassimil: num <= 0 or not given'
+	  stop 'error stop read_assimil: num <= 0 or not given'
 	end if
 
 	if( is_num_in_list(num) ) then
 	  write(6,*) 'section assimil ',num,' is already defined'
-	  stop 'error stop rdassimil: section not unique'
+	  stop 'error stop read_assimil: section not unique'
 	end if
 
-	call init_assimil_section(num)
+	call assimil_init_section(num)
 
 	end
 
 !*************************************************************
 
-	subroutine init_assimil_section(num)
+	subroutine check_assimil
+
+	use mod_assimil_admin
+
+	implicit none
+
+
+	end
+
+!*************************************************************
+
+	subroutine assimil_init_section(num)
 
 	use mod_assimil_admin
 	use para
@@ -152,6 +218,7 @@
 	call para_add_array_value('maxlength',0.)
 	call para_add_array_value('sigobs',0.)
 	call para_add_array_value('sigback',0.)
+	call para_add_array_value('iuse',1.)
 
 	call addfnm('filecoords',' ')
 	call addfnm('fileobs',' ')
@@ -165,52 +232,62 @@
 
 	id = get_new_id()	
 
-	allocate(pinfo(id)%corlength(nobs))
-	allocate(pinfo(id)%maxlength(nobs))
-	allocate(pinfo(id)%sigobs(nobs))
-	allocate(pinfo(id)%sigback(nobs))
+	allocate(passim(id)%corlength(nobs))
+	allocate(passim(id)%maxlength(nobs))
+	allocate(passim(id)%sigobs(nobs))
+	allocate(passim(id)%sigback(nobs))
+	allocate(passim(id)%iuse(nobs))
 
-	pinfo(id)%nobs = nobs
-	pinfo(id)%ivar = ivar
+	passim(id)%nobs = nobs
+	passim(id)%ivar = ivar
 
-	call para_set_array_value('corlength',nobs,pinfo(id)%corlength)
-	call para_set_array_value('maxlength',nobs,pinfo(id)%maxlength)
-	call para_set_array_value('sigobs',nobs,pinfo(id)%sigobs)
-	call para_set_array_value('sigback',nobs,pinfo(id)%sigback)
+	call para_set_array_value('corlength',nobs,passim(id)%corlength)
+	call para_set_array_value('maxlength',nobs,passim(id)%maxlength)
+	call para_set_array_value('sigobs',nobs,passim(id)%sigobs)
+	call para_set_array_value('sigback',nobs,passim(id)%sigback)
+	call para_set_array_value('iuse',nobs,passim(id)%iuse)
 
-	call getfnm('filecoords',pinfo(id)%filecoords)
-	call getfnm('fileobs',pinfo(id)%fileobs)
+	call getfnm('filecoords',passim(id)%filecoords)
+	call getfnm('fileobs',passim(id)%fileobs)
 
-	if( any( pinfo(id)%corlength<=0 ) ) goto 97
-	if( any( pinfo(id)%sigobs<=0 ) ) goto 97
-	if( any( pinfo(id)%sigback<=0 ) ) goto 97
-	where( pinfo(id)%maxlength <= 0. )
-	  pinfo(id)%maxlength = 3.*pinfo(id)%corlength
+	if( any( passim(id)%corlength<=0 ) ) goto 97
+	if( any( passim(id)%sigobs<=0 ) ) goto 97
+	if( any( passim(id)%sigback<=0 ) ) goto 97
+	where( passim(id)%maxlength <= 0. )
+	  passim(id)%maxlength = 3.*passim(id)%corlength
 	end where
-	if( pinfo(id)%filecoords == ' ' ) goto 96
-	if( pinfo(id)%fileobs == ' ' ) goto 96
+	if( passim(id)%filecoords == ' ' ) goto 96
+	if( passim(id)%fileobs == ' ' ) goto 96
 
 	call delete_section('assimil')
 
 	return
    96	continue
 	write(6,*) 'both filecoords and fileobs must be given'
-	write(6,*) 'filecoords = ',trim(pinfo(id)%filecoords)
-	write(6,*) 'fileobs    = ',trim(pinfo(id)%fileobs)
-	stop 'error stop init_assimil_section: file names missing'
+	write(6,*) 'filecoords = ',trim(passim(id)%filecoords)
+	write(6,*) 'fileobs    = ',trim(passim(id)%fileobs)
+	stop 'error stop assimil_init_section: file names missing'
    97	continue
 	write(6,*) 'some parameters have value 0 which is not allowed'
-	write(6,*) 'corlength: ',pinfo(id)%corlength
-	write(6,*) 'sigobs: ',pinfo(id)%sigobs
-	write(6,*) 'sigback: ',pinfo(id)%sigback
-	stop 'error stop init_assimil_section: error in parameters'
+	write(6,*) 'corlength: ',passim(id)%corlength
+	write(6,*) 'sigobs: ',passim(id)%sigobs
+	write(6,*) 'sigback: ',passim(id)%sigback
+	stop 'error stop assimil_init_section: error in parameters'
    98	continue
 	write(6,*) 'ivar has already be specified: ',ivar
 	write(6,*) 'can only specify one section with this ivar'
-	stop 'error stop init_assimil_section: ivar not unique'
+	stop 'error stop assimil_init_section: ivar not unique'
    99	continue
 	write(6,*) 'nobs,ivar: ',nobs,ivar
-	stop 'error stop init_assimil_section: nobs or ivar not set'
+	stop 'error stop assimil_init_section: nobs or ivar not set'
+	end
+
+!*************************************************************
+
+	subroutine assimil_ts0
+
+	implicit none
+
 	end
 
 !*************************************************************

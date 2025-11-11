@@ -241,7 +241,7 @@ OBJ = \
       befor_after.o iostr.o const.o \
       test_zeta.o \
       suboi.o \
-      assimil.o assimil_admin.o \
+      assimil_admin.o assimil.o \
 	$(SOLVER_OBJ) \
 	$(HEAT_OBJ) \
 	substress.o \
@@ -425,7 +425,9 @@ cleanlinks:
 ../../lib/mod/subqfx.mod: heat_admin.o
 ../../lib/mod/tide.mod: tide_utils.o
 assimil.o: ../../lib/mod/basin.mod ../../lib/mod/intp_fem_file.mod \
-		../../lib/mod/levels.mod ../../lib/mod/shympi.mod 
+		../../lib/mod/levels.mod \
+		../../lib/mod/mod_assimil_admin.mod \
+		../../lib/mod/shympi.mod 
 assimil_admin.o: ../../lib/mod/nls.mod ../../lib/mod/para.mod
 baroclinic.o: ../../lib/mod/basin.mod ../../lib/mod/levels.mod \
 		../../lib/mod/mkonst.mod \
