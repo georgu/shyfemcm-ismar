@@ -241,7 +241,7 @@ OBJ = \
       befor_after.o iostr.o const.o \
       test_zeta.o \
       suboi.o \
-      assimil_admin.o assimil.o \
+      assimil_admin.o assimil.o beaching.f90 \
 	$(SOLVER_OBJ) \
 	$(HEAT_OBJ) \
 	substress.o \
@@ -398,6 +398,7 @@ cleanlinks:
 ../../lib/mod/lines.mod: line_admin.o
 ../../lib/mod/meteo_forcing_module.mod: meteo_forcing.o
 ../../lib/mod/mod_assimil_admin.mod: assimil_admin.o
+../../lib/mod/mod_beaching.mod: beaching.o
 ../../lib/mod/mod_bndo.mod: bndo.o
 ../../lib/mod/mod_bstress.mod: substress.o
 ../../lib/mod/mod_conz.mod: conz_common.o
@@ -446,6 +447,8 @@ bcvel.o: ../../lib/mod/basin.mod ../../lib/mod/levels.mod \
 		../../lib/mod/mod_hydro_vel.mod \
 		../../lib/mod/mod_internal.mod \
 		../../lib/mod/mod_layer_thickness.mod \
+		../../lib/mod/shympi.mod 
+beaching.o: ../../lib/mod/basin.mod ../../lib/mod/mod_geom.mod \
 		../../lib/mod/shympi.mod 
 bnd_routines.o: ../../lib/mod/basin.mod \
 		../../lib/mod/intp_fem_file.mod \

@@ -512,6 +512,7 @@
 	call handle_offline(1)
 
 	call init_nudging
+	call beaching_init
 
 	call trace_point('handle do_init')
 	call do_init

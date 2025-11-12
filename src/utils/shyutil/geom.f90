@@ -62,7 +62,7 @@
 	integer, allocatable, save :: lenkiiv(:) !vertex number of node in elem
 	integer, allocatable, save :: linkv(:)   !node numbers
 
-	integer, allocatable, save :: iboundv(:)
+	integer, allocatable, save :: iboundv(:) !1: material bound
 	integer, allocatable, save :: ieltv(:,:)
 	integer, allocatable, save :: kantv(:,:)
 
@@ -136,14 +136,14 @@
 
 !------------------------------------------------------------------
 
-	pure function is_boundary_node(k)
+	pure function is_material_boundary_node(k)
 
-	logical is_boundary_node
+	logical is_material_boundary_node
 	integer, intent(in) :: k
 
-	is_boundary_node = ( iboundv(k) /= 0 )
+	is_material_boundary_node = ( iboundv(k) /= 0 )
 
-	end function is_boundary_node
+	end function is_material_boundary_node
 
 !------------------------------------------------------------------
 
