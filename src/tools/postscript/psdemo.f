@@ -31,17 +31,21 @@
 !
 ! 01.01.1992	ggu	routines written from scratch
 ! 11.02.1994	ggu	copyright notice added to all files
+! 13.11.2025	ggu	rombus page added
 !
 !--------------------------------------------------------------------------
 
 	program psdemo
 
 	real xx(4),yy(4)
+	real xr(4),yr(4)
 
 c data for filling routine
 
-	data xx /50.,50.,60.,90./
+	data xx /50.,50.,60.,90./	!strange quadrilateral
 	data yy /50.,90.,60.,50./
+	data xr /70.,50.,30.,50./	!rhombus
+	data yr /50.,70.,50.,30./
 
 c tests HCBS graphic routines for fortran under X11
 
@@ -118,38 +122,79 @@ c clipping happens by default at the outer edge of the viewport
 
 	call qend
 
-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+!-------------------------------------------------------------
 
-c this example shows how to fill an arbitrary shape
+! this example shows how to fill an arbitrary shape
 
 	call qstart
 
-c we compute x in order to not have distorsion
-c ...or we can simply call qrcfy
+! we compute x in order to not have distorsion
+! ...or we can simply call qrcfy
 
 	call qworld(0.,0.,100.,100.)
 	call qrcfy
 	
-c qafill fills the shape defined by xx,yy with the actual foreground color
-c the first argument gives the number of points in xx,yy
-c the vectors xx,yy are set in data statement above
+! qafill fills the shape defined by xx,yy with the actual foreground color
+! the first argument gives the number of points in xx,yy
+! the vectors xx,yy are set in data statement above
 
 	call qgray(0.4)
 	call qafill(4,xx,yy)
 
-c now translate the triangle and fill with arbitrary color
+! now translate the shape and fill with arbitrary color
 
-	do i=1,4
-	  xx(i) = xx(i) - 25.
-	  yy(i) = yy(i) - 25.
-	end do
+	xx = xx - 25.
+	yy = yy - 25.
 
 	call qrgb(0.3,0.8,0.5)
 	call qafill(4,xx,yy)
 
 	call qend
 
-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+!-------------------------------------------------------------
+
+! this example shows how to draw and fill a polygon
+
+	call qstart
+
+! we compute x in order to not have distorsion
+! ...or we can simply call qrcfy
+
+	call qworld(0.,0.,100.,100.)
+	call qrcfy
+	
+! qafill fills the shape defined by xx,yy with the actual foreground color
+! qpoly draws the shape defined by xx,yy with the actual foreground color
+! the first argument gives the number of points in xx,yy
+! the vectors xr,yr are set in data statement above
+! the points define a rhombus
+
+! only plot (outline) the shape
+
+	call qgray(0.4)
+	call qpoly(4,xr,yr)
+
+! now translate and fill with arbitrary color (no outline)
+
+	xr = xr - 25.
+	yr = yr - 25.
+
+	call qrgb(0.3,0.8,0.5)
+	call qafill(4,xr,yr)
+
+! now translate, outline, and fill with different colors
+
+	xr = xr + 50.
+	yr = yr + 50.
+
+	call qrgb(0.6,0.4,0.2)
+	call qafill(4,xr,yr)
+	call qgray(0.2)
+	call qpoly(4,xr,yr)
+
+	call qend
+
+!-------------------------------------------------------------
 
 c here we plot colorbars - one in shades of gray, and one in color
 c ... for the color we use the call to qhue()
@@ -324,6 +369,8 @@ cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 c call qclose at the end of the session
 
 	call qclose
+
+        write(6,*) 'End of routine. Plots are in file demo.ps'
 
 	end
 

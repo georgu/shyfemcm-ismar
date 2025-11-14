@@ -93,6 +93,8 @@
 ! 24.10.2024    ggu     new option smooth
 ! 01.10.2025    ggu     new option ncdate0
 ! 10.10.2025    ggu     new smooth option for fem files
+! 11.11.2025    ggu     new option layer
+! 13.11.2025    ggu     new option stnames
 !
 !************************************************************
 
@@ -140,6 +142,7 @@
 
 	logical, save :: bsplit			= .false.
 	logical, save :: bsplitall		= .false.
+	logical, save :: bstnames		= .false.
         character*80, save :: nodelist		= ' '
         character*80, save :: nodefile		= ' '
 
@@ -215,6 +218,8 @@
 
         character*80, save :: sncglobal		= ' '
         character*80, save :: ncdate0		= ' '
+
+	integer, save :: layer			= 0
 
 	integer, save :: istep			= 0
 	integer, save :: avermode		= 0
@@ -388,6 +393,9 @@
         call clo_add_option('rfreq freq',1. &
      &                  ,'only process every freq record')
 
+        call clo_add_option('layer l',0. &
+     &                  ,'only process layer l')
+
 	call clo_add_com('    rec in rmax can be negative')
 	call clo_add_com('    this indicates rec records from the back')
 
@@ -450,8 +458,10 @@
         call clo_add_option('split',.false.,'split file for variables')
 
 	if( bshowall .or. bflxfile .or. bextfile ) then
+          call clo_add_option('stnames',.false. &
+     &		,'creates time series files with station names')
           call clo_add_option('splitall',.false. &
-     &		,'splits file (EXT and FLX) for extended data')
+     &		,'splits file (FLX) for extended data')
 	end if
 
 	if( bshowall .or. binputfile ) then
@@ -777,6 +787,8 @@
         call clo_get_option('rmax',rmax)
         call clo_get_option('rfreq',rfreq)
 
+        call clo_get_option('layer',layer)
+
         call clo_get_option('out',bout)
         call clo_get_option('outformat',outformat)
         call clo_get_option('catmode',catmode)
@@ -786,6 +798,7 @@
         call clo_get_option('split',bsplit)
 	if( bshowall .or. bflxfile .or. bextfile ) then
           call clo_get_option('splitall',bsplitall)
+          call clo_get_option('stnames',bstnames)
 	end if
         call clo_get_option('checkdt',bcheckdt)
 	if( bshowall .or. binputfile ) then

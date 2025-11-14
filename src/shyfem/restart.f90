@@ -100,6 +100,7 @@
 ! 26.01.2025    ggu     fix mpi bug for ibfm /= 0 (only master writes)
 ! 08.03.2025    ggu     extracted mod_restart in its own file
 ! 09.03.2025    ggu     call shympi_barrier after finishing restart file
+! 15.11.2025	ggu	check compatibility of concentrations
 !
 ! notes :
 !
@@ -901,11 +902,13 @@
 	logical, parameter :: bn = .false.
 
 	logical rst_want_restart
+	real getpar
 
         read(iunit,end=97) idfile,nvers,nrec
         if( nvers .lt. 3 ) goto 98
 
         ierr = 0
+	iconz = nint(getpar('iconz'))
 
 	nvers_rst = nvers
 
@@ -992,14 +995,14 @@
 
           if( nvers .ge. 6 ) then
 	    id = id_conz_rst
-            read(iunit) iconz
-	    iconz_rst = iconz
-	    if( iconz > 0 ) then
+            read(iunit) iconz_rst
+	    if( iconz /= iconz_rst ) goto 95
+	    if( iconz_rst > 0 ) then
 	      call rst_add_flag(id,iflag)
 	      if( rst_want_restart(id) ) then
-	        call read_restart_conz(iunit,iconz)
+	        call read_restart_conz(iunit,iconz_rst)
 	      else
-	        call skip_restart_conz(iunit,iconz)
+	        call skip_restart_conz(iunit,iconz_rst)
 	      end if
 	    end if
 	  end if
@@ -1066,6 +1069,11 @@
 	write(6,*) 'rst_read_record: error in idfrst... ' // 'no restart format'
 	ierr = 7
 	return
+   95   continue
+        write(6,*) 'number of concentrations are not compatible'
+        write(6,*) 'concentrations in restart file: ',iconz_rst
+        write(6,*) 'concentrations in simulation:   ',iconz
+        stop 'error stop rst_read_record: concentrations not compatible'
    96   continue
         write(6,*) 'error reading header of restart file...'
         stop 'error stop rst_read_record: cannot read header'

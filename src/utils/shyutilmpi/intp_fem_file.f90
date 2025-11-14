@@ -118,6 +118,7 @@
 ! 06.11.2025    ggu     new routine iff_init_global_simplified()
 ! 06.11.2025    ggu     introduced boriginal
 ! 07.11.2025    ggu     set time array out of iff_space_interpolate()
+! 10.11.2025    ggu     introduced iuout, better info writing
 !
 !****************************************************************
 !
@@ -259,9 +260,21 @@
 	integer, parameter :: iflow = 0			!unit for flow output
 	logical, save :: bflow = (iflow/=0)		!traces flow of calls
 
+        integer, save :: iuout = 0              !unit for info output (0->6)
+
 !================================================================
 	contains
 !================================================================
+
+	subroutine iff_set_info_unit(iunit)
+
+        integer iunit
+
+        iuout = iunit
+
+        end subroutine iff_set_info_unit
+
+!****************************************************************
 
 	subroutine iff_print_info(idp,iunit,bdebug)
 
@@ -271,6 +284,8 @@
 
 	integer id,ids,ide,iu
 	logical debug
+	logical, parameter :: bfemdata = .false.
+	logical, parameter :: bfiledata = .true.
 	integer ilast,ifirst
 	integer, parameter :: name_length = 37
 	character(len=name_length) :: name
@@ -278,10 +293,16 @@
 
 	type(info), pointer :: p
 
-	iu = 6
+        if( iuout > 0 ) then
+          iu = iuout
+          debug = .true.
+        else
+          iu = 6
+          debug = .false.
+        end if
+
 	if( present(iunit) ) iu = iunit
 	if( iu <= 0 ) iu = 6
-	debug = .false.
 	if( present(bdebug) ) debug = bdebug
 
 	if( idp <= 0 ) then
@@ -310,27 +331,30 @@
       &			,descrp(1:10),trim(name)
 	end do
 
-	if( .not. debug ) return
+	if( .not. debug .or. idp <= 0 ) return
 
-	write(iu,*) 'debug information:'
+	write(iu,*) 'debug information: ',idp,ids,ide
+
 	do id=ids,ide
+	  p => pinfo(id)
 	  write(iu,*) id,pinfo(id)%nvers,pinfo(id)%ntype,pinfo(id)%irec
 	  write(iu,*) id,pinfo(id)%np,pinfo(id)%lmax,pinfo(id)%nexp
 	  write(iu,*) id,pinfo(id)%ilast,pinfo(id)%bonepoint
 	  write(iu,*) id,pinfo(id)%bfemdata,pinfo(id)%bfiledata
+	  write(iu,*) id,pinfo(id)%vconst
 	  !write(iu,*) 11,id,pinfo(id)%time_file
 	  !write(iu,*) 12,id,pinfo(id)%time
-	  if( pinfo(id)%bfemdata ) then
+	  if( bfemdata .and. pinfo(id)%bfemdata ) then
 	  write(iu,*) id,'fem variables: nodes,time,data'
-	  write(iu,*) id,pinfo(id)%nodes
+          if( allocated(pinfo(id)%nodes)) write(iu,*) id,pinfo(id)%nodes
 	  write(iu,*) id,pinfo(id)%time
 	  write(iu,*) id,pinfo(id)%data
 	  end if
-	  if( pinfo(id)%bfiledata ) then
+	  if( bfiledata .and. pinfo(id)%bfiledata ) then
 	  write(iu,*) id,'file variables: hlv,time,data'
-	  write(iu,*) id,pinfo(id)%hlv_file
-	  write(iu,*) id,pinfo(id)%time_file
-	  write(iu,*) id,pinfo(id)%data_file
+          if( allocated(p%hlv_file) ) write(iu,*) id,p%hlv_file
+          write(iu,*) id,p%time_file
+          if( allocated(p%data_file) ) write(iu,*) id,p%data_file
 	  end if
 	  !write(iu,*) id,pinfo(id)%ilhkv_file
 	  !write(iu,*) id,pinfo(id)%hd_file

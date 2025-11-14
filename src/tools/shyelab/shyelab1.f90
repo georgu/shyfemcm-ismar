@@ -84,6 +84,7 @@
 ! 03.10.2025    ggu     more on sumvar
 ! 10.10.2025    ggu     bug fix for vorticity computation (belem was true)
 ! 17.10.2025    ggu     prepared for elemental values
+! 11.11.2025    ggu     updated with layer indication
 !
 !**************************************************************
 
@@ -310,6 +311,8 @@
 	  call shy_print_descriptions(nvar,ivars,strings,shorts)
 	end if
 
+        idims(4,:) = ivars(:)
+
 	if( binfo ) return
 
 	!--------------------------------------------------------------
@@ -495,11 +498,11 @@
 	  end if
 
 	  if( bverb .and. iv == 1 ) then
-	    call shy_write_time(.true.,dtime,atime,0)
+	    call shy_write_time(.true.,dtime,atime,nvar,0)
 	  end if
 
 	  if( bwrite ) then
-	    call shy_write_min_max(nlvdi,nn,il,lmax,ivar,cv3)
+	    call shy_write_min_max(nlvdi,nn,il,lmax,layer,ivar,cv3)
 	  end if
 
 	  if( btrans ) then

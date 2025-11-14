@@ -53,6 +53,7 @@
 ! 03.02.2020	ggu	cleaned, new headers for split
 ! 06.03.2020	ggu	check for time step
 ! 12.06.2025	ggu	prepare for writing station name
+! 10.11.2025	ggu	error if file is not existing
 !
 !**************************************************************
 
@@ -125,6 +126,7 @@
 	double precision atime,atfirst,atlast,atold,atnew,atwrite,atime0
 	character*10 :: short
 	character*40 :: full
+	character*40 :: post
 	integer, parameter :: niu = 6
 	character*5 :: what(niu) = (/'velx ','vely ','zeta ' &
      &				,'speed','dir  ','all  '/)
@@ -156,6 +158,8 @@
 
 	call elabutil_init('EXT','extelab')
 
+	call shyelab_unit_set_new_format(bstnames) !write ts with names
+
 	!--------------------------------------------------------------
 	! open input files
 	!--------------------------------------------------------------
@@ -163,6 +167,7 @@
 	call clo_reset_files
 	call clo_get_next_file(file)
 	nin = ifileo(0,file,'unform','old')
+        if( nin <= 0 ) goto 98
 
         call populate_strings
 
@@ -462,8 +467,10 @@
 
 	if( .not. bquiet ) then
 	 if( bsplit ) then
+	  post=''
+	  if( bstnames ) post = '.station.txt'
 	  write(6,*) 'output written to following files: '
-	  write(6,*) '  what.dim.node.txt'
+	  write(6,*) '  what.dim.node' // trim(post)
 	  write(6,*) 'what is one of the following:'
 	  call write_special_vars(niu,what,descrp)	!write hydro variables
 	  if( nvar > 2 ) then
@@ -473,8 +480,8 @@
 	  write(6,*) '  2d for depth averaged variables'
 	  write(6,*) '  3d for output at each layer'
 	  call compute_range(knausm,range)
-	  write(6,1123) ' node is either name of station ' // &
-     &		'or consecutive node numbering: ',trim(range)
+	  write(6,1123) ' node is consecutive node numbering: ',trim(range)
+	  if( bstnames ) write(6,1123) ' station is name of station'
 	 else if( boutput ) then
 	  write(6,*) 'output written to file out.ext'
 	 end if
@@ -504,6 +511,9 @@
 	write(6,*) 'error reading header of file'
 	write(6,*) 'maybe the file is empty'
 	stop 'error stop extelab: empty header'
+   98	continue
+	write(6,*) 'cannot open file ',trim(file)
+	stop 'error stop extelab: no such file'
    99	continue
 	write(6,*) 'error writing to file unit: ',nb
 	stop 'error stop extelab: write error'

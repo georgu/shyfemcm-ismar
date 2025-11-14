@@ -28,6 +28,7 @@
 ! revision log :
 !
 ! 12.11.2025    ggu     created from scratch
+! 13.11.2025    ggu     added burrying
 !
 !**************************************************************
 
@@ -35,9 +36,16 @@
 	module mod_beaching
 !==============================================================
 
-	logical, save :: bbeach = .false.
+	logical, save :: bbeach = .true.
 	logical, save :: bbeach_debug = .true.
+	integer, save :: iudbg = 889
+
 	integer, save, allocatable :: beach_node(:)
+	real, save, allocatable :: beach_value(:,:)
+	real, save, allocatable :: burry_value(:,:)
+	real, save :: beach_rate = 0.3
+	real, save :: burry_rate = 0.1
+        double precision, save :: da_beach(5)
 
 !==============================================================
 	end module mod_beaching
@@ -51,6 +59,7 @@
 	use mod_beaching
 	use shympi
 	use mod_geom
+	use mod_conz
 
 	implicit none
 
@@ -61,16 +70,32 @@
 	character*10 type
 
 	logical is_open_boundary_node
+        logical has_output_d
 
 	integer, allocatable :: node_area_code(:)
 	real, allocatable :: value(:)
 
 	if( .not. bbeach ) return
 
+	nvar = iconz
+	b2d = .true.
+
+	if( .not. bbeach_debug ) iudbg = 0
+
+	if( beach_rate + burry_rate > 1. ) then
+	  write(6,*) 'sum of beach_rate + burry_rate > 1'
+	  write(6,*) beach_rate,burry_rate,beach_rate+burry_rate
+	  stop 'error stop beaching_init: rate too high'
+	end if
+
 	allocate(beach_node(nkn))
+	allocate(beach_value(nkn,nvar))
+	allocate(burry_value(nkn,nvar))
 	allocate(node_area_code(nkn))
 	allocate(value(nkn))
 	node_area_code = -1
+        beach_value = 0
+        burry_value = 0
 
 	do ie=1,nel
 	  ia = iarv(ie)
@@ -96,20 +121,113 @@
 	
 	call shympi_exchange_2d_node(beach_node)
 
+        call init_output_d('itmcon','idtcon',da_beach)
+        if( has_output_d(da_beach) ) then
+          call shyfem_init_scalar_file('beach',nvar,b2d,id)
+          da_beach(4) = id
+          call shyfem_init_scalar_file('burry',nvar,b2d,id)
+          da_beach(5) = id
+        end if
+
 	if( .not. bbeach_debug ) return
 
-	nvar = 1
-	ivar = 75		!general index
-	b2d = .true.
 	type = 'beachi'
 	dtime = 0.
 	value = beach_node
+
+	nvar = 1
+	ivar = 75		!general index
 
 	call shyfem_init_scalar_file(type,nvar,b2d,id)
 	call shy_write_scalar2d(id,type,dtime,nvar,ivar,value)
 	call shy_close_output_file(id)
 
 	end
+
+!**************************************************************
+
+        subroutine beaching_run
+
+        use basin
+        use levels
+	use mod_beaching
+	use mod_conz
+	use shympi
+
+        implicit none
+
+	logical bwrite
+        integer k,ivar,id,iv,nvar,i,lmax
+        real cb,db,c1
+        real cu,du,cl
+        double precision dtime
+        double precision cbsum,cusum
+        character*20 aline
+
+        logical next_output_d
+
+	if( .not. bbeach ) return
+
+	bwrite = iudbg > 0 .and. my_id == 0
+
+        nvar = iconz
+        cbsum = 0.
+        cusum = 0.
+
+        do k=1,nkn
+	  lmax = ilhkv(k)
+          do iv=1,nvar
+            c1 = conzv(1,k,iv)
+            cl = conzv(lmax,k,iv)
+            cb = beach_value(k,iv)
+            cu = burry_value(k,iv)
+            db = beach_rate * c1
+            du = burry_rate * cl
+            if( beach_node(k) > 0 ) then
+              c1 = c1 - db
+              cb = cb + db
+              conzv(1,k,iv) = c1
+              beach_value(k,iv) = cb
+	    end if
+            cl = cl - du
+            cu = cu + du
+            conzv(lmax,k,iv) = cl
+            burry_value(k,iv) = cu
+            cbsum = cbsum + cb
+            cusum = cusum + cu
+          end do
+        end do
+
+
+	if( bwrite ) then
+          call get_act_dtime(dtime)
+          call get_act_timeline(aline)
+
+          write(iudbg,*) 'bsum: ',aline,cbsum,cusum
+	  do iv=1,nvar
+	   write(iudbg,*) iv,maxval(beach_value(:,iv)),maxval(burry_value(:,iv))
+	  end do
+	  do k=1,0,nkn/10
+	    lmax = ilhkv(k)
+	    write(iudbg,*) conzv(1,k,4),conzv(lmax,k,4),conzv(1,k,1)
+	  end do
+	  flush(iudbg)
+	end if
+
+        if( next_output_d(da_beach) ) then
+          id = nint(da_beach(4))
+          do iv=1,nvar
+            ivar = 300 + iv
+            call shy_write_scalar_record(id,dtime,ivar,1,beach_value(:,iv))
+          end do
+          id = nint(da_beach(5))
+          do iv=1,nvar
+            ivar = 300 + iv
+            call shy_write_scalar_record(id,dtime,ivar,1,burry_value(:,iv))
+          end do
+        end if
+
+        end
 
 !**************************************************************
 

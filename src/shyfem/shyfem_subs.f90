@@ -619,6 +619,7 @@
 	   call ecological_module	!ecological model
            call atoxi3d			!toxi
            call mercury_module
+	   call beaching_run
 
            call lagrange
 

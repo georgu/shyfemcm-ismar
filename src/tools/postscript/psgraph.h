@@ -38,6 +38,7 @@
  * 28.04.2004	ggu	new routines dash, rotate text and arc
  * 21.01.2009	ggu	new routine for text centering inserted
  * 12.06.2009	ggu	new routines for scale factor and no clipping
+ * 13.11.2025	ggu	new routines saving colors and plotting polygon
  *
 \************************************************************************/
 
@@ -67,6 +68,7 @@ void PsLine( float x1 , float y1 , float x2 , float y2 );
 void PsMove( float x , float y );
 void PsPlot( float x , float y );
 void PsPoint( float x , float y );
+void PsPolyPlot( int ndim , float *x , float *y );
 
 void PsAreaFill( int ndim , float *x , float *y );
 void PsRectFill( float x1 , float y1 , float x2 , float y2 );
@@ -89,6 +91,8 @@ void PsSetHue( float hue );
 void PsSetDefaultColorTable( int color_table );
 void PsSetGenericColor( float color );
 void PsPaintWhite( int ipaint );
+void PsSaveColor( void );
+void PsRestoreColor( void );
 
 void PsInitColorTable( int size );
 void PsSetColorTable( int i , int type , float c1 , float c2 , float c3 );

@@ -48,6 +48,8 @@
 ! 13.10.2021	ggu	restart for mpi - compatibility with older versions
 ! 28.04.2023	ggu	update function calls for belem
 ! 16.04.2025	ggu	contau eliminated, added wsettlv
+! 11.11.2025	ggu	only deallocate if baccum
+! 15.11.2025	ggu	check compatibility of concentrations
 !
 !******************************************************************
 
@@ -114,9 +116,11 @@
         if( nkn_conz > 0 ) then
           deallocate(conzv)
           deallocate(cnv)
-          deallocate(conz_aver)
-          deallocate(conz_min)
-          deallocate(conz_max)
+          if( baccum ) then
+            deallocate(conz_aver)
+            deallocate(conz_min)
+            deallocate(conz_max)
+          end if
         end if
 
         ncs_conz = ncs
@@ -148,6 +152,16 @@
         mod_conz_is_initialized = ( nkn_conz > 0 )
 
         end function mod_conz_is_initialized
+
+!*****************************************************
+
+        function mod_conz_get_iconz()
+
+        integer mod_conz_get_iconz
+
+        mod_conz_get_iconz = ncs_conz
+
+        end function mod_conz_get_iconz
 
 !==================================================================
         end module mod_conz
@@ -223,7 +237,7 @@
 
         integer iunit,ic
 
-        integer k,l,i
+        integer k,l,i,ncs
 	logical, parameter :: belem = .false.
 	real, allocatable :: conz_aux(:,:,:)
 

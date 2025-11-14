@@ -48,6 +48,7 @@
  * 23.02.2010	ggu	new routines qcolor and qtdef
  * 11.10.2015	ggu	new routines qopenfile to open with given file name
  * 14.09.2016	ggu	code to ignore underscore
+ * 13.11.2025	ggu	new routine qpoly() and saving/restoring color
  *
 \************************************************************************/
 
@@ -74,6 +75,7 @@
  *	qmove(x,y)		moves to (x,y)
  *	qplot(x,y)		draws line from actual position to (x,y)
  *	qpoint(x,y)		draws point at (x,y)
+ *	qpoly(n,x,y)		draws polygon x,y (n points)
  *
  *	qafill(n,x,y)		fills x,y (n points) with actual color
  *	qrfill(x1,y1,x2,y2)	fills rectangle with actual color
@@ -97,6 +99,8 @@
  *	qcolor(color)		sets generic color
  *	qwhite(bpaint)		paint with white
  *	qtdef(ictab)		sets default color table
+ *	qsavecolor()		saves actual color
+ *	qrestorecolor()		restores color saved previously
  *
  *	qinitct(isize)			make color table of size isize
  *	qsetct(i,itype,c1,c2,c3)	define color i in color table
@@ -276,6 +280,12 @@ void qpoint_( float *x , float *y )
 	PsPoint( *x , *y );
 }
 
+void qpoly_( fint *n , float *x , float *y )
+
+{
+	PsPolyPlot( (int) *n , x , y );
+}
+
 /*****************************************************************/
 
 void qafill_( fint *n , float *x , float *y )
@@ -395,6 +405,18 @@ void qwhite_( fint *bpaint )
 
 {
 	PsPaintWhite( *bpaint );
+}
+
+void qsavecolor( void )
+
+{
+	PsSaveColor();
+}
+
+void qrestorecolor( void )
+
+{
+	PsRestoreColor();
 }
 
 void qtdef_( fint *ictab )

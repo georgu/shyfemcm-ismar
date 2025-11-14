@@ -126,6 +126,7 @@
 ! 28.03.2022	ggu	bug fix: ddtmin was not saved
 ! 02.04.2023    ggu     only master writes to iuinfo
 ! 12.12.2023    ggu     introduced dtmax (maximum time to run to)
+! 10.11.2025    ggu     introduced dtlim (time step limiter at start of sim)
 !
 !**********************************************************************
 !**********************************************************************
@@ -481,6 +482,7 @@
         double precision dt,dtnext,atime,ddts,dtsync,dtime,dt_recom
         double precision, save :: ddtmin
         double precision :: dtbest
+        double precision tlocal,tramp,dt_start,rt,dtlim,rtmin
 	real dtr,dtaux
         real ri,rindex,rindex1,sindex
 	real perc,rmax
@@ -630,6 +632,29 @@
 	    write(6,*) 'then set itsplt = -1'
 	  end if
 	end if
+
+!----------------------------------------------------------------------
+!	limit time step at beginning of simulation
+!----------------------------------------------------------------------
+
+        tramp = 43200
+        tramp = 86400
+        tramp = 172800
+        tramp = 0
+        dt_start = 10
+        rtmin = 0.1                     !minimum rt for writing to terminal
+
+        if( tramp > 0 ) then
+          tlocal = t_act - dtanf
+          rt = tlocal/tramp
+          if( rt < 1. ) then
+            dtlim = dt_start*(1.-rt) + idtorig*rt
+            if( dt > dtlim ) then
+              dt = dtlim
+              if( rt < rtmin ) write(6,*) 'dtlim: ',dtlim
+            end if
+          end if
+        end if
 
 !----------------------------------------------------------------------
 !	syncronize time step

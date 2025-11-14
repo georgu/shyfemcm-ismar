@@ -68,6 +68,7 @@
 !  18.12.2018	ggu	changed VERS_7_5_52
 !  14.03.2019	ggu	allow for plotting constant element value
 !  21.05.2019	ggu	changed VERS_7_5_62
+!  13.11.2025	ggu	new routine plcircle() and isoinp==4
 ! 
 ! ****************************************************
 
@@ -100,7 +101,7 @@
 !  local
 	character*80 line
 	real f(3),x(3),y(3)
-	real dist,flag,faver
+	real dist,flag,faver,rc
 	integer ie,ii,kn
 	integer inull
 	integer isolin
@@ -116,11 +117,16 @@
 
         isolin = nint(getpar('isolin'))	!plot isoline also for color
         isoinp = nint(getpar('isoinp'))	!interpolate in element?
+	rc = getpar('rcircle')
 
 	if( mode .le. 2 .and. nkn .ne. nval ) then
 		write(6,*) 'nval must be nkn :',nval,nkn
 		write(6,*) 'Cannot execute routine isoline'
 		stop 'error stop isoline: nval /= nkn'
+	end if
+	if( isoinp == 3 .and. rc <= 0 ) then
+	  write(6,*) 'for circle plot rcircle must be given'
+	  stop 'error stop isoline: rcircle <= 0'
 	end if
 
 	call get_flag(flag)
@@ -164,6 +170,8 @@
 	      call plcol(x,y,f,ciso,fiso,isoanz+1,fnull)
 	    else if( isoinp .eq. 0 ) then			!plot const node
 	      call plnode(x,y,f,ciso,fiso,isoanz+1,fnull)
+	    else if( isoinp .eq. 3 ) then			!plot circle
+	      call plcircle(x,y,f,rc,ciso,fiso,isoanz+1,fnull)
 	    else
 	      write(6,*) 'mode = ',mode,'  isoinp = ',isoinp
 	      stop 'error stop isoline: mode and isoinp not compatible'
@@ -916,11 +924,11 @@
 
 !  plots colors of nodal values without interpolation
 ! 
-!  x,y,z		coordinates and values of vertices in triangle
-!  color		array of colors to use (in total ncol colors)
+!  x,y,z	coordinates and values of vertices in triangle
+!  color	array of colors to use (in total ncol colors)
 !  rlev		levels to use (in total ncol-1 levels)
 !  ncol		total number of colors in color
-!  fnull		null value -> do not interpolate
+!  fnull	null value -> do not interpolate
 
 	implicit none
 
@@ -940,9 +948,48 @@
 
 	do ii=1,3
 	  if( z(ii) .ne. fnull ) then
-	    call make_xy(ii,x,y,xp,yp)
+            call make_xy(ii,x,y,xp,yp)
 	    col = get_color(z(ii),ncol,color,rlev)
             call fill_area(idebug,"no_intp",ip,xp,yp,col)
+	  end if
+	end do
+
+	end
+
+! ***************************************************************
+
+	subroutine plcircle(x,y,z,rc,color,rlev,ncol,fnull)
+
+!  plots colors of nodal values without interpolation
+! 
+!  x,y,z	coordinates and values of vertices in triangle
+!  rc		size of circle
+!  color	array of colors to use (in total ncol colors)
+!  rlev		levels to use (in total ncol-1 levels)
+!  ncol		total number of colors in color
+!  fnull	null value -> do not interpolate
+
+	implicit none
+
+	integer ncol
+	real fnull
+	real x(3),y(3),z(3)
+	real rc
+	real color(ncol),rlev(ncol-1)
+
+	integer ii
+	real xp,yp,r
+	real col
+
+	real get_color
+
+	do ii=1,3
+	  if( z(ii) .ne. fnull .and. z(ii) /= 0. ) then
+	    xp = x(ii)
+	    yp = y(ii)
+	    col = get_color(z(ii),ncol,color,rlev)
+            call qsetc(col)
+	    call pcirclefill(xp,yp,rc)
 	  end if
 	end do
 

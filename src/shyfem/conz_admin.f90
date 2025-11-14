@@ -92,6 +92,7 @@
 ! 02.04.2023    ggu     only master writes to iuinfo
 ! 19.04.2023    ggu     init tracer file output only once, syncronize
 ! 16.04.2025    ggu     variable sinking (wsettlv) introduced
+! 10.11.2025    ggu     write info also for multi concentrations
 !
 !*********************************************************************
 
@@ -522,12 +523,13 @@
 
 	implicit none
 
-	integer id,nvar,i,idc
+	integer id,nvar,i,idc,ic
         real cmin,cmax,ctot
 	real v1v(nkn)
 	double precision dtime
 	character*20 aline
 	real, allocatable :: caux2d(:,:)
+	real, allocatable :: caux(:,:)
 
 	logical next_output,next_output_d
 
@@ -601,8 +603,22 @@
  2021         format(a,a20,2f10.4,e14.6)
 	    end if
           end if
-	else
-	  !write(65,*) it,massv
+        else if( iconz > 1 .and. binfo ) then
+          ctot = sum(massv)
+          !write(6,*) massv
+          if( .not. allocated(caux) ) allocate(caux(nlvdi,nkn))
+          caux = 0.
+          do ic=1,iconz
+            caux = caux + conzv(:,:,ic)
+          end do
+          call conmima(nlvdi,caux,cmin,cmax)
+	  cmin = shympi_min(cmin)
+	  cmax = shympi_max(cmax)
+	  call get_act_timeline(aline)
+	  if( iuinfo > 0 ) then
+            write(iuinfo,2022) ' conzmima: ',aline,cmin,cmax,ctot
+ 2022       format(a,a20,2f10.4,e14.6)
+	  end if
 	end if
 
 !-------------------------------------------------------------

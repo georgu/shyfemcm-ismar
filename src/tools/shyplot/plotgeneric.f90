@@ -39,6 +39,7 @@
 !  18.12.2018	ggu	changed VERS_7_5_52
 !  13.03.2019	ggu	changed VERS_7_5_61
 !  21.05.2019	ggu	changed VERS_7_5_62
+!  13.11.2025	ggu	new routine poctogon() (not yet finished)
 ! 
 ! **************************************************
 
@@ -119,8 +120,9 @@
 	real x,y,r
 
 	real dxy
+        real, parameter :: sq2 = 1./sqrt(2.)
 
-	dxy = r / sqrt(2.)
+	dxy = r * sq2
 
 	call qline(x-dxy,y-dxy,x+dxy,y+dxy)
 	call qline(x+dxy,y-dxy,x-dxy,y+dxy)
@@ -128,7 +130,75 @@
 	end 
 
 ! **************************************************
+
+	subroutine make_octogon(x,y,r,xx,yy)
+
+! makes coordinates of octogon
+
+	implicit none
+
+	real x,y
+	real r
+	real xx(8),yy(8)
+
+        real, parameter :: sq2 = 1./sqrt(2.)
+        real rsq2
+
+        rsq2 = r * sq2
+
+        xx(1) = x + r
+        yy(1) = y
+        xx(2) = x + rsq2
+        yy(2) = y + rsq2
+        xx(3) = x 
+        yy(3) = y + r
+        xx(4) = x - rsq2
+        yy(4) = y + rsq2
+        xx(5) = x - r
+        yy(5) = y
+        xx(6) = x - rsq2
+        yy(6) = y - rsq2
+        xx(7) = x 
+        yy(7) = y - r
+        xx(8) = x + rsq2
+        yy(8) = y - rsq2
+
+	end 
+
 ! **************************************************
+
+	subroutine poctogon(x,y,r)
+
+! plots octogon with center at (x,y) and with size r
+
+	implicit none
+
+	real x,y,r
+
+        real xx(8),yy(8)
+
+	call make_octogon(x,y,r,xx,yy)
+	call qpoly(8,xx,yy)
+
+	end 
+
+! **************************************************
+
+	subroutine poctogonfill(x,y,r)
+
+! fills octogon with center at (x,y) and with size r with actual color
+
+	implicit none
+
+	real x,y,r
+
+        real xx(8),yy(8)
+
+	call make_octogon(x,y,r,xx,yy)
+	call qafill(8,xx,yy)
+
+	end 
+
 ! **************************************************
 
         subroutine pfeil(x,y,u,v,s)

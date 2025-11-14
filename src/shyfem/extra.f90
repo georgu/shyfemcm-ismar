@@ -60,6 +60,7 @@
 ! 18.09.2023	ggu	also write rho to ext file
 ! 04.12.2024	ggu	only do one reduce call for mpi
 ! 09.12.2024	ggu	extra finished and tested
+! 10.11.2025	ggu	also write concv (multi concentration) to file
 !
 !******************************************************************
 !******************************************************************
@@ -259,7 +260,7 @@
 	use mod_hydro
 	use mod_hydro_print
 	use mod_ts
-	use mod_conz, only : cnv
+	use mod_conz, only : cnv,conzv
         use mod_waves, only: waveh,wavep,waved
         use mod_sediment, only : tcn
 	use mod_depth
@@ -276,7 +277,7 @@
 	logical blast
 	integer nbext,ierr
 	integer ivar,i,m,j,k,iv,nlv2d,nlv3d,nlv_d
-	integer lmax,l,nl,nlg,ip,ipstart,ipend,iptot
+	integer lmax,l,nl,nlg,ip,ipstart,ipend,iptot,ic
 	integer iu
 	real href,hzmin,nzadapt
 	double precision atime,atime0
@@ -289,7 +290,8 @@
 	real vals_aux(nlv_global,knausm,mmax)
 	real, allocatable, save :: array(:)
 	integer, save :: nvar
-	logical, save :: btemp,bsalt,brho,bconz,bwave,bsedi
+	integer, save :: iconz
+	logical, save :: btemp,bsalt,brho,bconz,bwave,bsedi,bcmulti
 	integer, save, allocatable :: il(:)
 	integer, save, allocatable :: kind(:,:)
 	integer, save, allocatable :: ivinfo(:,:)
@@ -319,15 +321,18 @@
           btemp = ( nint(getpar('itemp')) > 0 )
           bsalt = ( nint(getpar('isalt')) > 0 )
           brho  = ( nint(getpar('irho'))  > 0 )
-          bconz = ( nint(getpar('iconz')) == 1 )
+          bconz = ( nint(getpar('iconz')) > 0 )
           bsedi = ( nint(getpar('isedi')) > 0 )
           bwave = ( nint(getpar('iwave')) > 0 )
+
+          iconz = nint(getpar('iconz'))
+          bcmulti = iconz > 1
 
           nvar = 2				!includes zeta and vel
           if( btemp ) nvar = nvar + 1
           if( bsalt ) nvar = nvar + 1
           if( brho  ) nvar = nvar + 1
-          if( bconz ) nvar = nvar + 1
+          if( bconz ) nvar = nvar + iconz
           if( bsedi ) nvar = nvar + 1
           if( bwave ) nvar = nvar + 1
 
@@ -483,16 +488,23 @@
 !	concentration
 !	-------------------------------------------------------
 
-	ipstart = ip
 	if( bconz ) then
-	  ivar = 10
-	  iv = iv + 1
-	  if( iv > nvar ) goto 88
-	  do j=1,knausm
-	    k = knaus(j)
-	    call add_to_array(ip,k,nl,nlg,cnv,array)
+          do ic=1,iconz
+	    ipstart = ip
+            ivar = 300 + ic
+            if( .not. bcmulti ) ivar = 10
+	    iv = iv + 1
+	    if( iv > nvar ) goto 88
+	    do j=1,knausm
+	      k = knaus(j)
+              if( bcmulti ) then
+                call add_to_array(ip,k,nl,nlg,conzv(:,:,ic),array)
+              else
+                call add_to_array(ip,k,nl,nlg,cnv,array)
+              end if
+            end do
+	    ivinfo(:,iv) = (/ivar,nl,nlv3d,m,ipstart,ip/)
 	  end do
-	  ivinfo(:,iv) = (/ivar,nl,nlv3d,m,ipstart,ip/)
 	end if
 
 !	-------------------------------------------------------

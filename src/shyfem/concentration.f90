@@ -270,6 +270,7 @@
 ! 09.05.2023    lrp     introduce top layer index variable
 ! 31.05.2023    ggu     in conzstab, use ie_mpi, run over nkn_unique (bug fix)
 ! 27.09.2024    ggu     btvddebug introduced
+! 10.11.2025    ggu     bug in massconc: only run over nkn_unique
 !
 !*********************************************************************
 
@@ -2127,7 +2128,8 @@
 
         masstot = 0.
 
-        do k=1,nkn
+        do k=1,nkn_unique
+        !do k=1,nkn
 	  lmax = ilhkv(k)
 	  lmin = jlhkv(k)
           sum = 0.

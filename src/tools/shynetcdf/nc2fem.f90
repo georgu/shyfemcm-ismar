@@ -54,6 +54,7 @@
 ! 23.06.2022    ggu     more debug output with bwrite
 ! 25.04.2025    ggu     new option -rfact
 ! 19.06.2025    ggu     check file format with nc_check_file_format()
+! 13.11.2025    ggu     increase length of var
 !
 ! notes :
 !
@@ -552,7 +553,8 @@
 
 	logical bstop
 	integer var_id,i,ivar
-	character*15 var,descrp,short
+	character*15 descrp,short
+	character*80 var
 	character*50 full
 	character*15 shorts(nvar)
 
@@ -849,7 +851,8 @@
 	double precision atime,avalue,dtime
 	character*20 line,stime
 	character*80 atext,string,aname
-	character(len=len(vars)) var
+	!character(len=len(vars)) var
+	character*80 var
 
 	logical nc_has_var_attrib,is_single
 

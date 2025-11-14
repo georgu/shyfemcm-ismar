@@ -39,44 +39,63 @@
 ! 28.04.2023    ggu     update function calls for belem
 ! 03.10.2025    ggu     converted to f90
 ! 17.10.2025    ggu     prepared for elemental values
+! 11.11.2025    ggu     handle cm option -layer smoothly
 
 !***************************************************************
 
-	subroutine shy_write_time(bdate,dtime,atime,ivar)
+	subroutine shy_write_time(bdate,dtime,atime,nvar,ivar)
 
 	implicit none
 
 	logical bdate
 	double precision dtime,atime
-	integer ivar
+	integer nvar,ivar
 
 	character*20 dline
 
 	dline = ' '
 	!if( bdate ) call dtsgf(it,dline)
 	if( bdate ) call dts_format_abs_time(atime,dline)
-	write(6,*) 'time : ',dtime,' ',dline,'  ivar : ',ivar
+        if( ivar == 0 ) then
+	  write(6,*) 'time : ',dtime,' ',dline,'  nvar : ',nvar
+        else
+	  write(6,*) 'time : ',dtime,' ',dline,'  ivar : ',ivar
+        end if
 
 	end
 
 !***************************************************************
 
-	subroutine shy_write_min_max(nlvdi,nn,il,lmax,ivar,cv3)
+	subroutine shy_write_min_max(nlvdi,nn,il,lmax,layer,ivar,cv3)
 
 	implicit none
 
-	integer nlvdi,nn,lmax,ivar
+	integer nlvdi,nn,lmax,layer,ivar
 	integer il(nn)
 	real cv3(nlvdi,nn)
 
-	integer l
+	integer l,ls,le
 	real rnull
 	real cmin,cmax,cmed
 	real cv2(nn)
 
 	rnull = -999.
 
-	do l=1,lmax
+        if( layer == 0 ) then
+          ls = 1
+          le = lmax
+        else if( layer > 0 .and. layer <= lmax ) then
+          ls = layer
+          le = layer
+        else if( layer == -1 ) then     !only writes time
+          return
+        else
+          write(6,*) 'no such layer: ',layer
+          write(6,*) 'lmin,lmax: ',1,lmax
+          stop 'error stop shy_write_min_max: no such layer'
+        end if
+
+	do l=ls,le
 	  cv2=cv3(l,:)
 	  where( il < l ) cv2 = rnull
 	  call mimar(cv2,nn,cmin,cmax,rnull)
@@ -264,7 +283,7 @@
 !***************************************************************
 
         subroutine read_records(id,dtime,ftype,nvar,nndim,nlvddi       &
-     &                          ,ivars,cv3,cv3all,ierr)
+     &                          ,idims,cv3,cv3all,ierr)
 
 	use elabutil
 	use shyfile
@@ -278,7 +297,7 @@
 	integer nvar,nndim
 	integer nlvddi
 	integer nkn,nel
-	integer ivars(4,nvar)
+	integer idims(4,nvar)
 	real cv3(nlvddi,nndim)
 	real cv3all(nlvddi,nndim,0:nvar)
 	integer ierr
@@ -315,14 +334,14 @@
 	  nexp = n * m
 	  bzeta = ivar == -1
 	  if( bzeta ) iv = iv - 1
-	  ivars(1,iv) = n
-	  ivars(2,iv) = m
-	  ivars(3,iv) = lmax
+	  idims(1,iv) = n
+	  idims(2,iv) = m
+	  idims(3,iv) = lmax
 	  if( nexp > nndim ) goto 74
 	  if( lmax > nlvddi ) goto 74
 	  if( bfirst ) dtvar = dtime
 	  if( dtvar /= dtime ) goto 85
-	  ivars(4,iv) = ivar
+	  idims(4,iv) = ivar
 	  cv3all(:,:,iv) = cv3(:,:) * fact
 	  if( abs(ivar) == 1 ) then		! water level
 	  !write(6,*) 'water level: ',iv,n,m
