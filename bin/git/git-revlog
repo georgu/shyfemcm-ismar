@@ -1,0 +1,111 @@
+#!/bin/bash
+#
+#-----------------------------------------------
+
+GetExtension()
+{
+  local file=$1
+  local extension="${file##*.}"
+  echo $extension
+}
+
+#-----------------------------------------------
+
+bindir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+#echo "routine launched from $bindir"
+
+. $bindir/../colors.sh
+
+cdate=""
+if [ "$1" = "-date" ]; then
+  cdate=$2
+  shift; shift
+fi
+norev_count=0
+ext_error=0
+date_error=0
+copy_error=0
+errors=0
+
+last=$( git-tags | tail -1 | cut -d " " -f 2 )
+
+if [ -n "$cdate" ]; then
+  last=$cdate
+fi
+
+
+mode="unknown"
+if [ $# -eq 0 ]; then
+  files=$( git status | grep modified: | sed -E 's/^\s*modified:\s*//' )
+  mode="git"
+else
+  files=$*
+  mode="files"
+  last="0001-01-01"
+  option="-check_only"
+fi
+
+if [ $mode = "git" ]; then
+  echo "date of last git tag: $last"
+  echo "compare date: $last"
+  echo "------------------------------------"
+fi
+
+#-----------------------------------------------
+
+for file in $files
+do
+  ext=$( GetExtension $file )
+  echo "$file - $ext"
+  $bindir/git-revlog.pl $option -compare_date=$last $file
+  status=$?
+  #echo "status = $status"
+  if [ $status -eq 0 ]; then
+    :
+  elif [ $status -eq 3 ]; then
+    echo "  ${red}cannot handle extension $ext${normal}"
+    ext_error=$(( ext_error + 1 ))
+  elif [ $status -eq 5 ]; then
+    echo "  ${cyan}no revision log found${normal}"
+    norev_count=$(( norev_count + 1 ))
+  elif [ $status -eq 7 ]; then
+    echo "  ${red}some dates were out of order${normal}"
+    date_error=$(( date_error + 1 ))
+  elif [ $status -eq 9 ]; then
+    echo "  ${red}no copyright found${normal}"
+    copy_error=$(( copy_error + 1 ))
+  else
+    echo "  ${red}unknown error: $status${normal}"
+  fi
+done
+
+if [ $mode = "git" ]; then
+  echo "------------------------------------"
+fi
+
+if [ $norev_count -gt 0 ]; then
+  errors=$(( errors + 1 ))
+  echo "${cyan}some files had no revison log: $norev_count${normal}"
+fi
+if [ $ext_error -gt 0 ]; then
+  errors=$(( errors + 1 ))
+  echo "${red}some extensions could not be handled: $ext_error${normal}"
+fi
+if [ $date_error -gt 0 ]; then
+  errors=$(( errors + 1 ))
+  echo "${red}some dates were out of order: $date_error${normal}"
+fi
+if [ $copy_error -gt 0 ]; then
+  errors=$(( errors + 1 ))
+  echo "${red}some files had no copyright: $copy_error${normal}"
+fi
+
+if [ $errors -gt 0 ]; then
+  echo "${red}some errors have been found${normal}"
+  exit 1
+else
+  echo "${green}successful completion${normal}"
+fi
+
+#-----------------------------------------------
+

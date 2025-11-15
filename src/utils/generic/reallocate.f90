@@ -24,6 +24,10 @@
 !--------------------------------------------------------------------------
 
 ! routines to easily reallocate arrays
+!
+! revision log :
+!
+! 11.12.2024    ggu     written from scratch
 
 !===============================================================
 	module mod_reallocate

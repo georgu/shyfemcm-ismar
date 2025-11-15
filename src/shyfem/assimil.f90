@@ -35,6 +35,7 @@
 ! 30.10.2025    ggu     bug fixes
 ! 07.11.2025    ggu     introduced iuse
 ! 10.11.2025    ggu     general assimilation of scalar variables
+! 14.11.2025    ggu     set up debug file
 !
 !****************************************************************
 
@@ -61,6 +62,7 @@
 	real, save, allocatable :: zback2d(:)
 	logical bback
 	integer iu
+	integer, save :: iu666
 	integer nintp,nfirst,i
 	integer nback,nlast,nval,ivar,iusec,inofc
 	integer, save :: nvar,idobs
@@ -78,6 +80,7 @@
 	logical bwrite
 
 	logical is_time_absolute
+	integer ifemop
 	double precision rd_intp_neville
 
 	if( icall == -1 ) return
@@ -108,6 +111,9 @@
 
 	  allocate(zanal(nkn))
 	  allocate(zback2d(nkn))
+
+	  iu666 = ifemop('ggu','formatted','unknown')
+	  if( iu666 <= 0 ) stop 'iu666'
 
 	end if
 
@@ -152,7 +158,7 @@
 	    stop 'error stop scalar_assimilation: nobs/=nval'
 	  end if
 
-	  if( bwrite ) write(666,*) 'starting optintp: ',nobs
+	  if( bwrite ) write(iu666,*) 'starting optintp: ',nobs
 
 	  passim(idass)%binit = .true.
 	end if
@@ -171,14 +177,14 @@
 	if( bdebug ) then
 	  call get_timeline(dtime,aline)
 	  if( iff_file_has_data(idobs,dtime) ) then
-	    if( bwrite ) write(666,*) 'file has data  ',aline,dtime,ivar
+	    if( bwrite ) write(iu666,*) 'file has data  ',aline,dtime,ivar
 	  else
-	    if( bwrite ) write(666,*) 'file has no data  ',aline,dtime,ivar
+	    if( bwrite ) write(iu666,*) 'file has no data  ',aline,dtime,ivar
 	    return
 	  end if
 	end if
 
-	if( bwrite ) write(666,*) 'doing optintp',dtime
+	if( bwrite ) write(iu666,*) 'doing optintp',dtime
 
 !---------------------------------------------------------------
 ! allocate arrays
@@ -209,6 +215,8 @@
 ! do optimal interpolation
 !---------------------------------------------------------------
 
+	!write(6,*) passim(idass)%sigback
+	!write(6,*) passim(idass)%sigobs
 	call opt_intp(nobs,xobs,yobs,zobs,bobs                          &
      &                  ,nback,bback,xgv,ygv,zback2d			&
      &                  ,passim(idass)%corlength			&
@@ -230,7 +238,7 @@
 	  if( my_id == 0 ) then
 	    iusec = sum(passim(idass)%iuse)
 	    inofc = count(zobs/=flag)
-	    write(666,*) 'final optimal interpolation: ',nobs,iusec,inofc,ivar
+	    write(iu666,*) 'final optimal interpolation: ',nobs,iusec,inofc,ivar
 	    do i=1,nobs
 	      if( zobs(i) == flag ) then
 		if( bobs(i) /= zaux(i) ) then
@@ -239,7 +247,7 @@
 		end if
 		cycle
 	      end if
-	      write(666,*) i,zobs(i),bobs(i),zaux(i)
+	      write(iu666,*) i,zobs(i),bobs(i),zaux(i)
 	    end do
 	  end if
 	end if

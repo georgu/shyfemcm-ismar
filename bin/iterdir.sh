@@ -45,15 +45,17 @@ Iterate() {
       (cd -- "$d" && Iterate)
     fi
     [ $elabdir = "NO" ] && $command
+    #[ $? -ne 0 ] && echo "error iterating" && exit 1
   done
   [ $elabdir = "YES" ] && $command
+  #[ $? -ne 0 ] && echo "error iterating" && exit 1
 }
 
 #------------------------------------------------------------------------
 
 for dir in $dirs
 do
-  echo "starting directory: $dir"
+  >&2 echo "starting directory: $dir"
   cd $dir
   Iterate
   cd $home
