@@ -171,6 +171,8 @@
         real cu,du,cl
         double precision dtime
         double precision cbsum,cusum
+	real, allocatable :: cmax1(:),cmaxl(:),bmax(:),umax(:)
+	real cmax10,cmaxl0,bmax0,umax0
         character*20 aline
 
         logical next_output_d
@@ -207,6 +209,19 @@
           end do
         end do
 
+	if( iudbg > 0 ) then
+	  allocate(cmax1(nvar),cmaxl(nvar),bmax(nvar),umax(nvar))
+	  do iv=1,nvar
+	    cmax1(iv) = maxval(conzv(1,:,iv))
+	    cmaxl(iv) = maxval(conzv(lmax,:,iv))
+	    bmax(iv) = maxval(beach_value(:,iv))
+	    umax(iv) = maxval(burry_value(:,iv))
+	    cmax1(iv) = shympi_max(cmax1(iv))	!FIXME - too slow
+	    cmaxl(iv) = shympi_max(cmaxl(iv))
+	    bmax(iv) = shympi_max(bmax(iv))
+	    umax(iv) = shympi_max(umax(iv))
+	  end do
+	end if
 
 	if( bwrite ) then
           call get_act_dtime(dtime)
@@ -214,7 +229,10 @@
 
           write(iudbg,*) 'bsum: ',aline,cbsum,cusum
 	  do iv=1,nvar
-	   write(iudbg,*) iv,maxval(beach_value(:,iv)),maxval(burry_value(:,iv))
+	   write(iudbg,*) iv,bmax(iv),umax(iv)
+	  end do
+	  do iv=1,nvar
+	   write(iudbg,*) iv,cmax1(iv),cmaxl(iv)
 	  end do
 	  do k=1,0,nkn/10
 	    lmax = ilhkv(k)
