@@ -41,6 +41,7 @@
 	integer, save :: iudbg = 889
 
 	integer, save, allocatable :: beach_node(:)
+	integer, save, allocatable :: burry_node(:)
 	real, save, allocatable :: beach_value(:,:)
 	real, save, allocatable :: burry_value(:,:)
 	real, save :: beach_rate = 0.3
@@ -98,6 +99,7 @@
 	end if
 
 	allocate(beach_node(nkn))
+	allocate(burry_node(nkn))
 	allocate(beach_value(nkn,nvar))
 	allocate(burry_value(nkn,nvar))
 	allocate(node_area_code(nkn))
@@ -117,9 +119,11 @@
 	call shympi_exchange_2d_node(node_area_code)
 
 	beach_node = 0
+	burry_node = 0
 
 	do k=1,nkn
 	  if( node_area_code(k) < 2 ) then
+	    burry_node(k) = 1
 	    if( is_material_boundary_node(k) ) then
 	      if( .not. is_open_boundary_node(k) ) then
 	        beach_node(k) = 1
@@ -188,24 +192,26 @@
         do k=1,nkn
 	  lmax = ilhkv(k)
           do iv=1,nvar
-            c1 = conzv(1,k,iv)
-            cl = conzv(lmax,k,iv)
-            cb = beach_value(k,iv)
-            cu = burry_value(k,iv)
-            db = beach_rate * c1
-            du = burry_rate * cl
             if( beach_node(k) > 0 ) then
+              c1 = conzv(1,k,iv)
+              cb = beach_value(k,iv)
+              db = beach_rate * c1
               c1 = c1 - db
               cb = cb + db
               conzv(1,k,iv) = c1
               beach_value(k,iv) = cb
+              cbsum = cbsum + cb
 	    end if
-            cl = cl - du
-            cu = cu + du
-            conzv(lmax,k,iv) = cl
-            burry_value(k,iv) = cu
-            cbsum = cbsum + cb
-            cusum = cusum + cu
+            if( burry_node(k) > 0 ) then
+              cl = conzv(lmax,k,iv)
+              cu = burry_value(k,iv)
+              du = burry_rate * cl
+              cl = cl - du
+              cu = cu + du
+              conzv(lmax,k,iv) = cl
+              burry_value(k,iv) = cu
+              cusum = cusum + cu
+	    end if
           end do
         end do
 
@@ -252,6 +258,8 @@
             ivar = 300 + iv
             call shy_write_scalar_record(id,dtime,ivar,1,burry_value(:,iv))
           end do
+	  beach_node = 0
+	  burry_node = 0
         end if
 
         end

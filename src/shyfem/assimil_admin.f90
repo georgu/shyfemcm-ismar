@@ -46,6 +46,9 @@
 	  integer :: nobs
 	  integer :: ivar
 	  integer :: idobs
+	  integer :: mode
+	  real    :: tau
+	  real    :: tacum
 	  integer, allocatable :: iuse(:)
 	  real, allocatable :: corlength(:)
 	  real, allocatable :: maxlength(:)
@@ -213,7 +216,10 @@
         call sctfnm('assimil')
 
 	call addpar('ivar',-1.)
-	call addpar('nobs',0.)
+	call addpar('nobs',-1.)
+	call addpar('tau',0.)
+	call addpar('tacum',0.)
+	call addpar('mode',0.)
 
 	call para_add_array_value('corlength',0.)
 	call para_add_array_value('maxlength',0.)
@@ -228,7 +234,9 @@
 
 	nobs = nint(getpar('nobs'))
 	ivar = nint(getpar('ivar'))
-	if( ivar < 0 .or. nobs <= 0 ) goto 99
+	if( ivar < 0 .or. nobs < 0 ) goto 99
+	if( nobs == 0 ) return
+
 	if( is_var_in_list(ivar) ) goto 98
 
 	id = get_new_id()	
@@ -241,6 +249,9 @@
 
 	passim(id)%nobs = nobs
 	passim(id)%ivar = ivar
+
+	passim(id)%mode = nint(getpar('mode'))
+	passim(id)%tau = getpar('tau')
 
 	call para_set_array_value('corlength',nobs,passim(id)%corlength)
 	call para_set_array_value('maxlength',nobs,passim(id)%maxlength)

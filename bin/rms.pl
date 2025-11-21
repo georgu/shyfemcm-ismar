@@ -108,14 +108,17 @@ my $rxy = $rxy1 / ( $rxy2 * $rxy3 );
 $bias /= $n;
 $acum /= $n;
 my $rms = sqrt( $acum );
+my $sigma = $acum - $bias*$bias;
+$sigma = sqrt($sigma);
 
 $rms = round($rms);
 $bias = round($bias);
 $rxy = round($rxy);
 $obsaver = round($obsaver);
 $simaver = round($simaver);
+$sigma = round($sigma);
 
-print "$bias   $rms   $rxy   $obsaver  $simaver\n";
+print "$bias   $rms   $rxy   $obsaver  $simaver  $sigma\n";
 
 #-------------------------------------------------------
 
