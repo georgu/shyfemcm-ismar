@@ -1,6 +1,8 @@
 #!/bin/bash
 #
 #-----------------------------------------------
+# define functions
+#-----------------------------------------------
 
 GetExtension()
 {
@@ -9,6 +11,48 @@ GetExtension()
   echo $extension
 }
 
+Usage()
+{
+  echo "Usage: git-revlog [-help|-h] [-options] [file(s)]"
+}
+
+FullUsage()
+{
+  Usage
+  echo "    checks revision log"
+  echo "    with no files given checks revision log of changed files"
+  echo "    options:"
+  echo "       -h|-help      this info"
+  echo "       -nowrite      writes file name only in case of error"
+  echo "       -date cdate   uses this date for comparing revlog"
+}
+
+#-----------------------------------------------
+# set command line options
+#-----------------------------------------------
+
+write_file="YES"
+cdate=""
+
+while [ -n "$1" ]
+do
+   case $1 in
+        -date)          cdate=$2; shift;;
+        -nowrite)       write_file="NO";;
+        -h|-help)       FullUsage; exit 0;;
+        -*)             ErrorOption $1; exit 1;;
+        *)              break;;
+   esac
+   shift
+done
+
+if [ $# -eq 0 ]; then
+  Usage
+  exit 0
+fi
+
+#-----------------------------------------------
+# import colors.sh
 #-----------------------------------------------
 
 bindir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
@@ -16,34 +60,33 @@ bindir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 . $bindir/../colors.sh
 
-cdate=""
-if [ "$1" = "-date" ]; then
-  cdate=$2
-  shift; shift
-fi
+#-----------------------------------------------
+# set command line options
+#-----------------------------------------------
+
 norev_count=0
 ext_error=0
 date_error=0
 copy_error=0
 errors=0
 
-last=$( git-tags | tail -1 | cut -d " " -f 2 )
-
-if [ -n "$cdate" ]; then
-  last=$cdate
-fi
-
+#-----------------------------------------------
+# set mode (git or files)
+#-----------------------------------------------
 
 mode="unknown"
 if [ $# -eq 0 ]; then
   files=$( git status | grep modified: | sed -E 's/^\s*modified:\s*//' )
   mode="git"
+  last=$( git-tags | tail -1 | cut -d " " -f 2 )
 else
   files=$*
   mode="files"
   last="0001-01-01"
   option="-check_only"
 fi
+
+[ -n "$cdate" ] && last=$cdate
 
 if [ $mode = "git" ]; then
   echo "date of last git tag: $last"
@@ -52,27 +95,29 @@ if [ $mode = "git" ]; then
 fi
 
 #-----------------------------------------------
+# loop over files
+#-----------------------------------------------
 
 for file in $files
 do
   ext=$( GetExtension $file )
-  echo "$file - $ext"
+  [ $write_file = "YES" ] && echo "$file - $ext"
   $bindir/git-revlog.pl $option -compare_date=$last $file
   status=$?
   #echo "status = $status"
   if [ $status -eq 0 ]; then
     :
   elif [ $status -eq 3 ]; then
-    echo "  ${red}cannot handle extension $ext${normal}"
+    echo "  ${red}$file: cannot handle extension $ext${normal}"
     ext_error=$(( ext_error + 1 ))
   elif [ $status -eq 5 ]; then
-    echo "  ${cyan}no revision log found${normal}"
+    echo "  ${cyan}$file: no revision log found${normal}"
     norev_count=$(( norev_count + 1 ))
   elif [ $status -eq 7 ]; then
-    echo "  ${red}some dates were out of order${normal}"
+    echo "  ${red}$file: some dates were out of order${normal}"
     date_error=$(( date_error + 1 ))
   elif [ $status -eq 9 ]; then
-    echo "  ${red}no copyright found${normal}"
+    echo "  ${red}$file: no copyright found${normal}"
     copy_error=$(( copy_error + 1 ))
   else
     echo "  ${red}unknown error: $status${normal}"
@@ -104,7 +149,9 @@ if [ $errors -gt 0 ]; then
   echo "${red}some errors have been found${normal}"
   exit 1
 else
-  echo "${green}successful completion${normal}"
+  [ $write_file = "YES" ] && echo "${green}successful completion${normal}"
+  #echo "${green}successful completion${normal}"
+  exit 0
 fi
 
 #-----------------------------------------------

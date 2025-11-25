@@ -12,6 +12,7 @@ $::debug = 0;
 $::exit_on_error = 1;
 $::write_on_error = 0;
 $::has_copyright = 0;
+$::out_of_header = 0;
 
 #$::check_rev_log = 0;
 $::check_only = 0 unless $::check_only;
@@ -62,6 +63,8 @@ sub treat_f90
 
   while(<>) {
     chomp;
+    check_header();
+    last if $::out_of_header;		# we are out of header
     check_copyright();
     if( /^[!cC]\s+revision log/ ) {
       $in_revision_log = 1;
@@ -139,6 +142,16 @@ sub check_copyright
     #print STDERR "  info: Copyright found\n";
     $::has_copyright = 1;
   }
+}
+
+#----------------------------------------------
+
+sub check_header
+{
+  return if /^\s*$/;
+  return if /^\s*[!cC]/;
+
+  $::out_of_header = 1;
 }
 
 #----------------------------------------------

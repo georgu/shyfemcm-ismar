@@ -4,6 +4,12 @@
 #
 #------------------------------------------------------
 
+what='bfm'
+what='afm'
+
+file=${what}"_strings.f90"
+echo "treating $what with file $file"
+
 MODDIR=$HOME/shyfemcm/lib/mod
 echo "moddir is $MODDIR"
 
@@ -14,8 +20,8 @@ gfortran parse_bfm.f90 convert.f90
 echo "parsing shyfem_vars.py"
 a.out < shyfem_vars.py
 
-echo "compiling bfm_strings.f90"
-gfortran -c -J$MODDIR bfm_strings.f90 
+echo "compiling $file"
+gfortran -c -J$MODDIR $file
 [ $? -ne 0 ] && echo "error in compilation" && exit 1
 
 echo "successful compilation"

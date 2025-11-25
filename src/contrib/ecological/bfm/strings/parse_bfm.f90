@@ -18,19 +18,23 @@
 	character*20 short
 	character*256 longs(ndim)
 	character*20 shorts(ndim)
+	character*20 what
 
 	in_description = 0
+	what = 'bfm'
+	what = 'afm'
 
 	do
 	  read(5,'(a)',iostat=ios) string
 	  if( ios /= 0 ) exit
-	  if( string(1:6) == 'bfm={' ) then
+	  if( string(1:6) == trim(what)//'={' ) then
 	    in_description = 1
 	    write(6,*) 'start of bfm section found'
 	    call clean_first_entry(string)
 	  end if
-	  if( string(1:2) == '}' .and. in_description == 1 ) exit
+	  if( string(1:1) == '}' .and. in_description == 1 ) exit
 	  if( in_description == 1 ) then
+	    if( string == ' ' ) cycle
 	    call scan_bfm(string,ivar,short,long)
 	    iv = iv + 1
 	    if( iv > ndim ) stop 'error stop parse_bfm: ndim'
@@ -38,13 +42,13 @@
 	    ivars(iv) = ivar
 	    shorts(iv) = short
 	    longs(iv) = long
-	    call check_entries(iv,ivars,shorts,longs)
+	!    call check_entries(iv,ivars,shorts,longs)
 	  end if
 	end do
 
 	write(6,*) 'variables read: ',iv
 
-	call write_code(iv,ivars,shorts,longs)
+	call write_code(what,iv,ivars,shorts,longs)
 
 	end
 
@@ -220,12 +224,13 @@
 
 !*********************************************************************
 
-	subroutine write_code(iv,ivars,shorts,longs)
+	subroutine write_code(what,iv,ivars,shorts,longs)
 
 ! writes out code to be included into shyfem
 
 	implicit none
 
+	character*(*) what
 	integer iv
 	integer ivars(iv)
 	character*(*) shorts(iv)
@@ -233,15 +238,21 @@
 
 	integer i,lmax
 	character*80 short,long
-	character*80 line
-	character*4, parameter :: prefix = 'bfm_'
+	character*80 line,file
+	!character*4, parameter :: prefix = 'bfm_'
+	character*20 :: prefix
 
-	open(1,file='bfm_strings.f90',status='unknown',form='formatted')
+	prefix=trim(what) // '_'
+	file=trim(prefix) // 'strings.f90'
+	write(6,*) 'writing file ' // trim(file)
+	open(1,file=file,status='unknown',form='formatted')
 
 	write(1,*)
-	write(1,*) '	subroutine populate_bfm_strings'
+	line = '	subroutine populate_strings_' // trim(what)
+	write(1,*) trim(line)
 	write(1,*)
-	write(1,*) '	! set up strings for BFM'
+	line = '	! set up strings for ' // trim(what)
+	write(1,*) trim(line)
 	write(1,*)
 	write(1,*) '	use shyfem_strings'
 	write(1,*)
@@ -262,7 +273,7 @@
 
 	do i=1,iv
 	  short = adjustl(shorts(i))
-	  if( prefix /= ' ' ) short = prefix // short
+	  if( prefix /= ' ' ) short = trim(prefix) // short
 	  
 	  line = ',''' // trim(short) // ''''
 	  write(1,'(a,i4,a)') '	call strings_set_short('  &

@@ -92,6 +92,10 @@ cleanvar:
 	-rm -f errout.dat
 	-rm -f gmon.out
 	-rm -f out.ps plot.ps
+	-rm -f *.txt
+	-rm -f col.[0-9]*
+	-rm -f *_
+	-rm -f out.1.ps
 
 cleanzip:
 	-rm -f $(DIR).zip

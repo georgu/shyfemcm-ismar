@@ -77,8 +77,9 @@
 
 	if( .not. bbeach ) return
 
-	if( nkn /= 28301 ) then
+	if( nkn_global /= 28301 ) then
 	  write(6,*) 'beaching algorithm:'
+	  write(6,*) 'nkn_global = ',nkn_global
 	  write(6,*) 'using experimental code out of contest'
 	  write(6,*) 'this code is only good for black sea applications'
 	  bbeach = .false.
