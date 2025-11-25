@@ -36,6 +36,7 @@
 ! 07.11.2025    ggu     introduced iuse
 ! 10.11.2025    ggu     general assimilation of scalar variables
 ! 14.11.2025    ggu     set up debug file
+! 23.11.2025    ggu     bug fix for mode=1
 !
 !****************************************************************
 
@@ -289,6 +290,11 @@
 	  if( bwrite ) write(iu666,*) 'doing nudging'
 	  rtau = 1./tau
 	  call scalar_nudging_0(dt,zback2d,zanal,rtau)
+	else if( mode == 1 ) then
+	  zback2d = zanal
+	else
+	  write(6,*) 'error in mode: ',mode,tau
+	  stop 'error stop scalar_assimilation: error in mode'
 	end if
 
 !---------------------------------------------------------------
