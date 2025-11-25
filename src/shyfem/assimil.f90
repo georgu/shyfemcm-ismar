@@ -36,6 +36,7 @@
 ! 07.11.2025    ggu     introduced iuse
 ! 10.11.2025    ggu     general assimilation of scalar variables
 ! 14.11.2025    ggu     set up debug file
+! 23.11.2025    ggu     bug fix for mode=1
 !
 !****************************************************************
 
@@ -61,14 +62,17 @@
 	real, save, allocatable :: zanal(:)
 	real, save, allocatable :: zback2d(:)
 	logical bback
+	logical basstime
 	integer iu
 	integer, save :: iu666
 	integer nintp,nfirst,i
+	integer mode
 	integer nback,nlast,nval,ivar,iusec,inofc
 	integer, save :: nvar,idobs
 	integer, save :: icall = 0
 	integer, save :: iact = 0
 	integer, save :: nobs = 0
+	real tau,rtau,dt,tacum
 	real rl0,rlmax0,seo0,seb0
 	real, parameter :: flag = -999.
 	double precision dtime,atime0
@@ -108,6 +112,10 @@
 !---------------------------------------------------------------
 
 	if( icall == 0 ) then		!global initialization
+
+	  nobs = passim(idass)%nobs
+	  if( nobs <= 0 ) icall = -1
+	  if( icall == -1 ) return
 
 	  allocate(zanal(nkn))
 	  allocate(zback2d(nkn))
@@ -187,6 +195,28 @@
 	if( bwrite ) write(iu666,*) 'doing optintp',dtime
 
 !---------------------------------------------------------------
+! see if assimilation time step has arrived
+!---------------------------------------------------------------
+
+	call get_timestep(dt)
+	tau = passim(idass)%tau
+	tacum = passim(idass)%tacum
+	mode = passim(idass)%mode
+
+	if( mode == 1 ) then
+	  tacum = tacum + dt
+	  basstime = ( tacum >= tau )	!do assimilation at this time
+	  if( basstime ) tacum = tacum - tau
+	  passim(idass)%tacum = tacum
+	  if( bwrite ) then
+	    write(iu666,*) 'checking assimilation in time',basstime,tacum
+	  end if
+	  if( .not. basstime ) return
+	end if
+
+	if( bwrite ) write(iu666,*) 'doing assimilation in time',dtime
+
+!---------------------------------------------------------------
 ! allocate arrays
 !---------------------------------------------------------------
 
@@ -253,10 +283,25 @@
 	end if
 
 !---------------------------------------------------------------
+! if needed apply nudging
+!---------------------------------------------------------------
+
+	if( mode == 0 .and. tau > 0. ) then
+	  if( bwrite ) write(iu666,*) 'doing nudging'
+	  rtau = 1./tau
+	  call scalar_nudging_0(dt,zback2d,zanal,rtau)
+	else if( mode == 1 ) then
+	  zback2d = zanal
+	else
+	  write(6,*) 'error in mode: ',mode,tau
+	  stop 'error stop scalar_assimilation: error in mode'
+	end if
+
+!---------------------------------------------------------------
 ! copy analysis back to background
 !---------------------------------------------------------------
 
-	zback(1,:) = zanal
+	zback(1,:) = zback2d
 
 !---------------------------------------------------------------
 ! end of routine
@@ -268,7 +313,7 @@
 
 	subroutine scalar_nudging(dt,scal,sobs,rtau)
 
-! does nudging of scalars
+! does nudging of scalars - implicit - rtau matrix version
 
 	use basin
 	use levels
@@ -288,6 +333,37 @@
 	  do l=1,lmax
 	    r = dt * rtau(l,k)
 	    rr = 1./(1.+r)
+	    scal(l,k) = rr*scal(l,k) + (1.-rr)*sobs(l,k)
+	  end do
+	end do
+
+	end
+
+!*******************************************************************
+
+	subroutine scalar_nudging_0(dt,scal,sobs,rtau)
+
+! does nudging of scalars - implicit - rtau scalar version
+
+	use basin
+	use levels
+
+	implicit none
+
+	real, intent(in) :: dt			!time step
+	real, intent(inout) :: scal(nlvdi,nkn)	!scalar
+	real, intent(in) :: sobs(nlvdi,nkn)	!observation of scalar
+	real, intent(in) :: rtau		!inverse of time scale tau
+
+	integer k,l,lmax
+	real r,rr
+
+	r = dt * rtau
+	rr = 1./(1.+r)
+
+	do k=1,nkn
+	  lmax = ilhkv(k)
+	  do l=1,lmax
 	    scal(l,k) = rr*scal(l,k) + (1.-rr)*sobs(l,k)
 	  end do
 	end do
