@@ -448,7 +448,9 @@ bcvel.o: ../../lib/mod/basin.mod ../../lib/mod/levels.mod \
 		../../lib/mod/mod_internal.mod \
 		../../lib/mod/mod_layer_thickness.mod \
 		../../lib/mod/shympi.mod 
-beaching.o: ../../lib/mod/basin.mod ../../lib/mod/mod_geom.mod \
+beaching.o: ../../lib/mod/basin.mod ../../lib/mod/levels.mod \
+		../../lib/mod/mod_conz.mod \
+		../../lib/mod/mod_geom.mod \
 		../../lib/mod/shympi.mod 
 bnd_routines.o: ../../lib/mod/basin.mod \
 		../../lib/mod/intp_fem_file.mod \

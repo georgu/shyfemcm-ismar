@@ -9,6 +9,7 @@
 
 	integer, parameter :: ndim = 100
 
+	logical bcheck
 	integer ios
 	integer in_description
 	integer ivar,iv
@@ -20,6 +21,8 @@
 	character*20 shorts(ndim)
 	character*20 what
 
+	bcheck = .true.
+	bcheck = .false.
 	in_description = 0
 	what = 'bfm'
 	what = 'afm'
@@ -42,13 +45,15 @@
 	    ivars(iv) = ivar
 	    shorts(iv) = short
 	    longs(iv) = long
-	!    call check_entries(iv,ivars,shorts,longs)
+	    if( bcheck ) call check_entries(iv,ivars,shorts,longs)
 	  end if
 	end do
 
 	write(6,*) 'variables read: ',iv
 
 	call write_code(what,iv,ivars,shorts,longs)
+
+	call exit(99)
 
 	end
 
@@ -161,9 +166,8 @@
 	  if( longs(i) == longs(iv) ) bdouble = .true.
 	  if( bdouble ) then
 	    write(6,*) 'double entry: '
-	    write(6,*) ivars(i),ivars(iv)
-	    write(6,*) shorts(i),shorts(iv)
-	    write(6,*) longs(i),longs(iv)
+	    write(6,*) i,ivars(i),' ',trim(shorts(i)),' ',trim(longs(i))
+	    write(6,*) iv,ivars(iv),' ',trim(shorts(iv)),' ',trim(longs(iv))
 	    stop 'error stop check_entries: double entry'
 	  end if
 	end do
@@ -243,7 +247,7 @@
 	character*20 :: prefix
 
 	prefix=trim(what) // '_'
-	file=trim(prefix) // 'strings.f90'
+	file='new_strings.f90'
 	write(6,*) 'writing file ' // trim(file)
 	open(1,file=file,status='unknown',form='formatted')
 
