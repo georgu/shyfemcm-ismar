@@ -1,4 +1,17 @@
 
+26.11.2025	VERS_8_2_6	Ebbe edition
+
+	new sections inSTR file for assimilation
+	assimilation done online with optimal interpolation
+	new code for simulationg beaching
+	new way to average wave direction
+	initialize friction parameter from file
+	introduced dtlim (time step limiter at start of sim)
+	write heat fluxes to meteo output file
+	use ncdate0 for reference date in netcdf files
+	in shyelab sum over specific variables
+	read parameters from namelist for weutro
+
 12.06.2025	VERS_8_2_5	Sankt Antonius edition
 
 	new value for ibarcl (ibarcl==5)

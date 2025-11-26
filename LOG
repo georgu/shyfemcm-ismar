@@ -1,4 +1,278 @@
 
+26.11.2025
+
+! ./src/shyfem/restart.f90:
+! 15.11.2025	ggu	check compatibility of concentrations
+!
+! ./src/shyfem/iostr.f90:
+! 10.11.2025    ggu     new section assimil and routine read_assimil()
+!
+! ./src/shyfem/rstinf.f90:
+! 05.10.2025    ggu     new routines to compute difference of rst files
+!
+! ./src/shyfem/openmp_admin.f90:
+! 18.09.2025	ggu	some debug code, documentation
+!
+! ./src/shyfem/conz_common.f90:
+! 11.11.2025	ggu	only deallocate if baccum
+! 15.11.2025	ggu	check compatibility of concentrations
+!
+! ./src/shyfem/conz_admin.f90:
+! 10.11.2025    ggu     write info also for multi concentrations
+!
+! ./src/shyfem/assimil.f90:
+! 17.10.2025    ggu     new routine scalar_nudging()
+! 21.10.2025    ggu     new routine scalar_assimilation()
+! 24.10.2025    ggu     first draft of assimilation ready
+! 27.10.2025    ggu     pass 3d array, change of names
+! 30.10.2025    ggu     bug fixes
+! 07.11.2025    ggu     introduced iuse
+! 10.11.2025    ggu     general assimilation of scalar variables
+! 14.11.2025    ggu     set up debug file
+! 23.11.2025    ggu     bug fix for mode=1
+!
+! ./src/shyfem/beaching.f90:
+! 12.11.2025    ggu     created from scratch
+! 13.11.2025    ggu     added burrying
+!
+! ./src/shyfem/waves_admin.f90:
+! 25.09.2025    ggu     use aver_wave_dir() to average wave direction
+!
+! ./src/shyfem/baroclinic.f90:
+! 11.11.2025    ggu     general assimilation of T/S
+!
+! ./src/shyfem/chezy.f90:
+! 16.10.2025	ggu	new routine init_friction_from_file()
+!
+! ./src/shyfem/lagrange_dif.f90:
+! 07.10.2025    ggu     in diff_get_vert() call exxpp with lmax+1 (bug)
+!
+! ./src/shyfem/kepsilon.f90:
+! 07.10.2025	ggu	in keps() use rhoaux instead of rho
+!
+! ./src/shyfem/assimil_admin.f90:
+! 10.11.2025    ggu     general assimilation of scalar variables
+!
+! ./src/shyfem/extra.f90:
+! 10.11.2025	ggu	also write concv (multi concentration) to file
+!
+! ./src/shyfem/time_admin.f90:
+! 10.11.2025    ggu     introduced dtlim (time step limiter at start of sim)
+!
+! ./src/shyfem/rd_ts.f90:
+! 21.10.2025	ggu	new routine read_timeseries()
+! 30.10.2025	ggu	invert dimensions in values
+!
+! ./src/shyfem/turbulence.f90:
+! 05.10.2025	ggu	in gotm_internal_init() initialize only active layers
+! 10.10.2025	ggu	new parameter rilimit to limit Richardson number
+!
+! ./src/shyfem/meteo_forcing.f90:
+! 10.09.2025    ggu     add heat fluxes to meteo output data
+! 21.10.2025    ggu     bug in conversion of rain (BUGZCONV)
+!
+! ./src/shyfem/concentration.f90:
+! 10.11.2025    ggu     bug in massconc: only run over nkn_unique
+!
+! ./src/shyfem/suboi.f90:
+! 22.10.2025	ggu	some optimizations
+! 24.10.2025	ggu	some bug fixes
+! 27.10.2025	ggu	changed naming conventions
+!
+! ./src/tools/shyplot/shyplot.f90:
+! 07.10.2025    ggu     use shorts in call to description
+! 10.10.2025    ggu     get shorts for description
+! 13.10.2025    ggu     set spherical for bas plotting, new bintp
+! 17.10.2025    ggu     prepared for elemental values
+!
+! ./src/tools/shyplot/supsim.f90:
+!  13.10.2025	ggu	introduced bintp
+!
+! ./src/tools/shyplot/supiso.f90:
+!  13.11.2025	ggu	new routine plcircle() and isoinp==4
+!
+! ./src/tools/shyplot/mod_hydro_plot.f90:
+! 13.10.2025	ggu	introduced uvreg
+!
+! ./src/tools/shyplot/genutil.f90:
+! 13.10.2025	ggu	changed to f90 style
+!
+! ./src/tools/shyplot/plotgeneric.f90:
+!  13.11.2025	ggu	new routine poctogon() (not yet finished)
+!
+! ./src/tools/shyplot/def_para_post.f90:
+! 13.11.2025    ggu     new parameter rcircle
+!
+! ./src/tools/shyplot/supbas.f90:
+!  14.10.2025   ggu     big overhaul of routines
+!
+! ./src/tools/shyelab/shyelab_output.f90:
+! 01.10.2025    ggu     handle ncdate0
+! 03.10.2025    ggu     handle sumvar with specific vars, use 78 for sumvar
+! 08.10.2025    ggu     bug fix for ncdate0
+!
+! ./src/tools/shyelab/shy_util2.f90:
+! 03.10.2025    ggu     converted to f90
+! 17.10.2025    ggu     prepared for elemental values
+! 11.11.2025    ggu     handle cm option -layer smoothly
+!
+! ./src/tools/shyelab/femutil.f90:
+! 09.10.2025    ggu     created from scratch for smoothing regular field
+!
+! ./src/tools/shyelab/shyelab1.f90:
+! 03.10.2025    ggu     handle sumvar with specific vars
+! 03.10.2025    ggu     more on sumvar
+! 10.10.2025    ggu     bug fix for vorticity computation (belem was true)
+! 17.10.2025    ggu     prepared for elemental values
+! 11.11.2025    ggu     updated with layer indication
+!
+! ./src/tools/shyelab/elabutil.f90:
+! 01.10.2025    ggu     new option ncdate0
+! 10.10.2025    ggu     new smooth option for fem files
+! 11.11.2025    ggu     new option layer
+! 13.11.2025    ggu     new option stnames
+!
+! ./src/tools/shyelab/shyelab_nodes.f90:
+! 03.10.2025    ggu     enlarge printed field
+!
+! ./src/tools/shyelab/extelab1.f90:
+! 10.11.2025	ggu	error if file is not existing
+!
+! ./src/tools/shynetcdf/nc2fem.f90:
+! 19.06.2025    ggu     check file format with nc_check_file_format()
+! 13.11.2025    ggu     increase length of var
+!
+! ./src/tools/shynetcdf/elab_nc_dummy.f90:
+! 24.10.2025	ggu	routine nc_set_ref_date() was not defined
+!
+! ./src/tools/shynetcdf/netcdf.f90:
+! 17.06.2025	ggu	deal with description == 'unknown'
+! 19.06.2025	ggu	new routine nc_check_file_format()
+! 30.09.2025	ggu	handle variables with no CL description
+! 01.10.2025	ggu	accept different reference date
+!
+! ./src/tools/shynetcdf/nc_tutil.f90:
+! 17.06.2025	ggu	new routine get_minmax_time_records()
+!
+! ./src/tools/shynetcdf/nc_dim_coords.f90:
+! 17.06.2025	ggu	deal with description == 'unknown'
+!
+! ./src/tools/femutil/optintp/suboi.f90:
+! 22.10.2025	ggu	some optimizations
+! 24.10.2025	ggu	some bug fixes
+!
+! ./src/tools/femutil/netcdf/ncinfo.f90:
+! 01.10.2025    ggu     new routine print_time() and option -time
+!
+! ./src/tools/femutil/netcdf/ncf_util.f90:
+! 15.06.2025    ggu     better documentation
+!
+! ./src/tools/femutil/netcdf/ncugrid.f90:
+! 15.06.2025    ggu     written from scratch
+!
+! ./src/tools/shybas/basutil.f90:
+! 18.06.2025    ggu     new option -comparebas and routine bascompare_bas()
+!
+! ./src/contrib/ecological/weutro/weutro.f90:
+! 16.10.2025	ggu	read parameters from namelist - handle_param_init()
+!
+! ./src/utils/shympi/check_shympi_check.f90:
+! 05.10.2025    ggu     last changes
+!
+! ./src/utils/generic/time_util.f90:
+! 24.10.2025	ggu	new routine is_time_absolute()
+!
+! ./src/utils/generic/geometrical.f90:
+! 23.09.2025	ggu	more routines to convert cartesian to polar and vicev.
+!
+! ./src/utils/generic/round.f90:
+! 13.10.2025	ggu	new routine frac_pos()
+!
+! ./src/utils/generic/errorstop.f90:
+! 10.07.2025	ggu	added sucess_stop()
+!
+! ./src/utils/generic/nls.f90:
+! 03.11.2025	ggu	prepare for string arrays
+!
+! ./src/utils/generic/convert.f90:
+! 02.10.2025	ggu	new routines iscanp()
+!
+! ./src/utils/generic/intp.f90:
+! 07.10.2025	ggu	in exxpp check for nmax >= nintp
+! 21.10.2025	ggu	new routine find_first_x()
+!
+! ./src/utils/generic/femfile.f90:
+! 24.06.2025	ggu	in fem_is_nan() use intrinsic isnan()
+!
+! ./src/utils/generic/iso8601.f90:
+! 01.10.2025	ggu	new routine complete_date()
+!
+! ./src/utils/generic/para.f90:
+! 03.11.2025	ggu	new routine para_set_array_value()
+!
+! ./src/utils/shyutilmpi/test_iff.f90:
+! 06.11.2025    ggu     program for testing interpolation routines
+!
+! ./src/utils/shyutilmpi/shy_util.f90:
+! 03.10.2025    ggu     for description return and print also short
+! 16.10.2025    ggu     new routines for writing elemental files
+! 17.10.2025    ggu     in shyfem_init_elem_file() use ftype==4 (bug)
+!
+! ./src/utils/shyutilmpi/intp_fem_file.f90:
+! 04.11.2025    ggu     new routine iff_at_eof()
+! 06.11.2025    ggu     changed initialization routine for time series
+! 06.11.2025    ggu     new routine iff_is_global_initialized()
+! 06.11.2025    ggu     new routine iff_file_has_data()
+! 06.11.2025    ggu     new routine iff_init_global_simplified()
+! 06.11.2025    ggu     introduced boriginal
+! 07.11.2025    ggu     set time array out of iff_space_interpolate()
+! 10.11.2025    ggu     introduced iuout, better info writing
+!
+! ./src/utils/shyutilmpi/info_output.f90:
+! 05.11.2025    ggu     routine getinfo() transferred here from iostr.f90
+!
+! ./src/utils/shyutilmpi/mod_restart.f90:
+! 19.06.2025    ggu     updated
+!
+! ./src/utils/shyutil/strings.f90:
+! 10.07.2025	ggu	started parsing BFM variable names
+! 15.09.2025	ggu	new id_tentative, do not compress '_'
+! 03.10.2025	ggu	new routine ivar2short() and variable 78
+!
+! ./src/utils/shyutil/regular.f90:
+! 13.10.2025	ggu	new routine getreg_dim()
+!
+! ./src/utils/shyutil/io_flx.f90:
+! 03.10.2025    ggu     flush unit
+!
+! ./src/utils/shyutil/io_shy.f90:
+! 03.10.2025    ggu     flush unit
+! 10.10.2025    ggu     better error message
+! 17.10.2025    ggu     include ftype == 4
+!
+! ./src/utils/shyutil/basin.f90:
+! 18.06.2025    ggu     structure and routines to save basin
+!
+! ./src/utils/shyutil/bfm_strings.f90:
+! 05.10.2025    ggu     written from scratch
+!
+! ./src/utils/shyutil/io_ext.f90:
+! 18.06.2025	ggu	new version 9, handle version 8 (old and new)
+! 03.10.2025    ggu     flush unit
+!
+! ./src/utils/shyutil/link_dummy.f90:
+! 15.06.2025    ggu     updated
+!
+! ./src/utils/shyutil/version.f90:
+! 26.11.2025	ggu	version 8.2.6   Ebbe edition
+!
+! ./src/utils/shyutil/lnku.f90:
+! 07.10.2025	ggu	bug fix in find_elems_to_segment()
+!
+! ./src/utils/modules/mod_meteo.f90:
+! 10.09.2025	ggu	new parameters qsensv, qlatv,qlongv
+
+
 12.06.2025
 
 ! ./src/shyfem/explicit.f90:
