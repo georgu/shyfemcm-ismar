@@ -4,6 +4,8 @@
 #
 #------------------------------------------------------
 
+param_file=shyfem_vars.py
+
 if [ "$1" = "-nocheck" ]; then
   options="-nocheck"
   shift
@@ -16,7 +18,8 @@ fi
 
 if [ $# -ne 1 ]; then
   echo "Usage: ./bfm.sh [-check|-nocheck] what"
-  echo "  what can be var_num_2_name cbms bfm afm bfm_d afm_d"
+  echo "  what can be one of the following:"
+  grep = $param_file | sed -e 's/={.*//'
   exit 1
 fi
 
@@ -34,7 +37,7 @@ make compile
 [ $? -ne 0 ] && echo "error in compilation" && exit 1
 
 echo "parsing shyfem_vars.py"
-a.out $options $what < shyfem_vars.py
+a.out $options $what < $param_file
 status=$?
 #echo "status = $status"
 if [ $status -eq 77 ]; then
