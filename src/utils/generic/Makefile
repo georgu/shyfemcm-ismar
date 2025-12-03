@@ -76,6 +76,7 @@ OBJ  = \
 	histogram.o \
 	errorstop.o \
 	compatibility.o \
+	spline.o \
 
 OBSOLETE = \
 	expand.o \
