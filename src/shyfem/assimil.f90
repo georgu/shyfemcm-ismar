@@ -46,6 +46,11 @@
 
 	subroutine scalar_assimilation(idass,zback)
 
+! assimilation of scalar
+!
+! mode == 0	nudging with tau
+! mode == 1	apply zanal directly - at tau intervals
+
 	use basin
 	use levels
 	use shympi
@@ -286,14 +291,19 @@
 ! if needed apply nudging
 !---------------------------------------------------------------
 
-	if( mode == 0 .and. tau > 0. ) then
-	  if( bwrite ) write(iu666,*) 'doing nudging'
-	  rtau = 1./tau
-	  call scalar_nudging_0(dt,zback2d,zanal,rtau)
-	else if( mode == 1 ) then
+	if( mode == 0 ) then	!nudging
+	  if( tau > 0. ) then
+	    if( bwrite ) write(iu666,*) 'doing nudging'
+	    rtau = 1./tau
+	    call scalar_nudging_0(dt,zback2d,zanal,rtau)
+	  else
+	    write(6,*) 'for mode==0 tau>0 must be given'
+	    stop 'error stop scalar_assimilation: mode==0 and tau==0'
+	  end if
+	else if( mode == 1 ) then	!apply directly
 	  zback2d = zanal
 	else
-	  write(6,*) 'error in mode: ',mode,tau
+	  write(6,*) 'error in mode: ',mode
 	  stop 'error stop scalar_assimilation: error in mode'
 	end if
 

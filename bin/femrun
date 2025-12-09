@@ -193,36 +193,33 @@ fi
 
   if [ $batch = "NO" ]; then
     tmpfil=$tmpdir/hpat/hpat.$aux.$$
-    echo "cd $actdir" > $tmpfil
-    if [ $mpi -ne 0 ]; then
-      exefile="mpirun -np $mpi $exefile -mpi"
-    fi
-    command="$prefix nohup $fembat $tmpfil $exefile $options $strfile"
-    echo "$command > $logfile 2>&1 &" >> $tmpfil
-
-    chmod +x $tmpfil
-    status=$?
-    echo "executing $tmpfil   status = $status"
-    if [ "$attime" = "now" ]; then
-      $tmpfil
-    else 
-      $at -f $tmpfil $attime > /dev/null 2>&1
-    fi
-
-    status=$?
   else
-    RunNotify $tmpdir/hpinfo
-
     tmpfil=$tmpdir/hpbatch/hpbatch.$aux.$$
-    echo "cd $actdir" > $tmpfil
-    command="$prefix nohup $fembat $tmpfil $exefile $options $strfile"
-    echo "$command > $logfile 2>&1 &" >> $tmpfil
-    #echo "nohup $fembat $tmpfil $exefile $strfile > $logfile 2>&1 &" >> $tmpfil
-
-    $fembatch
-
-    status=$?
   fi
+
+  echo "npmpi=$mpi" > $tmpfil
+  echo "cd $actdir" >> $tmpfil
+
+  if [ $mpi -ne 0 ]; then
+    exefile="mpirun -np $mpi $exefile -mpi"
+  fi
+  command="$prefix nohup $fembat $tmpfil $exefile $options $strfile"
+  echo "$command > $logfile 2>&1 &" >> $tmpfil
+
+  chmod +x $tmpfil
+  status=$?
+
+  echo "executing $tmpfil   status = $status"
+
+  if [ $batch = "YES" ]; then
+    nohup dispatch.sh &
+  elif [ "$attime" = "now" ]; then
+    bash $tmpfil
+  else 
+    $at -f $tmpfil $attime > /dev/null 2>&1
+  fi
+
+  status=$?
 
   if [ $status -ne 0 ]; then	#error in previous at command -> repeat for xfem
     $at -f $tmpfil $attime 
