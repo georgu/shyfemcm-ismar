@@ -1,0 +1,117 @@
+
+$title
+    apnven - Venice Lagoon
+$end
+
+#---------------- PARAMETER --------------------------
+
+$para
+
+        x0 = 15000.  y0 = 6000.
+        x1 = 50000.  y1 = 50000.
+        x0leg = 17000.  y0leg = 43000.
+        x1leg = 25000.  y1leg = 48000.
+
+        ioverl = 1
+	typlsf = 3
+	velref = 0.5
+	isphe  = 0
+	dxygrd = 350.
+$end
+	bndlin = 'GRID/canali_line_trans2.bnd'
+
+#---------------- COLOR BAR ----------------------------------
+
+$color
+        x0col = 33000.  y0col =  7000.
+        x1col = 48000.  y1col =  9500.
+&end
+
+#------------------- WATER LEVEL -----------------------------
+
+$color zeta
+        legcol = 'Water level [cm]'
+        ndccol = -1  faccol = 100.
+        icolor = 1
+        colmin = 0.0  colmax = 0.8
+        valmin = -0.4  valmax = 0.4
+        niso = 50     nisomx = 50
+        nctick = 5
+$end
+
+#---------------- CURRENT VELOCITY COLOR ---------------------
+
+$color velocity
+        legcol = 'Current Velocity [cm/s]'
+        ndccol = -1  faccol = 100.
+        icolor = 1
+        colmin = 0.7 colmax = 0.0
+        valmin = 0.0 valmax = 0.50
+        niso = 30   nisomx = 30
+	dval   = 0.05
+        nctick = 6
+$end
+
+#---------------- CURRENT SALINITY COLOR ---------------------
+
+$color salinity
+        colfil = 'colormap.dat'
+        coltab = 'Salinity'
+        legcol = 'Salinity [psu]'
+        ndccol = -1     faccol = 1
+        icolor = 1      isolin = 0
+        colmin = 0.     colmax = 1.0
+        valmin = 30.    valmax = 35.
+        niso = 30       nisomx = 60
+        nctick = 6
+        dval   = 1.0
+        cblank = 0
+$end
+
+
+#---------------- CURRENT TEMPERATURE COLOR ------------------
+
+$color temperature
+        colfil = 'colormap.dat'
+        coltab = 'Temperature'
+        legcol = 'Temperature [deg]'
+        ndccol = -1  faccol = 1
+        icolor = 1
+        colmin = 0.0 colmax = 1.0
+        valmin = 25  valmax = 30
+        niso = 30   nisomx = 60
+        dval   = 0.5
+        nctick = 6
+$end
+
+#---------------- CURRENT VELOCITY ARROW ---------------------
+
+	legvel = 'Current Velocity'
+$arrow
+	x0arr = 38700.  y0arr = 19900.
+	x1arr = 39700.  y1arr = 20000.
+	ndcvel = 1 
+	facvel = 10000
+$end
+
+
+#-------------------- TIME ---------------------------------
+
+        date=090325	time = 0000000
+legvar
+        date=120101	time = 0000000
+        xdate=28500	ydate= 29400
+        sdate=15 idate=3
+end
+
+#-------------------- LEGEND ---------------------------------
+
+legend
+	rect 28200 29200 39000 30500 1
+	wid 2
+	col 0.0
+	rect 28200 29200 39000 30500 -1
+
+        text 28500 30000     16      'Date/Time [GMT]'
+
+end
