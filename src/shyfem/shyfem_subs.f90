@@ -474,7 +474,7 @@
         call diffweight
         call set_diffusivity
 	call tidefini
-	call close_init
+	call do_close_init
         call shdist(rdistv)
 	call quad_tree_initialize
 	call tracer_init

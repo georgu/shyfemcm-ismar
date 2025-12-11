@@ -28,13 +28,18 @@
 !
 ! contents :
 !
-! subroutine sp136(ic)		opens and closes sections & inlets
+! the next routines are called from outside the file
+!
+! subroutine do_close_init		initializes closing sections
+! subroutine do_close_handle(ic)	opens and closes sections & inlets
 !
 ! subroutine inclos		initializes closing sections
 ! subroutine rdclos(isc)	reads closing sections
 ! subroutine ckclos		post-processes closing sections
 ! subroutine prclos		prints info on closing sections
 ! subroutine tsclos		tests closing sections
+!
+! to debug look for 350 and uncomment
 !
 ! revision log :
 !
@@ -68,6 +73,7 @@
 ! 09.04.2020	ggu	increase non computing elements with ndist
 ! 06.12.2020	ggu	deleted close.h
 ! 18.05.2023	ccf	include reading closure from file
+! 11.12.2025	ggu	adapted for MPI
 !
 !************************************************************************
 
@@ -82,6 +88,7 @@
           integer :: isc
           integer, allocatable :: kboc(:)
           double precision, allocatable :: itb(:)
+	  logical :: bindomain
           integer :: kref
           integer :: kdir
           integer :: kout
@@ -93,6 +100,7 @@
           real :: zdate
           real :: vdate
           real :: zdiff
+          real :: zref
           character*80 :: cfile         !closure file name
           integer :: idfile             !closure file id
 
@@ -178,7 +186,8 @@
           stop 'error stop close_init_id: ndim'
         end if
 
-        pentry(id)%isc = 0
+        pentry(id)%bindomain = .true.
+        pentry(id)%isc = -1
         pentry(id)%kref = 0
         pentry(id)%kout = 0
         pentry(id)%kin = 0
@@ -190,6 +199,7 @@
         pentry(id)%zdate = 0.
         pentry(id)%vdate = 0.
         pentry(id)%zdiff = 0.
+        pentry(id)%zref = 0.
         pentry(id)%cfile = ''
         pentry(id)%idfile = 0
 
@@ -205,11 +215,12 @@
         end module close
 !==================================================================
 
-	subroutine close_init
+	subroutine do_close_init
 
 	use arrays
 	use close
 	use basin
+	use shympi
 
 	implicit none
 
@@ -221,7 +232,7 @@
 	integer kvert(10)
 
 	integer nkbnds,nbnds,itybnd
-	real, save :: rfmax = 1./300.		!time scale 5 minutes
+	real, save :: rfmax = 1./350.		!time scale 5 minutes
 	real, save :: vmax = 10.		!viscosity
 	real hkv(nkn)				!aux array
 	integer index(nkn)
@@ -240,6 +251,8 @@
 	if( binit ) return			!already initialized
 	binit = .true.
 
+	write(6,*) 'initializing closing sections ',my_id
+
 	iclose = nint(getpar('iclose'))
         if(iclose.le.0) return          !no closing enabled
 
@@ -250,6 +263,8 @@
 	call set_vis_max(vmax)    !set maximum viscosity
 
 	do id=1,nclose
+
+	if( .not. pentry(id)%bindomain ) cycle
 
         nkboc = size(pentry(id)%kboc)
 	ibnd = pentry(id)%ibnd
@@ -272,7 +287,7 @@
 !	setup other nodes
 !	-----------------------------------------------
 
-	if( pentry(id)%kref <= 0 ) pentry(id)%kref = pentry(id)%kboc(1)
+	if( pentry(id)%kref < 0 ) pentry(id)%kref = pentry(id)%kboc(1)
 	if( pentry(id)%kdir <= 0 ) pentry(id)%kdir = pentry(id)%kref
 	if( pentry(id)%kout <= 0 ) pentry(id)%kout = pentry(id)%kref
 	if( pentry(id)%kin  <= 0 ) pentry(id)%kin  = pentry(id)%kref
@@ -373,13 +388,14 @@
            pentry(id)%idfile = idfile
         end if
 
-	call close_info(id)
+	call do_close_info(id)
 
 	end do
 
-	write(6,*) 'closing sections initialized: ',nclose
+	write(6,*) 'finished initializing closing sections ',nclose,my_id
 
-	call check_dist		!checks and plots
+	call shympi_barrier
+	!call check_dist		!checks and plots	!FIXME
 
 !	-----------------------------------------------
 !	end of routine
@@ -393,7 +409,7 @@
 
 !******************************************************************
 
-	subroutine close_info(id)
+	subroutine do_close_info(id)
 
 	use close
 
@@ -406,12 +422,14 @@
         character*80 file
 	integer ipext,ieext,ideffi
 
-        if( nb13 == 0 ) then        !open file
-          nb13=ideffi('datdir','runnam','.cls','form','new')
-          if( nb13 .le. 0 ) then
-            stop 'error stop close_info : Cannot open CLS file'
-          end if
-        end if
+	if( .not. pentry(id)%bindomain ) return
+
+        !if( nb13 == 0 ) then        !open file
+        !  nb13=ideffi('datdir','runnam','.cls','form','new')
+        !  if( nb13 .le. 0 ) then
+        !    stop 'error stop close_info : Cannot open CLS file'
+        !  end if
+        !end if
 
 	kref = pentry(id)%kref
 	kdir = pentry(id)%kdir
@@ -421,6 +439,7 @@
 	nieboc = size(pentry(id)%ieboc)
 	file = pentry(id)%cfile
 
+	if( nb13 > 0 ) then
 	write(nb13,*)
 	write(nb13,*) 'first call for closing section nr. : ',id
 	write(nb13,*)
@@ -434,14 +453,14 @@
 	write(nb13,*) (ieext(pentry(id)%ieboc(ii)),ii=1,nieboc)
 	write(nb13,*) 'cfile : ',trim(file)
 	write(nb13,*)
-
 	flush(nb13)
+	end if
 
 	end
 
 !******************************************************************
 
-	subroutine close_handle(ic)
+	subroutine do_close_handle(ic)
 
 !---------------------------------------------------------------------------
 !
@@ -498,7 +517,7 @@
 ! zdate,zdiff	water level variables used in mode
 ! vdate		velocity variable used in mode
 !
-! cfile 	Name of the file for the closure. In file is provided, the
+! cfile 	Name of the file for the closure. If file is provided, the
 !		reference nodes and levels are ignored. Format is:
 !  		   datetime flag (with flag=0 open; flag=1 close)
 !
@@ -519,6 +538,7 @@
 	integer id,ioper
         integer nsc
         integer iact,imode
+	real zacum,zref
 
 	integer icltot,ioptot,icl,iop
 	real geyer
@@ -534,8 +554,10 @@
 	if(iclose.le.0) return		!no closing enabled
 
 	if( shympi_is_parallel() ) then
-	  stop 'error stop sp136: cannot run in mpi mode'
+	!  stop 'error stop do_close_handle: cannot run in mpi mode'
 	end if
+
+	!write(6,*) 'handling closing sections ',my_id
 
 !	----------------------------------------------
 !	initialize
@@ -549,15 +571,38 @@
 	call get_act_dtime(dtime)
 	call get_act_timeline(aline)
 
-	write(nb13,*) '********** ',aline,' **********'
+	if( nb13 > 0 ) then
+	write(nb13,*) '******* ',aline,' ******'
 	write(nb13,*) '***********************************'
 	write(nb13,*)
+	end if
+
+!	----------------------------------------------
+!	get global zref
+!	----------------------------------------------
+
+	zacum = 0.
+	do id=1,nsc
+	  call get_zref(id,zref)
+	  zacum = zacum + zref
+	end do
+	do id=1,nsc
+	  pentry(id)%zref = zacum
+	  !write(6,*) 'zacum:: ',zacum,id,my_id
+	end do
+	if( my_id == 0 ) then
+	  !write(400+my_id,*) zacum
+	end if
+	!call flush(6)
+	!call shympi_barrier
 
 !	----------------------------------------------
 !	start loop on closing sections
 !	----------------------------------------------
 
 	do id=1,nsc
+
+	if( .not. pentry(id)%bindomain ) cycle
 
 ! get parameters
 
@@ -580,10 +625,12 @@
 
         if ( bcfile ) call iff_ts_intp1(idfile,dtime,fclose)
 
+	if( nb13 > 0 ) then
 	write(nb13,*)
 	write(nb13,'(1x,a,4i5)') 'id,iact,imode,ioper :' &
      &				,id,iact,imode,ioper
 	write(nb13,*)
+	end if
 
 !	----------------------------------------------
 !	decide about closing & opening
@@ -618,13 +665,13 @@
                 if (bcfile) then
                    bclos = (fclose == 1)
                 else
-                   call closing(id,icl,bclos)
+                   call do_closing(id,icl,bclos)
                 end if
 	else if( ioper == is_closed ) then	!inlet is closed
                if (bcfile) then
                   bopen = (fclose == 0)
                 else
-                  call opening(id,iop,bopen)
+                  call do_opening(id,iop,bopen)
                 end if
 	end if
 
@@ -654,12 +701,12 @@
 	  call set_geyer(id,geyer)
 	  !write(6,*) 'ioper,geyer : ',ioper,geyer
 	  !write(67,*) 'ioper,geyer : ',ioper,geyer
-	  write(nb13,*) 'ioper,geyer : ',ioper,geyer
+	  if( nb13 > 0 ) write(nb13,*) 'ioper,geyer : ',ioper,geyer
 
 	  if( bfirst ) then
        		call get_new_mode(id,dflag,iact,imode,bnewmode)
 		write(6,*) 'inlet ',id,' closed at ',aline
-		write(nb13 ,*) 'inlet ',id,' closed at ',aline
+		if( nb13 > 0 ) write(nb13 ,*) 'inlet ',id,' closed at ',aline
 	  end if
 	end if
 
@@ -690,12 +737,12 @@
 	  call set_geyer(id,geyer)
 	  !write(6,*) 'ioper,geyer : ',ioper,geyer
 	  !write(67,*) 'ioper,geyer : ',ioper,geyer
-	  write(nb13,*) 'ioper,geyer : ',ioper,geyer
+	  if( nb13 > 0 ) write(nb13,*) 'ioper,geyer : ',ioper,geyer
 
 	  if( bfirst ) then
        		call get_new_mode(id,dflag,iact,imode,bnewmode)
 		write(6,*) 'inlet ',id,' opened at ',aline
-		write(nb13 ,*) 'inlet ',id,' opened at ',aline
+		if( nb13 > 0 ) write(nb13 ,*) 'inlet ',id,' opened at ',aline
 	  end if
 	end if
 
@@ -705,7 +752,7 @@
 
 	if( bclos .and. bopen ) then
 	  write(6,*) 'both closing and opening: ',bclos,bopen
-	  stop 'error stop sp136: internal error (1)'
+	  stop 'error stop do_close_handle: internal error (1)'
 	else if( .not. bclos .and. .not. bopen ) then	!out of operation
 	  if( ioper == is_closed ) then			!inlet is closed
 	    call set_geyer(id,0.)			!keep closed
@@ -724,11 +771,13 @@
 
 	end do
 
-	write(nb13,*) '***********************************'
+	if( nb13 > 0 ) write(nb13,*) '***********************************'
 
 !	----------------------------------------------
 !	end of routine
 !	----------------------------------------------
+
+	!write(6,*) 'finished handling closing sections ',my_id
 
 	end
 
@@ -736,7 +785,7 @@
 !********************************************************************
 !********************************************************************
 
-	subroutine closing(id,icl,bclose)
+	subroutine do_closing(id,icl,bclose)
 
 ! decides if to close inlet
 
@@ -759,18 +808,24 @@
 
 	real zvbnds
 
+	!call get_zref(id,zref)
+
+	if( .not. pentry(id)%bindomain ) return
+
         kref = pentry(id)%kref
         kdir = pentry(id)%kdir
         kout = pentry(id)%kout
         kin  = pentry(id)%kin
 
+	zref = pentry(id)%zref
 	zdiff = pentry(id)%zdiff
 	zdate = pentry(id)%zdate
 	vdate = pentry(id)%vdate
 	scalo = pentry(id)%scal
 
 	zin=znv(kin)
-        zref=znv(kref)
+        !zref=znv(kref)
+	!zref = 0.
 	if( kout > 0 ) then
 	  zout=znv(kout)
 	else
@@ -808,7 +863,7 @@
 		if(zref.gt.zdate.and.scal.gt.0.) bclose=.true.
         else
 		write(6,*) 'icl = ',icl
-		stop 'error stop closing: no such code for icl'
+		stop 'error stop do_closing: no such code for icl'
         end if
 
 	pentry(id)%scal = scal
@@ -817,7 +872,7 @@
 
 !********************************************************************
 
-	subroutine opening(id,iop,bopen)
+	subroutine do_opening(id,iop,bopen)
 
 ! decides if to open inlet
 
@@ -835,6 +890,8 @@
 	real zin,zout,zref
 
 	real zvbnds
+
+	if( .not. pentry(id)%bindomain ) return
 
         kout = pentry(id)%kout
         kin  = pentry(id)%kin
@@ -867,7 +924,7 @@
                 if(zout.lt.zdate) bopen=.true.
         else
 		write(6,*) 'iop = ',iop
-		stop 'error stop opening: no such code for iop'
+		stop 'error stop do_opening: no such code for iop'
         end if
 
 	end
@@ -998,10 +1055,11 @@
 ! post-processes closing sections
 
 	use close
+	use shympi
 
 	implicit none
 
-	logical bstop
+	logical bstop,bout,bw
 	integer nsc,ivdim,ivful
 	integer nbc
 	integer i,j,k,id
@@ -1009,11 +1067,24 @@
 	integer knode,kint
 	integer jkboc
 	integer ibndz
+	integer ierr
+	integer iu
 
 	integer ipint
 	integer nbnds,nkbnds
 
+	iu = 0
+	!iu = 300 + my_id	!uncomment for debug write to files fort.3??
+	bw = iu > 0
+
+	call shympi_barrier
+	call flush(iu)
+
 	bstop = .false.
+	bout = .false.
+
+	write(6,*) 'checking all sections: ',my_id
+	if(bw) write(iu,*) 'checking all sections: ',my_id
 
 	nsc = nclose
 	nbc = nbnds()
@@ -1025,6 +1096,7 @@
            nkboc = size(pentry(id)%kboc)
 	   ibnd = pentry(id)%ibnd
            nitb = size(pentry(id)%itb)
+	   bout = .false.
 
 !	   nodes of boundary
 
@@ -1040,22 +1112,45 @@
                 bstop=.true.
              end if
            else if(nkboc.gt.0.and.ibnd.eq.0) then
+	     ierr = 0
              do i=1,nkboc
-                knode=pentry(id)%kboc(i)
-                kint=ipint(knode)
-                if( knode <= 0 .or. kint <= 0 ) then
-                   write(6,'(a,i2,a)') ' section CLOSE ',j,' :'
-                   write(6,*) '   node not found ',knode
-                   bstop=.true.
-                end if
-                pentry(id)%kboc(i) = kint
+               knode=pentry(id)%kboc(i)
+               kint=ipint(knode)
+               if( knode <= 0 ) then
+                 write(6,'(a,i2,a)') ' section CLOSE ',j,' :'
+                 write(6,*) '   external node not given ',knode
+	  	 bstop = .true.
+	       else if( kint <= 0 ) then
+                 if(bw) write(iu,'(a,i2,a)') ' section CLOSE ',j,' :'
+                 if(bw) write(iu,*) '   node not found ',knode
+	         ierr = ierr + 1
+	       else if( kint > nkn_inner ) then
+                 if(bw) write(iu,'(a,i2,a)') ' section CLOSE ',j,' :'
+                 if(bw) write(iu,*) '   node not in domain ',knode
+	         ierr = ierr + 1
+               end if
+               pentry(id)%kboc(i) = kint
              end do
+	     if( ierr > 0 ) then
+	       if( ierr == nkboc ) then
+		 if(bw) write(iu,*) 'section completely out of domain... ok'
+		 if(bw) write(iu,*) 'j,ierr,nkboc,my_id: ',j,ierr,nkboc,my_id
+		 bout = .true.
+	       else
+                 write(6,'(a,i2,a)') ' section CLOSE ',j,' :'
+		 write(6,*) 'section partially out of domain... ok'
+		 write(6,*) 'j,ierr,nkboc,my_id: ',j,ierr,nkboc,my_id
+		 bstop = .true.
+	       end if
+	     end if
            else
              write(6,'(a,i2,a)') ' section CLOSE ',j,' :'
              write(6,*) '   ibnd = ',ibnd,'   nkboc = ',nkboc
              write(6,*) '   No data read for kboc'
              bstop=.true.
            end if
+
+	   pentry(id)%bindomain = .not. bout
 
 !	   various other checks
 
@@ -1080,13 +1175,62 @@
              bstop=.true.
            end if
 
-	   call convk(pentry(id)%kref,bstop)
-	   call convk(pentry(id)%kdir,bstop)
-	   call convk(pentry(id)%kout,bstop)
-	   call convk(pentry(id)%kin,bstop)
+	   if(bw) write(iu,*) 'converting extra points: ',j,bout,ierr,my_id
+
+	   ierr = 0
+	   call convk(pentry(id)%kdir,ierr)
+	   call convk(pentry(id)%kout,ierr)
+	   call convk(pentry(id)%kin,ierr)
+	   if( bout .and. ierr /= 3 ) then
+             if(bw) write(iu,'(a,i2,a)') ' section CLOSE extra points',j,' :'
+	     if(bw) write(iu,*) 'partially out of domain',bout,ierr,my_id
+             write(6,'(a,i2,a)') ' section CLOSE extra points',j,' :'
+	     write(6,*) 'partially out of domain',j,bout,ierr,my_id
+	     bstop = .true.
+	   else if( .not. bout .and. ierr /= 0 ) then
+             if(bw) write(iu,'(a,i2,a)') ' section CLOSE extra points',j,' :'
+	     if(bw) write(iu,*) 'partially out of domain',j,bout,ierr,my_id
+             write(6,'(a,i2,a)') ' section CLOSE extra points',j,' :'
+	     write(6,*) 'partially out of domain',j,bout,ierr,my_id
+	     bstop = .true.
+	   else if( bout ) then
+             if(bw) write(iu,'(a,i2,a)') ' section CLOSE extra points',j,' :'
+	     if(bw) write(iu,*) 'completely out of domain',j,bout,ierr,my_id
+	   else if( ierr == 0 ) then
+             if(bw) write(iu,'(a,i2,a)') ' section CLOSE extra points',j,' :'
+	     if(bw) write(iu,*) 'completely in domain',j,bout,ierr,my_id
+	   else
+             write(6,'(a,i2,a)') ' section CLOSE extra points',j,' :'
+	     write(6,*) 'unknown error',j,bout,ierr,my_id
+	     bstop = .true.
+	   end if
+	     
+	   call convk(pentry(id)%kref,ierr)
+
+	   if( .not. bout ) then
+	     if(bw) write(iu,*) 'debugging section ',id,my_id
+	     if(bw) write(iu,*) nkboc,nkn_local
+             do i=1,nkboc
+               kint=pentry(id)%kboc(i)
+	       if(bw) write(iu,*) i,kint
+	     end do
+	     if(bw) write(iu,*) 'kref ',pentry(id)%kref
+	     if(bw) write(iu,*) 'kdir ',pentry(id)%kdir
+	     if(bw) write(iu,*) 'kout ',pentry(id)%kout
+	     if(bw) write(iu,*) 'kin  ',pentry(id)%kin
+
+	     if(bw) write(iu,*) 'finished checking: ',id,my_id
+	  end if
+	   
+	   call shympi_barrier
+	   call flush(iu)
         end do
 
         if(bstop) stop 'error stop : ckclos'
+
+	write(6,*) 'finished checking all sections: ',my_id
+	if(bw) write(iu,*) 'finished checking all sections: ',my_id
+	if(bw) call flush(iu)
 
 	end
 
@@ -1114,6 +1258,8 @@
         do j=1,nsc
 
 	id = j
+
+	if( .not. pentry(id)%bindomain ) return
 
         write(6,*) ' close section number: ', pentry(id)%isc
         write(6,*) '   kref:  ', pentry(id)%kref
@@ -1339,23 +1485,28 @@
 
 !*****************************************************************
 
-	subroutine convk(k,bstop)
+	subroutine convk(k,ierr)
+
+	use shympi
 
 	implicit none
 
 	integer k
-	logical bstop
+	integer ierr
 
 	integer kint
 	integer ipint
 
-	bstop = .false.
 	if( k <= 0 ) return
 
 	kint = ipint(k)
 	if( kint <= 0 ) then
 	  write(6,*) 'cannot find node: ',k
-	  bstop = .true.
+	  ierr = ierr + 1
+	else if( kint > nkn_inner ) then
+	  write(6,*) 'node out of domain: ',k
+	  kint = 0
+	  ierr = ierr + 1
 	end if
 	k = kint
 
@@ -1382,6 +1533,10 @@
 
 	call get_act_dtime(dtime)
 
+	!call get_zref(id,zref)
+
+	if( .not. pentry(id)%bindomain ) return
+
 	iact = pentry(id)%iact
 	imode = pentry(id)%imode
 	ioper = pentry(id)%ioper
@@ -1400,7 +1555,9 @@
 	iflux = nint(flux)
 
 	zin=znv(kin)
-        zref=znv(kref)
+        !zref=znv(kref)
+	!zref = 0.
+	zref = pentry(id)%zref
 	if( kout > 0 ) then
 	  zout=znv(kout)
 	else
@@ -1501,21 +1658,55 @@
 	real dist(nel)
 	integer check(nel)
 
+	write(6,*) 'rrrrrrr',nclose
 	check = 0
+	dist = 0.
+	write(6,*) maxval(dist),maxval(check)
 	do id=1,nclose
 	  dist = dist + pentry(id)%distfact
 	  where( pentry(id)%distfact > 0 ) check = check + 1
 	end do
 
+	write(6,*) maxval(dist),maxval(check)
 	if( maxval(check) > 1 ) then
 	  write(6,*) 'barriers are too close for chosen value of ndist'
 	  stop 'error stop check_dist: ndist too big'
 	end if
+	write(6,*) 'rrrrrrrrrrr'
 
 	call basin_to_grd
 	call grd_flag_depth
 	call grd_set_element_depth(dist)
 	call grd_write('dist_close.grd')
+
+	end
+
+!*****************************************************************
+
+	subroutine get_zref(id,zref)
+
+	use close
+	use mod_hydro
+	use shympi
+
+	implicit none
+
+	integer id
+	real zref
+
+	integer kref
+
+	!write(6,*) 'getting zref ',id,my_id
+	!if( pentry(id)%bindomain ) then
+	!  kref = pentry(id)%kref
+        !  zref = znv(kref)
+	!end if
+
+	kref = pentry(id)%kref
+	zref = 0.
+        if( kref > 0 .and. kref <= nkn_unique ) zref = znv(kref)
+	zref = shympi_sum(zref)
+	!write(6,*) 'finished getting zref ',id,zref,my_id
 
 	end
 
