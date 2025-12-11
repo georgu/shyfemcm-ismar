@@ -1,0 +1,186 @@
+
+%------------------------------------------------------------------------
+%
+%    Copyright (C) 1985-2020  Georg Umgiesser
+%
+%    This file is part of SHYFEM.
+%
+%    SHYFEM is free software: you can redistribute it and/or modify
+%    it under the terms of the GNU General Public License as published by
+%    the Free Software Foundation, either version 3 of the License, or
+%    (at your option) any later version.
+%
+%    SHYFEM is distributed in the hope that it will be useful,
+%    but WITHOUT ANY WARRANTY; without even the implied warranty of
+%    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+%    GNU General Public License for more details.
+%
+%    You should have received a copy of the GNU General Public License
+%    along with SHYFEM. Please see the file COPYING in the main directory.
+%    If not, see <http://www.gnu.org/licenses/>.
+%
+%    Contributions to this file can be found below in the revision log.
+%
+%------------------------------------------------------------------------
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%% user commands %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\paren}[1]	{ \left( #1 \right) }
+\newcommand{\mez}{\mbox{$\frac{1}{2}$}}
+\newcommand{\dpp}{\mbox{$\partial$}}
+\newcommand{\zz}{\zeta}
+\newcommand{\un}{\mbox{$U^{n+1}$}}
+\newcommand{\uo}{\mbox{$U^{n}$}}
+\newcommand{\vn}{\mbox{$V^{n+1}$}}
+\newcommand{\vo}{\mbox{$V^{n}$}}
+\newcommand{\zn}{\mbox{$\zz^{n+1}$}}
+\newcommand{\zo}{\mbox{$\zz^{n}$}}
+\newcommand{\up}{\mbox{$U^{\prime}$}}
+\newcommand{\vp}{\mbox{$V^{\prime}$}}
+\newcommand{\zp}{\mbox{$\zz^{\prime}$}}
+\newcommand{\dzxp}{\mez \frac{\dpp (\zn + \zo)}{\dpp x}}
+\newcommand{\dzyp}{\mez \frac{\dpp (\zn + \zo)}{\dpp y}}
+\newcommand{\dzxn}{\mbox{$\frac{\dpp \zn}{\dpp x}$}}
+\newcommand{\dzyn}{\mbox{$\frac{\dpp \zn}{\dpp y}$}}
+\newcommand{\dzxo}{\mbox{$\frac{\dpp \zo}{\dpp x}$}}
+\newcommand{\dzyo}{\mbox{$\frac{\dpp \zo}{\dpp y}$}}
+
+\newcommand{\tdif}[1] {\frac{\partial #1}{\partial t}}
+\newcommand{\xdif}[1] {\frac{\partial #1}{\partial x}}
+\newcommand{\ydif}[1] {\frac{\partial #1}{\partial y}}
+\newcommand{\zdif}[1] {\frac{\partial #1}{\partial z}}
+\newcommand{\xxdif}[1] {\frac{\partial^2 #1}{\partial {x}^2}}
+\newcommand{\yydif}[1] {\frac{\partial^2 #1}{\partial {y}^2}}
+\newcommand{\dt} {\mbox{$\Delta t$}}
+\newcommand{\dthalf} {\mbox{$\frac{\Delta t}{2}$}}
+\newcommand{\dtt} {\mbox{$\frac{\Delta t}{2}$}}
+\newcommand{\dx} {\mbox{$\Delta x$}}
+\newcommand{\dy} {\mbox{$\Delta y$}}
+
+\newcommand{\beq} {\begin{equation}}
+\newcommand{\eeq} {\end{equation}}
+\newcommand{\beqa} {\begin{eqnarray}}
+\newcommand{\eeqa} {\end{eqnarray}}
+
+\newcommand{\olds} {\mbox{$\scriptstyle (0)$}}
+\newcommand{\news} {\mbox{$\scriptstyle (1)$}}
+\newcommand{\meds} {\mbox{$\scriptscriptstyle (\frac{1}{2})$}}
+\newcommand{\half} {\mbox{$\scriptstyle \frac{1}{2}$}}
+
+\newcommand{\nsz} {\normalsize}
+\newcommand{\uold} {\mbox{$U^{\olds}$}}
+\newcommand{\vold} {\mbox{$V^{\olds}$}}
+\newcommand{\unew} {\mbox{$U^{\news}$}}
+\newcommand{\vnew} {\mbox{$V^{\news}$}}
+\newcommand{\zold} {\zeta^{(0)}}
+\newcommand{\znew} {\zeta^{(1)}}
+\newcommand{\resr} {{\cal R}}
+\newcommand{\drho} {\frac{1}{\rho_{0}}}
+\newcommand{\fracs}[2] {\mbox{$\frac{#1}{#2}$}}
+%\newcommand{\deltat} {\mbox{$\tilde{\delta}$}}
+%\newcommand{\gammat} {\mbox{$\tilde{\gamma}$}}
+\newcommand{\ffxx} {\tilde{f_x}}
+\newcommand{\ffyy} {\tilde{f_y}}
+
+\newcommand{\uv} {{\bf U}}
+\newcommand{\uvold} {{\bf U^{(0)}}}
+\newcommand{\uvnew} {{\bf U^{(1)}}}
+\newcommand{\af} {\alpha_{f}}
+\newcommand{\ac} {\alpha_{c}}
+\newcommand{\am} {\alpha_{m}}
+\newcommand{\duv} {\Delta {\bf U}}
+\newcommand{\dzeta} {\Delta \zeta}
+\newcommand{\iv} {{\bf I}}
+\newcommand{\ivh} {\hat{\bf I}}
+\newcommand{\fv} {{\bf F}}
+\newcommand{\uvh} {\hat{\bf U}}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%% hyphenation %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%DEB
+The equations of motion for an incompressible Boussinesq flow comprise the 3D equations of momentum balance.
+The equations, integrated over each layer, read:
+
+%\beq \label{ubarocl}
+\begin{subequations}
+\begin{eqnarray}
+\tdif{U_l} +Adv_l^{x} -fV_l =  -gh_l \xdif{\zeta} -\frac{gh_l}{\rho_0}\int_{-H_l}^{\zeta} \rho^{'} dz + \nonumber \\
+-\frac{h_l}{\rho_0} \xdif{p_a} +A_H(\xxdif{U_l}+\yydif{U_l}) + \frac{1}{\rho_0}(\tau_x^{top(l)} -\tau_x^{bottom(l)}) \\ \nonumber
+~~~~\\  \nonumber \\
+\tdif{V_l} +Adv_l^{y} +fU_l = -gh_l \ydif{\zeta} -\frac{gh_l}{\rho_0}\int_{-H_l}^{\zeta} \rho^{'} dz + \nonumber \\
+-\frac{h_l}{\rho_0} \ydif{p_a}+A_H(\xxdif{V_l}+\yydif{V_l}) +\frac{1}{\rho_0}(\tau_y^{top(l)} -\tau_y^{bottom(l)}) \\ \nonumber
+\end{eqnarray}
+\end{subequations}
+
+with l vertical layer, ($U_l$, $V_l$) horizontal velocities are integrated over the layer (transports),
+
+\[
+ U_l = \int_{-H_l}^{-H_{l-1}} u_l \: dz \; \hspace{1.cm}
+ V_l =  \int_{-H_l}^{-H_{l-1}} v_l \: dz \;
+\]
+
+and $p_a$ atmospheric pressure, $g$ gravitational constant, $f$ Coriolis parameter, $\zeta$ sea level, $\rho_0$ the constant water density,
+$\rho = \rho_0 + \rho^{'}$, $h_l$ layer thickness, $H_l$ depth of the bottom of layer $l$, and $A_H$ horizontal eddy viscosity. In addition
+
+\beq
+Adv_l^{x}= u_{l}\xdif{U_l} +v_{l}\ydif{U_l}+\int_{z_l}^{z_{l-1}} w\zdif{u}dz
+\eeq
+\beq
+Adv_l^{y}= u_{l}\xdif{V_l} +v_{l}\ydif{V_l}+\int_{z_l}^{z_{l-1}} w\zdif{v}dz
+\eeq
+
+and the turbulent shear stresses, for each layer are
+
+\beqa
+\tau_{x}^{top(l)}= \rho_{0}A_{\nu}\zdif{u_{l-1}},       \tau_{y}^{top(l)}=  \rho_{0}A_{\nu}\zdif{v_{l-1}}\\
+\tau_{x}^{bottom(l)}=  \rho_{0}A_{\nu}\zdif{u_{l}},	\tau_{y}^{bottom(l)}=  \rho_{0}A_{\nu}\zdif{v_{l}},
+\eeqa
+
+The boundary conditions for stress terms are
+\beqa
+\tau_{x}^{top(0)}= C_D \rho_a w_x\sqrt{w_x^2+w_y^2},  \tau_{y}^{top(0)}= C_D \rho_a w_y\sqrt{w_x^2+w_y^2} \\
+\tau_{x}^{bottom(L)}= C_B \rho_0 (u)_L \sqrt{u_L^2+v_L^2},  \tau_{y}^{bottom(L)}= C_B \rho_0 (v)_L \sqrt{u_L^2+v_L^2},
+\eeqa
+
+$C_D$ is the wind drag coefficient, $C_B$ is the bottom friction coefficient, $\rho_a$ is the air density, $(w_x,w_y)$ is the wind
+velocity 10 m above the sea surface, and $(u_L, v_L)$ is the bottom velocity.
+
+The continuity equation integrated over a vertical layer l is written as:
+\beq
+\xdif{U_l}+\ydif{V_l}=w_l-w_{l-1}
+\eeq
+
+The integration of the continuity equation vertically over the water column provides an equation for the water level t the free surface
+\beq
+\tdif{\zeta}+\xdif{\int_{-H}^{\zeta}u dz}+\ydif{\int_{-H}^{\zeta}v dz} = P-E
+\eeq
+
+where $E$ is evaporation and $P$ is precipitation.
+
+The scalar transport and diffusion equations, are the following:
+\beq
+\tdif{h_l C_l}+U_l\xdif{C_l}+V_l\ydif{C_l}+\int_{H_{l}}^{H_{l-1}} w\zdif{C_l}=K_H(\xxdif{h_l C_l}+\yydif{h_l C_l})+\int_{H_{l}}^{H_{l-1}} \zdif{K_{\nu}\zdif{C_l}}+ F_s
+\eeq
+where $C_l$ is the scalar, either salinity, temperature or concentration. $F_s$ is the source term, representing the salinity source or the heat input, for salinity and temperature equations, respectively.
+
+
+Water levels are prescribed at the open boundaries. At closed boundaries,
+the normal velocity component is set to zero whereas the tangential velocity
+is a free parameter. This corresponds to a full slip condition.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+
+

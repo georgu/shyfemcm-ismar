@@ -1,0 +1,318 @@
+
+%------------------------------------------------------------------------
+%
+%    Copyright (C) 1985-2020  Georg Umgiesser
+%
+%    This file is part of SHYFEM.
+%
+%    SHYFEM is free software: you can redistribute it and/or modify
+%    it under the terms of the GNU General Public License as published by
+%    the Free Software Foundation, either version 3 of the License, or
+%    (at your option) any later version.
+%
+%    SHYFEM is distributed in the hope that it will be useful,
+%    but WITHOUT ANY WARRANTY; without even the implied warranty of
+%    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+%    GNU General Public License for more details.
+%
+%    You should have received a copy of the GNU General Public License
+%    along with SHYFEM. Please see the file COPYING in the main directory.
+%    If not, see <http://www.gnu.org/licenses/>.
+%
+%    Contributions to this file can be found below in the revision log.
+%
+%------------------------------------------------------------------------
+% FORMER software.tex
+
+The source code is composed mainly of Fortran 90 files, but files written
+in C, Fortran 77, Perl and Shell scripts are also present.
+
+In order to use the model you have to compile it in a Linux Operating
+System. Several software products must be present in order to be able
+to compile the model. Please refer to the documentation of your Linux
+distribution for installing these programs.
+
+\begin{itemize}
+
+\item The package |make| is required for compilation.
+
+\item The |perl| interpreter and the |bash| shell are necessary for compiling.
+
+\item A Fortran 77 and 90 compiler. Supported compilers are the Gnu 
+compiler |gfortran|, the Intel Fortran compiler |ifort| and the Portland 
+group |pgf90| Fortran compiler.
+
+\item A C compiler. Supported compilers are the Gnu |gcc|, the Intel C
+compiler |icc| or the IBM |xlc| C compiler.
+
+\end{itemize}
+
+Please note that you might already have everything available in your
+Linux distribution, with the exception maybe of the Fortran compiler.
+
+To find out what software is installed on your computer and what you
+still have to install you can run the following command:
+
+\begin{code}
+    make check_software
+\end{code}
+
+If you get something like |bash: make: command not found|, then you do
+not have make installed. Please first install the |make| command and
+then run the command again.
+
+The output of the command will show you what software you still have
+to install. The |make check_software| is divided into different sections. 
+The first section 
+concerns the needed software which, if not installed, will not allow you to proceed. 
+The next section lists the recommended software, which you really should install,
+but that is not necessarily needed for compilation and running. 
+The last section lists the optional software (not necessary but it will make your life easier).
+
+You can always run |make check_software| again to check if the software
+had been successfully installed. When you are satisfied with the output
+you can go to the next section.
+
+Depending on the options that you choose for the compilation you may
+need some additional package or library. Usually, the error message
+gives you the name of the missing library. The name of the corresponding
+package to install can be found at the 
+web-page\footnote{https://www.debian.org/distrib/packages} for Debian OS.
+Usually, Debian-based (e.g., Ubuntu) distributions have the same name.
+
+Whereas most package names are easy to guess, a common problem refers to
+ the developer X11 libraries. In order to be able to compile the
+program |grid| you will need to install some packages that may have
+different names depending on your distribution. The packages you need to find
+ are |libx11-dev|, |x11proto-core-dev| and |libxt-dev|.
+
+Please note that you have to carry out the steps in this section only
+the first time you install the model. If you install a new version of
+SHYFEM software you can skip these steps.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%former compilation.tex 
+In order to compile the model you will first have to adjust some settings
+in the |Rules.make| file. Assuming that you are already in the SHYFEM
+root directory (in our case it would be \ttt{\shydir}), open the file
+|Rules.make| with a text editor.  In this file the following options
+can be set:
+
+\begin{itemize}
+
+\item |Compiler profile|. Set the level of verbosity of the messages. Use
+|SPEED| if you want the maximum performances. Use the other options, in
+case of errors, to have more informations.
+
+\item |Compiler|. Set the compiler you want to use. Please see also
+the section on needed software and the one on compatibility problems to
+learn more about this choice. It is advisable to use the same type of
+compiler for C and Fortran.
+
+
+\item |Parallel compilation|. \textcolor{red}{QUESTA SEZIONE VA TOTALMENTE CONTROLLATA E INTEGRATA}. The code is parallelized either with OpenMP and MPI statements. Here you can set if you want to use it or not.
+
+\textcolor{red}{OMP DA RISCRIVERE}
+If you want to run with OMP, you have to change the Rules.make file as follows:
+
+Set the compiler
+PARALLEL$\_$OMP=true
+
+Then, in the str file, section para, you have to indicate the number of nodes/cores you want to use for parallel computation, e.g. nomp = 8 means parallel on 8 cores.
+
+If MPI (domain decomposition) is already installed you can skip the part on how to install
+gfortran and mpi. Please run make test$\_$mpi from the shyfem base
+directory to see if MPI is installed on your computer.
+
+However, you must be sure that also the library METIS is installed. Please
+refer to the instructions below.
+
+All examples have been tested on a debian system (Ubuntu) with gfortran. Other linux systems
+should be similar, as well as other compilers (Intel).
+
+update the apt system (all commands with apt must be carried out as root): \\
+	apt update\\
+	apt upgrade\\
+
+\subitem If needed install the gfortran compiler: apt install gfortran. You can check if gfortran is already installed running "gfortran --version".
+
+\subitem If needed install the mpi libraries (openmpi): apt install openmpi. To see if you already have the mpi routines and binaries installed run\\
+make test$\_$mpi from the base directory of shyfem.\\
+
+\subitem Install the metis library to create automatic partition of the basin
+($http://glaros.dtc.umn.edu/gkhome/metis/metis/overview$). You can install
+the system anywhere. Just remember the place, because you will have
+to insert this information into the Rules.make file. It is, however,
+recommended that you put all the add-on libraries in one place, such as
+$HOME/lib$. If you put metis in this directory shyfem will look automatically
+for it and you do not have to specify the directory in Rules.make.
+
+\subitem How to compile and run shyfem in MPI mode\\
+Change the file Rules.make
+	Set the compiler\\
+	PARALLEL$\_$MPI = NODE\\ 
+	$PARTS = METIS $\\
+	$METISDIR = HOME/lib/metis$ or wherever the metis files\\ 
+	have been installed. If metis is in $HOME/lib/metis$ you do not have to set this variable.
+
+if METIS is installed in $HOME/lib$ (you should have a directory metis
+in this place) you can do everything above by just running
+
+	make rules$\_$mpi\\
+
+recompile:\\
+
+	make cleanall\\
+	make fem\\
+
+run shyfem:
+
+	mpirun -np 4 path$\_$to$\_$shyfem/shyfem str-file.str
+
+	test with a different number of domains (above 4 are used)
+	if there are errors (there will be...) please let me know
+
+
+
+\item |Solver for matrix solution|. There are four different solvers implemented.
+The model need to solve a system of matrix equations. In order to do this, four different
+solvers are implemented and can be set in the Rules.make file (flag SOLVER).
+
+\subitem 1) The SPARSKIT solver is iterative and quite fast (default);
+
+\subitem 2) The GAUSS solver is a robust direct solver, but quite slow;
+
+\subitem 3) The PARDISO solver is not included in the model code, but can be found in the Intel MKL and linked dynamically during the compilation. This solver is set as a direct solver but can be used also in an iterative mode. 
+
+%\subitem 4) \textcolor{red}{DA ELIMINARE, VECCHIO} The PARALUTION solver works by exploiting both the CPU and the GPU (tested with NVIDIA cards).  This solver should be used with large matrices and with powerful GPUs and is quite fast in these cases. The solver is not included in the model code and, in order to use it, the following steps must be executed:
+
+%    \subsubitem a) In Rules.make set the flags SOLVER (= PARALUTION), PARADIR (solver installation path) and GPU (gpu library);
+
+%    \subsubitem b) Execute  the following command to download and compile the PARALUTION library
+
+%\begin{center}
+%\begin{tabular}{ l p{7cm} }
+%|make para_get && make para_compile| 
+%\end{tabular}
+%\end{center}
+
+%    \subsubitem c) Proceed with the normal compilation of SHYFEM.
+
+%It is recommended to use the OpenCL or CUDA gpu libraries, which however require the installation of some system packages. For more information see the README file in the directory fempara/.
+
+\subitem 4) The PETSC solver, required if you run in parallel with MPI. Before you run shyfem with PETSC please be sure that shyfem runs smoothly in MPI mode. Refer to appencix for installation and use.
+
+
+ 
+%|SPARSKIT| is an iterative solver, 
+%quite fast, and is the default option. The |GAUSS| solver is a robust direct solver, but it is quite slow. 
+%|PARDISO| is set as direct solver but can be used as iterative solver as well. 
+%It can be fast, but it is not included in the code, since it is not provided with 
+%a compatible license. In order to use it, you need an external library (dynamically linked) 
+%provided with the Intel MKL.
+
+%Finally, the |PARALUTION| solver works by exploiting both the CPU and the GPU 
+%(tested with NVIDIA cards).
+ %If you have a powerful graphics card and/or if you use computational grids with 
+%many elements (large matrices), this solver should be the fastest. To use it you
+ %need to set some variables in the Rules.make file. 
+%The folder where the solver code will be downloaded (|PARADIR|), the graphical libraries 
+%used in the compilation (GPU) and the use of OMP compilation (|PARALLEL_OMP|). 
+%It is recommended to use the OpenCL or CUDA libraries, which however require the 
+%installation of some system packages. At this point 
+%it is necessary to execute the command |make para_get && make para_compile|
+
+
+If the compilation is successful, you can execute |make fem|.
+
+\item |NetCDF library|. If you want output files in NetCDF format
+you need the NetCDF library. Normally netcdf should already be installed. To enable netcdf you
+must set in Rules.make the following:
+
+NETCDF = true
+
+If the directory where netcdf is not installed you have to give it
+explicitly in NETCDFDIR.
+
+
+\item |GOTM library|. The GOTM turbulence model (version 4.0.0) is already included in
+the code. However, a newer and better tested version is available as an
+external module. In order to use it please let this variable to true. This
+is the recommended choice. You will need a Fortran 90 compiler to enable
+this choice.
+
+\item |Ecological module|. This option allows for the inclusion of an
+ecological module into the code. Choices are between |EUTRO|
+and |AQUABC|. Please refer to information given in Section \ref{eco}
+to run these programs.
+
+%\item |Fluid mud|. 
+%\textcolor{red}{ADD EXPLANATION}
+
+%This is an experimental feature. Don't use it
+%if you are not a developer.
+
+\end{itemize}
+
+Once you have set all these options you can start compilation with
+
+\begin{code}
+    make clean
+    make fem
+\end{code}
+
+This should compile everything. In the case of a compilation error,
+ messages will be shown both while the program is compiling as 
+well as at the bottom of the output (where a check occurs to see if 
+the main routines have been compiled).
+
+Please remember that you will always have to run the commands above
+when you change settings in the |Rules.make| file. If you only change
+something in the code, or if you only change dimension parameters, it
+might be enough to run only |make fem|, which only compiles the necessary
+files. However, if you are in doubt, it is always a good idea to run
+|make clean| or |make cleanall| before compiling, in order to start from
+a clean state.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%former summary_installing.tex 
+
+A summary of administrative commands available in SHYFEM is given below: \vspace{0.5cm}
+
+\begin{center}
+\begin{tabular}{ l p{7cm} }
+|make version|		&	shows version of distribution \\
+|make clean|		&	deletes objects and executables from a previous
+                        	compilation \\
+|make cleanall|		&	same as |make clean| but also deletes 
+				compiled libraries \\
+|make fem|		&	compiles SHYFEM \\
+|make doc|		&	makes this manual (|femdoc/shyfem.pdf|) \\
+|make check_software|	&	checks the availability of installed software \\
+|make check_compilation|&	checks if all programs have been compiled \\
+|make changed|		&	finds files that are changed with respect to the
+				original distribution \\
+|make changed_zip|	&	zips files that are changed with respect to the
+				original distribution to the file 
+				|changed_zip.zip| \\
+|make install|		&	installs SHYFEM \\
+|make uninstall|	&	uninstalls SHYFEM \\
+\end{tabular}
+\end{center}
+
+\vspace{0.5cm}
+Finally, if you have installed the model with |make install|, 
+the following utility commands are available \vspace{0.5cm}
+
+\begin{center}
+\begin{tabular}{ l l }
+|shyfemdir|		&	shows information about actual SHYFEM
+				settings \\
+|shyfemdir fem_dir|	&	sets |fem_dir| to be the new default 
+				SHYFEM version \\
+|shyfeminstall|		&	shows information about original SHYFEM 
+				installation \\
+|shyfemcd|		&	moves into root of actual SHYFEM directory \\
+\end{tabular}
+\end{center}
+
+

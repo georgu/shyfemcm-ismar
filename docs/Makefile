@@ -1,93 +1,24 @@
 
-#------------------------------------------------------------------------
-#
-#    Copyright (C) 1985-2020  Georg Umgiesser
-#
-#    This file is part of SHYFEM.
-#
-#------------------------------------------------------------------------
+MANUAL = shyfem_main042025
+
+default:
+
+manual: docs
+
+docs:
+	pdflatex $(MANUAL).tex
+	bibtex $(MANUAL)
+	pdflatex $(MANUAL).tex
+	pdflatex $(MANUAL).tex
 
 
-DOC = fem3d
-DOC = shyfem
-
-default: nothing
-
-nothing:
-	@true
-
-.PHONY: clean ps final
-.IGNORE: clean
-
-#--------------------------------
-
-latex:
-	latex $(DOC)
-
-bibtex:
-	bibtex $(DOC)
-
-tex:
-	./femdoc.sh
-
-check:
-	tex --version
-
-pdf:
-	pdflatex $(DOC)
-
-ps:
-	dvips -o $(DOC).ps $(DOC)
-
-final:
-	cp shyfem.pdf final
-	#cp shyfem.ps final
-
-#--------------------------------
-
-fem:    nothing
-doc:	all
-docs:	all
-all:	dvi post final nothing
-
-dvi:	check tex latex bibtex
-	latex $(DOC)
-	latex $(DOC)
-
-post:	ps pdf
-
-list:
-	pwd; ls
-
-depend: nothing
-
-#--------------------------------
-
-spell:
-	ispelling4 *.tex
-
-#--------------------------------
-
-cleanall:	clean cleanps
 
 clean:
-	-rm -f *.aux *.dvi *.log *.toc *.bbl *.blg
-	-rm -f S_*.tex P_*.tex
-	-rm -f $(DOC)*.html
-	-rm -f femdoc.zip
-	-rm -f ggg hhh
-	-rm -f *.tmp *.bak
-	-rm -f *~
+	-rm -f *.dvi
+	-rm -f *.blg *.bbl
+	-rm -f *.toc *aux
+	-rm -f *.log
 
-cleanps:
-	-rm -f *.ps *.pdf
-
-#--------------------------------
-
-zip:	cleanall
-	zip -r femdoc *
-
-save:	zip
-
-#--------------------------------
+cleanall: clean
+	-rm -f *.pdf
 
