@@ -17,6 +17,8 @@
 # 1.00	26.01.2015	routine written from scratch
 # 1.10	24.03.2015	new routine clo_shift_item() and clo_get_shifted()
 # 1.20	17.11.2020	handle spaces in item
+# 1.21	23.12.2025	new routine clo_get_options()
+# 1.22	27.12.2025	new routine clo_exist_option()
 #
 # please see clo_test at end of file for usage information
 # please insert ". clo.sh" close to beginning of the bash script
@@ -66,6 +68,7 @@ clo_parse_options()
      name=`echo $item | sed -E 's|^-||'`		# strip - from option
      [ "$name" = "$item" ] && break			# no option
      exists=${clo_exists[$name]}
+     #echo "clo_parse_options: name = |$name|"
      if [ "$name" = "help" -o "$name" = "h" ]; then
        clo_fullusage
        exit 1
@@ -77,10 +80,18 @@ clo_parse_options()
        echo "Unknown option: $1"
        clo_usage
        exit 1
+     #else
+     #  echo "Unknown error: $item"
+     #  echo "command line option: ${@}"
+     #  clo_usage
+     #  exit 1
      fi
      expect=${clo_expect[$name]}
      if [ -n "$expect" ]; then
        clo_option[$name]=$2
+       #local aux=${clo_option[$name]}
+       #echo "clo_parse_options: name = |$name| |$aux| |$2|"
+       clo_items=("${clo_items[@]:1}")
        shift
      else
        clo_option[$name]="YES"
@@ -91,6 +102,7 @@ clo_parse_options()
      clo_export_option $name
   done
 
+  #echo "items: ${clo_items[@]}"
   [ $clo_debug = "YES" ] && echo "after parsing options: $*"
 }
 
@@ -130,6 +142,16 @@ clo_print_option()
   m=$((clo_lenmax+3))
   print=$(printf "%-${m}s" "$text")
   echo "  $print $descr"
+}
+
+clo_exist_option()
+{
+  local exists=${clo_exists[$1]}
+  if [ -z "$exists" ]; then
+    return 1
+  else
+    return 0
+  fi
 }
 
 #------------------------------------------------------
@@ -185,6 +207,16 @@ clo_get_option()
   opt=$1
   val=${clo_option[$opt]}
   echo $val
+}
+
+clo_get_options()
+{
+  local options=""
+  for key in "${!clo_exists[@]}"
+  do 
+    options="$options $key"
+  done
+  echo $options
 }
 
 clo_show_info()
@@ -245,6 +277,8 @@ clo_shift_item()
     clo_shifted=${clo_items[0]}
     clo_items=("${clo_items[@]:1}")
   fi
+
+  echo "$clo_shifted"
 }
 
 clo_get_shifted()

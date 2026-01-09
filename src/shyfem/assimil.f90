@@ -36,7 +36,7 @@
 ! 07.11.2025    ggu     introduced iuse
 ! 10.11.2025    ggu     general assimilation of scalar variables
 ! 14.11.2025    ggu     set up debug file
-! 23.11.2025    ggu     bug fix for mode=1
+! 13.12.2025    ggu     new routine make_vertical_correlation()
 !
 !****************************************************************
 
@@ -631,4 +631,46 @@
 
 !*******************************************************************
 
+	subroutine make_vertical_correlation(vcorr,layer,r)
+
+	use levels
+
+	implicit none
+
+	real vcorr
+	integer layer
+	real r(nlvdi)
+	
+	integer l
+	real htop,hbottom,hc0,h
+	real hc(nlvdi)
+	logical has_sigma_levels
+
+	if( has_sigma_levels() ) then
+	  stop 'error stop make_vertical_correlation: no sigma layers allowed'
+	else if( layer > nlvdi ) then
+	  write(6,*) 'layer,nlv: ',layer,nlv
+	  stop 'error stop make_vertical_correlation: impossible layer'
+	end if
+
+	htop = 0.
+	do l=1,nlv
+	  hbottom = hlv(l)
+	  hc(l) = ( hbottom + htop ) / 2.
+	  htop = hbottom
+	end do
+
+	if( layer <= 0 ) then
+	  r = 1.
+	else
+	  hc0 = hc(layer)
+	  do l=1,nlv
+	    h = hc(l)
+	    r = exp( -(h-hc0)**2 / 2.*vcorr**2 )
+	  end do
+	end if
+
+	end
+
+!*******************************************************************
 

@@ -28,6 +28,7 @@
 ! revision log :
 !
 ! 10.11.2025    ggu     general assimilation of scalar variables
+! 13.12.2025    ggu     prepared for 3d assimilation
 !
 !****************************************************************
 
@@ -49,6 +50,8 @@
 	  integer :: mode
 	  real    :: tau
 	  real    :: tacum
+	  integer, allocatable :: layer(:)
+	  real, allocatable :: vcorlength(:)
 	  integer, allocatable :: iuse(:)
 	  real, allocatable :: corlength(:)
 	  real, allocatable :: maxlength(:)

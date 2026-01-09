@@ -65,6 +65,7 @@
 ! 09.05.2023    lrp     introduce top layer index variable
 ! 05.06.2023    lrp     introduce z-star
 ! 09.03.2025	ggu	avoid out of bounds access (hlvaux)
+! 13.12.2025	ggu	new routine has_sigma_levels()
 !
 ! notes :
 !
@@ -104,6 +105,20 @@
 	  write(6,*) 'nlv_com: ',nlv_com
 	  stop 'error stop check_sigma_initialized: not initialized'
 	end if
+
+	end
+
+!******************************************************************
+
+	function has_sigma_levels()
+
+	use sigma
+
+	implicit none
+
+	logical has_sigma_levels
+
+	has_sigma_levels = ( nsigma_com > 0 )
 
 	end
 
