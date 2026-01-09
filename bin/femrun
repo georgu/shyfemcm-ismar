@@ -177,6 +177,7 @@ mkdir -p $overall_dir
 mkdir -p $tmpdir/hpat
 mkdir -p $tmpdir/hpbatch
 mkdir -p $tmpdir/hpinfo
+mkdir -p $tmpdir/hplog
 
 echo $actdate $simulation $simname $exefile $hostname $attime >> $overall_log
 
@@ -212,7 +213,8 @@ fi
   echo "executing $tmpfil   status = $status"
 
   if [ $batch = "YES" ]; then
-    nohup dispatch.sh &
+    hplogfile="$tmpdir/hplog/nohup.log"
+    nohup dispatch.sh >> $hplogfile 2>&1 &
   elif [ "$attime" = "now" ]; then
     bash $tmpfil
   else 

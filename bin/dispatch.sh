@@ -104,30 +104,27 @@ fi
 #---------------------------------------------------
 #---------------------------------------------------
 
-#Dispatch_loop_until_run()
-#{
-#}
-
 Dispatch_run_batch()
 {
   local file=$1
-  echo "handling file $file"
   np=$( grep 'npmpi=' $file | sed -e 's/npmpi=//' )
   [ $np -eq 0 ] && np=1
-  echo "np = $np"
+  echo "trying with np = $np simulation $file" >> $hplogfile
   RunCpuStats $np
-  #Dispatch_loop_until_run $np
-  #exit 0
-  echo "running file $file"
+  echo "running simulation $file" >> $hplogfile
   bash $file		!run simulation
   sleep 10
 }
 
 Dispatch_is_running()
 {
-  local nn=$( lsof -t $0| wc -l )
+  local nn=$( lsof -t $0 | wc -l )
 
-  echo "running processes $nn"
+  echo "running processes of dispatch: $nn"
+
+  echo "process: $0"
+  lsof -t $0
+  ps aux | grep dispatch.sh | grep -v grep
 
   if [ $nn -gt 1 ]; then
     return 0
@@ -138,12 +135,14 @@ Dispatch_is_running()
 
 Dispatch_start()
 {
+  echo "running dispatch at $date" >> $hplogfile
+
   if Dispatch_is_running; then
     echo "dispatch is already running... exiting"
     return
   fi
 
-  echo "starting dispatch"
+  #echo "starting dispatch"
   echo "starting dispatch" >> $hplogfile
 
   local n=0
@@ -161,7 +160,7 @@ Dispatch_start()
     Dispatch_run_batch $file
     mv -f $file $hpbatch/finished
     n=$(( n + 1 ))
-    [ $n -ge 6 ] && break
+    #[ $n -ge 6 ] && break
   done
 }
 
