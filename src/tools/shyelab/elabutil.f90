@@ -95,6 +95,7 @@
 ! 10.10.2025    ggu     new smooth option for fem files
 ! 11.11.2025    ggu     new option layer
 ! 13.11.2025    ggu     new option stnames
+! 09.01.2026    ggu     new code for cover option
 !
 !************************************************************
 
@@ -202,6 +203,9 @@
 	real, save :: salpha			= 0.
 	integer, save :: sloop			= 0
 
+        integer, save :: ncover			= -1
+        character*80, save :: coverfile		= ' '
+
         character*80, save :: areafile		= ' '
         character*80, save :: datefile		= ' '
 	logical, save :: binfluencemap 		= .false.
@@ -225,6 +229,7 @@
 	integer, save :: avermode		= 0
 	logical, save :: bthreshold		= .false.
 
+        logical, save :: bcover			= .false.
         logical, save :: barea			= .false.
 
 	logical, save :: boutput		= .false.
@@ -594,6 +599,9 @@
      &			,'substitute string description in fem-file')
         call clo_add_com('    sstring is comma separated strings,' &
      &                  //' empty for no change')
+        call clo_add_option('cover basin',' ' &
+     &			,'tries to over the basin with the fem file given')
+        call clo_add_com('    basin is either a grd or a bas file')
 
 	call elabutil_set_facts_options
 	call elabutil_set_convert_options
@@ -832,6 +840,7 @@
           call clo_get_option('convwindsd',bconvwindsd)
           call clo_get_option('facts',factstring)
           call clo_get_option('offset',offstring)
+          call clo_get_option('cover',coverfile)
 	end if
 
 	if( bshowall .or. bfemfile .or. bshyfile .or. blgrfile ) then
@@ -941,6 +950,7 @@
         bnodes = nodefile .ne. ' '
         bcoord = scoord .ne. ' '
 
+	bcover = ( coverfile /= ' ' )
 	barea = ( areafile /= ' ' )
 	bcheck = ( scheck /= ' ' )
 	bresample = ( rbounds /= ' ' )
@@ -959,6 +969,7 @@
         boutput = boutput .or. sextract /= ' '
         boutput = boutput .or. bconvwindxy .or. bconvwindsd
         boutput = boutput .or. bsmooth
+        boutput = boutput .or. bcover
 
         !btrans is added later
 	!if( bsumvar ) boutput = .false.

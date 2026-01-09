@@ -62,7 +62,7 @@ LIBL    += $(LIB_NETCDF)
 
 EXES = shyelab extelab flxelab lgrelab tselab femelab shyproj shyfile \
 	shystrings femcombine dbg_flx dbg_box \
-	femadd femdate
+	femadd femdate 
 
 MAKEDEPEND = $(FEMBIN)/mkdp.pl
 
@@ -95,6 +95,7 @@ OBJ := \
 	femelab1.o \
 	lgrelab1.o \
 	shy_util2.o \
+	femelab_cover.o \
 
 #----------------------------------------------------------------------------
 

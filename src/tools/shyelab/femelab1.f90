@@ -72,6 +72,7 @@
 ! 30.11.2022	ggu	rain_elab() revised
 ! 23.04.2024	ggu	conversion routines for wind implemented
 ! 10.10.2024	ggu	new smooth option for fem files implemented
+! 09.01.2026	ggu	new code for cover option
 !
 !******************************************************************
 
@@ -238,6 +239,7 @@
 	boutput = boutput .or. bresample
 	boutput = boutput .or. bconvwindxy .or. bconvwindsd
 	boutput = boutput .or. bsmooth
+	boutput = boutput .or. bcover
 	if( bextract ) boutput = .false.
 
 	bwind_convert = bconvwindxy .or. bconvwindsd
@@ -571,6 +573,13 @@
 	    !write(6,*) iv,'  ',trim(string)
             if( boutput ) then
 	      !call custom_elab(nlvdi,np,string,iv,flag,data(1,1,iv))
+	      if( bcover ) then
+		if( .not. breg ) then
+	          stop 'error stop: for cover grid must be regular'
+		end if
+		call handle_cover_basin(coverfile &
+     &			,nlvdi,np,llmax(iv),ilhkv,regpar,data(1,1,iv))
+	      end if
 	      if( breg .and. bexpand .and. .not. bresample ) then
 		call reg_set_flag(nlvdi,np,ilhkv,regpar,data(1,1,iv))
 		call reg_expand_shell(nlvdi,np,llmax(iv),regexpand &
