@@ -115,6 +115,8 @@ src/tools/shyelab/dbg_box
 bin/dbg_box
 src/tools/femutil/optintp/optintp
 bin/optintp
+src/tools/femutil/spline/gridr
+bin/gridr
 src/shyfem/rstinf
 bin/rstinf
 

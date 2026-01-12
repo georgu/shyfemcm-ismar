@@ -116,6 +116,7 @@
 ! 21.04.2023	ggu	call bexnod() only for existing boundaries
 ! 29.10.2024	ggu	check if boundary node is unique
 ! 12.06.2025	ggu	extra info on error
+! 12.01.2026	ggu	extra info on boundary error
 !
 !--------------------------------------------------------------------------
 
@@ -203,8 +204,6 @@
 	end module mod_bndo
 !==================================================================
 
-
-!
 !***********************************************************************
 
 	subroutine bndo_init
@@ -371,7 +370,7 @@
 	      write(6,*) 'domain: ',my_id
 	      write(6,*) 'boundary: ',ibc
 	      write(6,*) 'knext,klast: ',knext,klast
-	      stop 'error stop bndo'
+	      stop 'error stop bndo_init'
 	    else
 	      dx = 0.
 	      dy = 0.
@@ -460,7 +459,7 @@
 	  end if
 	end do
 
-	if( berror ) stop 'error stop bndo'
+	if( berror ) stop 'error stop bndo_init'
 
 	write(6,*) 'finished setting up bndo_init, nbndo = ',nbndo
 
@@ -470,11 +469,14 @@
 
 	return
    98	continue
-	write(6,*) 'different boundary : ',ibc
-	stop 'error stop bndo'
+	write(6,*) 'adjacent nodes must of the same boundary'
+	write(6,*) '              klast  kcentral     knext'
+	write(6,'(a,3i10)') 'node:     ',ipext(klast),ipext(k),ipext(knext)
+	write(6,'(a,3i10)') 'boundary: ',ibcnod(ilast),ibc,ibcnod(inext)
+	stop 'error stop bndo_init: different boundary'
    99	continue
-	write(6,*) 'dimension error kbcdim : ',kbcdim
-	stop 'error stop bndo'
+	write(6,*) 'dimension error kbcdim: ',kbcdim
+	stop 'error stop bndo_init: dimension kbcdim'
 	end
 
 !***********************************************************************
@@ -507,7 +509,7 @@
 	if( nb .gt. kopdim ) then
 	  write(6,*) 'Too much inner neighbors: ',nb
 	  write(6,*) 'Please raise kopdim in subbndo.h'
-	  stop 'error stop bndo'
+	  stop 'error stop bndinsert'
 	end if
 
 	nopnodes(nb,ib) = kn

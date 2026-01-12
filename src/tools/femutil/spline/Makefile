@@ -11,17 +11,19 @@
 
 DIR =	spline
 
-FEMDIR = ../..
+FEMDIR = ../../../..
 FEMBIN = $(FEMDIR)/bin
+DIRLIB = $(FEMDIR)/lib
 
-include ../../Rules.make
+include $(FEMDIR)/Rules.make
 
 #------------------------------------------------------
 
-LIBFEM  = fem
+LIBUTIL  = util
+LIBSHYUTIL  = shyutil
 
-LIBFS   = -L$(DIRLIB) -l$(LIBFEM)
-LIBIFS  = $(DIRLIB)/lib$(LIBFEM).a
+LIBFS   = -L$(DIRLIB) -l$(LIBUTIL) -l$(LIBSHYUTIL)
+LIBIFS  = $(DIRLIB)/lib$(LIBUTIL).a $(DIRLIB)/lib$(LIBSHYUTIL).a
 
 #------------------------------------------------------
 
@@ -87,7 +89,12 @@ save: cleanall
 
 #--------------------------------------------- rules
 
+.SUFFIXES: .f90
+
 .f.o:
+	$(F77) -c $(FFLAGS) $<
+
+.f90.o:
 	$(F77) -c $(FFLAGS) $<
 
 #------------------------------------------------------

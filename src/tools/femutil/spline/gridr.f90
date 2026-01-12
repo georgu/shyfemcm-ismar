@@ -36,6 +36,7 @@
 ! 02.12.2011    ggu     bug fix in intpdep() and reduce()
 ! 02.12.2011    ggu     use depth also for smoothing (change in distxy())
 ! 27.05.2012    ggu     renamed ndim to nsdim in smooth()
+! 12.01.2026    ggu     large arrays transformed to allocatable
 !
 ! description :
 !
@@ -442,12 +443,15 @@
 	integer ngk
 	real dist,dx,dy,distot
 	real gk(-nsdim:nsdim)
-	real raux(-nsdim:2*nsdim)
-	real dxy(-nsdim:2*nsdim)
+	real, allocatable :: raux(:)
+	real, allocatable :: dxy(:)
 
 	if( nl .gt. nsdim ) goto 99
 
         if( sigma .le. 0. ) return
+
+	allocate(raux(-nl:2*nl))
+	allocate(dxy(-nl:2*nl))
 
 ! set up dxy
 
@@ -920,10 +924,10 @@
         call clo_init('smooth','grd-file','1.0')
 
         call clo_add_info('smoothes line and reduces points')
-        call clo_add_option('sigma',0. &
-     &                    ,'standard deviation for smoothing')
-        call clo_add_option('reduct',0. &
-     &                    ,'reduction of points with smaller distance')
+        call clo_add_option('sigma sigma',0. &
+     &                    ,'standard deviation for smoothing is sigma')
+        call clo_add_option('reduct dmin',0. &
+     &                    ,'reduction of points with distance < dmin')
 
         call clo_parse_options(1)       !expecting 1 file
 

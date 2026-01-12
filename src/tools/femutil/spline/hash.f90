@@ -46,6 +46,7 @@
 !
 ! 30.06.2000	ggu	error check for hash table half full
 ! 02.12.2011	ggu	initialize hashin to zero
+! 12.01.2026    ggu     large arrays transformed to allocatable
 !
 !******************************************************************
 
@@ -232,8 +233,8 @@
 	integer mode
 	integer info
 
-	integer keyt(ndim)
-	integer infot(ndim)
+	integer, allocatable :: keyt(:)
+	integer, allocatable :: infot(:)
 
 	integer i,ipos,start
 	integer itotal
@@ -243,6 +244,9 @@
 	save ipos,keyt,infot,itotal
 	data ipos /1/
 	data itotal /0/
+
+	allocate(keyt(ndim))
+	allocate(infot(ndim))
 
 	hashin=0
 

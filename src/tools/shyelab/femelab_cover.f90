@@ -28,6 +28,7 @@
 ! revision log :
 !
 ! 09.01.2026    ggu     written from scratch
+! 12.01.2026    ggu     finished option -cover
 
 !****************************************************************
 
@@ -110,10 +111,11 @@
 
 	integer nx,ny
 	integer regexpand,nloop
-	integer ierr
+	integer ierr,ierr_old
 	real x0,y0,dx,dy,flag,x1,y1
 	real regval(np)
 	real femval(nkn)
+	character*10 tmp
 
 	nloop = 0
 	regexpand = 1
@@ -144,29 +146,67 @@
      &                  , regval, nkn, xgv, ygv, femval, ierr )
 	write(6,*) 'flag values found: ',0,ierr
 	if( ierr == 0 ) return
+	ierr_old = ierr
 
 	do
 	  nloop = nloop + 1
 	  call reg_set_flag(nlvddi,np,il,regpar,data)
 	  call reg_expand_3d(nlvddi,nx,ny,lmax,regexpand,flag,data)
+	  call adjust_reg_vertical(nlvddi,nx,ny,flag,data,il)
 
 	  regval = data(1,:)
           call intp_reg( nx, ny, x0, y0, dx, dy, flag &
      &                  , regval, nkn, xgv, ygv, femval, ierr )
 	  write(6,*) 'flag values found: ',nloop,ierr
 	  if( ierr == 0 ) exit
+	  !if( ierr == ierr_old ) exit
+	  ierr_old = ierr
 	end do
+
+	if( ierr /= 0 ) then
+	  write(6,*) 'error: cannot cover domain...'
+	end if
 
 	return
    98	continue
 	write(6,*) 'nlvddi,lmax: ',nlvddi,lmax
 	stop 'error stop compute_ncover: error in vertical dimension'
    99	continue
-	write(6,*) 'x0, y0, x1, y1 of regular domain'
-	write(6,*) x0, y0, x1, y1
-	write(6,*) 'x/y min/max of fem domain'
-	write(6,*) minval(xgv),minval(ygv),maxval(xgv),maxval(ygv)
+	write(6,*) 'domain     regular              fem'
+	call check_bounds(x0,minval(xgv),'xmin:','min')
+	call check_bounds(y0,minval(ygv),'ymin:','min')
+	call check_bounds(x1,maxval(xgv),'xmax:','max')
+	call check_bounds(y1,maxval(ygv),'ymax:','max')
 	stop 'error stop compute_ncover: regular domain too small'
+	end
+
+!****************************************************************
+
+	subroutine check_bounds(reg,fem,string,what)
+
+	implicit none
+
+	real reg,fem
+	character*(*) string
+	character*(*) what
+
+	if( what == 'min' ) then
+	  if( reg > fem ) then
+	    write(6,*) trim(string),reg,fem,'  *** error'
+	  else
+	    write(6,*) trim(string),reg,fem,'  ok'
+	  end if
+	else if( what == 'max' ) then
+	  if( reg < fem ) then
+	    write(6,*) trim(string),reg,fem,'  *** error'
+	  else
+	    write(6,*) trim(string),reg,fem,'  ok'
+	  end if
+	else
+	  write(6,*) 'what = ',trim(what)
+	  stop 'error stop check_bounds: what not allowed'
+	end if
+	
 	end
 
 !****************************************************************
