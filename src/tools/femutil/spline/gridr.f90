@@ -44,7 +44,7 @@
 !
 ! The program ask for the GRD file that contains the lines
 ! It also asks for the smoothing parameter (sigma) and reduction
-!	parameter (reduct)
+!	parameter (reduce)
 ! The units of these values must be in the units of the line coordinates.
 ! 
 ! Smoothing:
@@ -58,8 +58,8 @@
 !
 ! Reduction:
 !
-! The program uses the parameter reduct to decide if a point should
-! be kept or not. If reduct=100, than all points closer than 100 m
+! The program uses the parameter reduce to decide if a point should
+! be kept or not. If reduce=100, than all points closer than 100 m
 ! to the reference point are discarded. At the end a line is left with
 ! a distance between the points of minimum 100 m.
 !
@@ -69,7 +69,7 @@
 ! smoothing and reduction is working as described above. If, however,
 ! depth values do exists, then they are used to change the resolution
 ! of the line points. For a value of 2, twice the points in the reduction
-! algorithm are retained. In other words, the value for reduct is changed
+! algorithm are retained. In other words, the value for reduce is changed
 ! locally to a value of 100/2=50, and only points closer as 50 are
 ! eliminated. Line points without depth receive an implicit value of 1.
 ! The value -1 indicates that this point should never be eliminated 
@@ -110,46 +110,46 @@
 	integer nline
 	integer nnode
 	real sigma
-	real reduct
+	real reduce
 
 	call shyfem_copyright('gridr - smoothing of lines')
 
 !-----------------------------------
 ! sigma		smoothing parameter (size of gaussian kernel)
-! reduct	reduction of points in line (in meters)
+! reduce	reduction of points in line (in meters)
 !-----------------------------------
 	sigma = 2.0
 	sigma = 1.5
 	sigma = 500.
 	sigma = 200.
-	reduct = 4.0
-	reduct = 200.
+	reduce = 4.0
+	reduce = 200.
 !----------------------------------- hakata
 	sigma = 200.
-	reduct = 200.
+	reduce = 200.
 !----------------------------------- circle
 	sigma = 0.0
-	reduct = 0.1
+	reduce = 0.1
 !----------------------------------- lido
 	sigma = 0.
-	reduct = 100.
+	reduce = 100.
 !----------------------------------- curonian lagoon
 	sigma = 200.
-	reduct = 200.
+	reduce = 200.
 !----------------------------------- brasile
 	sigma = 0.005
-	reduct = 0.005
+	reduce = 0.005
 !----------------------------------- malta
 	sigma = 0.1
-	reduct = 0.2
+	reduce = 0.2
 	sigma = 0.1 * 245.
-	reduct = 0.2 * 245.
+	reduce = 0.2 * 245.
 !----------------------------------- hue
 	sigma = 30.
-	reduct = 300.
+	reduce = 300.
 !-----------------------------------
 
-	call handle_command_line(file,sigma,reduct)
+	call handle_command_line(file,sigma,reduce)
 
 !------------------------------------------------------
 
@@ -185,7 +185,7 @@
 	  call intpdep(nline,ht,nll,bperiod)
 	  call smooth(sigma,xt,yt,ht,nll,bperiod)
 	  call wrline(99,nline,nnode,nll,xt,yt,ht,nt,bperiod)
-	  call reduce(reduct,xt,yt,ht,nll)
+	  call reduce_points(reduce,xt,yt,ht,nll)
 	  call wrline(98,nline,nnode,nll,xt,yt,ht,nt,bperiod)
 	end do
 
@@ -233,6 +233,7 @@
 	ibase = ipntlv(l-1)
 
 	if( nvert .gt. nl ) goto 98
+	nt = ialrv(l)
 
 	write(6,*) 'extracting line ',l,iplv(l),nvert,nt
 
@@ -246,7 +247,6 @@
 	end do
 
 	nl = nvert
-	nt = ialrv(l)
 
 	return
    98	continue
@@ -700,13 +700,13 @@
 
 !********************************************************
 
-	  subroutine reduce(reduct,xt,yt,ht,nl)
+	subroutine reduce_points(reduce,xt,yt,ht,nl)
 
 ! reduces points in line
 
 	implicit none
 
-	real reduct
+	real reduce
 	real xt(nl)
 	real yt(nl)
 	real ht(nl)
@@ -719,9 +719,9 @@
 
 ! very simplicistic approach
 
-	if( reduct <= 0 ) return
+	if( reduce <= 0 ) return
 
-	rr = reduct
+	rr = reduce
 	rtot = 1.
 
 	if( nl .lt. 3 * rr ) then
@@ -741,10 +741,10 @@
 	  dy = yt(i) - yt(i-1)
 	  h = ht(i)
 	  dist = sqrt( dx*dx + dy*dy )
-	  !write(6,*) dist,h,dist/h,rtot,reduct
+	  !write(6,*) dist,h,dist/h,rtot,reduce
 	  if( h .gt. 0. ) dist = dist * h
 	  rtot = rtot + dist
-	  if( rtot .gt. reduct .or. h .lt. 0. ) then
+	  if( rtot .gt. reduce .or. h .lt. 0. ) then
 	    nnew = nnew + 1
 	    xt(nnew) = xt(i)
 	    yt(nnew) = yt(i)
@@ -759,7 +759,7 @@
 	  nnew = 0
 	end if
 
-	write(6,*) 'reduce: new nodes = ',nnew
+	write(6,*) 'reduce: from ',nl,'  to ',nnew,'  nodes'
 	nl = nnew
 
 	end
@@ -909,7 +909,7 @@
 
 !********************************************************
 
-	subroutine handle_command_line(file,sigma,reduct)
+	subroutine handle_command_line(file,sigma,reduce)
 
 	use clo
 
@@ -917,7 +917,7 @@
 
 	character*(*) file
 	real sigma
-	real reduct
+	real reduce
 
 	integer nfile
 
@@ -926,20 +926,20 @@
         call clo_add_info('smoothes line and reduces points')
         call clo_add_option('sigma sigma',0. &
      &                    ,'standard deviation for smoothing is sigma')
-        call clo_add_option('reduct dmin',0. &
-     &                    ,'reduction of points with distance < dmin')
+        call clo_add_option('reduce dmin',0. &
+     &                    ,'elimination of points with distance < dmin')
 
         call clo_parse_options(1)       !expecting 1 file
 
         call clo_get_option('sigma',sigma)
-        call clo_get_option('reduct',reduct)
+        call clo_get_option('reduce',reduce)
 
         nfile = clo_number_of_files()
         if( nfile > 0 ) call clo_get_file(1,file)
 
 	write(6,*) 'file name: ',trim(file)
 	write(6,*) 'sigma: ',sigma
-	write(6,*) 'reduct: ',reduct
+	write(6,*) 'reduce: ',reduce
 
 	end
 

@@ -30,6 +30,7 @@
 ! 10.10.2015	ggu	changed VERS_7_3_2
 ! 16.02.2019	ggu	changed VERS_7_5_60
 ! 21.05.2019	ggu	changed VERS_7_5_62
+! 13.01.2025	ggu	no error if one of nkn and nel is 0
 
 !**************************************************************************
 
@@ -62,11 +63,11 @@
         if( nkn > 0 .or. nel > 0 ) then
           if( nkn == 0 .or. nel == 0 ) then
             write(6,*) 'nkn,nel: ',nkn,nel
-            stop 'error stop mod_depth_init: incompatible params'
+            !stop 'error stop mod_depth_init: incompatible params'
           end if
         end if
 
-	if( nkn_depth > 0 ) then
+	if( nkn_depth > 0 .or. nel_depth > 0 ) then
           deallocate(hev)
           deallocate(hkv)
           deallocate(hkv_min)
@@ -76,7 +77,7 @@
         nkn_depth = nkn 
         nel_depth = nel
         
-        if( nkn == 0 ) return
+        if( nkn == 0 .and. nel == 0 ) return
         
         allocate(hkv(nkn))
         allocate(hev(nel))

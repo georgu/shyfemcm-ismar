@@ -245,8 +245,8 @@
 	data ipos /1/
 	data itotal /0/
 
-	allocate(keyt(ndim))
-	allocate(infot(ndim))
+	if( .not. allocated(keyt) ) allocate(keyt(ndim))
+	if( .not. allocated(infot) ) allocate(infot(ndim))
 
 	hashin=0
 
