@@ -42,6 +42,7 @@ Proc $BIODIR/bio3d.f90
 Proc $SHYDIR/sedim_admin.f90
 Proc $SHYDIR/waves_admin.f90
 Proc $SHYDIR/tidef.f90
+Proc $SHYDIR/assimil_admin.f90
 
 #---------------------------------------------------------
 

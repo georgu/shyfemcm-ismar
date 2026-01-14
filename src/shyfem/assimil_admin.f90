@@ -29,7 +29,110 @@
 !
 ! 10.11.2025    ggu     general assimilation of scalar variables
 ! 13.12.2025    ggu     prepared for 3d assimilation
+! 13.01.2026    ggu     added documentation
 !
+!****************************************************************
+
+!****************************************************************
+!
+! DOCS  START   S_assimil
+!
+! In this section the assimilation procedure is described.
+! For every variable to be assimilated a new section |$assimil| has
+! to be specified, like |$assimil1|, |$assimil2|, etc..
+! All parameters than can be specified are described below.
+!
+! The next two parameters indicate the number of observations
+! and the variable that has to be assimilated.
+!
+! |nobs|	The total number of observations to be assimilated.
+!
+! |ivar|	The variable number that identifies the variable that
+!		is assimilated. The variable number associated with
+!		the variables can be found running the routine
+!		|list\_strings|. For example, the variable number for 
+!		the water level is 1, and for T and S are 11 and 12.
+!
+! The next parameters define how the assimilation procedure is applied.
+!
+! |mode|	The analysis that is computed at every time step
+!		can be applied in two ways. If |mode = 0| then the 
+!		analysis is applied through nudging to the background field.
+!		The nudging time scale must be specified through the
+!		parameter |tau|. If instead |mode| = 1 then the analysis
+!		is directly applied to the background field. In this case,
+!		if |tau| is specified, the field is applied after every
+!		|tau| seconds. If not specified, it is applied at every
+!		time step. (Default 0)
+!
+! |tau|		Time scale in seconds for the nudging process (|mode| = 0)
+!		or time step with which the analysis is applied to
+!		the background field (|mode| = 1). The parameter must be
+!		positive for |mode| = 0. (Default 0)
+!
+! The next parameters deal with the optimal interpolation and the parameters
+! that have to be set for the application of this interpolation.
+! All parameters have to be specified, except |maxlength| which has
+! a suitable default value. For all 4 parameters one value can be specified
+! that applies to all |nobs| observation points or |nobs| values can be
+! specified, one for each observation point.
+!
+! |corlength|	Horizontal correlation length for the optimal
+!		interpolation.
+! |maxlength|	Maximum distance from the observation points
+!		for which the optimal interpolation is carried out.
+!		Note that at a distance of 3*|corlength| only 1 \% of
+!		the analysis is assimilated. (Default 3*|corlength|)
+! |sigobs|	Standard deviation (error) of the observations.
+! |sigback|	Standard deviation (error) of the simulation 
+!		(background values).
+! 
+! The next values specify the files with values and coordinates of
+! the observation points. It also specifies the actual use of the observations.
+!
+! |filecoords|	File specifying the coordinates of the observation points.
+!		The format of the file can be seen in Figure \figref{obscoord}.
+!
+! \begin{figure}[ht]
+! \begin{verbatim}
+! 1     x1     y1
+! 2     x2     y2
+! ...
+! nobs  x_nobs y_nobs
+! \end{verbatim}
+! \caption{Example of the observation coordinates file.}
+! \label{fig:obscoord}
+! \end{figure}
+!
+! |fileobs|	File with the observation values. The file is a time series
+!		with column 1 indicating the date/time and other |nobs|
+!		columns with the observation values. For non existing
+!		observations the flag -999 can be used.
+! |iuse|	Normally all observation points are used in the optimal
+!		interpolation. However, it is possible to switch off some
+!		of the points selectively through this parameter. The parameter
+!		consists of |nobs| values, indicating to use the 
+!		observation point (1) or to switch it off (0). An example
+!		is |iuse = 1 1 0 1 0| where points 1,2, and 4 are used in
+!		the assimilation, and points 3 and 5 are switched off.
+!		(Default 1)
+!
+! The next values deal with the 3D application of the assimilation. 
+! For the parameters either one value or |nobs| values can be specified. 
+! If only one value is specified, this is used for all observation points.
+
+! |layer|	Layer to which the observation is referred to. The value
+!		of 0 indicates that the assimilation will be carried out
+!		through the whole water column. A value of 1 indicates
+!		the surface layer. (Default 0 )
+! |vcorlength|	Vertical correlation length of the observations. This 
+!		indicates how the observations are distributed over the
+!		vertical layers. A value of 0 indicates a vertically
+!		integrated observation that is applied over all layers.
+!		(Default 0)
+!
+! DOCS  END
+
 !****************************************************************
 
 !=============================================================
@@ -43,13 +146,13 @@
 
 	type, private :: assim
 	  logical :: binit = .false.
-	  integer :: num
+	  integer :: num		!internal - number of boundary
+	  integer :: idobs		!internal - id of boundary obs file
 	  integer :: nobs
 	  integer :: ivar
-	  integer :: idobs
 	  integer :: mode
 	  real    :: tau
-	  real    :: tacum
+	  real    :: tacum		!internal - accum time from last assim
 	  integer, allocatable :: layer(:)
 	  real, allocatable :: vcorlength(:)
 	  integer, allocatable :: iuse(:)
@@ -59,9 +162,9 @@
 	  real, allocatable :: sigback(:)
 	  character*80      :: filecoords
 	  character*80      :: fileobs
-	  real, allocatable :: xobs(:)
-	  real, allocatable :: yobs(:)
-	  integer, allocatable :: ies(:)
+	  real, allocatable :: xobs(:)	!internal - x-coordinates of obs point
+	  real, allocatable :: yobs(:)	!internal - y-coordinates of obs point
+	  integer, allocatable :: ies(:)!internal - element of obs point
 	end type assim
 
 	type(assim), save, allocatable :: passim(:)

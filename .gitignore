@@ -87,6 +87,8 @@ src/tools/shyelab/extelab
 bin/extelab
 src/tools/shyelab/femelab
 bin/femelab
+src/tools/shyelab/list_strings
+bin/list_strings
 src/tools/shyelab/femcombine
 bin/femcombine
 src/tools/shyelab/femadd
