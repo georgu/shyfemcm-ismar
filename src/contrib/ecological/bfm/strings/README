@@ -1,0 +1,13 @@
+
+run as:
+
+./bfm.sh what
+
+where what is bfm, cbms, or similar (run ./bfm.sh to see what is available )
+
+this produces string_{what}.f90
+
+copy to ~/shyfem/src/utils/shyutil
+include call to subroutine in strings.f90
+include in Makefile
+

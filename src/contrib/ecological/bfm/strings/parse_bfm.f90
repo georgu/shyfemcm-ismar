@@ -229,14 +229,15 @@
 
 	integer i
 	logical bdouble
+	character*40 serror
 
 	do i=1,iv-1
-	  bdouble = .false.
-	  if( ivars(i) == ivars(iv) ) bdouble = .true.
-	  if( shorts(i) == shorts(iv) ) bdouble = .true.
-	  if( longs(i) == longs(iv) ) bdouble = .true.
-	  if( bdouble ) then
-	    write(6,*) 'double entry: '
+	  serror = ' '
+	  if( ivars(i) == ivars(iv) ) serror = 'variable number'
+	  if( shorts(i) == shorts(iv) ) serror = 'short description'
+	  if( longs(i) == longs(iv) ) serror = 'long description'
+	  if( serror /= ' ' ) then
+	    write(6,*) 'double entry: ',trim(serror)
 	    write(6,*) i,ivars(i),' ',trim(shorts(i)),' ',trim(longs(i))
 	    write(6,*) iv,ivars(iv),' ',trim(shorts(iv)),' ',trim(longs(iv))
 	    !stop 'error stop check_entries: double entry'
@@ -387,8 +388,9 @@
 	character*20 :: prefix
 
 	prefix=trim(what) // '_'
+	prefix=trim(what)
 	file='new_strings.f90'
-	file=trim(prefix) // 'strings.f90'
+	file='strings_' // trim(prefix) // '.f90'
 	write(6,*) 'writing file ' // trim(file)
 	open(1,file=file,status='unknown',form='formatted')
 

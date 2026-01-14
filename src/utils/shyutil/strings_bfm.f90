@@ -31,7 +31,7 @@
 !
 !****************************************************************
 
- 	subroutine populate_bfm_strings
+ 	subroutine populate_strings_bfm
 
  	! set up strings for BFM
 

@@ -27,9 +27,12 @@ fi
 
 what=$1
 file="${what}_strings.f90"
+file="strings_${what}.f90"
 echo "creating file $file"
 
-MODDIR=$HOME/shyfemcm/lib/mod
+SHYFEM_HOME=$HOME/shyfemcm
+MODDIR=$SHYFEM_HOME/lib/mod
+SHYOPTIONS="-J$MODDIR -I$MODDIR"
 echo "moddir is $MODDIR"
 
 echo "compiling parse_bfm.f90"
@@ -37,7 +40,7 @@ make compile
 [ $? -ne 0 ] && echo "error in compilation" && exit 1
 
 echo "parsing shyfem_vars.py"
-a.out $options $what < $param_file
+./a.out $options $what < $param_file
 status=$?
 #echo "status = $status"
 if [ $status -eq 77 ]; then
@@ -48,7 +51,7 @@ fi
 [ $status -ne 99 ] && echo "error in parsing" && exit 3
 
 echo "compiling $file"
-gfortran -c -J$MODDIR $file
+gfortran -c $SHYOPTIONS $file
 [ $? -ne 0 ] && echo "error in compilation" && exit 5
 
 echo "successful compilation"

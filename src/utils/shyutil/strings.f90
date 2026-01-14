@@ -156,7 +156,7 @@
 
 	  character*80 :: search
 	  character*80 :: full
-	  character*10 :: short
+	  character*80 :: short
 	  integer :: ivar
 	  integer :: irange
 
@@ -1591,7 +1591,8 @@
 !	populate bfm strings
 !---------------------------------------------------------------------
 
-	call populate_bfm_strings
+	call populate_strings_bfm
+	call populate_strings_cbms
 
 !---------------------------------------------------------------------
 

@@ -72,7 +72,8 @@ OBJ  = \
 	fast_find.o \
 	quad_tree.o \
 	shyaver.o \
-	bfm_strings.o \
+	strings_bfm.o \
+	strings_cbms.o \
 
 OBJ_OBSOLETE = \
 	links.o \

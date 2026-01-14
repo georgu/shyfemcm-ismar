@@ -15,4 +15,5 @@ clean:
 
 cleanall: clean
 	-rm -f *_strings.f90
+	-rm -f strings_*.f90
 
