@@ -30,7 +30,7 @@ file="${what}_strings.f90"
 file="strings_${what}.f90"
 echo "creating file $file"
 
-SHYFEM_HOME=$HOME/shyfemcm
+export SHYFEM_HOME=$HOME/shyfemcm
 MODDIR=$SHYFEM_HOME/lib/mod
 SHYOPTIONS="-J$MODDIR -I$MODDIR"
 echo "moddir is $MODDIR"
@@ -49,6 +49,9 @@ if [ $status -eq 77 ]; then
   exit 77
 fi
 [ $status -ne 99 ] && echo "error in parsing" && exit 3
+
+./handle_header.sh $what
+mv tmp.tmp $file
 
 echo "compiling $file"
 gfortran -c $SHYOPTIONS $file

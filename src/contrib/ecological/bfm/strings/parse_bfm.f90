@@ -388,9 +388,8 @@
 	character*20 :: prefix
 
 	prefix=trim(what) // '_'
-	prefix=trim(what)
 	file='new_strings.f90'
-	file='strings_' // trim(prefix) // '.f90'
+	file='strings_' // trim(what) // '.f90'
 	write(6,*) 'writing file ' // trim(file)
 	open(1,file=file,status='unknown',form='formatted')
 

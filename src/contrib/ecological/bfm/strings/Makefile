@@ -12,6 +12,7 @@ compile:
 
 clean:
 	-rm -f *.o *.mod a.out
+	-rm -f *.tmp
 
 cleanall: clean
 	-rm -f *_strings.f90
