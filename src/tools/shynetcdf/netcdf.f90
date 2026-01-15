@@ -80,6 +80,7 @@
 ! 19.06.2025	ggu	new routine nc_check_file_format()
 ! 30.09.2025	ggu	handle variables with no CL description
 ! 01.10.2025	ggu	accept different reference date
+! 15.01.2026	ggu	better error message in nc_define_3d_reg()
 !
 ! notes :
 !
@@ -2139,8 +2140,18 @@
 
 	integer retval
 
+	if( what == ' ' ) then
+	  write(6,*) 'description of variable is empty'
+	end if
+
         retval = nf_def_var(ncid, what, NF_REAL, 4, dimids_3d           &
      &                          ,var_id)
+	if( retval /= 0 ) then
+	  write(6,*) 'retval = ',retval
+	  write(6,*) 'var_id = ',var_id
+	  write(6,*) 'what =   ',trim(what)
+	end if
+
 	call nc_handle_err(retval,'define_3d_reg')
 
 	end

@@ -86,6 +86,7 @@
 ! 10.10.2025    ggu     get shorts for description
 ! 13.10.2025    ggu     set spherical for bas plotting, new bintp
 ! 17.10.2025    ggu     prepared for elemental values
+! 15.01.2026    ggu     write layer number that is plotted to terminal
 !
 ! notes :
 !
@@ -988,6 +989,10 @@
 ! loop on data (time loop)
 !--------------------------------------------------------------
 
+	if( .not. bquiet ) then
+	  write(6,*) 'plotting layer ',layer
+	end if
+
 	dtime = 0.
 	cv3 = 0.
 	cv3all = 0.
@@ -1450,7 +1455,7 @@
 
 	call init_regular
 	call info_regular(bregplot,nx,ny,dx,dy)
-	if( bregplot ) then
+	if( bregplot .and. bquiet ) then
 	  write(6,*) 'regular grid plotting: ',nx,ny,dx,dy
 	end if
 
@@ -1461,6 +1466,10 @@
         !--------------------------------------------------------------
         ! loop on records
         !--------------------------------------------------------------
+
+	if( .not. bquiet ) then
+	  write(6,*) 'plotting layer ',layer
+	end if
 
         irec = 0
 	nplot = 0
