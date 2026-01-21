@@ -2974,8 +2974,8 @@
 
 	if( errcode .eq. nf_noerr ) return
 
-	if( present(string) ) write(6,*) trim(string)
-	write(6,*) 'Error: ', nf_strerror(errcode)
+	if( present(string) ) write(6,*) '*** error found in: ',trim(string)
+	write(6,*) 'description of error: ', trim(nf_strerror(errcode))
 
 	stop 'error stop nc_handle_err'
 	end
