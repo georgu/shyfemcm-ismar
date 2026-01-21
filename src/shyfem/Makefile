@@ -273,7 +273,9 @@ yowexchangeModule.o yowfunction.o yowrankModule.o yowsidepool.o yowpdlibmain.o y
 w3uqckmd.o w3pro3md.o w3iorsmd.o w3src4md.o w3snl1md.o w3sdb1md.o w3sbt1md.o w3sln1md.o w3iogrmd.o w3iogomd.o w3iopomd.o w3arrymd.o w3profsmd_pdlib.o wmgridmd.o w3cspcmd.o \
 w3updtmd.o w3iobcmd.o w3nmlmultimd.o wmunitmd.o wminiomd.o w3fldsmd.o w3srcemd.o w3iotrmd.o w3partmd.o w3iosfmd.o w3profsmd.o w3wavemd.o w3nmlshelmd.o w3initmd.o w3wdasmd.o \
 wmiopomd.o wminitmd.o wmupdtmd.o wmfinlmd.o wmwavemd.o w3cplshyfem.o $(WW3_AUX)
-  WW3CFLAGS = -DW3_NOGRB -DW3_DIST -DW3_MPI -DW3_SCRIP -DW3_PR3 -DW3_UQ -DW3_FLX0 -DW3_LN1 -DW3_ST4 -DW3_STAB0 -DW3_NL1 -DW3_BT1 -DW3_DB1 -DW3_MLIM -DW3_TR0 -DW3_BS0 -DW3_IC0 -DW3_IS0 -DW3_REF0 -DW3_WNT2 -DW3_WNX1 -DW3_CRT1 -DW3_CRX1 -DW3_TRKNC -DW3_PDLIB -DW3_O0 -DW3_O1 -DW3_O2 -DW3_O2a -DW3_O2b -DW3_O2c -DW3_O3 -DW3_O4 -DW3_O5 -DW3_O6 -DW3_O7 -DW3_SHYFEM -DW3_DEBUGIOGR #-DW3_MEMCHECK
+  WW3_SWITCH_FILE = $(WW3DIR)/model/bin/$(WW3SWITCH)
+  WW3_SWITCHES = $(shell cat $(WW3_SWITCH_FILE) 2>/dev/null || echo "NOGRB PDLIB METIS MLIM SETUP DIST MPI PR3 UQ FLX0 LN0 ST0 STAB0 NL0 BT0 DB1 TR0 BS0 IC0 IS0 REF0 WNT1 WNX1 CRT1 CRX1 O0 O1 O2 O2a O2b O2c O3 O4 O5 O6 O7")
+  WW3CFLAGS = -DW3_NOGRB -DW3_DIST -DW3_MPI -DW3_SCRIP -DW3_PR3 -DW3_UQ -DW3_FLX0 -DW3_LN1 -DW3_ST4 -DW3_STAB0 -DW3_NL1 -DW3_BT1 -DW3_DB1 -DW3_MLIM -DW3_TR0 -DW3_BS0 -DW3_IC0 -DW3_IS0 -DW3_REF0 -DW3_WNT2 -DW3_WNX1 -DW3_CRT1 -DW3_CRX1 -DW3_TRKNC -DW3_PDLIB -DW3_O0 -DW3_O1 -DW3_O2 -DW3_O2a -DW3_O2b -DW3_O2c -DW3_O3 -DW3_O4 -DW3_O5 -DW3_O6 -DW3_O7 -DW3_SHYFEM -DW3_DEBUGIOGR -D__WW3_SWITCHES__="'$(WW3_SWITCHES)'" #-DW3_MEMCHECK
   XWW3FFLAGS = $(WW3CFLAGS)
   XFILES = $(SCRIPFILES) $(WW3FILES)
 endif
@@ -1079,7 +1081,6 @@ ww3.o: ../../lib/mod/basin.mod ../../lib/mod/evgeom.mod \
 		../../lib/mod/mod_roughness.mod \
 		../../lib/mod/mod_waves.mod \
 		../../lib/mod/pkonst.mod ../../lib/mod/shympi.mod \
-		../../lib/mod/shympi_aux.mod \
 		../../lib/mod/w3cplshyfem.mod \
 		../../lib/mod/w3gdatmd.mod \
 		../../lib/mod/w3idatmd.mod \

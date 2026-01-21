@@ -37,7 +37,6 @@
 !===========================================================
 
 	use shympi
-	use shympi_aux
 	use mod_meteo
 	use mod_waves
 	use mod_roughness
@@ -57,6 +56,8 @@
 	use yowDatapool, only: rtype, istatus, myrank
 
 	implicit none
+
+	INCLUDE "mpif.h"
 	logical, save :: bww3 = .true.
 	integer       :: mpiComm = -99
 	integer, allocatable  :: nwild_i(:), nwild_gbi(:)
