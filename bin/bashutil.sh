@@ -12,6 +12,13 @@
 #
 #------------------------------------------------------------------------
 
+# uncomment next command to catch errors in script
+# notice: some commands will not run
+
+#set -euo pipefail
+
+#------------------------------------------------------------------------
+
 Test_Var()
 {
   # https://www.howtogeek.com/782514/
@@ -34,8 +41,8 @@ Test_If()
   echo "test if"
   echo "================================="
 
-  if func 0; then echo "ok"; else echo "false"; fi
-  if func 1; then echo "ok"; else echo "false"; fi
+  if Test_Func 0; then echo "ok"; else echo "false"; fi
+  if Test_Func 1; then echo "ok"; else echo "false"; fi
 }
 
 Test_PatternMatching()
@@ -214,13 +221,15 @@ Test_Associative()
   echo "${assArray1[@]}"
   unset assArray1[fruit]
   echo "${assArray1[@]}"
-  echo "fruit: ${assArray1[fruit]}"
+  echo "fruit: ${assArray1[fruit]}"	# this throws an error
 
   echo "------------------look for element-------------------"
   echo -n "look for flower: "
   if [ ${assArray1[flower]+_} ]; then echo "Found"; else echo "Not found"; fi
   echo -n "look for fruit: "
   if [ ${assArray1[fruit]+_} ]; then echo "Found"; else echo "Not found"; fi
+  echo -n "look for fruit: "	# next command also throws error
+  if [[ -v ${assArray1[fruit]} ]]; then echo "Found"; else echo "Not found"; fi
 
   echo "------------------delete array-------------------"
   echo "${assArray1[@]}"
@@ -230,15 +239,67 @@ Test_Associative()
 
 Test_Round()
 {
-  val="2.3"; new=$( round $val 0 ); echo "$val -> $new"
-  val="2.5"; new=$( round $val 0 ); echo "$val -> $new"
-  val="2.7"; new=$( round $val 0 ); echo "$val -> $new"
-  val="-2.3"; new=$( round $val 0 ); echo "$val -> $new"
-  val="-2.5"; new=$( round $val 0 ); echo "$val -> $new"
-  val="-2.7"; new=$( round $val 0 ); echo "$val -> $new"
-  val="2.34"; new=$( round $val 1 ); echo "$val -> $new"
-  val="2.56"; new=$( round $val 1 ); echo "$val -> $new"
-  val="2.71"; new=$( round $val 1 ); echo "$val -> $new"
+  echo "================================="
+  echo "test rounding"
+  echo "================================="
+
+  val="2.3"; new=$( round $val 0 ); echo "$val -> $new (rounding to pos 0)"
+  val="2.5"; new=$( round $val 0 ); echo "$val -> $new (rounding to pos 0)"
+  val="2.7"; new=$( round $val 0 ); echo "$val -> $new (rounding to pos 0)"
+  val="-2.3"; new=$( round $val 0 ); echo "$val -> $new (rounding to pos 0)"
+  val="-2.5"; new=$( round $val 0 ); echo "$val -> $new (rounding to pos 0)"
+  val="-2.7"; new=$( round $val 0 ); echo "$val -> $new (rounding to pos 0)"
+  val="2.34"; new=$( round $val 1 ); echo "$val -> $new (rounding to pos 1)"
+  val="2.56"; new=$( round $val 1 ); echo "$val -> $new (rounding to pos 1)"
+  val="2.71"; new=$( round $val 1 ); echo "$val -> $new (rounding to pos 1)"
+}
+
+Test_Messages()
+{
+  echo "================================="
+  echo "test messages (should be last test)"
+  echo "================================="
+
+  ok This is an ok message
+  info This is an info message
+  warn This is a warning message
+  die This is an error
+
+  info This message will never be shown
+}
+
+Test_Directory()
+{
+  if Exists_directory $1; then ok "directory $1 exists"; \
+		else warn "directory $1 does not exist"; fi
+}
+
+Test_File()
+{
+  if Exists_file $1; then ok "file $1 exists"; \
+		else warn "file $1 does not exist"; fi
+}
+
+Test_Delete()
+{
+  if Delete_file $1; then ok "file $1 has been deleted"; \
+		else warn "file $1 could not be deleted"; fi
+}
+
+Test_Files()
+{
+  echo "================================="
+  echo "test files"
+  echo "================================="
+
+  Test_Directory tmp
+  Test_Directory tmptmp
+  Test_File bashutil.sh
+  Test_File bashutil.sh7
+  touch tmp.tmp
+  Test_File tmp.tmp
+  Test_Delete tmp.tmp
+  Test_Delete tmp.tmp
 }
 
 #-----------------------------------------------------------
@@ -247,6 +308,36 @@ Test_Round()
 # utility routines
 #-----------------------------------------------------------
 #-----------------------------------------------------------
+#-----------------------------------------------------------
+
+ok() { echo -e "\033[1;32m[OK]\033[0m $*"; }
+info() { echo -e "\033[1;34m[INFO]\033[0m $*"; }
+warn() { echo -e "\033[1;33m[WARN]\033[0m $*"; }
+die() { echo -e "\033[1;31m[ERRORE]\033[0m $*" >&2; exit 1; }
+
+#-----------------------------------------------------------
+
+Delete_file()
+{
+  [ $# -eq 0 ] && return 1
+  [ ! -f $1 ] && return 1
+  rm -f $1
+}
+
+Exists_file()
+{
+  [ $# -eq 0 ] && return 1
+  [ ! -f $1 ] && return 1
+  return 0
+}
+
+Exists_directory()
+{
+  [ $# -eq 0 ] && return 1
+  [ ! -d $1 ] && return 1
+  return 0
+}
+
 #-----------------------------------------------------------
 
 log()
@@ -297,6 +388,8 @@ Test()
   Test_ReadFromFile
   Test_PatternMatching
   Test_Round
+  Test_Files
+  Test_Messages
 }
 
 #-----------------------------------------------------------

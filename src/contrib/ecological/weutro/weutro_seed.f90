@@ -166,12 +166,15 @@
         integer i,k
         logical berror
 
-	call n2int(n,nodes,berror)
+	berror = .true.
+	berror = .false.
+	call n2int_mpi(n,nodes,berror)
+	write(6,*) 'berror = ',berror
 	if( berror ) stop 'error stop: load_init_area'
 
         do i=1,n
 	  k = nodes(i)
-	  aree(k) = iarea
+	  if( k > 0 ) aree(k) = iarea
         end do
 
         end
@@ -197,9 +200,7 @@
 
         mode = +1               !new time level
 
-	do i=1,nareas
-	  volume(i) = 0.
-	end do
+	volume = 0.
 
         do k=1,nkn
 	  ia = aree(k)

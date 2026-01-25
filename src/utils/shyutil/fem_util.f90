@@ -254,9 +254,28 @@
 	integer nnodes(n)	!node numbers
 	logical berror		!true on return if error
 
+	berror = .true.
+	call n2int_mpi(n,nnodes,berror)
+
+	end
+
+!***************************************************************
+
+	subroutine n2int_mpi(n,nnodes,berror)
+
+! converts external nodes numbers to internal ones
+
+	implicit none
+
+	integer n		!total number of nodes
+	integer nnodes(n)	!node numbers
+	logical berror		!true on return if error
+
+	logical bsignal
 	integer i,ke,ki
 	integer ipint
 
+	bsignal = berror
 	berror = .false.
 
 	do i=1,n
@@ -264,11 +283,12 @@
 	  if( ke > 0 ) then
 	    ki = ipint(ke)
 	    if( ki <= 0 ) then
-	      write(6,*) 'No such node : ',ke
-	      berror = .true.
+	      if( bsignal ) then
+	        write(6,*) 'No such node : ',ke
+	        berror = .true.
+	      end if
 	    end if
 	  else
-	    !ki = ke
 	    ki = 0
 	  end if
 	  nnodes(i) = ki
