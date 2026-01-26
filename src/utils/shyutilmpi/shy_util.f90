@@ -413,7 +413,7 @@
 
 !****************************************************************
 
-	subroutine shy_get_tend(file,datetime,dtime,bok)
+	subroutine shy_get_tend(file,datetime,dtime,nrec,bok)
 
 	use shyfile
 
@@ -422,12 +422,15 @@
 	character*(*) file
 	integer datetime(2)
 	double precision dtime
+	integer nrec
 	logical bok			!could read time ?
 
 	integer iunit,id,ierr
 	integer ivar,n,m,lmax
 	integer date,time
+	integer nk,ne,np,nl,nvar
 
+	nrec = 0
 	bok = .false.
 	dtime = -1.
 
@@ -438,14 +441,42 @@
 
 	call shy_get_date(id,date,time)
 	datetime = (/date,time/)
+	call shy_get_params(id,nk,ne,np,nl,nvar)
 
 	do while( ierr == 0 )
 	  call shy_skip_record(id,dtime,ivar,n,m,lmax,ierr)
+	  nrec = nrec + 1
 	end do
+	nrec = nrec - 1
+	nrec = nrec / nvar
 	if( ierr > 0 ) return
 
 	call shy_close(id)
 	bok = .true.
+
+	end
+
+!****************************************************************
+
+	subroutine shy_get_atimes(file,atimes)
+
+	use shyfile
+
+	implicit none
+
+	character*(*) file
+	double precision atimes
+
+	integer datetime(2)
+	integer nrec
+	logical bok			!could read time ?
+
+	integer iunit,id,ierr
+	integer ivar,n,m,lmax
+	integer date,time
+	integer nk,ne,np,nl,nvar
+
+	nrec = 0
 
 	end
 

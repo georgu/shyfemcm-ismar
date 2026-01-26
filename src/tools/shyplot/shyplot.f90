@@ -783,6 +783,7 @@
 	logical bhydro,bscalar,bsect,bvect,bvel,bcycle,belem,bselem
 	logical bregplot,bregdata,bintp
 	logical btime
+	logical bprogress
 	integer nx,ny
 	integer irec,nplot,nread,nin,nold
 	integer nvers
@@ -802,6 +803,7 @@
 	integer nzadapt
 	character*80 title,name,file
 	character*80 basnam,simnam,varline
+	character*20 aline
 	real rnull
 	real cmin,cmax,cmed,vtot
         real simpar(3),rzmov
@@ -828,6 +830,7 @@
 	id = 0
 	idold = 0
 	bregdata = .false.	!shy file data is not regular
+	bprogress = bquiet .and. .not. bsilent
 
 	!--------------------------------------------------------------
 	! set command line parameters
@@ -843,6 +846,8 @@
 
 	call open_next_file_by_name(shyfilename,idold,id)
 	if( id == 0 ) stop
+
+	if( bprogress ) call handle_progress(aline,shyfilename)
 
 	!--------------------------------------------------------------
 	! set up params and modules
@@ -1112,7 +1117,13 @@
 	 btime = btime .and. .not. bsilent
 	 !write(6,*) btime,bverb,bsilent,ivar
 	 if( btime ) then
-	   call shy_write_time2(irec,atime,ivar)
+	   if( bprogress ) then
+	     call dts_format_abs_time(atime,aline)
+	     !call handle_progress(aline)
+	     call handle_progress(aline,shyfilename)
+	   else
+	     call shy_write_time2(irec,atime,ivar)
+	   end if
 	 end if
 
 	 call make_mask(layer)
@@ -2282,6 +2293,46 @@
         call dts_format_abs_time(atime,dline)
 	write(6,1000) irec,ivar,atime,'  ',trim(dline),extra
  1000	format(2i8,f16.2,a,a,a)
+
+        end
+
+!*****************************************************************
+
+	subroutine handle_progress(string,file)
+
+	use mod_progress_bar
+
+	implicit none
+
+	character*(*) string
+	character*(*) file
+
+	logical, save :: binit = .false.
+	integer, save :: icall = 0
+	integer, save :: nrecmax = 0
+
+	logical bok
+	integer nrec
+	integer datetime(2)
+	double precision dtime
+	real progress
+
+	if( .not. binit ) then
+	  !write(6,*) 'starting to set up progress bar'
+	  call shy_get_tend(file,datetime,dtime,nrec,bok)
+	  binit = .true.
+	  nrecmax = nrec
+	  !write(6,*) 'bprogress setup: ',nrec
+	  write(6,*) 'records to handle: ',nrecmax
+	  call progress_bar_init(string)
+	  return
+	end if
+
+	icall = icall + 1
+	progress = icall / float(nrecmax)
+	!write(6,*) 'progress = ',progress
+
+	call progress_bar_print(string,progress)
 
         end
 
