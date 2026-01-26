@@ -77,6 +77,7 @@ OBJ  = \
 	errorstop.o \
 	compatibility.o \
 	spline.o \
+	progress.o \
 
 OBSOLETE = \
 	expand.o \

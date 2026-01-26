@@ -71,7 +71,7 @@ $::nnmax = 0;			# if we have to scale nodes
 		bio2dn sed2dn tox3dn
 		bfm1bc bfm2bc bfm3bc /;
 @::name_names = qw/ bound wind rain qflux ice restrt gotmpa
-		bio bios toxi
+		bio bios toxi eutropa
 		conzin saltin tempin zinit /;
 @::aquabc_names = qw/ biocon bioscon biolight bioaow 
 		bioaos bioph biotemp bioload /;
