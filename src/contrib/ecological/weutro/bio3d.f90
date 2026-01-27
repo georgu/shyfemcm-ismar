@@ -96,6 +96,7 @@
 ! 13.03.2019	ggu	changed VERS_7_5_61
 ! 12.07.2019	ggu	2d output done with shy_write_scalar_record2d()
 ! 22.03.2022	ggu	upgraded to da_out and new cmed
+! 27.01.2026	ggu	documentation on weutro state variables
 !
 ! notes :
 !
@@ -110,34 +111,36 @@
 !       dati in setload sono cambiati
 !       a subroutine decad_bio has been added 
 !               -> (is not used normally, so ignore)
-!       ho integrato il conrollo di massa, ma c'e' da controllare
+!       ho integrato il controllo di massa, ma c'e' da controllare
 
 !********************************************************************
 !********************************************************************
 !
 ! notes :
 !
-! State variables used: (Wasp)
+! State variables used: (Eutro-Wasp)
 !
-! nh3		1	71	701
-! no3		2	72	702
-! opo4		3	73	703
-! phyto		4	74	704
-! cbod		5	75	705
-! do		6	76	706
-! on		7	77	707
-! op		8	78	708
-! zoo		9	79	709
+! short		varnum	varid	unit	description
+!------------------------------------------------
+! nh3		1	701	[mg/L]	nitrogen NH3
+! no3		2	702	[mg/L]	nitrogen NO3
+! opo4		3	703	[mg/L]	ortophosphate
+! phyto		4	704	[mg/L]	phytoplankton
+! cbod		5	705	[mg/L]	carbon biological oxigen demand
+! do		6	706	[mg/L]? dissolved oxygen
+! on		7	707	[mg/L]	organic nitrogen
+! op		8	708	[mg/L]	organic phosphorus
+! zoo		9	709	[mg/L]	zooplankton
 !
-! opsed         1	91      721
-! onsed         2	92      722
+! opsed         1	721	[mg/L]	oraganic phosphorus in sediments
+! onsed         2	722	[mg/L]	oraganic nitrogen in sediments
 !
-! shellfarm     1	93      731	density of benthic filter feeding      
-! shellsize     2	94      732	size of each individual
-! shelldiag     3	95      733	diagnostic variable
+! shellfarm     1	731	[mg/L]	density of benthic filter feeding      
+! shellsize     2	732	[mg/L]	size of each individual
+! shelldiag     3	733	[mg/L]	diagnostic variable
 !
-! ulva biomass  1  	-	741
-! ulva quota    2	- 	742
+! ulva_bio	1  	741	[mg/L]	ulva biomass
+! ulva_quota	2	742	[mg/L]	ulva quota
 !
 !
 ! eseed is the initial seeding for shellfarm, applied 

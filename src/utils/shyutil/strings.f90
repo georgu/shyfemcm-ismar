@@ -70,6 +70,7 @@
 ! 10.07.2025	ggu	started parsing BFM variable names
 ! 15.09.2025	ggu	new id_tentative, do not compress '_'
 ! 03.10.2025	ggu	new routine ivar2short() and variable 78
+! 27.01.2026	ggu	add weutro description (populate_strings_weutro)
 !
 ! contents :
 !
@@ -1364,7 +1365,56 @@
 	end subroutine
 
 !****************************************************************
+
+	subroutine strings_add(ivar,short,long)
+
+	use shyfem_strings
+
+	implicit none
+
+	integer ivar
+	character*(*) short
+	character*(*) long
+
+	call strings_add_new(long,ivar)
+	call strings_set_short(ivar,short)
+
+	end
+
 !****************************************************************
+!****************************************************************
+!****************************************************************
+
+	subroutine populate_strings_weutro
+
+! populates string information for weutro
+
+	use shyfem_strings
+
+	implicit none
+
+	call strings_add(701,'nh3','nitrogen NH3')
+	call strings_add(702,'no3','nitrogen NO3')
+	call strings_add(703,'opo4','ortophosphate')
+	call strings_add(704,'phyto','phytoplankton')
+	call strings_add(705,'cbod','carbon biological oxigen demand')
+	call strings_add(706,'do','dissolved oxygen')
+	call strings_add(707,'on','organic nitrogen')
+	call strings_add(708,'op','organic phosphorus')
+	call strings_add(709,'zoo','zooplankton')
+
+	call strings_add(721,'opsed','oraganic phosphorus in sediments')
+	call strings_add(722,'onsed','oraganic nitrogen in sediments')
+
+	call strings_add(731,'shellfarm','density of benthic filter feeding')
+	call strings_add(732,'shellsize','size of each individual')
+	call strings_add(733,'shelldiag','diagnostic variable')
+
+	call strings_add(741,'ulva_bio','ulva biomass')
+	call strings_add(742,'ulva_quota','ulva quota')
+
+	end
+
 !****************************************************************
 
 	subroutine populate_strings
@@ -1470,9 +1520,9 @@
 	call strings_add_new('bfm (pelagic)',600,55)
 	call strings_add_new('bfm (benthic)',655,44)
 
-	call strings_add_new('weutro (pelagic)',700,20)
-	call strings_add_new('weutro (sediment)',720,10)
-	call strings_add_new('weutro (shell fish)',730,10)
+	!call strings_add_new('weutro (pelagic)',700,20)
+	!call strings_add_new('weutro (sediment)',720,10)
+	!call strings_add_new('weutro (shell fish)',730,10)
 
 	call strings_add_new('suspended sediment concentration',800,50)
 	call strings_add_new('erosion-deposition',891)
@@ -1570,9 +1620,9 @@
 	call strings_set_short(600,'bfmpel')
 	call strings_set_short(655,'bfmben')
 
-	call strings_set_short(700,'weutrop')
-	call strings_set_short(720,'weutrosd')
-	call strings_set_short(730,'weutrosf')
+	!call strings_set_short(700,'weutrop')
+	!call strings_set_short(720,'weutrosd')
+	!call strings_set_short(730,'weutrosf')
 
 	call strings_set_short(800,'ssc')
 	call strings_set_short(891,'sederodep')
@@ -1591,6 +1641,7 @@
 !	populate bfm strings
 !---------------------------------------------------------------------
 
+	call populate_strings_weutro
 	call populate_strings_bfm
 	call populate_strings_cbms
 
