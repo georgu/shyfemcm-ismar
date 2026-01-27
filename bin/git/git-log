@@ -2,6 +2,8 @@
 #
 # displays history of files in git repository
 #
+# --reverse is not working with --follow
+#
 #--------------------------------------
 
 Usage()
@@ -20,6 +22,7 @@ FullUsage()
   echo "  -full            show full log messages messages"
   echo "  -short           show short log messages messages"
   echo "  -oneline         show one line for each commit (default)"
+  echo "  -long            show whole description of commit"
   echo "  -first           show first commit"
   echo "  -last            show last commit"
   echo "  -names           show file names"
@@ -36,6 +39,8 @@ PrintLog()
     grep -v "^$" tmp.tmp
   elif [ $show = "oneline" ]; then
     git-log.pl tmp.tmp
+  elif [ $show = "long" ]; then
+    git-log.pl -long tmp.tmp
   elif [ $show = "first" ]; then
     git-log.pl tmp.tmp | tail -1
   elif [ $show = "last" ]; then
@@ -60,6 +65,7 @@ do
         -full)          show="full";;
         -short)         show="short";;
         -oneline)       show="oneline";;
+        -long   )       show="long";;
         -first)         show="first";;
         -last)          show="last";;
         -names)         names="YES";;
@@ -83,6 +89,7 @@ single="NO"
 #--------------------------------------------------
 
 date="format-local:'%Y-%m-%d::%H:%M:%S'"
+date="format-local:'%Y-%m-%d'"
 
 [ -f tmp.tmp ] && rm -f tmp.tmp
 
@@ -98,7 +105,7 @@ done
 
 if [ $single = "NO" ]; then
   PrintLog
-  [ -f tmp.tmp ] && rm -f tmp.tmp
+  #[ -f tmp.tmp ] && rm -f tmp.tmp
 fi
 
 #rm tmp.tmp

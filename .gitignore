@@ -127,6 +127,12 @@ bin/shypre_noopti
 src/tools/shypre/shypre_orig
 bin/shypre_orig
 
+src/contrib/enKF/main
+src/contrib/enKF/make_antime_list
+src/contrib/enKF/make_eof_ens_meteo
+src/contrib/enKF/perturbeBC
+src/contrib/enKF/enKF2enKS
+
 bin/gps.sh
 
 bin/grid

@@ -205,6 +205,10 @@ program perturbeBC
      bias(2:nrens) = bias_std * pvec(:)
   end if
 
+	if (.not.allocated(femdata)) allocate(femdata(lmax,nx,ny))
+	if (.not. allocated(var3d)) allocate(var3d(nvar,nx,ny,lmax))
+        if (.not.allocated(pvec1)) allocate(pvec1(nvar,nrens-1))
+
 !********************************
 ! time loop start
 !********************************
@@ -253,8 +257,8 @@ program perturbeBC
         flag = regpar(7)
 
 	! read variables
-	if (.not.allocated(femdata)) allocate(femdata(lmax,nx,ny))
-	if (.not. allocated(var3d)) allocate(var3d(nvar,nx,ny,lmax))
+	!if (.not.allocated(femdata)) allocate(femdata(lmax,nx,ny))
+	!if (.not. allocated(var3d)) allocate(var3d(nvar,nx,ny,lmax))
 	do i = 1,nvar
 
 	   femdata = flag
@@ -322,7 +326,7 @@ program perturbeBC
 
             if (var_std > 0.) write(*,*) '  Case 1: spatially constant perturbations'
 
-            if (.not.allocated(pvec1)) allocate(pvec1(nvar,nrens-1))
+            !if (.not.allocated(pvec1)) allocate(pvec1(nvar,nrens-1))
 	    do i=1,nvar
                call perturbe_0d(nrens-1,pvec)
                call red_noise_0d(told,tnew,pvec,nrens-1,mem_time,i,nvar)

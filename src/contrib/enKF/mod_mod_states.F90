@@ -196,113 +196,122 @@ contains
 ! Functions
 !-------------------------------------------------------------------
 
-   function add_states(A,B)
+   function add_states(A,B) result(res)
       implicit none
-      type(states) add_states
+      type(states), allocatable :: res
       type(states), intent(in) :: A
       type(states), intent(in) :: B
-       add_states%u = A%u + B%u
-       add_states%v = A%v + B%v
-       add_states%z = A%z + B%z
-       add_states%t = A%t + B%t
-       add_states%s = A%s + B%s
+       allocate(res,source=A)
+       res%u = A%u + B%u
+       res%v = A%v + B%v
+       res%z = A%z + B%z
+       res%t = A%t + B%t
+       res%s = A%s + B%s
    end function add_states
 
-   function subtract_states(A,B)
+   function subtract_states(A,B) result(res)
       implicit none
-      type(states) subtract_states
+      type(states), allocatable :: res
       type(states), intent(in) :: A
       type(states), intent(in) :: B
-       subtract_states%u = A%u - B%u
-       subtract_states%v = A%v - B%v
-       subtract_states%z = A%z - B%z
-       subtract_states%t = A%t - B%t
-       subtract_states%s = A%s - B%s
+       allocate(res,source=A)
+       res%u = A%u - B%u
+       res%v = A%v - B%v
+       res%z = A%z - B%z
+       res%t = A%t - B%t
+       res%s = A%s - B%s
    end function subtract_states
 
-   function states_real_mult(A,B)
+   function states_real_mult(A,B) result(res)
       implicit none
-      type(states) states_real_mult
+      type(states), allocatable :: res
       type(states), intent(in) :: A
       real, intent(in) :: B
-       states_real_mult%u = B*A%u
-       states_real_mult%v = B*A%v
-       states_real_mult%z = B*A%z
-       states_real_mult%t = B*A%t
-       states_real_mult%s = B*A%s
+       allocate(res,source=A)
+       res%u = B*A%u
+       res%v = B*A%v
+       res%z = B*A%z
+       res%t = B*A%t
+       res%s = B*A%s
    end function states_real_mult
 
-   function real_states_mult(B,A)
+   function real_states_mult(B,A) result(res)
       implicit none
-      type(states) real_states_mult
+      type(states), allocatable :: res
       type(states), intent(in) :: A
       real, intent(in) :: B
-       real_states_mult%u = B*A%u
-       real_states_mult%v = B*A%v
-       real_states_mult%z = B*A%z
-       real_states_mult%t = B*A%t
-       real_states_mult%s = B*A%s
+       allocate(res,source=A)
+       res%u = B*A%u
+       res%v = B*A%v
+       res%z = B*A%z
+       res%t = B*A%t
+       res%s = B*A%s
    end function real_states_mult
 
-   function states_real_add(A,B)
+   function states_real_add(A,B) result(res)
       implicit none
-      type(states) states_real_add
+      type(states), allocatable :: res
       type(states), intent(in) :: A
       real, intent(in) :: B
-       states_real_add%u = B + A%u
-       states_real_add%v = B + A%v
-       states_real_add%z = B + A%z
-       states_real_add%t = B + A%t
-       states_real_add%s = B + A%s
+       allocate(res,source=A)
+       res%u = B + A%u
+       res%v = B + A%v
+       res%z = B + A%z
+       res%t = B + A%t
+       res%s = B + A%s
    end function states_real_add
 
 
-   function real_states_add(B,A)
+   function real_states_add(B,A) result(res)
       implicit none
-      type(states) real_states_add
+      type(states), allocatable :: res
       type(states), intent(in) :: A
       real, intent(in) :: B
-       real_states_add%u = B + A%u
-       real_states_add%v = B + A%v
-       real_states_add%z = B + A%z
-       real_states_add%t = B + A%t
-       real_states_add%s = B + A%s
+       allocate(res,source=A)
+       res%u = B + A%u
+       res%v = B + A%v
+       res%z = B + A%z
+       res%t = B + A%t
+       res%s = B + A%s
    end function real_states_add
 
 
-   function states_states_mult(A,B)
+   function states_states_mult(A,B) result(res)
       implicit none
-      type(states) states_states_mult
+      type(states), allocatable :: res
       type(states), intent(in) :: A
       type(states), intent(in) :: B
-       states_states_mult%u = A%u * B%u
-       states_states_mult%v = A%v * B%v
-       states_states_mult%z = A%z * B%z
-       states_states_mult%t = A%t * B%t
-       states_states_mult%s = A%s * B%s
+       allocate(res,source=A)
+       res%u = A%u * B%u
+       res%v = A%v * B%v
+       res%z = A%z * B%z
+       res%t = A%t * B%t
+       res%s = A%s * B%s
    end function states_states_mult
 
-   function states_states_div(A,B)
+   function states_states_div(A,B) result(res)
       implicit none
-      type(states) states_states_div
+      type(states), allocatable :: res
       type(states), intent(in) :: A
       type(states), intent(in) :: B
-       states_states_div%u = A%u / B%u
-       states_states_div%v = A%v / B%v
-       states_states_div%z = A%z / B%z
-       states_states_div%t = A%t / B%t
-       states_states_div%s = A%s / B%s
+       allocate(res,source=A)
+       res%u = A%u / B%u
+       res%v = A%v / B%v
+       res%z = A%z / B%z
+       res%t = A%t / B%t
+       res%s = A%s / B%s
    end function states_states_div
 
-   function root_state(A)
+   function root_state(A) result(res)
       implicit none
-      type(states) root_state
+      type(states), allocatable :: res
       type(states), intent(in) :: A
-       root_state%u = sqrt(A%u)
-       root_state%v = sqrt(A%v)
-       root_state%z = sqrt(A%z)
-       root_state%t = sqrt(A%t)
-       root_state%s = sqrt(A%s)
+       allocate(res,source=A)
+       res%u = sqrt(A%u)
+       res%v = sqrt(A%v)
+       res%z = sqrt(A%z)
+       res%t = sqrt(A%t)
+       res%s = sqrt(A%s)
    end function root_state
 
 !-------------------------------------------------------------------
