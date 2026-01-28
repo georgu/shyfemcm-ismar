@@ -163,6 +163,7 @@
 ! 05.02.2025    ggu     new info_format for T/S
 ! 24.04.2025    ggu     new value for ibarcl: ibercl == 5
 ! 11.11.2025    ggu     general assimilation of T/S
+! 28.01.2026    ggu     new routine ts_nudge_check()
 !
 ! notes :
 !
@@ -442,6 +443,7 @@
 	  call ts_diag(dtime,nlvdi,nlv,nkn,tempv,saltv)
 	else if( bobs ) then
 	  call ts_nudge(dtime,nlvdi,nlv,nkn,tobsv,sobsv,ttauv,stauv)
+	  call ts_nudge_check(dtime,nlvdi,nlv,nkn,tobsv,sobsv,ttauv,stauv)
 	end if
 
 !----------------------------------------------------------
@@ -1049,6 +1051,34 @@
 	write(6,*) 'or set nudging time scale using parameters'
 	write(6,*) 'temptaup and salttaup'
 	stop 'error stop ts_nudge_get_tau: error getting tau'
+	end
+
+!*******************************************************************	
+
+	subroutine ts_nudge_check(dtime,nlvddi,nlv,nkn,tobsv,sobsv &
+     &					,ttauv,stauv)
+
+! checks nudiging values (debug)
+
+	implicit none
+
+	double precision dtime
+	integer nlvddi
+	integer nlv
+	integer nkn
+	real tobsv(nlvddi,nkn)
+	real sobsv(nlvddi,nkn)
+	real ttauv(nlvddi,nkn)
+	real stauv(nlvddi,nkn)
+
+	integer, save :: iu = 567
+
+	write(iu,*) 'checking nudge values at time ',dtime
+	write(iu,*) 'tobs: ',minval(tobsv),maxval(tobsv)
+	write(iu,*) 'sobs: ',minval(sobsv),maxval(sobsv)
+	write(iu,*) 'ttau: ',minval(ttauv),maxval(ttauv)
+	write(iu,*) 'stau: ',minval(stauv),maxval(stauv)
+
 	end
 
 !*******************************************************************	
