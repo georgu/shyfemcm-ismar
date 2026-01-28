@@ -16,9 +16,14 @@
 SCRIPT=$(realpath $0)
 SCRIPTPATH=$(dirname $SCRIPT)
 
-FEMDIR=$SCRIPTPATH/..	# fem directory
+FEMDIR=~/shyfemcm	# fem directory
+FEMDIR=~/georg/work/shyfem_repo/shyfemcm-ismar
+SHYFEMDIR=$FEMDIR/src/shyfem
+ENKFDIR=$FEMDIR/src/contrib/enKF
 SIMDIR=$(pwd)		# current dir
 
+[ ! -d $SHYFEMDIR ] && echo "*** no such directory: $SHYFEMDIR" && exit 1
+[ ! -d $ENKFDIR ] && echo "*** no such directory: $ENKFDIR" && exit 1
 
 #----------------------------------------------------------
 
@@ -75,10 +80,10 @@ Check_num()
 Check_files(){
   echo "Check the exec programs"
   command -v parallel > /dev/null 2>&1 || { echo "parallel it's not installed.  Aborting." >&2; exit 1; }
-  [ ! -s $FEMDIR/fem3d/shyfem ] && echo "shyfem exec does not exist. Compile the model first." && exit 1
+  [ ! -s $SHYFEMDIR/shyfem ] && echo "shyfem exec does not exist. Compile the model first." && exit 1
   # Make here the mod_dimensions and compile main
   
-  [ ! -s $FEMDIR/enKF/main ] && echo "main exec does not exist. Compile the enKF first." && exit 1
+  [ ! -s $ENKFDIR/main ] && echo "main exec does not exist. Compile the enKF first." && exit 1
 
   echo "Check the input files"
   ens_file_list='ens_list.txt'
@@ -232,7 +237,7 @@ Run_ensemble_analysis()
 nanl=$(printf "%05d" $1)
 
 cd $SIMDIR
-$FEMDIR/enKF/main
+$ENKFDIR/main
 if [ "$?" -ne "0" ]; then
           echo "Errors while running main."
           exit 1
@@ -312,6 +317,7 @@ Read_an_time_list
 rm -f X5*.uf backKF_*.rst analKF_*.rst 	# old files
 for (( na = 1; na <= $nran; na++ )); do
 
+
    # make the analysis
    echo; echo "			ANALYSIS STEP $na OF $nran"; echo
    Write_obs_file $na
@@ -335,7 +341,7 @@ for (( na = 1; na <= $nran; na++ )); do
       nthsim=$nthreads
       [[ "$nthsim" -gt "$nrens" ]] && nthsim=$nrens
       export -f Make_sim
-      parallel --no-notice -P $nthsim Make_sim ::: $strfiles ::: $FEMDIR/fem3d
+      parallel --no-notice -P $nthsim Make_sim ::: $strfiles ::: $SHYFEMDIR
    #########################################################
 
    fi

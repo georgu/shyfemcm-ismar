@@ -68,7 +68,7 @@
 
  90 write(*,*) 'Error in the restart file. Are you sure that the analysis step'
     write(*,*) 'has a time present in the restart records?'
-    error stop
+    error stop 'error reading restart file in rst_read'
 
 
   end subroutine rst_read

@@ -333,6 +333,11 @@ contains
       implicit none
       type(states), intent(out) :: A
       type(states4), intent(in)  :: B
+	write(6,*) 'size of B in states4to8: ',size(B%u,1),size(B%u,2)
+	write(6,*) 'size of A in states4to8: ',size(A%u,1),size(A%u,2)
+      if( .not. allocated(B%u) ) error stop 'states4to8: not allocated B%u'
+      if( .not. allocated(A%u) ) error stop 'states4to8: not allocated A%u'
+	write(6,*) 'start copying in states4to8...'
       A%u=DBLE(B%u)
       A%v=DBLE(B%v)
       A%z=DBLE(B%z)

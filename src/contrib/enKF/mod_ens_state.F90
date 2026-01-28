@@ -497,6 +497,11 @@ contains
   call allocate_states4(A4,nnkn,nnel,nnlv)
   call rst_read(filename,atime_an)
   call push_state(A4)
+  if( .not. allocated(Astate%u) ) error stop "Astate%u not allocated"
+  if( .not. allocated(A4%u) ) error stop "A4%u not allocated"
+  write(6,*) 'size of Astate in read_state: ',size(Astate%u,1),size(Astate%u,2)
+  write(6,*) 'size of A4     in read_state: ',size(A4%u,1),size(A4%u,2)
+  write(6,*) 'calling states4to8'
   call states4to8(Astate,A4)
   deallocate(A4)
 
@@ -517,7 +522,8 @@ contains
 
     character(len=80),parameter :: bcfile = 'lbound.dat'
     logical :: file_exists
-    integer,allocatable :: nbc,bcid(:),k_int
+    integer :: nbc,k_int
+    integer,allocatable :: bcid(:)
     real,allocatable :: bcrho(:)
     real zmean,zstd,dist
     integer k,i
