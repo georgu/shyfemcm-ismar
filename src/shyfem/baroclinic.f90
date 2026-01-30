@@ -164,6 +164,7 @@
 ! 24.04.2025    ggu     new value for ibarcl: ibercl == 5
 ! 11.11.2025    ggu     general assimilation of T/S
 ! 28.01.2026    ggu     new routine ts_nudge_check()
+! 30.01.2026    ggu     fixed bug in nudging (with tau given as parameter)
 !
 ! notes :
 !
@@ -348,11 +349,6 @@
 		  end if
 		end if
 
-		if( bobs ) then
-	  	  call ts_nudge(dtime0,nlvdi,nlv,nkn,tobsv,sobsv &
-     &						,ttauv,stauv)
-		end if
-
 !		--------------------------------------------
 !		initialize observations and relaxation times
 !		--------------------------------------------
@@ -361,6 +357,14 @@
 		sobsv = 0.
 		ttauv = 0.
 		stauv = 0.
+
+		if( bobs ) then
+	  	  call ts_nudge(dtime0,nlvdi,nlv,nkn,tobsv,sobsv &
+     &						,ttauv,stauv)
+		end if
+
+	        call ts_nudge_check(dtime0,nlvdi,nlv,nkn &
+     &				,tobsv,sobsv,ttauv,stauv)
 
 !		--------------------------------------------
 !		initialize open boundary conditions
