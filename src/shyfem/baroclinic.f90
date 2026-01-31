@@ -447,7 +447,7 @@
 	  call ts_diag(dtime,nlvdi,nlv,nkn,tempv,saltv)
 	else if( bobs ) then
 	  call ts_nudge(dtime,nlvdi,nlv,nkn,tobsv,sobsv,ttauv,stauv)
-	  call ts_nudge_check(dtime,nlvdi,nlv,nkn,tobsv,sobsv,ttauv,stauv)
+	  !call ts_nudge_check(dtime,nlvdi,nlv,nkn,tobsv,sobsv,ttauv,stauv)
 	end if
 
 !----------------------------------------------------------
@@ -945,23 +945,32 @@
 
 	character*80 tempf,saltf,ttauf,stauf
 	character*80 string
-	real ttaup,staup
 	real tau_limit
 	logical, save :: btnudge,bsnudge
 	integer, save :: idtemp,idsalt
 	integer, save :: idttau,idstau
+	real, save :: ttaup,staup
 	integer, save :: icall = 0
 
 	real getpar
 
-	call getfnm('tempobs',tempf)
-	call getfnm('saltobs',saltf)
-	call getfnm('temptau',ttauf)
-	call getfnm('salttau',stauf)
-	ttaup = getpar('temptaup')
-	staup = getpar('salttaup')
+	!----------------------------------------
+	! first call - initialize
+	!----------------------------------------
 
 	if( icall .eq. 0 ) then
+
+	  call getfnm('tempobs',tempf)
+	  call getfnm('saltobs',saltf)
+	  call getfnm('temptau',ttauf)
+	  call getfnm('salttau',stauf)
+	  ttaup = getpar('temptaup')
+	  staup = getpar('salttaup')
+
+	  !----------------------------------------
+	  ! opening nudging files for T
+	  !----------------------------------------
+
 	  string = 'temp tau'
 	  write(6,'(a)') 'ts_nudge: opening file for '//trim(string)
 	  call ts_nudge_get_tau(string,ttauf,ttaup,dtime,nkn,nlv,idttau)
@@ -973,6 +982,10 @@
 	    call ts_open(string,tempf,dtime,nkn,nlv,idtemp)
 	  end if
 
+	  !----------------------------------------
+	  ! opening nudging files for S
+	  !----------------------------------------
+
 	  string = 'salt tau'
 	  write(6,'(a)') 'ts_nudge: opening file for '//trim(string)
 	  call ts_nudge_get_tau(string,stauf,staup,dtime,nkn,nlv,idstau)
@@ -983,6 +996,10 @@
 	    write(6,'(a)') 'ts_nudge: opening file for '//trim(string)
 	    call ts_open(string,saltf,dtime,nkn,nlv,idsalt)
 	  end if
+
+	  !----------------------------------------
+	  ! check values and write to terminal
+	  !----------------------------------------
 
 	  if( btnudge .or. bsnudge ) then
 	    write(6,*) 'nudging has been initialized'
@@ -1000,6 +1017,10 @@
 
 	  icall = 1
 	end if
+
+	!----------------------------------------
+	! regular call
+	!----------------------------------------
 
 	tau_limit = 172000.
 
@@ -1020,6 +1041,10 @@
 	  end if
           call ts_next_record(dtime,idsalt,nlvddi,nkn,nlv,sobsv)
 	end if
+
+	!----------------------------------------
+	! end of routine
+	!----------------------------------------
 
 	end
 
@@ -1075,7 +1100,7 @@
 	real ttauv(nlvddi,nkn)
 	real stauv(nlvddi,nkn)
 
-	integer, save :: iu = 567
+	integer, save :: iu = 6
 
 	write(iu,*) 'checking nudge values at time ',dtime
 	write(iu,*) 'tobs: ',minval(tobsv),maxval(tobsv)
