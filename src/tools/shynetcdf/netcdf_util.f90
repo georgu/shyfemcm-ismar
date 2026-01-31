@@ -23,24 +23,25 @@
 !
 !--------------------------------------------------------------------------
 
-!  utilities for netcdf conversion
-! 
-!  revision log :
-! 
-!  21.01.2013	ggu	routines transfered from ous2nc.f
-!  20.02.2013	ggu	new routines get_period() and check_period()
-!  03.05.2013	ggu	changed VERS_6_1_63
-!  28.01.2014	ggu	changed VERS_6_1_71
-!  23.12.2014	ggu	changed VERS_7_0_11
-!  19.01.2015	ggu	changed VERS_7_1_3
-!  26.02.2015	ggu	changed VERS_7_1_5
-!  17.07.2015	ggu	changed VERS_7_1_80
-!  20.07.2015	ggu	changed VERS_7_1_81
-!  15.04.2016	ggu	changed VERS_7_5_8
-!  28.04.2016	ggu	changed VERS_7_5_9
-!  30.05.2016	ggu	changed VERS_7_5_11
-!  16.02.2019	ggu	changed VERS_7_5_60
-! 
+! utilities for netcdf conversion
+!
+! revision log :
+!
+! 21.01.2013	ggu	routines transfered from ous2nc.f
+! 20.02.2013	ggu	new routines get_period() and check_period()
+! 03.05.2013	ggu	changed VERS_6_1_63
+! 28.01.2014	ggu	changed VERS_6_1_71
+! 23.12.2014	ggu	changed VERS_7_0_11
+! 19.01.2015	ggu	changed VERS_7_1_3
+! 26.02.2015	ggu	changed VERS_7_1_5
+! 17.07.2015	ggu	changed VERS_7_1_80
+! 20.07.2015	ggu	changed VERS_7_1_81
+! 15.04.2016	ggu	changed VERS_7_5_8
+! 28.04.2016	ggu	changed VERS_7_5_9
+! 30.05.2016	ggu	changed VERS_7_5_11
+! 16.02.2019	ggu	changed VERS_7_5_60
+! 30.01.2026    ggu     change in call to get_lmax_reg() to avoid out of bounds
+!
 ! ******************************************************************
 
         subroutine write_time(it)
@@ -194,7 +195,7 @@
 
 ! ******************************************************************
 
-	subroutine get_lmax_reg(nx,ny,fm,ilhv,lmax)
+	subroutine get_lmax_reg(nx,ny,fm,nel,ilhv,lmax)
 
 !  computes max lmax for regular domain
 
@@ -202,7 +203,8 @@
 
 	integer nx,ny
 	real fm(4,nx,ny)
-	integer ilhv(1)
+	integer nel
+	integer ilhv(nel)
 	integer lmax		!max level (return)
 
 	integer i,j,ie
