@@ -99,6 +99,7 @@
 	integer, save :: ieco_rst   = 0
 	integer, save :: imerc_rst  = 0
 	integer, save :: iturb_rst  = 0
+	integer, save :: ibfm_rst  = 0
 
 	character*20, save :: descript_rst(nidmax) = (/    &
      &		 'hydrodynamics       '    &
