@@ -902,17 +902,13 @@
 	logical, parameter :: bn = .false.
 
 	logical rst_want_restart
-	logical haspar
 	real getpar
 
         read(iunit,end=97) idfile,nvers,nrec
         if( nvers .lt. 3 ) goto 98
 
         ierr = 0
-	iconz = 0
-	if( haspar('iconz') ) then
-	  iconz = nint(getpar('iconz'))
-	end if
+	iconz = nint(getpar('iconz'))
 
 	nvers_rst = nvers
 
@@ -1095,6 +1091,83 @@
         write(6,*) 'rstfile: ',nknaux,nelaux,nlvaux
         stop 'error stop rst_read_record: incompatible parameters'
         end
+
+!*******************************************************************
+
+        subroutine rst_read_dummy(iunit,atime,iflag,ierr)
+
+! reads one record of restart data
+!
+! iflag is returned, which indicates the available data in the file
+! this can be different from the actually read data (if not wanted)
+
+	use mod_geom_dynamic
+	use mod_ts
+	use mod_hydro_vel
+	use mod_hydro
+	use levels, only : nlvdi,nlv,hlv
+	use basin
+	use mod_restart
+	use shympi
+
+        implicit none
+
+        integer iunit		!unti from which to read
+        double precision atime	!absolute time
+        integer iflag		!available data, not necessarily read data
+        integer ierr            !error code - different from 0 if error
+
+	integer it,idfile,id
+        integer ii,l,ie,k,i
+        integer nvers,nversaux,nrec
+        integer nknaux,nelaux,nlvaux
+	integer ibarcl,iconz,iwvert,ieco,imerc,iturb,ibfm
+	integer date,time
+	real, allocatable :: hlvaux(:)
+
+	logical, parameter :: be = .true.
+	logical, parameter :: bn = .false.
+
+	logical rst_want_restart
+	real getpar
+
+        ierr = 0
+	iconz = 0
+
+	nvers = nvmax
+	nvers_rst = nvmax
+
+	date = 0
+	time = 0
+	iflag = 0
+
+	nknaux = nkn_global
+	nelaux = nel_global
+	nlvaux = nlv_global
+
+	!call rst_read_vertical(iunit,nvers,nkn,nel,nlv)
+
+	id = id_hydro_rst
+	!call rst_add_flag(id,iflag)
+	id = id_depth_rst
+	!call rst_add_flag(id,iflag)
+	id = id_barcl_rst
+	!call rst_add_flag(id,iflag)
+	id = id_gotm_rst
+	!call rst_add_flag(id,iflag)
+	id = id_conz_rst
+	!call rst_add_flag(id,iflag)
+	id = id_wvert_rst
+	!call rst_add_flag(id,iflag)
+	id = id_eco_rst
+	!call rst_add_flag(id,iflag)
+	id = id_merc_rst
+	!call rst_add_flag(id,iflag)
+	id = id_bfm_rst
+	!call rst_add_flag(id,iflag)
+
+        return
+	end
 
 !*******************************************************************
 

@@ -100,52 +100,8 @@
 !******************************************************************
 
 	subroutine bfm_shyfem_array_interface
-
-! pointers to shyfem variables needed in bfm/vegetation
-!
-! no area yet
-
-	use mod_ts
-	use mod_meteo
-	use mod_diff_visc_fric
-	use mod_layer_thickness
-	use levels
-
-	implicit none
-
-	real, pointer :: temp_bfm(:,:)
-	real, pointer :: salt_bfm(:,:)
-	real, pointer :: rho_bfm(:,:)		!density anomaly, r = r' + 1025
-	real, pointer :: windx_bfm(:)
-	real, pointer :: windy_bfm(:)
-	real, pointer :: wspeed_bfm(:)		!wind speed
-	real, pointer :: solrad_bfm(:)
-	real, pointer :: tair_bfm(:)
-	real, pointer :: ice_bfm(:)
-	real, pointer :: visc_bfm(:,:)		!(0:nlv,nkn)
-	real, pointer :: diff_bfm(:,:)		!(0:nlv,nkn)
-	real, pointer :: bnstress_bfm(:)	!normalized bottom stress
-	real, pointer :: dz_bfm(:,:)		!layer thickness at node
-	integer, pointer :: k_bott_bfm(:)	!number of layers at node
-	integer, pointer :: k_surf_bfm(:)	!index of surface layer at node
-
-	temp_bfm => tempv
-	salt_bfm => saltv
-	rho_bfm => rhov
-	windx_bfm => wxv
-	windy_bfm => wyv
-	wspeed_bfm => metws
-	solrad_bfm => metrad
-	tair_bfm => mettair
-	ice_bfm => metice
-	visc_bfm => visv
-	diff_bfm => difv
-	bnstress_bfm => bnstressv
-	dz_bfm => hdknv
-	k_bott_bfm => ilhkv
-	k_surf_bfm => jlhkv
-
-	end subroutine
+        implicit none
+	end
 
 !******************************************************************
 

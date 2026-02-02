@@ -75,9 +75,12 @@ SHYOBJENS = \
 	$(SHYGENERIC)/iso8601.o \
 	$(SHYGENERIC)/convert.o \
 
-YSHYOBJ = $(FEM3D)/subrst.o $(FEM3D)/subbas.o $(FEM3D)/subdts.o $(FEM3D)/mod_bnd.o \
+SHYOBJ_OLD = \
+	$(FEM3D)/subrst.o $(FEM3D)/subbas.o \
+	$(FEM3D)/subdts.o $(FEM3D)/mod_bnd.o \
 	$(FEM3D)/subreg.o $(FEM3D)/subfind.o $(FEM3D)/subpar3.o \
-	$(FEM3D)/subfil.o $(FEM3D)/mod_hydro.o $(FEM3D)/debug.o $(FEM3D)/subsss.o \
+	$(FEM3D)/subfil.o $(FEM3D)/mod_hydro.o \
+	$(FEM3D)/debug.o $(FEM3D)/subsss.o \
 	$(FEM3D)/subbit10.o $(FEM3D)/mod_geom_dynamic.o $(FEM3D)/mod_ts.o \
 	$(FEM3D)/newlevels.o $(FEM3D)/mod_conz.o $(FEM3D)/mod_hydro_vel.o \
 	$(FEM3D)/ecological_dummy.o $(FEM3D)/subdef.o $(FEM3D)/subnev.o \
@@ -86,9 +89,11 @@ YSHYOBJ = $(FEM3D)/subrst.o $(FEM3D)/subbas.o $(FEM3D)/subdts.o $(FEM3D)/mod_bnd
 
 #-------------------- ens objects
 # Ensemble analysis objects
-#
-ENKOBJ = analysis.o m_ensmean.o m_ensvar.o m_mean_preserving_rotation.o \
-	 m_multa.o m_random.o m_randrot.o mod_anafunc.o
+
+ENKOBJ = analysis.o m_ensmean.o m_ensvar.o \
+	 m_randrot.o \
+	 m_mean_preserving_rotation.o \
+	 m_multa.o m_random.o mod_anafunc.o
 
 SAMPOBJ = m_pseudo2D.o m_fixsample2D.o m_newton2D.o m_newtonfunc2D.o \
 	  m_sample2D.o mod_fftw3.o
@@ -98,37 +103,45 @@ ENSOBJ = $(ENKOBJ) $(SAMPOBJ) subenkf.o mod_mod_err.o mod_enkf.o \
 	 mod_obs_states.o mod_para.o sublocan.o
 
 #-------------------- external libraries
+
 LIBS = -llapack -lblas -lfftw3 -lpthread
 
 #-------------------- ens modules (just to clean)
-ENSMOD = $(MODDIR)/m_random.mod $(MODDIR)/mod_mod_err.mod $(MODDIR)/mod_enkf.mod \
-	 $(MODDIR)/mod_manage_obs.mod $(MODDIR)/mod_ens_state.mod $(MODDIR)/mod_para.mod \
-	 $(MODDIR)/mod_init_enkf.mod $(MODDIR)/mod_anafunc.mod \
-	 $(MODDIR)/m_mean_preserving_rotation.mod $(MODDIR)/m_multa.mod $(MODDIR)/m_sample2d.mod \
-	 $(MODDIR)/m_randrot.mod $(MODDIR)/m_pseudo2d.mod $(MODDIR)/mod_fftw3.mod \
-	 $(MODDIR)/m_newton2d.mod $(MODDIR)/m_newtonfunc2d.mod $(MODDIR)/m_fixsample2d.mod \
-	 $(MODDIR)/mod_obs_states.mod $(MODDIR)/mod_mod_states.mod
+
+ENSMOD = \
+	 $(MODDIR)/m_random.mod \
+	 $(MODDIR)/mod_mod_err.mod \
+	 $(MODDIR)/mod_enkf.mod \
+	 $(MODDIR)/mod_manage_obs.mod \
+	 $(MODDIR)/mod_ens_state.mod \
+	 $(MODDIR)/mod_para.mod \
+	 $(MODDIR)/mod_init_enkf.mod \
+	 $(MODDIR)/mod_anafunc.mod \
+	 $(MODDIR)/m_randrot.mod \
+	 $(MODDIR)/m_mean_preserving_rotation.mod \
+	 $(MODDIR)/m_multa.mod \
+	 $(MODDIR)/m_sample2d.mod \
+	 $(MODDIR)/m_pseudo2d.mod \
+	 $(MODDIR)/mod_fftw3.mod \
+	 $(MODDIR)/m_newton2d.mod \
+	 $(MODDIR)/m_newtonfunc2d.mod \
+	 $(MODDIR)/m_fixsample2d.mod \
+	 $(MODDIR)/mod_obs_states.mod \
+	 $(MODDIR)/mod_mod_states.mod \
 
 #-------------------- all the exec files
+
 EXES = main make_eof_ens_meteo enKF2enKS perturbeBC make_antime_list
 
-
 #------------------- targets
+
 default: $(EXES)
 
 all: $(EXES)
 
-clean:
-	rm -f $(EXES) *.o $(ENSMOD)
-
-cleanall:
-	rm -f $(EXES) *.o $(ENSMOD) tags *.dat *.uf fort.* *.bak
-
 main: $(ENSOBJ) main.o
 	$(LINKER) $(SHYOBJ) $@.o \
 	$(ENSOBJ) $(LFLAGS) $(LIBS) -o $@
-
-#        $(ENSOBJ) $(DIRLIB)/libfem.a $(LFLAGS) $(LIBS) -o $@
 
 perturbeBC: perturbeBC.o m_sample2D.o m_pseudo2D.o m_newton2D.o \
 	m_randrot.o m_fixsample2D.o m_random.o m_newtonfunc2D.o
@@ -136,8 +149,6 @@ perturbeBC: perturbeBC.o m_sample2D.o m_pseudo2D.o m_newton2D.o \
 	m_randrot.o m_fixsample2D.o m_random.o m_newtonfunc2D.o \
 	$(SHYOBJENS) \
 	$(LFLAGS) $(LIBS) -o $@
-
-#	$(DIRLIB)/libfem.a $(LFLAGS) $(LIBS) -o $@
 
 make_antime_list: make_antime_list.o 
 	$(LINKER) $(LFLAGS) $(SHYOBJENS) $@.o -o $@
@@ -150,13 +161,21 @@ enKF2enKS: enKF2enKS.o
 	$(LINKER) $(SHYOBJ) $@.o \
 	$(LFLAGS) $(LIBS) -o $@
 
+#------------------- var
+
 depend:
 	@$(MAKEDEPEND) -moddir=$(MODDIR) *.F90
 
+clean:
+	rm -f $(EXES) *.o $(ENSMOD)
+
+cleanall:
+	rm -f $(EXES) *.o $(ENSMOD) tags *.dat *.uf fort.* *.bak
 
 #------------------- compilation rules
 
 .SUFFIXES: .f .F90 .f90
+
 .f.o:
 	$(F77) -c $(FFLAGS) $<
 .F90.o:

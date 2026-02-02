@@ -24,16 +24,20 @@
   open(24,file=trim(rstname),status='old',form='unformatted',iostat=ierr)
   if (ierr /= 0) error stop 'rst_read: Error opening file'
 
-  89  call rst_read_record(24,atimef,iflag,ierr)
-     if (ierr /= 0) goto 90
-     if (atimef /= atimea) goto 89
+  atimef = atimea
+  89 continue
+      !call rst_read_record(24,atimef,iflag,ierr)
+      call rst_read_dummy(24,atimef,iflag,ierr)
+      if (ierr /= 0) goto 90
+      if (atimef /= atimea) goto 89
+
   close(24)
 
   if ( icall == 0 ) then
 
-     hlv = hlvrst
-     ilhv = ilhrst
-     ilhkv = ilhkrst
+     !hlv = hlvrst
+     !ilhv = ilhrst
+     !ilhkv = ilhkrst
      ibarcl4 = ibarcl_rst
      iwvert_rst4 = iwvert_rst
      ieco_rst4 = ieco_rst
@@ -54,12 +58,17 @@
      call daddpar('time',0.)
 
      write(*,*) 'SHYFEM flags from restart:'
+     write(*,*) 'nvers	= ',nvers_rst
+     write(*,*) 'nvmax	= ',nvmax
      write(*,*) 'ibarcl	= ',ibarcl_rst
      write(*,*) 'iconz	= ',iconz_rst
      write(*,*) 'iwvert	= ',iwvert_rst
      write(*,*) 'ieco	= ',ieco_rst
      write(*,*) 'imerc	= ',imerc_rst
      write(*,*) 'iturb	= ',iturb_rst
+     write(*,*) 'nlv	= ',nlv
+     !write(*,*) 'hlvrst	= ',hlvrst(1:nlv)
+     write(*,*) 'hlv	= ',hlv(1:nlv)
   end if
 
   icall = icall + 1
