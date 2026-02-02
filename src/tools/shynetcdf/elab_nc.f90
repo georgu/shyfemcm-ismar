@@ -39,6 +39,7 @@
 ! 29.01.2020	ggu	always write variables as 3d
 ! 05.08.2024	ggu	new variable sncglobal
 ! 03.10.2024	ggu	introduced dim and dir
+! 30.01.2026	ggu	change in call to get_lmax_reg() to avoid out of bounds
 !
 !************************************************************
 
@@ -115,7 +116,7 @@
 	  allocate(value2d(nxreg,nyreg))
 	  allocate(value3d(ncnlv,nxreg,nyreg))
 	  allocate(vnc3d(nxreg,nyreg,ncnlv))
-	  call get_lmax_reg(nxreg,nyreg,fmreg,ilhv,lmax)
+	  call get_lmax_reg(nxreg,nyreg,fmreg,nel,ilhv,lmax)
 	  lmax = max(1,lmax)	!at least one layer
 	  if ( b2d ) lmax = 1
 	  lmaxreg = lmax

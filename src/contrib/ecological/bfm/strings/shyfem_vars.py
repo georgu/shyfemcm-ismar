@@ -322,15 +322,17 @@ cbms={    # WAT%bgc
           "var_2511":"vsm_dBM_dt_Growth_leaf",      # cbms  vsm dBM_dt_Growth_leaf
           "var_2512":"vsm_dBM_dt_Growth_stem",      # cbms  vsm dBM_dt_Growth_stem
           "var_2513":"vsm_dBM_dt_Growth_root",      # cbms  vsm dBM_dt_Growth_root
-          "var_2550":"vsm_dBM_dt_Mort_leaf",        # cbms  vsm dBM_dt_Mort_leaf
-          "var_2551":"vsm_dBM_dt_Mort_stem",        # cbms  vsm dBM_dt_Mort_stem
-          "var_2552":"vsm_dBM_dt_Mort_root",        # cbms  vsm dBM_dt_Mort_root
-          "var_2553":"vsm_Mort_T_leaf",             # cbms  vsm Mort_T_leaf
-          "var_2554":"vsm_Mort_T_stem",             # cbms  vsm Mort_T_stem             
-          "var_2555":"vsm_Mort_T_root",             # cbms  vsm Mort_T_root
-          "var_2556":"vsm_Respi_T_leaf",            # cbms  vsm Respi_T_leaf
-          "var_2557":"vsm_Respi_T_stem",            # cbms  vsm Respi_T_stem
-          "var_2558":"vsm_Respi_T_root",            # cbms  vsm Respi_T_root
+          "var_2514":"vsm_dBM_dt_Mort_leaf",        # cbms  vsm dBM_dt_Mort_leaf
+          "var_2515":"vsm_dBM_dt_Mort_stem",        # cbms  vsm dBM_dt_Mort_stem
+          "var_2516":"vsm_dBM_dt_Mort_root",        # cbms  vsm dBM_dt_Mort_root
+          "var_2517":"vsm_Mort_T_leaf",             # cbms  vsm Mort_T_leaf
+          "var_2518":"vsm_Mort_T_stem",             # cbms  vsm Mort_T_stem             
+          "var_2519":"vsm_Mort_T_root",             # cbms  vsm Mort_T_root
+          "var_2520":"vsm_Respi_T_leaf",            # cbms  vsm Respi_T_leaf
+          "var_2521":"vsm_Respi_T_stem",            # cbms  vsm Respi_T_stem
+          "var_2522":"vsm_Respi_T_root",            # cbms  vsm Respi_T_root
+          "var_2523":"vsm_Growth_T",                # cbms  vsm Growth_T
+          "var_2524":"vsm_Irr_at_Hcanopy",          # cbms  vsm Irr_at_Hcanopy
           "var_2570":"vsm_O2o",                     # cbms  vsm O2o                                    Oxygen  mmol O2/m2
           "var_2571":"vsm_N1p",                     # cbms  vsm N1p                           Phosphate (PO4)   mmol P/m2
           "var_2572":"vsm_N4n",                     # cbms  vsm N4n                            Ammonium (NH4)   mmol N/m2

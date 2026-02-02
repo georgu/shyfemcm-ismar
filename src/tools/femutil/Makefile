@@ -11,7 +11,7 @@
 FEMDIR    = ../../..
 FEMBIN    = $(FEMDIR)/bin
 
-FEMDIRS   = femfiles mpi stab
+FEMDIRS   = femfiles mpi stab unform
 
 #-----------------------------------------------------------------------
 

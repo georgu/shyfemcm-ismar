@@ -1166,6 +1166,14 @@
 	id = id_bfm_rst
 	!call rst_add_flag(id,iflag)
 
+	ibarcl_rst = ibarcl
+	iwvert_rst = 0
+	iturb_rst = 0
+	ieco_rst = 0
+	iconz_rst = 0
+	imerc_rst = 0
+	ibfm_rst = 0
+
         return
 	end
 

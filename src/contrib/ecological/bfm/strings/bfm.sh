@@ -30,9 +30,17 @@ file="${what}_strings.f90"
 file="strings_${what}.f90"
 echo "creating file $file"
 
-export SHYFEM_HOME=$HOME/shyfemcm
+[ -z "$SHYFEM_HOME" ] && export SHYFEM_HOME=$HOME/shyfemcm
 MODDIR=$SHYFEM_HOME/lib/mod
-SHYOPTIONS="-J$MODDIR -I$MODDIR"
+
+echo "Compiler is $COMPILER"
+if [ "$COMPILER" = "INTEL" ]; then
+  COMPILER_exe="mpiifort"
+  SHYOPTIONS="-module $MODDIR -I $MODDIR"
+else
+  COMPILER_exe="gfortran"
+  SHYOPTIONS="-J$MODDIR -I$MODDIR"
+fi
 echo "moddir is $MODDIR"
 
 echo "compiling parse_bfm.f90"
@@ -52,9 +60,11 @@ fi
 
 ./handle_header.sh $what
 mv tmp.tmp $file
-
+echo " "
 echo "compiling $file"
-gfortran -c $SHYOPTIONS $file
+echo "$COMPILER_exe -c $SHYOPTIONS $file"
+$COMPILER_exe -c $SHYOPTIONS $file
+echo "compiling $file done"
 [ $? -ne 0 ] && echo "error in compilation" && exit 5
 
 echo "successful compilation"

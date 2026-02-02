@@ -73,6 +73,7 @@ cleanall:	clean cleanps
 clean:
 	-rm -f *.aux *.dvi *.log *.toc *.bbl *.blg
 	-rm -f S_*.tex P_*.tex
+	-rm -f S_*.txt P_*.txt
 	-rm -f $(DOC)*.html
 	-rm -f femdoc.zip
 	-rm -f ggg hhh

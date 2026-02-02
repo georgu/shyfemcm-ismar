@@ -163,6 +163,8 @@
 ! 05.02.2025    ggu     new info_format for T/S
 ! 24.04.2025    ggu     new value for ibarcl: ibercl == 5
 ! 11.11.2025    ggu     general assimilation of T/S
+! 28.01.2026    ggu     new routine ts_nudge_check()
+! 30.01.2026    ggu     fixed bug in nudging (with tau given as parameter)
 !
 ! notes :
 !
@@ -347,11 +349,6 @@
 		  end if
 		end if
 
-		if( bobs ) then
-	  	  call ts_nudge(dtime0,nlvdi,nlv,nkn,tobsv,sobsv &
-     &						,ttauv,stauv)
-		end if
-
 !		--------------------------------------------
 !		initialize observations and relaxation times
 !		--------------------------------------------
@@ -360,6 +357,14 @@
 		sobsv = 0.
 		ttauv = 0.
 		stauv = 0.
+
+		if( bobs ) then
+	  	  call ts_nudge(dtime0,nlvdi,nlv,nkn,tobsv,sobsv &
+     &						,ttauv,stauv)
+		end if
+
+	        call ts_nudge_check(dtime0,nlvdi,nlv,nkn &
+     &				,tobsv,sobsv,ttauv,stauv)
 
 !		--------------------------------------------
 !		initialize open boundary conditions
@@ -442,6 +447,7 @@
 	  call ts_diag(dtime,nlvdi,nlv,nkn,tempv,saltv)
 	else if( bobs ) then
 	  call ts_nudge(dtime,nlvdi,nlv,nkn,tobsv,sobsv,ttauv,stauv)
+	  !call ts_nudge_check(dtime,nlvdi,nlv,nkn,tobsv,sobsv,ttauv,stauv)
 	end if
 
 !----------------------------------------------------------
@@ -939,23 +945,32 @@
 
 	character*80 tempf,saltf,ttauf,stauf
 	character*80 string
-	real ttaup,staup
 	real tau_limit
 	logical, save :: btnudge,bsnudge
 	integer, save :: idtemp,idsalt
 	integer, save :: idttau,idstau
+	real, save :: ttaup,staup
 	integer, save :: icall = 0
 
 	real getpar
 
-	call getfnm('tempobs',tempf)
-	call getfnm('saltobs',saltf)
-	call getfnm('temptau',ttauf)
-	call getfnm('salttau',stauf)
-	ttaup = getpar('temptaup')
-	staup = getpar('salttaup')
+	!----------------------------------------
+	! first call - initialize
+	!----------------------------------------
 
 	if( icall .eq. 0 ) then
+
+	  call getfnm('tempobs',tempf)
+	  call getfnm('saltobs',saltf)
+	  call getfnm('temptau',ttauf)
+	  call getfnm('salttau',stauf)
+	  ttaup = getpar('temptaup')
+	  staup = getpar('salttaup')
+
+	  !----------------------------------------
+	  ! opening nudging files for T
+	  !----------------------------------------
+
 	  string = 'temp tau'
 	  write(6,'(a)') 'ts_nudge: opening file for '//trim(string)
 	  call ts_nudge_get_tau(string,ttauf,ttaup,dtime,nkn,nlv,idttau)
@@ -967,6 +982,10 @@
 	    call ts_open(string,tempf,dtime,nkn,nlv,idtemp)
 	  end if
 
+	  !----------------------------------------
+	  ! opening nudging files for S
+	  !----------------------------------------
+
 	  string = 'salt tau'
 	  write(6,'(a)') 'ts_nudge: opening file for '//trim(string)
 	  call ts_nudge_get_tau(string,stauf,staup,dtime,nkn,nlv,idstau)
@@ -977,6 +996,10 @@
 	    write(6,'(a)') 'ts_nudge: opening file for '//trim(string)
 	    call ts_open(string,saltf,dtime,nkn,nlv,idsalt)
 	  end if
+
+	  !----------------------------------------
+	  ! check values and write to terminal
+	  !----------------------------------------
 
 	  if( btnudge .or. bsnudge ) then
 	    write(6,*) 'nudging has been initialized'
@@ -994,6 +1017,10 @@
 
 	  icall = 1
 	end if
+
+	!----------------------------------------
+	! regular call
+	!----------------------------------------
 
 	tau_limit = 172000.
 
@@ -1014,6 +1041,10 @@
 	  end if
           call ts_next_record(dtime,idsalt,nlvddi,nkn,nlv,sobsv)
 	end if
+
+	!----------------------------------------
+	! end of routine
+	!----------------------------------------
 
 	end
 
@@ -1049,6 +1080,34 @@
 	write(6,*) 'or set nudging time scale using parameters'
 	write(6,*) 'temptaup and salttaup'
 	stop 'error stop ts_nudge_get_tau: error getting tau'
+	end
+
+!*******************************************************************	
+
+	subroutine ts_nudge_check(dtime,nlvddi,nlv,nkn,tobsv,sobsv &
+     &					,ttauv,stauv)
+
+! checks nudiging values (debug)
+
+	implicit none
+
+	double precision dtime
+	integer nlvddi
+	integer nlv
+	integer nkn
+	real tobsv(nlvddi,nkn)
+	real sobsv(nlvddi,nkn)
+	real ttauv(nlvddi,nkn)
+	real stauv(nlvddi,nkn)
+
+	integer, save :: iu = 6
+
+	write(iu,*) 'checking nudge values at time ',dtime
+	write(iu,*) 'tobs: ',minval(tobsv),maxval(tobsv)
+	write(iu,*) 'sobs: ',minval(sobsv),maxval(sobsv)
+	write(iu,*) 'ttau: ',minval(ttauv),maxval(ttauv)
+	write(iu,*) 'stau: ',minval(stauv),maxval(stauv)
+
 	end
 
 !*******************************************************************	
