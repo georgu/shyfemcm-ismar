@@ -242,6 +242,7 @@ int read_record( void )
   } else if( nrec1 != nrec2 ) {
     n1 = nrec1; n2 = nrec2;
     Error2(1,"internal error in unformatted record: %d %d\n",n1,n2);
+    // Warning2("internal error in unformatted record: %d %d\n",n1,n2);
   }
 
   iactrec = nrec1;
@@ -506,6 +507,11 @@ void ErrorC( int ier, char *string, char *s )
 {
   fprintf(stderr,string,s);
   exit(ier);
+}
+
+void Warning2( char *string, int i1, int i2 )
+{
+  fprintf(stderr,string,i1,i2);
 }
 
 /***********************************************************/
