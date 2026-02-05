@@ -901,14 +901,17 @@
 	logical, parameter :: be = .true.
 	logical, parameter :: bn = .false.
 
-	logical rst_want_restart
+	logical rst_want_restart, haspar
 	real getpar
 
         read(iunit,end=97) idfile,nvers,nrec
         if( nvers .lt. 3 ) goto 98
 
         ierr = 0
-	iconz = nint(getpar('iconz'))
+	iconz = 0
+	if( haspar('iconz') ) then
+	  iconz = nint(getpar('iconz'))
+	end if
 
 	nvers_rst = nvers
 

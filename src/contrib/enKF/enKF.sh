@@ -21,9 +21,17 @@ FEMDIR=~/georg/work/shyfem_repo/shyfemcm-ismar
 SHYFEMDIR=$FEMDIR/src/shyfem
 ENKFDIR=$FEMDIR/src/contrib/enKF
 SIMDIR=$(pwd)		# current dir
+SHYDIR=$FEMDIR/bin
+ENKFDIR=$FEMDIR/src/contrib/enKF
 
 [ ! -d $SHYFEMDIR ] && echo "*** no such directory: $SHYFEMDIR" && exit 1
 [ ! -d $ENKFDIR ] && echo "*** no such directory: $ENKFDIR" && exit 1
+echo "SHYFEMDIR  = $SHYFEMDIR"
+echo "SCRIPTPATH = $SCRIPTPATH"
+echo "FEMDIR     = $FEMDIR"
+echo "SIMDIR     = $SIMDIR"
+echo "SHYDIR     = $SHYDIR"
+echo "ENKFDIR    = $ENKFDIR"
 
 #----------------------------------------------------------
 
@@ -47,6 +55,14 @@ Check_file()
 {
   if [ ! -s $1 ]; then
      echo "File $1 does not exist or has zero size."
+     exit 1
+  fi
+}
+
+Check_dir()
+{
+  if [ ! -d $1 ]; then
+     echo "Directory $1 does not exist."
      exit 1
   fi
 }
@@ -77,10 +93,17 @@ Check_num()
 
 #----------------------------------------------------------
 
+Check_dirs(){
+  Check_dir $FEMDIR
+  Check_dir $SIMDIR
+  Check_dir $SHYDIR
+  Check_dir $ENKFDIR
+}
+
 Check_files(){
   echo "Check the exec programs"
   command -v parallel > /dev/null 2>&1 || { echo "parallel it's not installed.  Aborting." >&2; exit 1; }
-  [ ! -s $SHYFEMDIR/shyfem ] && echo "shyfem exec does not exist. Compile the model first." && exit 1
+  [ ! -s $SHYDIR/shyfem ] && echo "shyfem exec does not exist. Compile the model first." && exit 1
   # Make here the mod_dimensions and compile main
   
   [ ! -s $ENKFDIR/main ] && echo "main exec does not exist. Compile the enKF first." && exit 1
@@ -305,6 +328,7 @@ fi
 export OMP_NUM_THREADS=$nthreads
 
 # Checking the executable programs
+Check_dirs
 Check_files
 
 # Reading skel file list
@@ -341,7 +365,7 @@ for (( na = 1; na <= $nran; na++ )); do
       nthsim=$nthreads
       [[ "$nthsim" -gt "$nrens" ]] && nthsim=$nrens
       export -f Make_sim
-      parallel --no-notice -P $nthsim Make_sim ::: $strfiles ::: $SHYFEMDIR
+      parallel --no-notice -P $nthsim Make_sim ::: $strfiles ::: $SHYDIR
    #########################################################
 
    fi
