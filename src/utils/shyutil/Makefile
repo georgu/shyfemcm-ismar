@@ -212,7 +212,6 @@ zip:	cleanall
 ../../../lib/mod/sigma.mod: sigma.o
 ../../../lib/mod/simul.mod: simul.o
 ../../../lib/mod/zadapt.mod: zadaptutil.o
-bfm_strings.o: ../../../lib/mod/shyfem_strings.mod
 evgeom.o: ../../../lib/mod/basin.mod
 fast_find.o: ../../../lib/mod/basin.mod ../../../lib/mod/stack.mod
 fem_util.o: ../../../lib/mod/basin.mod
@@ -224,6 +223,8 @@ lnku.o: ../../../lib/mod/basin.mod ../../../lib/mod/mod_geom.mod
 quad_tree.o: ../../../lib/mod/basin.mod ../../../lib/mod/stack.mod
 regular.o: ../../../lib/mod/basin.mod
 shyaver.o: ../../../lib/mod/basin.mod
+strings_bfm.o: ../../../lib/mod/shyfem_strings.mod
+strings_cbms.o: ../../../lib/mod/shyfem_strings.mod
 submask.o: ../../../lib/mod/basin.mod
 topological.o: ../../../lib/mod/basin.mod \
 		../../../lib/mod/mod_connect.mod \

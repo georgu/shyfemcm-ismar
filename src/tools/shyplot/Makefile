@@ -184,6 +184,7 @@ shyplot.o: ../../../lib/mod/basin.mod ../../../lib/mod/clo.mod \
 		../../../lib/mod/mod_hydro_plot.mod \
 		../../../lib/mod/mod_hydro_print.mod \
 		../../../lib/mod/mod_hydro_vel.mod \
+		../../../lib/mod/mod_progress_bar.mod \
 		../../../lib/mod/plotutil.mod \
 		../../../lib/mod/shyfile.mod \
 		../../../lib/mod/shympi.mod \
