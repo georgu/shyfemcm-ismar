@@ -43,10 +43,9 @@
 
 	integer, save, allocatable :: beach_node(:)
 	integer, save, allocatable :: burry_node(:)
+	integer, save, allocatable :: node_area_code(:)
 	real, save, allocatable :: beach_value(:,:)
 	real, save, allocatable :: burry_value(:,:)
-	real, save :: beach_rate = 0.3
-	real, save :: burry_rate = 0.1
 	real, save, allocatable :: beach_rates(:)
 	real, save, allocatable :: burry_rates(:)
         double precision, save :: da_beach(5)
@@ -95,14 +94,16 @@
 	  return
 	end if
 
+	write(6,*) 'setting up beaching algorithm for ',trim(what_beach)
+
 	nvar = iconz
 	b2d = .true.
 
 	if( .not. bbeach_debug ) iudbg = 0
 
+	allocate(node_area_code(nkn))
 	allocate(beach_value(nkn,nvar))
 	allocate(burry_value(nkn,nvar))
-	allocate(value(nkn))
         beach_value = 0
         burry_value = 0
 
@@ -119,6 +120,7 @@
 
 	if( .not. bbeach_debug ) return
 
+	allocate(value(nkn))
 	type = 'beachi'
 	dtime = 0.
 	value = beach_node
@@ -145,9 +147,10 @@
         implicit none
 
 	logical bwrite
-        integer k,ivar,id,iv,nvar,i,lmax
+        integer k,ivar,id,iv,nvar,i,lmax,ia
         real cb,db,c1
         real cu,du,cl
+	real beach_rate,burry_rate
         double precision dtime
         double precision cbsum,cusum
 	real, allocatable :: cmax1(:),cmaxl(:),bmax(:),umax(:)
@@ -166,6 +169,9 @@
 
         do k=1,nkn
 	  lmax = ilhkv(k)
+	  ia = node_area_code(k)
+	  beach_rate = beach_rates(ia)
+	  burry_rate = burry_rates(ia)
           do iv=1,nvar
             if( beach_node(k) > 0 ) then
               c1 = conzv(1,k,iv)
@@ -240,6 +246,8 @@
         end
 
 !**************************************************************
+!**************************************************************
+!**************************************************************
 
 	subroutine beaching_node_setup
 
@@ -251,15 +259,15 @@
 	implicit none
 
 	integer ie,ia,ii,k
-	integer, allocatable :: node_area_code(:)
 
 	logical is_open_boundary_node
+
+	write(6,*) 'setting up beaching nodes for ',trim(what_beach)
 
 !----------------------------------------------
 ! create nodal code from area code
 !----------------------------------------------
 
-	allocate(node_area_code(nkn))
 
 	node_area_code = -1
 
@@ -316,6 +324,8 @@
 	integer iamax,ie,ia
 	real total_rate,max_rate
 
+	write(6,*) 'setting up beaching rates for ',trim(what_beach)
+
 	iamax = 0
 	do ie=1,nel
 	  ia = iarv(ie)
@@ -337,6 +347,8 @@
 	end if
 
 	if( .not. bbeach ) return
+
+	write(6,*) 'final rates for beaching:'
 
 	max_rate = 0.
 	do ia=0,iamax
@@ -363,7 +375,7 @@
 
 	implicit none
 
-	write(6,*) 'setting up beach rates for danube'
+	write(6,*) 'setting up beaching rates for danube'
 
 	! 0: razelm-sinoe lagoon
 	! 1: black sea
@@ -385,7 +397,7 @@
 
 	implicit none
 
-	write(6,*) 'setting up beach rates for curonian'
+	write(6,*) 'setting up beaching rates for curonian'
 
 	! 0: baltic sea
 	! 1: nemunas delta
