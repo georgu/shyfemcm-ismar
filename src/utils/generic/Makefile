@@ -143,6 +143,7 @@ cleanvar:
 	-rm -f fort.*
 	-rm -f gmon.out
 	-rm -f out.ps plot.ps
+	-rm -f out.1.ps
 
 cleanlib:
 	-rm -f $(LIB)
