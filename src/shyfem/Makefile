@@ -22,7 +22,7 @@ FEMBIN = $(FEMDIR)/bin
 
 #--------------------	EXES	---------------------
 
-EXES = shyfem rstinf
+EXES = shyfem rstinf rst2shy
 
 #----------------------	INCLUDE	----------------------
 
@@ -290,6 +290,9 @@ shyfem: $(MODULES) $(OBJ) $(XFILES) $(LIBF) shyfem.o
 	 $(F77) $(FFLAGS) $(INCLUDE) $(LFLAGS) $^ $(LIBL) -o $@ 
 
 rstinf: $(MODULES) $(OBJ) $(XFILES) $(LIBF) rstinf.o
+	 $(F77) $(FFLAGS) $(INCLUDE) $(LFLAGS) $^ $(LIBL) -o $@ 
+
+rst2shy: $(MODULES) $(OBJ) $(XFILES) $(LIBF) rst2shy.o
 	 $(F77) $(FFLAGS) $(INCLUDE) $(LFLAGS) $^ $(LIBL) -o $@ 
 
 links:
@@ -884,6 +887,13 @@ restart.o: ../../lib/mod/basin.mod ../../lib/mod/levels.mod \
 		../../lib/mod/mod_hydro_vel.mod \
 		../../lib/mod/mod_restart.mod \
 		../../lib/mod/mod_ts.mod ../../lib/mod/shympi.mod 
+rst2shy.o: ../../lib/mod/basin.mod ../../lib/mod/clo.mod \
+		../../lib/mod/iso8601.mod ../../lib/mod/levels.mod \
+		../../lib/mod/mod_conz.mod \
+		../../lib/mod/mod_geom_dynamic.mod \
+		../../lib/mod/mod_hydro.mod \
+		../../lib/mod/mod_ts.mod ../../lib/mod/shyfile.mod \
+		../../lib/mod/shympi.mod 
 rstinf.o: ../../lib/mod/basin.mod ../../lib/mod/clo.mod \
 		../../lib/mod/levels.mod \
 		../../lib/mod/mod_geom_dynamic.mod \

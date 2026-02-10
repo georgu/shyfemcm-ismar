@@ -55,6 +55,8 @@ errout.dat
 
 src/shyfem/shyfem
 bin/shyfem
+src/shyfem/rst2shy
+src/shyfem/rstinf
 
 src/tools/shypre/shypre
 bin/shypre
