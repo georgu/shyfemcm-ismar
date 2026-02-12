@@ -88,6 +88,8 @@
 ! smoothing program
 !
 ! same as gridf but smooth on length of line, not points
+!
+! lines should not intersect or touch
 
 	use basin
 	use grd
@@ -775,6 +777,8 @@
 	  end if
 	end do
 
+	call eliminate_non_unique(nnew,xt,yt)
+
 !	if( nnew .lt. 3 ) stop 'error stop reduce: line too short...'
 	if( nnew .lt. 3 ) then
 	  write(6,*) 'line too short -> eliminated'
@@ -784,6 +788,22 @@
 	write(6,*) 'despike: from ',nl,'  to ',nnew,'  nodes'
 	nl = nnew
 
+	end
+
+!********************************************************
+
+	subroutine eliminate_non_unique(n,xt,yt)
+
+	implicit none
+
+	integer n
+	real xt(n)
+	real yt(n)
+
+	if( xt(1) == xt(n) .and. yt(1) == yt(n) ) then
+	  n = n - 1
+	end if
+	
 	end
 
 !********************************************************
@@ -844,6 +864,8 @@
 	    rtot = 0.
 	  end if
 	end do
+
+	call eliminate_non_unique(nnew,xt,yt)
 
 !	if( nnew .lt. 3 ) stop 'error stop reduce: line too short...'
 	if( nnew .lt. 3 ) then
