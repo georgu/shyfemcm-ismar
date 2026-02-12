@@ -13,7 +13,7 @@
 #------------------------------------------------------------------------
 
 shydir=$HOME/shyfem
-copydir=$shydir/femcheck/copyright
+copydir=$shydir/var/copyright
  
 write=NO
 keep=NO

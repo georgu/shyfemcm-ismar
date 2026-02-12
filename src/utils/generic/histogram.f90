@@ -86,10 +86,10 @@
 
 	private
 
-        integer, save :: ncbin = 0
-        integer, allocatable, save :: icount(:)
-        real, allocatable, save :: acenter(:)
-        real, allocatable, save :: abin(:)
+        integer, save :: ncbin = 0			! total number of bins
+        integer, allocatable, save :: icount(:)		! count in bins
+        real, allocatable, save :: acenter(:)		! center of bin
+        real, allocatable, save :: abin(:)		! upper value of bin
 
         INTERFACE histo_init
         MODULE PROCEDURE histo_init_auto, histo_init_bins

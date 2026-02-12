@@ -32,6 +32,7 @@ FullUsage()
   echo "  -i               ignore case for pattern"
   echo "  -file            look for pattern in file names"
   echo "  -pattern         look for pattern in files"
+  echo "  -all             look for pattern in all files (not only f and f90)"
   echo "  -obsolete        look also in obsolete dirs"
   echo "  -full            show also full path with file name"
   echo "  -fullonly        show only full path with file name"
@@ -94,10 +95,35 @@ Do_Pattern()
   done
 }
 
+Do_Pattern_All()
+{
+  echo "looking for pattern $* in all files"
+  for dir in $alldir
+  do
+    if SkipObsolete; then continue; fi
+    cd $dir
+    result=$( grep $options "$*" * 2> /dev/null )
+    if [ -n "$result" ]; then
+      if [ $full_name = "YES" ]; then
+        if [ $full_only = "NO" ]; then
+          echo "---- $dir ----" >&2
+          grep $options "$*" * 2> /dev/null
+	fi
+        grep -l $options "$*" $PWD/* 2> /dev/null
+      else
+        echo "---- $dir ----" >&2
+        grep "$*" * 2> /dev/null
+      fi
+    fi
+    cd $actdir
+  done
+}
+
 #-----------------------------------------------
 
 do_file=NO
 do_pattern=NO
+do_pattern_all=NO
 do_dirs=NO
 quiet=NO
 verbose=NO
@@ -114,6 +140,7 @@ do
         -file)          do_file="YES";;
         -i)             options="$options -i";;
         -pattern)       do_pattern="YES";;
+        -all)           do_pattern_all="YES";;
         -obsolete)      show_obsolete="YES";;
         -full)          full_name="YES";;
         -fullonly)      full_only="YES";full_name="YES";;
@@ -138,6 +165,9 @@ echo "looking for $*"
 
 if [ $do_file = "YES" ]; then
   Do_File $*
+elif [ $do_pattern_all = "YES" ]; then
+  alldir=$( find $base -type d )
+  Do_Pattern_All $*
 elif [ $do_pattern = "YES" ]; then
   Do_Pattern $*
 else
