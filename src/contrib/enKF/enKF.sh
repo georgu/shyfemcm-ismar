@@ -260,7 +260,7 @@ Run_ensemble_analysis()
 nanl=$(printf "%05d" $1)
 
 cd $SIMDIR
-$ENKFDIR/main
+valgrind --leak-check=full -s $ENKFDIR/main
 if [ "$?" -ne "0" ]; then
           echo "Errors while running main."
           exit 1
