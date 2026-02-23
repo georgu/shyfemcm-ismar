@@ -51,6 +51,7 @@
 !  18.12.2018	ggu	changed VERS_7_5_52
 !  21.05.2019	ggu	changed VERS_7_5_62
 !  14.02.2022	ggu	set all depth values to flag
+!  23.02.2026   ggu     checks to avoid negative areas
 ! 
 !  notes :
 ! 
@@ -219,27 +220,27 @@
 	call stats('second cycle - after elimhigh')
 	call node_info(kspecial)
 
-!  eliminate 5 grades
+!  eliminate 5-5 grades
 
 	!call write_grid('new_help.grd')
 
-	call chkgrd('checking before 5')
-	call elim5
+	call chkgrd('checking before 5-5')
+	call elim_5_5
 	if( bplot ) call plobas
-	call stats('second cycle - 5 grades')
+	call stats('second cycle - 5-5 grades')
 
-	call chkgrd('checking after 5')
+	call chkgrd('checking after 5-5')
 	call node_info(kspecial)
 
-!  eliminate 5-5 grades
+!  eliminate 5-7-5 grades
 
 	call write_grid('new_help1.grd')
 
-	call elim57
+	call elim_5_7_5
 	!call write_grid('new_help2.grd')
 	if( bplot ) call plobas
-	call stats('second cycle - 5-5 grades')
-	call chkgrd('checking after 5-5')
+	call stats('second cycle - 5-7-5 grades')
+	call chkgrd('checking after 5-7-5')
 	call node_info(kspecial)
 
 !  one more time
@@ -253,10 +254,10 @@
 	call chkgrd('start of thrid cycle')
 	call elimhigh(8)
         call elimhigh(7)
-        call elim5
-        call elim57
+        call elim_5_5
+        call elim_5_7_5
         call stats('thrid cycle - end')
-	call chkgrd('checking after high, 5, 57')
+	call chkgrd('checking after high, 5-5, 5-7-5')
 	call node_info(kspecial)
 
 !  smoothing

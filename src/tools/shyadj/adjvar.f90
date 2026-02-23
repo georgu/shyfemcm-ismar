@@ -49,6 +49,7 @@
 !  19.10.2015	ggu	changed VERS_7_3_6
 !  18.12.2018	ggu	changed VERS_7_5_52
 !  21.05.2019	ggu	changed VERS_7_5_62
+!  23.02.2026   ggu     checks to avoid negative areas
 ! 
 ! **************************************************************
 
@@ -64,15 +65,28 @@
 	integer npass
 	real omega
 
-	integer n,k,ie,ii
+	integer n,k,ie,ii,nks,ipos
+	integer nos,nb
 	integer ic(nkn)
 	real dx(nkn)
 	real dy(nkn)
 	real xm,ym
+	real amax
+	integer nosmooth(nkn)
 
 	write(6,*) 'smoothing grid '
 
-	call checkarea('before smoothing')
+	nosmooth = 0
+	do k=1,nkn
+	  nks = ngrade(k)
+          call check_angles(k,nks,ngri(:,k),amax,ipos)
+	  if( amax > 180. ) nosmooth(k) = 1
+	end do
+	nos = count(nosmooth==1)
+	nb = count(nbound/=0)
+	write(6,*) 'cannot smooth nodes: ',nos,nb,nkn
+
+	call checkarea(0,'before smoothing')
 
 	do n=1,npass
 
@@ -99,7 +113,7 @@
 	    end do
 	    do ii=1,3
 	      k = nen3v(ii,ie)
-	      if( nbound(k) .eq. 0 ) then
+	      if( nbound(k) .eq. 0 .and. nosmooth(k) == 0 ) then
 		ic(k) = ic(k) + 2
 		dx(k) = dx(k) + 3. * xgv(k) - xm
 		dy(k) = dy(k) + 3. * ygv(k) - ym
@@ -118,12 +132,12 @@
 
 !  check area
 
-	  call checkarea('during smoothing')
+	  call checkarea(0,'during smoothing')
 
 	end do
 
 	write(6,*) 'smoothing finished - passes ',npass
-	call checkarea('after smoothing')
+	call checkarea(0,'after smoothing')
 
 	end
 
@@ -323,7 +337,7 @@
 !  checking area
 ! --------------------------------------------------
 
-	call checkarea(text)
+	call checkarea(0,text)
 
 ! --------------------------------------------------
 !  end of routine
@@ -361,7 +375,7 @@
 
 ! *******************************************************
 
-	subroutine checkarea(text)
+	subroutine checkarea(k,text)
 
 !  check if area is positive
 
@@ -369,6 +383,7 @@
 
         implicit none
 
+	integer k
 	character*(*) text
 
 	logical bstop
@@ -402,6 +417,7 @@
 
 	if( bstop ) then
 	    write(6,*) 'error while checking: ',trim(string)
+	    if( k /= 0 ) write(6,*) 'error while handling node ',k
 	    call wr0grd
 	    write(6,*) 'nkn,nel: ',nkn,nel
 	    stop 'error stop checkarea'
@@ -429,6 +445,8 @@
 	  call node_info(k)
 	end do
 
+	if( bplot_error ) call plot_element(ie)
+
 	end
 
 ! *******************************************************
@@ -454,6 +472,264 @@
 	write(6,*) ngrade(k),nbound(k),xgv(k),ygv(k)
 	write(6,*) nkn,nel,ngrdi
 	write(6,*) (ngri(i,k),i=1,ngrade(k))
+
+	end
+
+! ****************************************************************
+! ****************************************************************
+! ****************************************************************
+
+	subroutine make_grd_name(text,file)
+
+	implicit none
+
+	character*(*) text,file
+
+	integer i
+	integer, save :: igrd = 0
+	character*5 num
+
+	igrd = igrd + 1
+
+	write(num,'(i5)') igrd
+	num = adjustr(num)
+	do i=1,5
+	  if( num(i:i) == ' ' ) num(i:i) = '0'
+	end do
+
+	file = 'plot_' // text // '_' // num // '.grd'
+
+	write(6,*) 'plotting to file ',trim(file)
+
+	end 
+
+! ****************************************************************
+
+	subroutine make_unique(n,list)
+
+	implicit none
+
+	integer n
+	integer list(n)
+
+	integer i,nn
+
+	call sort(n,list)
+
+	nn = 1
+	do i=2,n
+	  if( list(i) == list(i-1) ) cycle
+	  nn = nn + 1
+	  if( i == nn ) cycle
+	  list(nn) = list(i)
+	end do
+
+	n = nn
+
+	end
+
+! ****************************************************************
+
+	subroutine plot_nodes(n,list)
+
+	use basin
+
+	implicit none
+
+	integer n
+	integer list(n)
+
+	integer i,kk
+	integer nn,ne
+	integer nodes(3*nkn)
+	integer elems(3*nkn)
+	character*80 file
+
+	nn = 0
+	ne = 0
+	do i=1,n
+	  kk = list(i)
+	  call add_nodes_and_elements(kk,nn,nodes,ne,elems)
+	end do
+	write(6,*) 'found total nodes and elems: ',nn,ne
+
+	call make_unique(nn,nodes)
+	call make_unique(ne,elems)
+	write(6,*) 'found unique nodes and elems: ',nn,ne
+
+	call make_grd_name('node',file)
+	call write_partial_grid(file,nn,nodes,ne,elems)
+
+	end
+
+! ****************************************************************
+
+	subroutine plot_node(kk)
+
+	implicit none
+
+	integer kk
+
+	integer n
+	integer list(1)
+
+	n = 1
+	list(1) = kk
+	call plot_nodes(n,list)
+
+	end
+
+! ****************************************************************
+
+	subroutine plot_elements(n,list)
+
+	use basin
+
+	implicit none
+
+	integer n
+	integer list(n)
+
+	integer k,ii,ie,i
+	integer nn,ne
+	integer nodes(3*nkn)
+	integer elems(3*nkn)
+	character*80 file
+
+	nn = 0
+	ne = 0
+	do i=1,n
+	  ie = list(i)
+	  do ii=1,3
+	    k = nen3v(ii,ie)
+	    call add_nodes_and_elements(k,nn,nodes,ne,elems)
+	  end do
+	end do
+	write(6,*) 'found total nodes and elems: ',nn,ne
+	  
+	call make_unique(nn,nodes)
+	call make_unique(ne,elems)
+	write(6,*) 'found unique nodes and elems: ',nn,ne
+
+	call make_grd_name('elem',file)
+	call write_partial_grid(file,nn,nodes,ne,elems)
+
+	end
+
+! ****************************************************************
+
+	subroutine plot_element(ie)
+
+	implicit none
+
+	integer ie
+
+	integer n
+	integer list(1)
+
+	n = 1
+	list(1) = ie
+	call plot_elements(n,list)
+
+	end
+
+! ****************************************************************
+
+	subroutine write_partial_grid(file,nn,nodes,ne,elems)
+
+	use basin
+
+	implicit none
+
+	character*(*) file
+	integer nn,ne
+	integer nodes(nn)
+	integer elems(ne)
+
+	integer i,k,ie,ii
+	integer naux(3)
+
+	open(1,file=file,status='unknown',form='formatted')
+
+	do i=1,nn
+	  k = nodes(i)
+	  write(1,1000) 1,ipv(k),0,xgv(k),ygv(k)
+	end do
+
+	do i=1,ne
+	  ie = elems(i)
+	  do ii=1,3
+	    naux(ii) = ipv(nen3v(ii,ie))
+	  end do
+	  write(1,2000) 2,ipev(ie),0,3,naux(:)
+	end do
+
+	close(1)
+
+	return
+ 1000	format(i1,i8,i5,2f14.5)
+ 2000	format(i1,i8,2i5,3i8)
+	end
+
+! ****************************************************************
+
+	subroutine add_nodes_and_elements(k,nn,nodes,ne,elems)
+
+! adds nodes and elements to list
+
+	use basin
+
+	implicit none
+
+	integer k,nn,ne
+	integer nodes(nkn)
+	integer elems(nel)
+
+	integer ie,ii,kk
+
+	do ie=1,nel
+	  do ii=1,3
+	    kk = nen3v(ii,ie)
+	    if( kk == k ) then
+	      nodes(nn+1:) = nen3v(:,ie)
+	      nn = nn + 3
+	      ne = ne + 1
+	      elems(ne) = ie
+	    end if
+	  end do
+	end do
+
+	end
+
+! ****************************************************************
+
+	subroutine find_nodes_and_elements(k,nn,nodes,ne,elems)
+
+! creates nodes and elements list (list is initialized to 0)
+
+	use basin
+
+	implicit none
+
+	integer k,nn,ne
+	integer nodes(nkn)
+	integer elems(nel)
+
+	integer ie,ii,kk
+
+	nn = 0
+	ne = 0
+	do ie=1,nel
+	  do ii=1,3
+	    kk = nen3v(ii,ie)
+	    if( kk == k ) then
+	      nodes(nn+1:) = nen3v(:,ie)
+	      nn = nn + 3
+	      ne = ne + 1
+	      elems(ne) = ie
+	    end if
+	  end do
+	end do
 
 	end
 
@@ -486,6 +762,49 @@
 	rangle = angle(x1,y1,x2,y2,x3,y3)
 
 	end
+
+! ***********************************************************
+
+        subroutine check_angles(k,n,list,amax,ipos)
+
+! computes maximum angle of node list around k (must be sorted)
+
+        implicit none
+
+        integer k		!central node
+        integer n
+        integer list(n)
+        real amax		!maximum angle (return)
+        integer ipos		!position of maximum angle in list (return)
+
+        integer i,ibefore,iafter
+        real a1,a2
+        real angle(n)
+
+        real rangle
+
+        ipos = 0
+        amax = 0.
+        do i=1,n
+          ibefore = i - 1
+          if( ibefore == 0 ) ibefore = n
+          iafter = i + 1
+          if( iafter > n ) iafter = 1
+          a1 = rangle(k,list(i),list(iafter))
+          if( a1 > 180.) a1 = 360. - a1
+          a2 = rangle(k,list(i),list(ibefore))
+          if( a2 > 180.) a2 = 360. - a2
+          angle(i) = a1 + a2
+          if( angle(i) > amax ) then
+            amax = angle(i)
+            ipos = i
+          end if
+        end do
+
+        !write(6,*) k,list
+        !write(6,*) k,angle
+
+        end
 
 ! ************************************************************
 

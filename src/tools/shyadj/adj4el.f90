@@ -34,6 +34,7 @@
 !  12.10.2015	ggu	changed VERS_7_3_3
 !  18.12.2018	ggu	changed VERS_7_5_52
 !  21.05.2019	ggu	changed VERS_7_5_62
+!  23.02.2026	ggu	checks to avoid negative areas
 ! 
 !  description :
 ! 
@@ -89,7 +90,7 @@
 	    n = ngrade(k)
 	    if( n .eq. 4 ) then
 	      call elim4(k)
-	      !call chkgrd(' ')	!FIXME
+	      if( bcheck ) call chkgrd(' ')
 	    end if
 	  end if
 	end do
@@ -169,18 +170,15 @@
 	integer k
 
 	integer i,n,k1,k2
-	integer ipos,ipos1,ipos2
+	integer ipos,ipos1,ipos2,iposa
 	integer neibs(ngr),ngneib(ngr)
 
-	logical bdebug
 	integer ie,ii,ip
 	integer kk
 	integer ielem(4), ieind(3,4), ienew(3,2)
+	real amax
 
 	if( k .gt. nkn ) return
-
-	bdebug = .true.
-	bdebug = .false.
 
 	n = ngrade(k)
 
@@ -188,6 +186,11 @@
 	  neibs(i) = ngri(i,k)
 	  ngneib(i) = ngrade(neibs(i))
 	end do
+
+	call check_angles(k,n,neibs,amax,iposa)
+	if( amax < 180 ) iposa = 0
+	if( iposa > 2 ) iposa = iposa - 2
+	if( iposa > 0 ) write(6,*) 'angle>180: ',iposa
 
 !  we have two solutions -> eliminate 1/3 or 2/4 connection
 ! 	can eliminate only if grade on both nodes is at least 6
@@ -197,6 +200,7 @@
 	ipos2 = 0
 	if( ngneib(2) .ge. 6 .and. ngneib(4) .ge. 6 ) ipos2 = 1
 
+	if( iposa > 0 ) write(6,*) 'A ipos1,ipos2: ',ipos1,ipos2
 	if( ipos1*ipos2 .eq. 0 ) then	!at least one not possible
 	  if( ipos1+ipos2 .eq. 0 ) then	!none possible
 		ipos = 0
@@ -207,14 +211,21 @@
 			ipos = 2
 		end if
 	  end if
+	  if( iposa > 0 .and. ipos /= iposa ) ipos = 0	!cannot eliminate
+	  if( iposa > 0 ) ipos = 0	!cannot eliminate
 	else				!both possible
 	  ipos1 =  ngneib(1) + ngneib(3)
 	  ipos2 =  ngneib(2) + ngneib(4)
+	if( iposa > 0 ) write(6,*) 'B ipos1,ipos2: ',ipos1,ipos2
 	  if( ipos1 .eq. ipos2 ) then	!most equilibrated: 7/7 better than 6/8
 		ipos1 = ngneib(1) * ngneib(3)
 		ipos2 = ngneib(2) * ngneib(4)
 	  end if
-	  if( ipos1 .gt. ipos2 ) then
+	if( iposa > 0 ) write(6,*) 'C ipos1,ipos2: ',ipos1,ipos2
+	  if( iposa .gt. 0 ) then
+		ipos = iposa
+		ipos = 0
+	  else if( ipos1 .gt. ipos2 ) then
 		ipos = 1
 	  else
 		ipos = 2
