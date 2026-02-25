@@ -60,6 +60,7 @@
 ! 28.05.2022	ggu	better error handling in mkdist_new()
 ! 12.12.2022	ggu	new routine mkdist_mpi() -> results will change
 ! 16.12.2022	ggu	nadist now running with mpi
+! 25.02.2026	ggu	some factorization
 !
 !****************************************************************
 
@@ -68,13 +69,14 @@
 ! makes distance array from open boundaries
 !
 ! nad of single boundaries can be either 0 or nadist global
+! all values of nad must be equal between each other or 0
 ! if nadist is not given, it will be set to maximum of nad on single boundaries
 !
 ! rdist is contained between 0 and 1
 ! rdist==1 means computation of all terms, rdist=0 excludes non-linear terms
+! redist is the value of rdist on elements (where it is needed)
 !
-! if nadist (=d) is not given rdist = 1 (default)
-
+! if nadist (or nad) is not given rdist = 1 (default)
 
 	use basin
 	use shympi
@@ -103,10 +105,8 @@
         real getpar
 
 !-----------------------------------------------------------------
-! get parameters
+! set parameter nadist and local nad
 !-----------------------------------------------------------------
-
-        redist = 1.
 
         nadist = nint(getpar('nadist'))		!global value
 
@@ -132,6 +132,13 @@
 	!write(6,*) my_id,nadist,nadmax
 	call shympi_barrier
 	write(6,*) 'using nadist = ',nadist
+
+!-----------------------------------------------------------------
+! initialize arrays
+!-----------------------------------------------------------------
+
+        redist = 1.
+
 	if( nadist == 0 ) return	!noithing to be done
 
 	allocate(idist(nkn))
@@ -184,7 +191,7 @@
 	end do
 
 !-----------------------------------------------------------------
-! write dist (nos) file
+! write dist (grd) file
 !-----------------------------------------------------------------
  
 	if( bwrite ) then
@@ -200,11 +207,12 @@
 
 	return
    99	continue
-	write(6,*) 'incongruence in nad values of boundary'
+	write(6,*) 'incompatibility of nad values on boundary'
 	write(6,*) 'nadist = ',nadist
 	write(6,*) 'nad values on boundaries: ',nbc
 	write(6,*) nads
-	stop 'error stop shdist: incongruent nadist and local nad values'
+	write(6,*) 'nad values and nadist must have the same value'
+	stop 'error stop shdist: incompatible nadist and local nad values'
         end
 
 !*************************************************************************** 
@@ -488,6 +496,7 @@
 	  iloop = iloop + 1
 	  !write(6,*) 'changes computing idist: ',my_id,iloop,nchange
 	  if( iloop >= nadmax ) exit
+	  if( nchange == 0 ) exit
 	  call shympi_exchange_2d_node(idist)
 	end do
 
