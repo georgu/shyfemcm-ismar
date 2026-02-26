@@ -46,6 +46,7 @@
 !  18.12.2018	ggu	changed VERS_7_5_52
 !  13.03.2019	ggu	changed VERS_7_5_61
 !  21.05.2019	ggu	changed VERS_7_5_62
+!  23.02.2026   ggu     checks to avoid negative areas
 ! 
 ! ***********************************************************
 
@@ -88,7 +89,6 @@
 
 	integer k
 
-	logical bdebug
         integer n,i,nc,nmax,nb,ii
 	integer ie1,ie2
 	integer np,nt,nn
@@ -103,9 +103,6 @@
 	real rangle
 
 	if( k .gt. nkn ) return
-
-	bdebug = .true.
-	bdebug = .false.
 
 !  make circular list
 

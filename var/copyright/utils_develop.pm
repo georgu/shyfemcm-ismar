@@ -229,6 +229,7 @@ sub make_dev_names {
         ,'aac' => 'Andrea Cucco'
         ,'aar' => 'Aaron Roland'
         ,'ccf' => 'Christian Ferrarin'
+        ,'lrp' => 'Luca Arpaia'
         ,'cpb' => 'unknown'
         ,'dbf' => 'Debora Bellafiore'
         ,'dmc' => 'Donata Melaku Canu'
@@ -254,6 +255,7 @@ sub make_dev_names {
          'georg' => 'ggu'
         ,'dmk' => 'dmc'
         ,'cl' => 'clc'
+        ,'clr' => 'clc'
         ,'gr' => 'gir'
     );
 }

@@ -78,6 +78,8 @@ c 10.05.2024    ggu     new routine write_basin_txt() (bbastxt)
 c 03.10.2024    ggu     new call to test_fast_find()
 c 21.11.2024    ggu     renamed call to some routines
 c 18.06.2025    ggu     new option -comparebas and routine bascompare_bas()
+c 20.02.2026    ggu     better information for option -quality
+c 23.02.2026    ggu     finished option -quality
 c
 c todo :
 c
@@ -1152,7 +1154,7 @@ c writes statistics on grid quality
 
 	integer ie,ii,k
 	integer ia,ic,ilow,ihigh
-	integer imin,imax
+	integer imin,imax,ifr
 	real area,amin,amax,atot
         real vtot
 	real aptot,vptot
@@ -1163,9 +1165,14 @@ c writes statistics on grid quality
         real xx,yy
         real dist,distmin
 	real fmax,fmin,a,f
+	real low,high,frmax
+	real ff(nel)
         integer i,k1,k2
-	integer iemin,iemax
+	integer iemin,iemax,ierr
+	integer kamin,kamax
+	integer icacum
 
+	integer ifrac(-5:15)
 	integer iangle(0:18)
 
 	integer ieext,ipext
@@ -1182,6 +1189,8 @@ c-----------------------------------------------------------------
 c compute fraction
 c-----------------------------------------------------------------
 
+! ideal fraction: a_node / a_elem = 2
+
 	do ie=1,nel
 	  area = 4.*ev(10,ie)
 	  do ii=1,3
@@ -1192,6 +1201,8 @@ c-----------------------------------------------------------------
 
 	fmax = 0
 	fmin = 10.
+	ierr = 0
+	ifrac = 0
 	do ie=1,nel
 	  area = 12.*ev(10,ie)
 	  amax = 0.
@@ -1200,10 +1211,11 @@ c-----------------------------------------------------------------
 	    a = areav(k)
 	    amax = max(amax,a)
 	  end do
-	  f = amax/area
-	  if( f .gt. 10. ) then
-	    write(6,*) 'bad quality of element: ',ie,ieext(ie),f
-	  end if
+	  f = (amax/area)/2.		!f == 1 is ideal
+	  ff(ie) = f
+	  ifr = f / 2.
+	  if( f < 1. ) ifr = -(1-f)*5. - 1
+	  if( ifr > 15 ) ifr = 15
 	  if( f .gt. fmax ) then
 	    fmax = f
 	    iemax = ie
@@ -1212,12 +1224,46 @@ c-----------------------------------------------------------------
 	    fmin = f
 	    iemin = ie
 	  end if
+	  ifrac(ifr) = ifrac(ifr) + 1
 	end do
 
-	write(6,*) 'Grid quality: (internal/external element number)'
+	icacum = 0
+	frmax = 0.
+	write(6,*)
+	write(6,*) 'area fraction f is defined as (a_node/a_elem)/2'
+	write(6,*)
+	write(6,*) 'distribution of area fractions f: (best is 1)'
+	write(6,*) '          from    to   count'
+	do i=-5,15
+	  ifr = i
+	  ic = ifrac(i)
+	  icacum = icacum + ic
+	  if( ifr < 0 ) then
+	    low = (5 + ifr) * 0.2
+	    high = low + 0.2
+	  else if (ifr == 0 ) then
+	    low = 1
+	    high = 2
+	  else
+	    low = i * 2
+	    high = (i+1) * 2
+	  end if
+	  write(6,'(9x,2f6.2,i8)') low,high,ic
+	  if( nel - icacum < 10 .and. frmax == 0. ) frmax = ifr * 2
+	end do
+
+	write(6,*)
+	write(6,*) 'elements with f > ',frmax
+	write(6,*) '     ie-int      ie-ext            f'
+	do ie=1,nel
+	  f = ff(ie)
+	  if( f >= frmax ) write(6,*) ie,ieext(ie),f
+	end do
+
+	write(6,*)
+	write(6,*) 'Grid quality:     ie-int      ie-ext            f'
 	write(6,*) '   minimum: ',iemin,ieext(iemin),fmin
 	write(6,*) '   maximum: ',iemax,ieext(iemax),fmax
-	write(6,*)
 
 c-----------------------------------------------------------------
 c compute angles
@@ -1227,27 +1273,56 @@ c-----------------------------------------------------------------
 	  iangle(i) = 0
 	end do
 
+	ierr = 0
+	amin = 180.
+	amax = 0.
 	do ie=1,nel
-	  !area = 4.*ev(10,ie)
 	  do ii=1,3
 	    k = nen3v(ii,ie)
 	    a = ev(10+ii,ie)
-	    ia = a / 10.
-	    if( ia .ge. 16 ) then
-		write(6,*) 'bad angle found: ',k,ipext(k),a
+	    if( a < amin ) then
+	      amin = a
+	      kamin = k
+	    else if( a > amax ) then
+	      amax = a
+	      kamax = k
 	    end if
+	    if( a > 160 ) ierr = ierr + 1
+	    ia = a / 10.
 	    iangle(ia) = iangle(ia) + 1
 	  end do
 	end do
 
+	icacum = 0
+	write(6,*)
+	write(6,*) 'distribution of angles: (best is 60)'
+	write(6,*) '          from          to       count'
 	do i=0,18
 	  ic = iangle(i)
+	  icacum = icacum + ic
 	  ilow = i * 10
 	  ihigh = (i+1) * 10
-	  write(6,*) 'angles between ',ilow,ihigh,ic
+	  write(6,*) '  ',ilow,ihigh,ic
+	end do
+
+	if( ierr > 0 ) then
+	  write(6,*)
+	  write(6,*) 'nodes with angle > 160'
+	  write(6,*) '      k-int       k-ext        angle'
+	end if
+
+	do ie=1,nel
+	  do ii=1,3
+	    k = nen3v(ii,ie)
+	    a = ev(10+ii,ie)
+	    if( a > 160 ) write(6,*) k,ipext(k),a
+	  end do
 	end do
 
 	write(6,*)
+	write(6,*) 'Angle quality:    ie-int      ie-ext        angle'
+	write(6,*) '   minimum: ',kamin,ipext(kamin),amin
+	write(6,*) '   maximum: ',kamax,ipext(kamax),amax
 
 c-----------------------------------------------------------------
 c end of routine

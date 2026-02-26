@@ -41,3 +41,5 @@ void Error1( int ier, char *string, int i1 );
 void Error2( int ier, char *string, int i1, int i2 );
 void ErrorC( int ier, char *string, char *s );
 
+void Warning2( char *string, int i1, int i2 );
+

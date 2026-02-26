@@ -28,8 +28,7 @@
 ! contents :
 !
 ! subroutine histo_init(nbin,bin0,dbin,rbin)
-! subroutine histo_insert(value)
-! subroutine histo_final(ic)
+! subroutine histo_insert_value(value)
 ! 
 ! revision log :
 !
@@ -43,6 +42,42 @@
 !
 !****************************************************************
 
+!---------------------------------------------------------------------------
+!	nbin					bin size
+!	bin0					first value of separator
+!	dbin					regular bin spacing
+!	rbin(nbin)				arbitrary bin definition
+!	n					total number of values
+!	values(n)				values to be inserted
+!	value					single value to be inserted
+!
+!       call histo_init(nbin,bin0,dbin)
+!       call histo_init(nbin,rbin)
+!
+!	call histo_make(n,values,nbin,dbin,bin0)
+!	call histo_make(n,values,nbin,dbin)
+!	call histo_make(n,values,nbin)
+!	call histo_make(n,values)		# default nbin = 20
+!	
+!	call histo_insert(value)
+!	call histo_insert(n,values)
+!
+!	call histo_return(nbin,ac,ic)
+!	call histo_info
+!
+! calling sequence:
+!
+!	call histo_init(nbin,bin0,dbin)
+!	call histo_insert(n,values)
+!	call histo_return(nbin,ac,ic)
+!
+! or
+!
+!       call histo_make(n,values,nbin)		# or similar
+!	call histo_return(nbin,ac,ic)
+!
+!---------------------------------------------------------------------------
+
 !================================================================
 	module mod_histo
 !================================================================
@@ -51,15 +86,25 @@
 
 	private
 
-        integer, save :: ncbin = 0
-        integer, allocatable, save :: icount(:)
-        real, allocatable, save :: abin(:)
+        integer, save :: ncbin = 0			! total number of bins
+        integer, allocatable, save :: icount(:)		! count in bins
+        real, allocatable, save :: acenter(:)		! center of bin
+        real, allocatable, save :: abin(:)		! upper value of bin
 
         INTERFACE histo_init
         MODULE PROCEDURE histo_init_auto, histo_init_bins
         END INTERFACE
 
-	public :: histo_init,histo_insert,histo_get_bins,histo_final
+        INTERFACE histo_make
+        MODULE PROCEDURE histo_make_0,histo_make_1,histo_make_2,histo_make_3
+        END INTERFACE
+
+        INTERFACE histo_insert
+        MODULE PROCEDURE histo_insert_value , histo_insert_values
+        END INTERFACE
+
+	public :: histo_init , histo_insert &
+     &			, histo_return , histo_make , histo_info
 
 !================================================================
 	contains
@@ -69,10 +114,145 @@
 
 	integer nbin
 
-	if( ncbin /= 0 ) deallocate(icount,abin)
-	allocate(icount(ncbin+1),abin(ncbin))
+	if( ncbin /= 0 ) deallocate(icount,abin,acenter)
+	allocate(icount(nbin),abin(nbin),acenter(nbin))
 	ncbin = nbin
+	abin = 0.
+	acenter = 0.
 	icount = 0
+
+	end
+
+!****************************************************************
+
+	subroutine histo_info
+
+	integer i
+
+	write(6,*) 'histo info:'
+	write(6,*) 'ncbin = ',ncbin
+	do i=1,ncbin
+	  write(6,*) i,abin(i),acenter(i),icount(i)
+	end do
+	write(6,*) 'end histo info:'
+
+	end
+
+!****************************************************************
+!****************************************************************
+!****************************************************************
+
+	subroutine histo_make_3(n,values,nbin,dbin,bin0)
+
+! sets up and computes histogram automatically
+
+	implicit none
+
+	integer n
+	real values(n)
+	integer nbin
+	real dbin,bin0
+
+	integer i
+	
+	call histo_init_auto(nbin,bin0,dbin)
+
+	call histo_insert(n,values)
+
+	end
+
+!****************************************************************
+
+	subroutine histo_make_2(n,values,nbin,dbin)
+
+! sets up and computes histogram automatically
+
+	implicit none
+
+	integer n
+	real values(n)
+	integer nbin
+	real dbin
+
+	integer i
+	real bin0,vmin
+	
+	vmin = minval(values)
+	bin0 = vmin + dbin
+
+	call histo_make_3(n,values,nbin,dbin,bin0)
+
+	end
+
+!****************************************************************
+
+	subroutine histo_make_1(n,values,nbin)
+
+! sets up and computes histogram automatically
+
+	implicit none
+
+	integer n
+	real values(n)
+
+	integer nbin,i
+	real vmin,vmax,dv,dbin,bin0
+	real rnext
+	
+	vmin = minval(values)
+	vmax = maxval(values)
+
+	dv = vmax - vmin
+	dbin = dv / nbin
+	!bin0 = vmin + dbin/2.
+	bin0 = vmin + dbin
+
+	call histo_make_3(n,values,nbin,dbin,bin0)
+
+	end
+
+!****************************************************************
+
+	subroutine histo_make_0(n,values)
+
+! sets up and computes histogram automatically
+
+	implicit none
+
+	integer n
+	real values(n)
+
+	integer nbin
+	
+	nbin = 20
+	call histo_make_1(n,values,nbin)
+
+	end
+
+!****************************************************************
+!****************************************************************
+!****************************************************************
+
+	subroutine histo_return(nbin,ac,ic)
+
+	implicit none
+
+	integer nbin
+	real ac(nbin)
+	integer ic(nbin)
+
+	if( nbin == 0 ) then
+	  nbin = ncbin
+	  return
+	end if
+
+	if( nbin < ncbin ) then
+	  error stop 'error stop histo_return: nbin<ncbin'
+	end if
+
+	nbin = ncbin
+	ac = acenter
+	ic = icount
 
 	end
 
@@ -96,6 +276,8 @@
           abin(i) = bin0 + (i-1) * dbin
         end do
 
+	call histo_make_center(nbin,abin,acenter)
+
         end
 
 !****************************************************************
@@ -113,11 +295,37 @@
 
 	abin = rbin
 
+	call histo_make_center(nbin,abin,acenter)
+
         end
 
 !****************************************************************
 
-        subroutine histo_insert(value)
+        subroutine histo_make_center(nbin,ab,ac)
+
+! sets up icount and abin
+
+        implicit none
+
+        integer nbin            !total number of bins
+	real ab(nbin)
+	real ac(nbin)
+
+        integer i
+
+        do i=2,nbin-1
+          ac(i) = 0.5*( ab(i) + ab(i-1) )
+        end do
+	ac(1) = ac(2) - (ab(2)-ab(1))
+	ac(nbin) = ac(nbin-1) + (ab(nbin-1)-ab(nbin-2))
+
+        end
+
+!****************************************************************
+!****************************************************************
+!****************************************************************
+
+        subroutine histo_insert_value(value)
 
         implicit none
 
@@ -125,43 +333,94 @@
 
         integer i
 
-        do i=1,ncbin
-          if( value .le. abin(i) ) then
-            icount(i) = icount(i) + 1
-            return
-          end if
+        do i=1,ncbin-1
+          if( value .le. abin(i) ) exit
         end do
 
-        i = ncbin+1
         icount(i) = icount(i) + 1
 
         end
 
 !****************************************************************
 
-        subroutine histo_get_bins(ac)
+        subroutine histo_insert_values(n,values)
 
         implicit none
 
-        real ac(ncbin)
+	integer n
+        real values(n)
 
-	ac = abin
+        integer i
+
+        do i=1,n
+	  call histo_insert_value(values(i))
+        end do
 
         end
 
 !****************************************************************
 
-        subroutine histo_final(ic)
-
-        implicit none
-
-        integer ic(ncbin+1)
-
-	ic = icount
-
-        end
-
 !================================================================
 	end module mod_histo
 !================================================================
+
+	subroutine histo_test1(text,n,amed,drange,sigma)
+
+	use mod_histo
+
+	implicit none
+
+	character*(*) text
+	integer n
+	real amed,drange,sigma
+
+	integer i,nbin
+	real r,vmin,vmax
+	real, allocatable :: ac(:)
+	integer, allocatable :: ic(:)
+	real, allocatable :: values(:)
+	character*80 file
+
+	nbin = 20
+	allocate(ac(nbin),ic(nbin))
+	allocate(values(n))
+
+	do i=1,n
+	  call random_number(r)
+	  r = r * drange + amed
+	  values(i) = r
+	end do
+	vmin = minval(values)
+	vmax = maxval(values)
+	  
+	write(6,*) 'n,vmin,vmax: ',n,vmin,vmax
+
+	call histo_make(n,values,nbin)
+        call histo_return(nbin,ac,ic)
+
+	file=trim(text)//'.tmp'
+	open(1,file=file,status='unknown',form='formatted')
+
+	write(6,*) nbin
+	do i=1,nbin
+	  write(6,*) i,ac(i),ic(i)
+	  write(1,*) ac(i),ic(i)
+	end do
+
+	close(1)
+
+	end
+
+!****************************************************************
+
+	subroutine histo_test
+	call histo_test1('s00',1000000,300.,100.,0.)
+	call histo_test1('s30',1000000,300.,100.,30.)
+	end
+
+!****************************************************************
+	!program main_histo_test
+	!call histo_test
+	!end
+!****************************************************************
 

@@ -37,6 +37,7 @@
 ! 02.12.2011    ggu     use depth also for smoothing (change in distxy())
 ! 27.05.2012    ggu     renamed ndim to nsdim in smooth()
 ! 12.01.2026    ggu     large arrays transformed to allocatable
+! 12.02.2026    ggu     new routine despike, bug fix for retriv
 !
 ! description :
 !
@@ -87,6 +88,8 @@
 ! smoothing program
 !
 ! same as gridf but smooth on length of line, not points
+!
+! lines should not intersect or touch
 
 	use basin
 	use grd
@@ -101,6 +104,7 @@
 
 	logical bperiod
 	integer nt,nll
+	integer i
 
 	real, allocatable :: xt(:)
 	real, allocatable :: yt(:)
@@ -111,6 +115,7 @@
 	integer nnode
 	real sigma
 	real reduce
+	real rspike
 
 	call shyfem_copyright('gridr - smoothing of lines')
 
@@ -149,7 +154,7 @@
 	reduce = 300.
 !-----------------------------------
 
-	call handle_command_line(file,sigma,reduce)
+	call handle_command_line(file,sigma,reduce,rspike)
 
 !------------------------------------------------------
 
@@ -164,10 +169,13 @@
 
         call grd_to_basin
 	call mod_depth_init(nkn,nel)
+	call grd_get_nodal_depth(hkv)
 
-	write(6,*) 'nodes    : ',nk
-	write(6,*) 'elements : ',ne
-	write(6,*) 'lines    : ',nl
+	write(6,*) 'nodes             : ',nk
+	write(6,*) 'elements          : ',ne
+	write(6,*) 'lines             : ',nl
+	write(6,*) 'nodes in elements : ',nne
+	write(6,*) 'nodes in lines    : ',nnl
 
 	allocate(xt(nnl),yt(nnl),ht(nnl))
 
@@ -175,6 +183,7 @@
 
 	open(99,file='smooth.grd',status='unknown',form='formatted')
 	open(98,file='reduce.grd',status='unknown',form='formatted')
+	open(97,file='despike.grd',status='unknown',form='formatted')
 
 	do l=1,nl
 	  nll = nnl
@@ -182,19 +191,23 @@
 	  call extrli(l,nl,ipplv,ialv,ipntlv,inodlv,xgv,ygv,hkv &
      &				,xt,yt,ht,nll,nt)
 	  call mkperiod(xt,yt,nll,bperiod)
+	  call mkstats(nl,nll,xt,yt,ht,bperiod)
 	  call intpdep(nline,ht,nll,bperiod)
 	  call smooth(sigma,xt,yt,ht,nll,bperiod)
 	  call wrline(99,nline,nnode,nll,xt,yt,ht,nt,bperiod)
 	  call reduce_points(reduce,xt,yt,ht,nll)
 	  call wrline(98,nline,nnode,nll,xt,yt,ht,nt,bperiod)
+	  call despike(rspike,xt,yt,ht,nll)
+	  call wrline(97,nline,nnode,nll,xt,yt,ht,nt,bperiod)
 	end do
 
 	write(6,*) 'routine finished...'
 
 	close(99)
 	close(98)
+	close(97)
 
-	write(6,*) 'files smooth.grd and reduce.grd written'
+	write(6,*) 'files smooth.grd, reduce.grd, and despike.grd written'
 
 	end
 
@@ -235,12 +248,17 @@
 	if( nvert .gt. nl ) goto 98
 	nt = ialrv(l)
 
-	write(6,*) 'extracting line ',l,iplv(l),nvert,nt
+	!write(6,*) 'extracting line ',l,iplv(l),nvert,nt
 
 	do i=1,nvert
 	    node = inodlv(ibase+i)
-	    ier = retriv(node,k)
+	    !ier = retriv(node,k)
+	    k = node
 	    if( ier .lt. 0 ) goto 99
+	    if( ier .eq. 0 ) then
+	      write(6,*) 'node not found: ',node
+		stop
+	    end if
 	    xt(i) = xgv(k)
 	    yt(i) = ygv(k)
 	    ht(i) = hkv(k)
@@ -308,7 +326,8 @@
 	  write(6,*) 'line : ',l,iplv(l),ialrv(l),nvert
 	  do i=1,nvert
 	    node = inodlv(ibase+i)
-	    ier = retriv(node,k)
+	    !ier = retriv(node,k)
+	    k = node
 	    if( ier .lt. 0 ) goto 99
 	    write(6,*) i,node,xgv(k),ygv(k)
 	  end do
@@ -353,7 +372,7 @@
 	implicit none
 
 	integer nkn
-	integer ipv(1)
+	integer ipv(nkn)
 
 	integer k,ier
 	integer insert
@@ -389,9 +408,9 @@
 	real dxy(-ndim:2*ndim)
 
 	integer i
-	real xo,yo,xn,yn
-	real dx,dy,dist
-	real ho,hn,h
+	double precision xo,yo,xn,yn
+	double precision dx,dy,dist
+	double precision ho,hn,h
 
 	xn = xt(nl)
 	yn = yt(nl)
@@ -445,6 +464,7 @@
 	real gk(-nsdim:nsdim)
 	real, allocatable :: raux(:)
 	real, allocatable :: dxy(:)
+	real, allocatable :: htt(:)
 
 	if( nl .gt. nsdim ) goto 99
 
@@ -452,10 +472,12 @@
 
 	allocate(raux(-nl:2*nl))
 	allocate(dxy(-nl:2*nl))
+	allocate(htt(nl))
 
 ! set up dxy
 
-	call distxy(nsdim,nl,xt,yt,ht,dxy)
+	htt = 0.
+	call distxy(nsdim,nl,xt,yt,htt,dxy)
 
 	distot = 0.
 	do i=1,nl-1
@@ -700,6 +722,92 @@
 
 !********************************************************
 
+	subroutine despike(ratio,xt,yt,ht,nl)
+
+! reduces points in line
+
+	implicit none
+
+	real ratio
+	real xt(nl)
+	real yt(nl)
+	real ht(nl)
+	integer nl
+
+	integer i,nnew,ispike
+	real dist1,dist2,dist3
+	real dx1,dy1,dx2,dy2,dx3,dy3
+	real h,hmin,hmax
+	real, parameter :: flag = -999.
+
+! very simplicistic approach
+
+	if( ratio <= 0 ) return
+
+	hmin = minval(ht)
+	hmax = maxval(ht)
+	write(6,*) 'despike: hmin,hmax: ',nl,hmin,hmax
+
+	do i=2,nl-1
+	  dx1 = xt(i) - xt(i-1)
+	  dy1 = yt(i) - yt(i-1)
+	  dx2 = xt(i+1) - xt(i)
+	  dy2 = yt(i+1) - yt(i)
+	  dx3 = xt(i+1) - xt(i-1)
+	  dy3 = yt(i+1) - yt(i-1)
+	  dist1 = sqrt( dx1*dx1 + dy1*dy1 )
+	  dist2 = sqrt( dx2*dx2 + dy2*dy2 )
+	  dist3 = sqrt( dx3*dx3 + dy3*dy3 )
+	  if( (dist1+dist2)/dist3 > ratio ) then
+	    ht(i) = flag
+	    write(6,*) i,dist1+dist2,dist3,(dist1+dist2)/dist3
+	  end if
+	end do
+
+	ispike = count( ht == flag )
+	write(6,*) ispike,' spikes found'
+
+	nnew = 0
+	do i=1,nl
+	  if( ht(i) /= flag ) then
+	    nnew = nnew + 1
+	    xt(nnew) = xt(i)
+	    yt(nnew) = yt(i)
+	    ht(nnew) = ht(i)
+	  end if
+	end do
+
+	call eliminate_non_unique(nnew,xt,yt)
+
+!	if( nnew .lt. 3 ) stop 'error stop reduce: line too short...'
+	if( nnew .lt. 3 ) then
+	  write(6,*) 'line too short -> eliminated'
+	  nnew = 0
+	end if
+
+	write(6,*) 'despike: from ',nl,'  to ',nnew,'  nodes'
+	nl = nnew
+
+	end
+
+!********************************************************
+
+	subroutine eliminate_non_unique(n,xt,yt)
+
+	implicit none
+
+	integer n
+	real xt(n)
+	real yt(n)
+
+	if( xt(1) == xt(n) .and. yt(1) == yt(n) ) then
+	  n = n - 1
+	end if
+	
+	end
+
+!********************************************************
+
 	subroutine reduce_points(reduce,xt,yt,ht,nl)
 
 ! reduces points in line
@@ -715,11 +823,15 @@
 	integer i,nnew
 	real rr,rtot
 	real dist,dx,dy
-	real h
+	real h,hmin,hmax
 
 ! very simplicistic approach
 
 	if( reduce <= 0 ) return
+
+	hmin = minval(ht)
+	hmax = maxval(ht)
+	write(6,*) 'hmin,hmax: ',hmin,hmax
 
 	rr = reduce
 	rtot = 1.
@@ -742,7 +854,7 @@
 	  h = ht(i)
 	  dist = sqrt( dx*dx + dy*dy )
 	  !write(6,*) dist,h,dist/h,rtot,reduce
-	  if( h .gt. 0. ) dist = dist * h
+	  !if( h .gt. 0. ) dist = dist * h
 	  rtot = rtot + dist
 	  if( rtot .gt. reduce .or. h .lt. 0. ) then
 	    nnew = nnew + 1
@@ -752,6 +864,8 @@
 	    rtot = 0.
 	  end if
 	end do
+
+	call eliminate_non_unique(nnew,xt,yt)
 
 !	if( nnew .lt. 3 ) stop 'error stop reduce: line too short...'
 	if( nnew .lt. 3 ) then
@@ -909,7 +1023,49 @@
 
 !********************************************************
 
-	subroutine handle_command_line(file,sigma,reduce)
+	subroutine mkstats(nl,nll,xt,yt,ht,bperiod)
+
+	implicit none
+
+	integer nl
+	integer nll
+	real xt(nll)
+	real yt(nll)
+	real ht(nll)
+	logical bperiod
+
+	integer i,ndim
+	real dmin,dmax,dmed,d
+	real, allocatable :: dxy(:)
+	real, allocatable :: htt(:)
+
+	ndim = nll
+	allocate(dxy(-ndim:2*ndim))
+	allocate(htt(ndim))
+
+	htt = 0
+	call distxy(ndim,nll,xt,yt,htt,dxy)
+
+	dmin = 1.e+10
+	dmax = 0.
+	dmed = 0.
+
+	do i=1,nll
+	  d = dxy(i)
+	!write(6,*) xt(i),yt(i),dxy(i)
+	  dmin = min(dmin,d)
+	  dmax = max(dmax,d)
+	  dmed = dmed + d
+	end do
+	dmed = dmed / nll
+
+	write(6,*) nl,nll,dmin,dmax,dmed
+
+	end
+
+!********************************************************
+
+	subroutine handle_command_line(file,sigma,reduce,rspike)
 
 	use clo
 
@@ -918,6 +1074,7 @@
 	character*(*) file
 	real sigma
 	real reduce
+	real rspike
 
 	integer nfile
 
@@ -928,11 +1085,14 @@
      &                    ,'standard deviation for smoothing is sigma')
         call clo_add_option('reduce dmin',0. &
      &                    ,'elimination of points with distance < dmin')
+        call clo_add_option('despike rspike',0. &
+     &                    ,'elimination of points with spike ratio > rspike')
 
         call clo_parse_options(1)       !expecting 1 file
 
         call clo_get_option('sigma',sigma)
         call clo_get_option('reduce',reduce)
+        call clo_get_option('despike',rspike)
 
         nfile = clo_number_of_files()
         if( nfile > 0 ) call clo_get_file(1,file)
@@ -940,6 +1100,7 @@
 	write(6,*) 'file name: ',trim(file)
 	write(6,*) 'sigma: ',sigma
 	write(6,*) 'reduce: ',reduce
+	write(6,*) 'rspike: ',rspike
 
 	end
 

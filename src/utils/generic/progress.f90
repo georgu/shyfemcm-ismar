@@ -30,6 +30,8 @@
 ! stackoverflow.com/questions/78002119/how-to-print-a-progress-bar-in-fortran
 !
 ! revision log :
+!
+! 26.01.2026    ggu     implemented from the internet
 
 !********************************************************************
 

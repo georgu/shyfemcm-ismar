@@ -25,7 +25,7 @@
 
 !  description :
 ! 
-!  5 grade routines
+!  5-5 grade routines
 ! 
 !  contents :
 ! 
@@ -46,10 +46,11 @@
 !  11.10.2015	ggu	bug fix: fused node was not moved
 !  18.12.2018	ggu	changed VERS_7_5_52
 !  21.05.2019	ggu	changed VERS_7_5_62
+!  23.02.2026   ggu     checks to avoid negative areas
 ! 
 ! ***********************************************************
 
-	subroutine elim5
+	subroutine elim_5_5
 
 !  eliminates 5-5 grades
 ! 
@@ -88,23 +89,25 @@
 
 	integer k
 
-	logical bdebug
-        integer n,i,nc,nmax,ii,ks
+	logical berr
+        integer n,i,nc,nmax,ii,ks,nks
 	integer ie1,ie2
 	integer ip1,ip2
 	integer np,nt,nn
 	integer nval,ip
+	integer ipos,ng,nb
+	real amax
 	integer ngav(0:ngrdi+1)
 	integer ngrv(0:ngrdi+1)
 	integer nbav(0:ngrdi+1)
+	integer naux(0:ngrdi+1)
 	integer iplist(ngrdi)
 
 	integer ifindel
 
-	if( k .gt. nkn ) return
+	berr = .false.
 
-	bdebug = .true.
-	bdebug = .false.
+	if( k .gt. nkn ) return
 
 	if( bdebug ) then
 	  write(6,*) '==============================================='
@@ -114,8 +117,8 @@
 !  make circular list
 ! 
 !  ngav 	node numbers around k
-!  ngrv	grades of node numbers around k
-!  nbav	boundary  flag for nodes around k
+!  ngrv		grades of node numbers around k
+!  nbav		boundary flag for nodes around k
 
         n = ngrade(k)
 	ngav(0) = ngri(n,k)
@@ -127,8 +130,8 @@
 	do i=0,n+1
 	  ngrv(i) = ngrade(ngav(i))
 	  nbav(i) = 0
-	  if( nbound(ngav(i)) .ne. 0 ) then
-	    ngrv(i) = 6	!FIXME
+	  if( nbound(ngav(i)) .ne. 0 ) then	!boundary node
+	    ngrv(i) = 6				!fake perfect grade
 	    nbav(i) = 1
 	  end if
 	end do
@@ -157,6 +160,24 @@
 
 	if( nmax .lt. 3 ) return
 
+	if( nc > 1 ) then
+	  do i=1,nc
+	    ip = iplist(i)
+	    ks = ngav(ip)
+	    ng = ngrv(ip)
+	    nb = nbav(ip)
+	    naux(1:ng) = ngri(1:ng,ks)
+	    write(6,*) '5-5 before: ',ks,ng,nb
+	    write(6,*) '5-5 before: ',naux(1:ng)
+	    call check_angles(ks,ng,naux(1:n),amax,ipos)
+	    write(6,*) '5-5 amax: ',ks,amax
+	  end do
+	end if
+!        do i=1,n
+!          neibs(i) = ngri(i,k)
+!          ngneib(i) = ngrade(neibs(i))
+!        end do
+
 	ip = 0
 	do i=1,nc
 	  ip = iplist(i)
@@ -165,15 +186,38 @@
 
 	if( i > nc ) return		!no possible node
 
-	write(6,*) k,n,nmax,nc,ip
+	call check_angles(k,n,ngav(1:n),amax,ipos)
+	if( amax > 180 ) then
+	  write(6,*) 'cannot eliminate... k angle > 180'
+	  return
+	end if
+
+	write(6,*) k,n,nmax,nc,ip,amax
+
+	!if( k == 2821 ) call plot_node(k)
+	if( k == 2834 ) berr = .true.
 
 !  nc gives number of occurences of this value of nmax ...
 !  ip is the pointer to the node to be exchanged
-!  we know that is tis not a boundary node, so we can shift it
+!  we know that it is not a boundary node, so we can shift it
 ! 
 !  k is eliminated, ngav(ip) is retained
 
 	ks = ngav(ip)		! node to be shifted
+	nks = ngrade(ks)
+	!if( nks /= 5 ) stop 'error stop: nks/=5'
+	call check_angles(ks,nks,ngri(:,ks),amax,ipos)
+	if( amax > 180 ) then
+	  write(6,*) 'cannot eliminate... ks angle > 180'
+	  return
+	end if
+
+	if( berr ) then
+	  write(6,*) 'writing grid for k=2834'
+	  call plot_node(k)
+	  call plot_node(ks)
+	  call plot_nodes(2,(/k,ks/))
+	end if
 
 	if( bdebug ) then
 	    write(6,*) 'exchanging with node ... ',ks
@@ -282,7 +326,9 @@
 	  write(6,*) '==============================================='
 	end if
 
-	!call checkarea('check area after 5 elim')	!for debug
+	if( berr ) write(6,*) 'calling checkarea'
+	if( bcheck ) call checkarea(k,' ')
+	if( berr ) write(6,*) 'finished calling checkarea'
 	! should only check elements around ks -> we need element index
 
 	end

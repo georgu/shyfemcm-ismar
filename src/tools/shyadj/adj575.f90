@@ -36,6 +36,7 @@
 !  12.10.2015	ggu	changed VERS_7_3_3
 !  18.12.2018	ggu	changed VERS_7_5_52
 !  21.05.2019	ggu	changed VERS_7_5_62
+!  23.02.2026   ggu     checks to avoid negative areas
 ! 
 !  description :
 ! 
@@ -50,7 +51,7 @@
 ! 
 ! ***********************************************************
 
-	subroutine elim57
+	subroutine elim_5_7_5
 
 !  eliminates 5-7-5 grades
 
@@ -67,6 +68,7 @@
           n = ngrade(k)
           if( n .eq. 7 .and. nbound(k) .eq. 0 ) then
             call elim575(k)
+	    call checkarea(k,'checking in 575 grade')
 	    !call chkgrd('checking in 575 grade')
           end if
         end do
@@ -88,10 +90,10 @@
 
 	integer k
 
-	logical bdebug
+	logical berr
         integer n,i,nc,ii
-	integer ie,kk,iii
-	integer ip1,ip2
+	integer ie,kk,iii,ks,nks
+	integer ip1,ip2,ipos
 	integer ip
 	integer ng,idp
 	integer ngav(ngrdi)	!we do not need 0 index
@@ -99,13 +101,13 @@
 	integer nbav(ngrdi)
 	integer iau(ngrdi)
 	real x,y,xm,ym
+	real amax
 
 	if( k .gt. nkn ) return
 
-	bdebug = .true.
-	bdebug = .false.
-
 	if( bdebug ) write(6,*) 'elim575 new node: ',k
+
+	berr = .false.
 
 !  make list
 
@@ -133,6 +135,14 @@
 	end do
 
 	if( nc .ne. 2 ) return	!if not exactly 2 cannot proceed
+
+        ks = k
+        nks = ngrade(ks)
+        call check_angles(ks,nks,ngri(:,ks),amax,ipos)
+        if( amax > 180 ) then
+          write(6,*) 'cannot eliminate... ks angle > 180'
+          return
+        end if
 
 !  find out distance of 5 grades
 
