@@ -1,373 +1,183 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
-# Copyright (C) 2017, Marco Bajo, CNR-ISMAR Venice, All rights reserved.
+# Copyright (C) 2017-2026, Marco Bajo, CNR-ISMAR Venice, All rights reserved.
 #
-# Ensemble Kalman Filter for SHYFEM. 
-# 
-# 2016 first version
-# 2018 important updates
-# 2024 other changes
+# ------------------------------------------------------------------------------
+# Ensemble Kalman Filter (EnKF) for SHYFEM
+# ------------------------------------------------------------------------------
 #
-# See the README file
-# 
-#----------------------------------------------------------
+# See the README file for an help
+#
+#
 
-# This finds the path of the current script
+
+# --- PATH & ENVIRONMENT SETUP ---
 SCRIPT=$(realpath $0)
 SCRIPTPATH=$(dirname $SCRIPT)
-
-FEMDIR=~/shyfemcm	# fem directory
-FEMDIR=~/georg/work/shyfem_repo/shyfemcm-ismar
-SHYFEMDIR=$FEMDIR/src/shyfem
-ENKFDIR=$FEMDIR/src/contrib/enKF
+SRCDIR=$SCRIPTPATH/../..	# src directory
 SIMDIR=$(pwd)		# current dir
-SHYDIR=$FEMDIR/bin
-ENKFDIR=$FEMDIR/src/contrib/enKF
-
-[ ! -d $SHYFEMDIR ] && echo "*** no such directory: $SHYFEMDIR" && exit 1
-[ ! -d $ENKFDIR ] && echo "*** no such directory: $ENKFDIR" && exit 1
-echo "SHYFEMDIR  = $SHYFEMDIR"
-echo "SCRIPTPATH = $SCRIPTPATH"
-echo "FEMDIR     = $FEMDIR"
-echo "SIMDIR     = $SIMDIR"
-echo "SHYDIR     = $SHYDIR"
-echo "ENKFDIR    = $ENKFDIR"
 
 #----------------------------------------------------------
-
-Usage()
-{
-  echo "Usage: enKF.sh [method] [localisation] [bas-file] [nlv] [n] [out]"
-  echo
-  echo "method = 11|12|13|21|22|23. See: analysis.F90"
-  echo "localisation = 0 (disable), 1 (enable)"
-  echo "bas-file = name of the basin bas file"
-  echo "nlv = number of vertical levels used in the simulations"
-  echo "n = number of threads"
-  echo "out = 0 saves only mean and std restarts, 1 save all the restarts (needed by enKS)"
-  echo
-  exit 0
+Usage() {
+    echo "Usage: enKF.sh [method] [localisation] [bas-file] [nlv] [n] [out]"
+    echo ""
+    echo "Arguments:"
+    echo "  method        : Analysis algorithm (11|12|13|21|22|23)"
+    echo "  localisation  : Spatial localization (0: Off, 1: On)"
+    echo "  bas-file      : Basin (.bas) file"
+    echo "  nlv           : Vertical levels"
+    echo "  n             : Threads/cores"
+    echo "  out           : Output (0: mean/std only, 1: save all restarts)"
+    exit 1
 }
 
 #----------------------------------------------------------
-
-Check_file()
-{
-  if [ ! -s $1 ]; then
-     echo "File $1 does not exist or has zero size."
-     exit 1
-  fi
-}
-
-Check_dir()
-{
-  if [ ! -d $1 ]; then
-     echo "Directory $1 does not exist."
-     exit 1
-  fi
-}
-
-#----------------------------------------------------------
-
-Check_num()
-{
-  nint='^[0-9]+$'
-  nreal='^-?[0-9]+([.][0-9]+)?$'
-
-  if [ $3 = 'int' ]; then
-     if ! [[  $4 =~ $nint ]]; then
-        echo "$4 is not an integer number"
+Check_file() {
+    if [ ! -s "$1" ]; then
+        echo "[ERROR] File missing or zero size: $1"
         exit 1
-     fi
-  elif [ $3 = 'real' ]; then
-     if ! [[ $4 =~ $nreal ]]; then
-        echo "$4 is not a real number"
-        exit 1
-     fi
-  fi
-  if [[ $(echo "$4 < $1" | bc) = 1 ]] || [[ $(echo "$4 > $2" | bc) = 1 ]]; then
-     echo "Number $4 out of range"
-     exit 1
-  fi 
-}
-
-#----------------------------------------------------------
-
-Check_dirs(){
-  Check_dir $FEMDIR
-  Check_dir $SIMDIR
-  Check_dir $SHYDIR
-  Check_dir $ENKFDIR
-}
-
-Check_files(){
-  echo "Check the exec programs"
-  command -v parallel > /dev/null 2>&1 || { echo "parallel it's not installed.  Aborting." >&2; exit 1; }
-  [ ! -s $SHYDIR/shyfem ] && echo "shyfem exec does not exist. Compile the model first." && exit 1
-  # Make here the mod_dimensions and compile main
-  
-  [ ! -s $ENKFDIR/main ] && echo "main exec does not exist. Compile the enKF first." && exit 1
-
-  echo "Check the input files"
-  ens_file_list='ens_list.txt'
-  Check_file $ens_file_list  
-  obs_file_list='obs_list.txt'
-  Check_file $obs_file_list
-  an_time_list='antime_list.txt'
-  Check_file $an_time_list
-}
-
-#----------------------------------------------------------
-
-Read_ens_list(){
-# Reads the list of skel and restart files of the ensemble
-  echo "Reading the ensemble list"
-
-  rm -f an00001_en*b.rst
-
-  rst1=$(head -1 $ens_file_list | awk '{print $2}')
-  rst2=$(head -2 $ens_file_list | tail -1 | awk '{print $2}')
-
-  if [ "$rst1" = "$rst2" ];  then
-	  is_new_ens=1
-	  echo "Only one initial state..."
-  else
-	  is_new_ens=0
-	  echo "Many initial states..."
-  fi
-
-  nrow=0
-  while read line
-  do
-     skelf=$(echo $line | awk '{print $1}')
-     rstf=$(echo $line | awk '{print $2}')
-     Check_file $skelf
-     Check_file $rstf
-
-     skel_file[$nrow]=$skelf
-
-     if [ "$is_new_ens" -eq "0" ] || [ "$nrow" -eq "0" ]; then
-        nel=$(printf "%05d" $nrow)
-        ln -fs $rstf an00001_en${nel}b.rst
-     fi
-
-     nrow=$((nrow + 1))
-
-  done < $ens_file_list
-
-  nrens=$nrow
-  echo ""; echo "Number of ensemble members: $nrens"; echo ""
-}
-
-#----------------------------------------------------------
-
-Read_an_time_list(){
-# Reads the list of the analysis times and determines
-# the number of analysis steps (nran)
-  echo "Read the list of analysis steps"
-  
-  # timeo starts from 1 as the analysis steps
-  nrow=0
-  nran=0
-  while read line
-  do
-    nrow=$((nrow + 1))
-    iseven=$((nrow%2))
-    if [ "$iseven" -eq "1" ]; then
-	    nran=$((nran+1))
-	    timeo[$nran]=$(echo $line | awk '{print $1}')
-	    nfile[$nran]=$(echo $line | awk '{print $2}')
-    else
-	    isfile[$nran]=$line
     fi
-  done < $an_time_list
-  echo ""; echo "Number of analysis steps: $nran"
-}
-
-
-#----------------------------------------------------------
-
-SkelStr(){
-# Makes a str file from a skel file
-inamesim=$1; iitanf=$2; iitend=$3; irestrt=$4; iskelname=$5; istrname=$6
-
-if [ ! -s $iskelname ]; then
-        echo "File $iskelname does not exist"
-        exit 1
-fi
-
-cat $iskelname | sed -e "s/NAMESIM/$inamesim/g" |  sed -e "s/ITANF/$iitanf/g" \
-               | sed -e "s/ITEND/$iitend/g" | sed -e "s/RESTRT/$irestrt/" \
-               | sed -e "s/IDTRST/-1/" \
-               >  $istrname
 }
 
 #----------------------------------------------------------
+Check_files() {
+    echo "[INFO] Validating executables..."
+    command -v parallel > /dev/null 2>&1 || { echo "[ERROR] GNU Parallel not found."; exit 1; }
+    [ ! -s "$SRCDIR/shyfem/shyfem" ] && echo "[ERROR] SHYFEM binary missing." && exit 1
+    [ ! -s "$SRCDIR/contrib/enKF/main" ] && echo "[ERROR] EnKF main binary missing." && exit 1
 
-Make_sim()
-{
-  basen=$(basename $1 .str)
-  $2/shyfem $1 > $basen.log 
+    echo "[INFO] Validating input lists..."
+    for f in ens_list.txt obs_list.txt antime_list.txt; do Check_file "$f"; done
 }
 
 #----------------------------------------------------------
+Read_ens_list() {
+    echo "[INFO] Initializing ensemble members..."
+    rm -f an00001_en*b.rst
+    rst1=$(head -1 ens_list.txt | awk '{print $2}')
+    rst2=$(head -2 ens_list.txt | tail -1 | awk '{print $2}')
+    if [ "$rst1" = "$rst2" ]; then is_new_ens=1; else is_new_ens=0; fi
 
-Write_obs_file(){
-# Write a tmp file with the observations used in the current time step
-
-  na=$1
-
-  IFS=' ' read -r -a nisfile <<< "${isfile[$na]}"
-  nnfile=${nfile[$na]}
-
-  rm -f obs_list_tmp.txt
-  k=0
-  while read line; do
-    if [ "${nisfile[$k]}" = "1" ]; then
-	    echo $line >> obs_list_tmp.txt
-    fi
-    k=$((k+1))
-  done < $obs_file_list
-
-  if [ "$nnfile" -ne "$k" ]; then
-	  echo "Error in the length of the obs file list: $nnfile $k"
-	  exit 1
-  fi
+    nrow=0
+    while read -r skelf rstf || [ -n "$skelf" ]; do
+        [ -z "$skelf" ] && continue
+        Check_file "$skelf"
+        Check_file "$rstf"
+        skel_file[$nrow]="$skelf"
+        if [ "$is_new_ens" -eq "0" ] || [ "$nrow" -eq "0" ]; then
+            nel=$(printf "%05d" "$nrow")
+            ln -fs "$rstf" "an00001_en${nel}b.rst"
+        fi
+        nrow=$((nrow + 1))
+    done < ens_list.txt
+    nrens=$nrow
 }
 
 #----------------------------------------------------------
-
-Write_info_file(){
-# Write a file with informations for the fortran analysis program
-
-  na=$1
-
-  echo $nnlv > analysis.info		# nr of vertical levels
-  echo $nrens >> analysis.info		# nr of ens members
-  echo $na >> analysis.info		# analysis step
-  echo $bas_file >> analysis.info	# name of the basin
-  echo ${timeo[$na]} >> analysis.info	# current time
-  echo obs_list_tmp.txt >> analysis.info	# obs file list
-  echo $is_new_ens >> analysis.info	# if to make a new ens of states
-  echo $rmode >> analysis.info          # analysis method
-  echo $islocal >> analysis.info        # local analysis
+Read_antime_list() {
+    nrow=0; nran=0
+    while read -r line || [ -n "$line" ]; do
+        nrow=$((nrow + 1))
+        if [ $((nrow % 2)) -eq 1 ]; then
+            nran=$((nran+1))
+            timeo[$nran]=$(echo "$line" | awk '{print $1}')
+            nfile[$nran]=$(echo "$line" | awk '{print $2}')
+        else
+            isfile[$nran]="$line"
+        fi
+    done < antime_list.txt
 }
 
 #----------------------------------------------------------
-
-Run_ensemble_analysis()
-{
-nanl=$(printf "%05d" $1)
-
-cd $SIMDIR
-$ENKFDIR/main
-if [ "$?" -ne "0" ]; then
-          echo "Errors while running main."
-          exit 1
-fi
-
-# Check restart files
-for (( ne = 0; ne < $nrens; ne++ )); do
-	nensl=$(printf "%05d" $nens)
-	filename="an${nanl}_en${nensl}a.rst"
-	Check_file $filename
-done
-
-#filename="an${nanl}_mean_state_b.rst"	#Average
-#Check_file $filename
-#filename="an${nanl}_mean_state_a.rst"	#Average
-#Check_file $filename
+SkelStr() {
+    sed -e "s|NAMESIM|$1|g" -e "s|ITANF|$2|g" \
+        -e "s|ITEND|$3|g" -e "s|RESTRT|$4|g" \
+        -e "s|IDTRST|-1|g" "$5" > "$6"
 }
 
 #----------------------------------------------------------
-
-Make_ens_str(){
-strfiles=""
-for (( ne = 0; ne < $nrens; ne++ )); do
-
-   ens_skel_file=${skel_file[$ne]}
-   Check_file $ens_skel_file
-
-   nel=$(printf "%05d" $ne); nal=$(printf "%05d" $na)
-   naa=$((na + 1)); naal=$(printf "%05d" $naa)
-
-   itanf=${timeo[$na]}
-
-   if [ "$na" -ne "$nran" ]; then
-        name_sim="an${naal}_en${nel}b"
-	itend=${timeo[$naa]}
-        rstfile="an${nal}_en${nel}a.rst" 
-        strnew="${name_sim}.str"
-
-        SkelStr $name_sim $itanf $itend $rstfile $ens_skel_file $strnew
-        strfiles="$strfiles $strnew"
-   fi
-
-done
+Write_obs_file() {
+    local na=$1
+    IFS=' ' read -r -a nisfile <<< "${isfile[$na]}"
+    rm -f obs_list_tmp.txt
+    local k=0
+    while read -r line || [ -n "$line" ]; do
+        if [ "${nisfile[$k]}" = "1" ]; then echo "$line" >> obs_list_tmp.txt; fi
+        k=$((k+1))
+    done < obs_list.txt
 }
 
+#----------------------------------------------------------
+Write_info_file() {
+    local na=$1
+    {
+        echo "$nnlv"; echo "$nrens"; echo "$na"; echo "$bas_file"
+        echo "${timeo[$na]}"; echo "obs_list_tmp.txt"; echo "$is_new_ens"
+        echo "$rmode"; echo "$islocal"
+    } > analysis.info
+}
 
 #----------------------------------------------------------
-#----------------------------------------------------------
-#	MAIN
-#----------------------------------------------------------
-#----------------------------------------------------------
+Run_ensemble_analysis() {
+    local na=$1
+    local nanl=$(printf "%05d" "$na")
+    echo "[ANALYSIS] Executing Fortran EnKF..."
+    "$SRCDIR/contrib/enKF/main"
+    [ $? -ne 0 ] && echo "[ERROR] EnKF Core failed." && exit 1
 
-if [ $6 ]; then
-   rmode=$1
-   islocal=$2
-   bas_file=$3
-   nnlv=$4
-   nthreads=$5
-   out_verb=$6
-else
-   Usage
-fi
+    # Final check for analysis restarts
+    for (( ne = 0; ne < nrens; ne++ )); do
+        nensl=$(printf "%05d" "$ne")
+        Check_file "an${nanl}_en${nensl}a.rst"
+    done
+}
 
-# Export num of threads for main. Warning! Use the max num of cpu, not threads.
+# -------------------------------------------------------------------
+# ------------------------------ MAIN -------------------------------
+# -------------------------------------------------------------------
+
+[ $# -lt 6 ] && Usage
+rmode=$1; islocal=$2; bas_file=$3; nnlv=$4; nthreads=$5; out_verb=$6
+
 export OMP_NUM_THREADS=$nthreads
 
 # Checking the executable programs
-Check_dirs
 Check_files
 
 # Reading skel file list
 Read_ens_list
 
 # Reading obs file list
-Read_an_time_list
+Read_antime_list
 
 # Assimilation cycle for every analysis time step
-rm -f X5*.uf backKF_*.rst analKF_*.rst 	# old files
-for (( na = 1; na <= $nran; na++ )); do
+rm -f X5*.uf backKF_*.rst analKF_*.rst
+for (( na = 1; na <= nran; na++ )); do
+   echo -e "\n--- STEP $na OF $nran ---"
 
+   Write_obs_file "$na"
 
-   # make the analysis
-   echo; echo "			ANALYSIS STEP $na OF $nran"; echo
-   Write_obs_file $na
+   Write_info_file "$na"
 
-   Write_info_file $na
+   # 1. ANALYSIS
+   Run_ensemble_analysis "$na"
 
-   ######################### ANALYSIS ######################
-   Run_ensemble_analysis $na
-   #########################################################
+   # 2. FORECAST (only if not the last step)
+   if [ "$na" -ne "$nran" ]; then
+      echo "[FORECAST] Advancing ensemble..."
+      str_list=""
+      for (( ne = 0; ne < nrens; ne++ )); do
+         nel=$(printf "%05d" "$ne"); nal=$(printf "%05d" "$na")
+         naa=$((na + 1)); naal=$(printf "%05d" "$naa")
+         name_sim="an${naal}_en${nel}b"
+         strname="${name_sim}.str"
+         SkelStr "$name_sim" "${timeo[$na]}" "${timeo[$naa]}" "an${nal}_en${nel}a.rst" "${skel_file[$ne]}" "$strname"
+         str_list="$str_list $strname"
+      done
 
-   # Makes nrens str files for the simulations
-   Make_ens_str
-
-   if [ "$na" -ne "$nran" ]; then # not the last one
-
-      # run nrens sims before the obs
-      echo; echo "       running $nrens ensemble simulations..."
-
-   ############### MODEL RUN ###############################
-      # with nthreads=0 uses the maximum number
-      nthsim=$nthreads
-      [[ "$nthsim" -gt "$nrens" ]] && nthsim=$nrens
-      export -f Make_sim
-      parallel --no-notice -P $nthsim Make_sim ::: $strfiles ::: $SHYDIR
-   #########################################################
-
+      export OMP_NUM_THREADS=1
+      parallel --jobs "$nthreads" "$SRCDIR/shyfem/shyfem {} > {.}.log 2>&1" ::: $str_list
+      export OMP_NUM_THREADS=$nthreads
    fi
 
    # merge the rst files
@@ -397,6 +207,4 @@ for (( na = 1; na <= $nran; na++ )); do
    rm -f an*_en*b.inf an*_en*.log an*_en*b.str 
 
 done
-rm -f X5col.dat X5row.dat X5.uf make.log
-
-exit 0
+echo -e "\n[SUCCESS] All files saved in the current directory."
