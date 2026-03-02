@@ -50,6 +50,7 @@
 !  18.12.2018	ggu	changed VERS_7_5_52
 !  21.05.2019	ggu	changed VERS_7_5_62
 !  23.02.2026   ggu     checks to avoid negative areas
+!  27.02.2026   ggu     checks grade index for not unique nodes
 ! 
 ! **************************************************************
 
@@ -187,7 +188,7 @@
 	logical bstop,bverb
 	integer n,k,ie,ii,kk,i,ke
 	integer i1,i2,k1,k2
-        integer nb
+        integer nb,ic
 
 	integer nextgr
 
@@ -261,6 +262,35 @@
 		call wr0grd
 		write(6,*) 'nkn,nel: ',nkn,nel
 		stop 'error stop chkgrd (3)'
+	end if
+
+! --------------------------------------------------
+!  check grade index for not unique nodes
+! --------------------------------------------------
+
+        if( bverb ) write(6,*) 'checking grade index for nodes ...'
+
+	do k=1,nkn
+	  n = ngrade(k)
+	  do i=1,n
+	    kk = ngri(i,k)
+	    ic = count(kk==ngri(i+1:n,k))
+	    if( ic > 0 ) then
+		bstop =.true.
+		write(6,*) 'chkgrd (7): ',k,n,i,kk
+		write(6,*) 'chkgrd nodes: ',ngri(1:n,k)
+	    end if
+	  end do
+	if( k == 2460 ) then
+	  write(6,*) 'testing not unique: ',k,n
+	  write(6,*) ngri(1:n,k)
+	end if
+	end do
+
+	if( bstop ) then
+		call wr0grd
+		write(6,*) 'nkn,nel: ',nkn,nel
+		stop 'error stop chkgrd (7): not unique nodes'
 	end if
 
 ! --------------------------------------------------

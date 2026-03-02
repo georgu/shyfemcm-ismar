@@ -47,6 +47,7 @@
 !  18.12.2018	ggu	changed VERS_7_5_52
 !  21.05.2019	ggu	changed VERS_7_5_62
 !  23.02.2026   ggu     checks to avoid negative areas
+!  27.02.2026   ggu     some more checks
 ! 
 ! ***********************************************************
 
@@ -70,7 +71,7 @@
           n = ngrade(k)
           if( n .eq. 5 .and. nbound(k) .eq. 0 ) then
             call elim55(k)
-	    !call chkgrd('checking in 5 grade')
+	    call chkgrd('checking in 5 grade')
           end if
         end do
 
@@ -168,7 +169,7 @@
 	    nb = nbav(ip)
 	    naux(1:ng) = ngri(1:ng,ks)
 	    write(6,*) '5-5 before: ',ks,ng,nb
-	    write(6,*) '5-5 before: ',naux(1:ng)
+	    write(6,*) '5-5 naux: ',naux(1:ng)
 	    call check_angles(ks,ng,naux(1:n),amax,ipos)
 	    write(6,*) '5-5 amax: ',ks,amax
 	  end do
@@ -195,7 +196,7 @@
 	write(6,*) k,n,nmax,nc,ip,amax
 
 	!if( k == 2821 ) call plot_node(k)
-	if( k == 2834 ) berr = .true.
+	!if( k == 2834 ) berr = .true.
 
 !  nc gives number of occurences of this value of nmax ...
 !  ip is the pointer to the node to be exchanged

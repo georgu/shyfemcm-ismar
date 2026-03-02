@@ -52,6 +52,7 @@
 !  21.05.2019	ggu	changed VERS_7_5_62
 !  14.02.2022	ggu	set all depth values to flag
 !  23.02.2026   ggu     checks to avoid negative areas
+!  27.02.2026   ggu     write more information to terminal
 ! 
 !  notes :
 ! 
@@ -170,7 +171,7 @@
 
         write(6,*) 'start eliminating nodes ...'
 
-	call chkgrd('checking original grid')
+	call chkgrd('first cycle - checking original grid')
 	call elimlow
 	if( bplot ) call plobas
 	call stats('first cycle - 4- grades')
@@ -178,30 +179,32 @@
 
 !  eliminate 8+ grades
 
-	call chkgrd('checking before 8+')
+	call chkgrd('first cycle - checking before 8+')
 	call elimhigh(8)
 	if( bplot ) call plobas
 	call stats('first cycle - 8+ grades')
 
-	call chkgrd('checking after 8+')
+	call chkgrd('first cycle - checking after 8+')
 	call node_info(kspecial)
 
 !  eliminate 7+ grades
 
-	call chkgrd('checking before 7+')
+	call chkgrd('first cycle - checking before 7+')
 	call elimhigh(7)
 	if( bplot ) call plobas
 	call stats('first cycle - 7+ grades')
 
-	call chkgrd('checking after 7+')
+	call chkgrd('first cycle - checking after 7+')
 	call node_info(kspecial)
 
 !  smoothing
 
 	!call write_grid('new_nosmooth.grd')
 
+	call chkgrd('first cycle - checking before smoothing')
         call smooth_grid(nsmooth,asmooth)
 	if( bplot ) call plobas
+	call chkgrd('first cycle - checking after smoothing')
 	call node_info(kspecial)
 
 	!call write_grid('new_smooth1.grd')
@@ -212,7 +215,7 @@
         write(6,*) 'second cycle...'
         write(6,*) '================================='
 
-	call chkgrd('start of second cycle')
+	call chkgrd('checking at start of second cycle')
         call elimlow
 	call elimhigh(8)
 	call elimhigh(7)
@@ -224,12 +227,12 @@
 
 	!call write_grid('new_help.grd')
 
-	call chkgrd('checking before 5-5')
+	call chkgrd('second cycle - checking before 5-5')
 	call elim_5_5
 	if( bplot ) call plobas
 	call stats('second cycle - 5-5 grades')
 
-	call chkgrd('checking after 5-5')
+	call chkgrd('second cycle - checking after 5-5')
 	call node_info(kspecial)
 
 !  eliminate 5-7-5 grades
@@ -240,7 +243,7 @@
 	!call write_grid('new_help2.grd')
 	if( bplot ) call plobas
 	call stats('second cycle - 5-7-5 grades')
-	call chkgrd('checking after 5-7-5')
+	call chkgrd('second cycle - checking after 5-7-5')
 	call node_info(kspecial)
 
 !  one more time
@@ -251,13 +254,13 @@
 
 	!call write_grid('cycle3_start.grd')
 
-	call chkgrd('start of thrid cycle')
+	call chkgrd('checking at start of thrid cycle')
 	call elimhigh(8)
         call elimhigh(7)
         call elim_5_5
         call elim_5_7_5
         call stats('thrid cycle - end')
-	call chkgrd('checking after high, 5-5, 5-7-5')
+	call chkgrd('third cycle - checking after high, 5-5, 5-7-5')
 	call node_info(kspecial)
 
 !  smoothing
@@ -268,7 +271,9 @@
         write(6,*) 'final smoothing...'
         write(6,*) '================================='
 
+	call chkgrd('third cycle - checking before smoothing')
         call smooth_grid(nsmooth,asmooth)
+	call chkgrd('third cycle - checking after smoothing')
 	if( bplot ) call plobas
 	call node_info(kspecial)
 
