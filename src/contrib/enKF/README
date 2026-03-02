@@ -1,9 +1,9 @@
 ============================================
-This is the README file for the ensemble 
+This is the README file for the ensemble
 Kalman Filter for the SHYFEM model
 ============================================
 
-    Copyright (c) 2017-2024 by 
+    Copyright (c) 2017-2026 by
 
     Marco Bajo
     Oceanography, ISMAR-CNR
@@ -17,34 +17,34 @@ Kalman Filter for the SHYFEM model
 
 
     This code is distributed under the conditions of the
-    GNU General Public License. 
+    GNU General Public License.
     See <http://www.gnu.org/licenses/>.
 
 
 Programs
 ===================
 
-- enKF.sh : main script to execute the assimilation;
-- shyfem_ens.sh : run many shyfem simulations using different str files with a
-  common basename;
-- split_exts.sh : split many ext files with a common basename;
-- merge_ens.sh : post-process ext and shy files in analysis, merging them;
-- mean_std_ts.sh : compute mean and std timeseries of an ensemble of
-  timeseries with a common basename;
-- perturbeBC : makes an ensemble of perturbed boundary conditions (lateral,
-  surface, fem-files, timeseries);
-- make_eof_ens_meteo : makes an ensemble of perturbed winds with PCA (to
-  check);
-- make_antime_list : make the antime_list.txt. Works only with timeseries.
-- enKF2enKS : Kalman Smoother from the output of Kalman Filter. Do not use
+- enKF.sh : main script to run the assimilation;
+- shyfem_ens.sh : run many SHYFEM simulations using different STR files
+  with a common basename;
+- split_exts.sh : split multiple EXT files with a common basename;
+- merge_ens.sh : post-process EXT and SHY files during the analysis,
+  merging all ensemble members;
+- mean_std_ts.sh : compute mean and standard deviation time series of an
+  ensemble of time series with a common basename;
+- perturbeBC : generate an ensemble of perturbed boundary conditions
+  (lateral, surface, FEM-files, time series);
+- make_eof_ens_meteo : create an ensemble of perturbed winds using PCA;
+- make_antime_list : create the file antime_list.txt (for time series only);
+- enKF2enKS : Kalman Smoother built from Kalman Filter output. Do not use
   with localisation.
 
 
 Before running the code
 ===================
 
-Install all the packages needed to compile SHYFEM, compile it and then
-install also the following software:
+Install all packages required to compile SHYFEM, compile the model, then
+install the following software:
 - parallel;
 - liblapack-dev;
 - libfftw3-dev.
@@ -53,46 +53,49 @@ install also the following software:
 Running the code
 ===================
 
-To run the code execute enKF.sh. The arguments (mandatory) are:
+To run the code, execute enKF.sh. The mandatory arguments are:
 
 Usage: enKF.sh [method] [localisation] [bas-file] [nlv] [n] [out]
 
-- method = 11|12|13|21|22|23. See: analysis.F90
+- method = 11|12|13|21|22|23       (see analysis.f90)
 - localisation = 0 (disable), 1 (enable)
-- bas-file = name of the basin bas file
-- nlv = number of vertical levels used in the simulations
+- bas-file = name of the basin BAS file
+- nlv = number of vertical levels in the simulations
 - n = number of threads
-- out = 0 saves only mean and std restarts, 1 save all the restarts (needed by enKS)
+- out = 0 saves only mean and std restarts
+        1 saves all restarts (required by enKS)
 
-Some files must be prepared before running enKF.sh:
+Before running enKF.sh, prepare the following files:
+
 
 ----------
 ens_list.txt
 ----------
-List of skel (to make the str) and restart initial files. Use the same name
-for the restart file in case of just one initial state and the generation 
-of the initial ensemble. For example:
+List of SKEL files (used to create STR files) and initial restart files.
+
+Example with one restart per member:
 
 medit_73830_S6_000.skel restart_000.rst
 medit_73830_S6_001.skel restart_001.rst
 medit_73830_S6_002.skel restart_002.rst
 ...
 
-or 
+Example using the same restart for the whole initial ensemble:
 
 medit_73830_S6_000.skel restart_000.rst
 medit_73830_S6_001.skel restart_000.rst
 medit_73830_S6_002.skel restart_000.rst
 ...
 
+
 ----------
 obs_list.txt
 ----------
-A list of observation files containing in each line:
-- a flag of the type of observation;
-- the name of the file.
+Each line contains:
+- a flag describing the observation type;
+- the file name.
 
-example:
+Example:
 
 0DLEV Ancona_obs_ass.dat
 0DLEV Bari_obs_ass.dat
@@ -100,120 +103,135 @@ example:
 0DLEV Catania_obs_ass.dat
 ...
 
-Possible flag for the observations are:
-- 0DLEV : sea level timeseries;
-- 0DTEM : surface temperature timeseries;
-- 0DSAL : surface salinity timeseries;
-- 2DVEL : FEM-file with 2D surface current fields (e.g., HFR radar).
+Supported flags:
+- 0DLEV : sea level time series;
+- 0DTEM : surface temperature time series;
+- 0DSAL : surface salinity time series;
+- 2DVEL : FEM-file with 2D surface currents (e.g., HF radar).
+
 
 ----------
 antime_list.txt
 ----------
-This file has a record of two rows. The first row contains the time in SHYFEM
-format and the number of observation files (length of obs_list.txt). The
-second row has a 0-1 mask with the obs files used in the current time step.
-The following rows have the same format for the following analysis steps, in
-ascending order.
-This speed-up the program in case of many files, use make_antime_list to
-create this file. If you don't want to use this option, prescribe a mask with
-only 1 values at each timestep.
+This file contains the analysis schedule.
+
+First row: SHYFEM time and number of observation files
+Second row: a 0-1 mask selecting observations used at that step
+Following rows: same format for subsequent analysis times (in ascending order)
+
+Use make_antime_list to generate this file automatically.
+If unused, prescribe a mask of all 1 values for each time step.
+
 
 ----------
 lbound.dat (optional)
 ----------
-This file is recommended and changes the analysis solution near the
-boundaries. Full background at the boundary nodes, full analysis at a
-determinate distance from the nodes (G-C function).
-Put the n. of nodes in the first row, then each row has the id of the node and a
-radius.
+Recommended.
+Controls how the analysis behaves near open boundaries:
+
+- full background at boundary nodes;
+- full analysis beyond a specified distance (G-C function).
+
+Format:
+first line : number of nodes
+next lines : node_id   radius
+
 
 ----------
-mod_err.info (optional - experimental, never used)
+mod_err.info (optional - experimental)
 ----------
-Set mode_an = 1 in mod_para.F90 to activate the model errors.
-This file is used to set the red noise parameters to propagate the model error,
-by using an augmented state.
-Warning!!! The routine make_2Dpert gives a segmentation fault.
+Enable by setting mode_an = 1 in mod_para.f90.
 
-mod_err.info must contain a row with:
+Defines red-noise model error parameters through an augmented state.
 
-  - nx ny fmult theta rerror dt tau
+Warning: routine make_2Dpert currently gives a segmentation fault.
 
-  where:
-  - nx,ny are the dimension of the grid of the pseudo random fields
-  - fmult is the mult factor to create a supersample from the initial ensemble
-  - theta is the rotation of the pseudo random fields (0 East, anticlockwise)
-  - rerror is the error relative to each value of the model variables. Use a
-    small one. At the moment just the water levels have errors.
-  - dt is the time between two observation steps (assumes regular intervals)
-  - tau is the e-folding time of the red noise in the model error
+Format (one row):
+
+  nx ny fmult theta rerror dt tau
+
+Meaning:
+- nx, ny   : grid size for pseudo-random fields
+- fmult    : factor to create a supersample
+- theta    : rotation angle (0 = East, anticlockwise)
+- rerror   : relative model error (currently only water levels)
+- dt       : time between observation steps
+- tau      : e-folding time of the red noise
+
 
 ----------
 skel files
 ----------
-These are files used to make the str files of the ensemble members during all
-the steps of the data assimilation. They should have the same settings of the
-restart files.
-It is extremely important that you write exactly the following linee:
+Skeleton files used to generate STR files during each analysis step.
+They must match the restart file settings exactly.
 
-- In the section $title the second line must contain the string: NAMESIM
+Required content:
 
-- In the section $para the following strings must be copied exectly:
-  itanf = 'ITANF'
-  itend = 'ITEND'
-  itrst = 'ITANF'
-  idtrst = IDTRST	(no quotation marks)
+In section $title :
+  the second line must contain the string: NAMESIM
 
-- In the section $name the following string must be copied exectly:
+In section $para :
+  itanf  = 'ITANF'
+  itend  = 'ITEND'
+  itrst  = 'ITANF'
+  idtrst = IDTRST     (no quotation marks)
+
+In section $name :
   restrt = 'RESTRT'
 
-If you want to save the results during the analysis add the following strings
-in $para:
-
-  itrst = 'ITANF'
-  itout = 'ITANF'
-  itext = 'ITANF'
-  itcon = 'ITANF'
+To save results during the analysis, add in $para :
+  itrst  = 'ITANF'
+  itout  = 'ITANF'
+  itext  = 'ITANF'
+  itcon  = 'ITANF'
   itmflx = 'ITANF'
 
-You can also use the SHYFEM program rst2shy to obtain shy files from the
-restarts.
+You can also use the SHYFEM utility rst2shy to generate SHY files from restarts.
+
 
 ----------
 Initial restart files
 ----------
-They must have one record at the time of the first analysis step. The first
-restart must be the control (unperturbed) run, the 0 ensemble member. 
-In order to create a good initial ensemble you can run an ensemble of
-simulations with different forcings and/or boundary conditions and save the
-restart at the first analysis step. The ensemble must be centered
-(mean ~ control).
+Each restart file must contain one record at the first analysis time.
+
+The first restart is the control (unperturbed) run, i.e. ensemble member 0.
+
+To create a good initial ensemble, run multiple simulations with perturbed
+forcings and/or boundary conditions and save the restart at the first
+analysis step.
+The ensemble should be centered: mean approximately equal to control.
+
 
 ----------
 Observation files
 ----------
-1)
-Sea level timeseries with time and value:
+
+1) Sea level time series:
 string-time1 value1
-string-time2 value2 
+string-time2 value2
 ...
 
-2)
-Fem file with a surface current field. Bad values should be flagged with a -999.
+2) Surface current fields (FEM-file):
+Bad or missing values must be flagged with -999.
+
 
 ----------
 Info observation files
 ----------
-For each observation file you need a file with some information about the
-observation. The filename must be [obsfile.info] (add the extention .info to the 
-obsfile).
-This file must contain in one row five numbers: x y z std rho_loc
-x, y, z = Coordinates of the observation, using the same coordinate system of the basin
-std = standard deviation (estimated error) of the observation
-rho_loc = radius for the local analysis (not used if isloc = 0 in
-mod_para.F90).
+For each observation file "name.ext" create a companion file named
+"name.ext.info".
+
+This file must contain one row:
+
+  x  y  z  std  rho_loc
+
+Where:
+- x, y, z = observation coordinates (same system as basin)
+- std     = observation error (standard deviation)
+- rho_loc = localisation radius (ignored if isloc = 0 in mod_para.f90)
+
 
 Parameters of the assimilation
 ===================
 
-See the file mod_para.F90 to set some assimilation parameters.
+See the file mod_para.f90 for all assimilation parameters.

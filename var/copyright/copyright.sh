@@ -19,9 +19,12 @@
 
 shydir=$HOME/shyfem
 copydir=$shydir/femcheck/copyright
+copydir=$shydir/var/copyright
 actdir=$( pwd )
 
 errors=0
+
+special="Makefile makefile README Rules.make Include.make TODO"
 
 #---------------------------------------------------------------
 #---------------------------------------------------------------
@@ -221,8 +224,6 @@ CheckSpecialType()
   echo "================================================"
 
   echo "--- printing all file types that are special files"
-
-  special="Makefile makefile README Rules.make Include.make"
 
   MakeFilesFromName $special
   FilterFiles /tmp/ /arc/ 
@@ -554,6 +555,7 @@ CheckRev()
   FilterFiles /femersem/
   FilterFiles /bugs/ /INPUT/
   FilterFiles /copyright_ .swp
+  FilterFiles $special
 
   $copydir/revision_log.sh $option $files
 }

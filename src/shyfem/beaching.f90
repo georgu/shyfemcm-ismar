@@ -29,6 +29,7 @@
 !
 ! 12.11.2025    ggu     created from scratch
 ! 13.11.2025    ggu     added burrying
+! 06.02.2026    ggu     routine made more general (rates for single area codes)
 !
 !**************************************************************
 
@@ -42,11 +43,13 @@
 
 	integer, save, allocatable :: beach_node(:)
 	integer, save, allocatable :: burry_node(:)
+	integer, save, allocatable :: node_area_code(:)
 	real, save, allocatable :: beach_value(:,:)
 	real, save, allocatable :: burry_value(:,:)
-	real, save :: beach_rate = 0.3
-	real, save :: burry_rate = 0.1
+	real, save, allocatable :: beach_rates(:)
+	real, save, allocatable :: burry_rates(:)
         double precision, save :: da_beach(5)
+	character*80, save :: what_beach
 
 !==============================================================
 	end module mod_beaching
@@ -73,68 +76,40 @@
 	logical is_open_boundary_node
         logical has_output_d
 
-	integer, allocatable :: node_area_code(:)
 	real, allocatable :: value(:)
 
 	if( .not. bbeach ) return
 
-	if( nkn_global /= 28301 ) then
+	if( nkn_global == 28301 ) then		!danube delta
+	  what_beach = 'danube'
+	else if( nkn_global == 13517 ) then	!curonian lagoon
+	  what_beach = 'curonian'
+	else
 	  write(6,*) 'beaching algorithm:'
 	  write(6,*) 'nkn_global = ',nkn_global
 	  write(6,*) 'using experimental code out of contest'
 	  write(6,*) 'this code is only good for black sea applications'
+	  what_beach = 'unknown'
 	  bbeach = .false.
 	  return
-	  !stop 'error stop beaching_init: nkn /= 28301'
 	end if
+
+	write(6,*) 'setting up beaching algorithm for ',trim(what_beach)
 
 	nvar = iconz
 	b2d = .true.
 
 	if( .not. bbeach_debug ) iudbg = 0
 
-	if( beach_rate + burry_rate > 1. ) then
-	  write(6,*) 'sum of beach_rate + burry_rate > 1'
-	  write(6,*) beach_rate,burry_rate,beach_rate+burry_rate
-	  stop 'error stop beaching_init: rate too high'
-	end if
-
-	allocate(beach_node(nkn))
-	allocate(burry_node(nkn))
+	allocate(node_area_code(nkn))
 	allocate(beach_value(nkn,nvar))
 	allocate(burry_value(nkn,nvar))
-	allocate(node_area_code(nkn))
-	allocate(value(nkn))
-	node_area_code = -1
         beach_value = 0
         burry_value = 0
 
-	do ie=1,nel
-	  ia = iarv(ie)
-	  do ii=1,3
-	    k = nen3v(ii,ie)
-	    node_area_code(k) = max(node_area_code(k),ia)
-	  end do
-	end do
-
-	call shympi_exchange_2d_node(node_area_code)
-
-	beach_node = 0
-	burry_node = 0
-
-	do k=1,nkn
-	  if( node_area_code(k) < 2 ) then
-	    burry_node(k) = 1
-	    if( is_material_boundary_node(k) ) then
-	      if( .not. is_open_boundary_node(k) ) then
-	        beach_node(k) = 1
-	      end if
-	    end if
-	  end if
-	end do
+	call beaching_rate_setup
+	call beaching_node_setup
 	
-	call shympi_exchange_2d_node(beach_node)
-
         call init_output_d('itmcon','idtcon',da_beach)
         if( has_output_d(da_beach) ) then
           call shyfem_init_scalar_file('beach',nvar,b2d,id)
@@ -145,6 +120,7 @@
 
 	if( .not. bbeach_debug ) return
 
+	allocate(value(nkn))
 	type = 'beachi'
 	dtime = 0.
 	value = beach_node
@@ -171,9 +147,10 @@
         implicit none
 
 	logical bwrite
-        integer k,ivar,id,iv,nvar,i,lmax
+        integer k,ivar,id,iv,nvar,i,lmax,ia
         real cb,db,c1
         real cu,du,cl
+	real beach_rate,burry_rate
         double precision dtime
         double precision cbsum,cusum
 	real, allocatable :: cmax1(:),cmaxl(:),bmax(:),umax(:)
@@ -192,6 +169,9 @@
 
         do k=1,nkn
 	  lmax = ilhkv(k)
+	  ia = node_area_code(k)
+	  beach_rate = beach_rates(ia)
+	  burry_rate = burry_rates(ia)
           do iv=1,nvar
             if( beach_node(k) > 0 ) then
               c1 = conzv(1,k,iv)
@@ -264,6 +244,172 @@
         end if
 
         end
+
+!**************************************************************
+!**************************************************************
+!**************************************************************
+
+	subroutine beaching_node_setup
+
+	use basin
+	use mod_beaching
+	use mod_geom
+	use shympi
+
+	implicit none
+
+	integer ie,ia,ii,k
+
+	logical is_open_boundary_node
+
+	write(6,*) 'setting up beaching nodes for ',trim(what_beach)
+
+!----------------------------------------------
+! create nodal code from area code
+!----------------------------------------------
+
+
+	node_area_code = -1
+
+	do ie=1,nel
+	  ia = iarv(ie)
+	  do ii=1,3
+	    k = nen3v(ii,ie)
+	    node_area_code(k) = max(node_area_code(k),ia)
+	  end do
+	end do
+
+	call shympi_exchange_2d_node(node_area_code)
+
+!----------------------------------------------
+! set flag on node if beaching/burrying is possible
+!----------------------------------------------
+
+	allocate(beach_node(nkn))
+	allocate(burry_node(nkn))
+
+	beach_node = 0
+	burry_node = 0
+
+	do k=1,nkn
+	  ia = node_area_code(k)
+	  if( burry_rates(ia) > 0. ) burry_node(k) = 1
+	  if( is_material_boundary_node(k) ) then
+	    if( .not. is_open_boundary_node(k) ) then
+	      if( beach_rates(ia) > 0. ) beach_node(k) = 1
+	    end if
+	  end if
+	end do
+	
+	call shympi_exchange_2d_node(beach_node)
+	call shympi_exchange_2d_node(burry_node)
+
+!----------------------------------------------
+! end of the routine
+!----------------------------------------------
+
+	end
+
+!**************************************************************
+!**************************************************************
+!**************************************************************
+
+	subroutine beaching_rate_setup
+
+        use basin
+	use mod_beaching
+
+	implicit none
+
+	integer iamax,ie,ia
+	real total_rate,max_rate
+
+	write(6,*) 'setting up beaching rates for ',trim(what_beach)
+
+	iamax = 0
+	do ie=1,nel
+	  ia = iarv(ie)
+	  if( ia > iamax ) iamax = ia
+	end do
+
+	allocate(beach_rates(0:iamax))
+	allocate(burry_rates(0:iamax))
+
+	beach_rates = 0
+	burry_rates = 0
+	
+	if( what_beach == 'curonian' ) then
+	  call beaching_rate_setup_curonian
+	else if( what_beach == 'danube' ) then
+	  call beaching_rate_setup_danube
+	else
+	  bbeach = .false.
+	end if
+
+	if( .not. bbeach ) return
+
+	write(6,*) 'final rates for beaching:'
+
+	max_rate = 0.
+	do ia=0,iamax
+	  total_rate = beach_rates(ia) + burry_rates(ia)
+	  max_rate = max(max_rate,total_rate)
+          write(6,*) ia,beach_rates(ia),burry_rates(ia),total_rate
+	  if( total_rate > 1. ) then
+            write(6,*) 'sum of beach_rate + burry_rate > 1 for ia = ',ia
+            stop 'error stop beaching_init: rate too high'
+	  else
+	    write(6,*) 
+	  end if
+	end do
+
+	if( max_rate == 0 ) bbeach = .false.
+
+	end 
+
+!**************************************************************
+
+	subroutine beaching_rate_setup_danube
+
+	use mod_beaching
+
+	implicit none
+
+	write(6,*) 'setting up beaching rates for danube'
+
+	! 0: razelm-sinoe lagoon
+	! 1: black sea
+	! 2: danube
+	! 3: inter-connection danube - lagoon
+
+	beach_rates(0) = 0.3
+	beach_rates(1) = 0.3
+	burry_rates(0) = 0.1
+	burry_rates(1) = 0.1
+
+	end
+
+!**************************************************************
+
+	subroutine beaching_rate_setup_curonian
+
+	use mod_beaching
+
+	implicit none
+
+	write(6,*) 'setting up beaching rates for curonian'
+
+	! 0: baltic sea
+	! 1: nemunas delta
+	! 2: curonian lagoon
+	! 3: reed belt
+
+	beach_rates(2) = 0.2
+	beach_rates(3) = 0.4
+	burry_rates(2) = 0.1
+	burry_rates(3) = 0.2
+
+	end
 
 !**************************************************************
 

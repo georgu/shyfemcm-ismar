@@ -2371,7 +2371,8 @@
         integer k,l,lmax
 
         integer, parameter :: nbin = 11
-        integer ic(nbin+1)
+        integer ic(nbin)
+        real ac(nbin)
         real, save :: bins(nbin) = (/1.,2.,5.,10.,15.,20.,30.,40.,50.,75.,100./)
 
         call histo_init(nbin,bins)
@@ -2383,9 +2384,11 @@
           end do
         end do
 
-        call histo_final(ic)
+        call histo_return(nbin,ac,ic)
 
-        write(98,*) it,ic
+        write(98,*) it
+        write(98,*) ac
+        write(98,*) ic
 
         end
 

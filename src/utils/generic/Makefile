@@ -143,6 +143,7 @@ cleanvar:
 	-rm -f fort.*
 	-rm -f gmon.out
 	-rm -f out.ps plot.ps
+	-rm -f out.1.ps
 
 cleanlib:
 	-rm -f $(LIB)
@@ -205,6 +206,7 @@ zip:	cleanall
 ../../../lib/mod/mod_error_stop.mod: errorstop.o
 ../../../lib/mod/mod_flood.mod: flood.o
 ../../../lib/mod/mod_histo.mod: histogram.o
+../../../lib/mod/mod_progress_bar.mod: progress.o
 ../../../lib/mod/mod_random.mod: random.o
 ../../../lib/mod/mod_reallocate.mod: reallocate.o
 ../../../lib/mod/mod_sort.mod: subsort.o
@@ -214,6 +216,7 @@ zip:	cleanall
 ../../../lib/mod/queue.mod: queue.o
 ../../../lib/mod/scan_string.mod: convert.o
 ../../../lib/mod/shyelab_unit.mod: unitutils.o
+../../../lib/mod/spline.mod: spline.o
 ../../../lib/mod/stack.mod: stack.o
 dates.o: ../../../lib/mod/iso8601.mod
 flood.o: ../../../lib/mod/mod_connect.mod \

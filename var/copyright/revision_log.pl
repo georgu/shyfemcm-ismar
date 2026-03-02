@@ -18,8 +18,8 @@
 #   header2		start with no date line after rev, emtpy if no rev
 # body
 
-use lib ("$ENV{SHYFEMDIR}/femcheck/copyright"
-		,"$ENV{HOME}/shyfem/femcheck/copyright");
+use lib ("$ENV{SHYFEMDIR}/var/copyright"
+		,"$ENV{HOME}/shyfem/var/copyright");
 
 use strict;
 use revision_log;

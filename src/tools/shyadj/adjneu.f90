@@ -33,6 +33,7 @@
 !  30.07.2015	ggu	changed VERS_7_1_83
 !  18.12.2018	ggu	changed VERS_7_5_52
 !  21.05.2019	ggu	changed VERS_7_5_62
+!  23.02.2026   ggu     checks to avoid negative areas
 ! 
 !  description :
 ! 
@@ -166,13 +167,13 @@
 
 	integer k
 
-	logical bdebug
+	logical bdebug_local
 	integer knew,kold,ie,ii,n,kk,i
 	integer kspecial
 
 	kspecial = 0
-	bdebug = .false.
-	if( k .eq. kspecial ) bdebug = .true.
+	bdebug_local = .false.
+	if( k .eq. kspecial ) bdebug_local = .true.
 
 	knew = k
 	kold = nkn
@@ -185,7 +186,7 @@
 	ygv(knew) = ygv(kold)
 	hkv(knew) = hkv(kold)
 
-	if( bdebug ) then
+	if( bdebug_local ) then
 	  write(6,*) 'delnod: ',knew,kold,nkn
 	end if
 

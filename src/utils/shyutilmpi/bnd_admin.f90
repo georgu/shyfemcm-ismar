@@ -145,6 +145,7 @@
 ! 20.03.2023	ggu	relax condition of no holes for ibtyp == 3
 ! 24.05.2023	ggu	in ckbnds() more debug, new boundary_debug()
 ! 03.12.2024	ggu	do not complain for holes in zeta boundary
+! 25.02.2026	ggu	updated documentation for nad
 !
 !************************************************************************
 
@@ -527,10 +528,13 @@
 ! |nad|			On the open boundaries it is sometimes convenient
 !			to not compute the non-linear terms in the momentum
 !			equation because instabilities may occur. Setting 
-!			the parameter |nad| to a value different from 0
+!			the parameter |nad| to a value different greater than 0
 !			indicates that in the first |nad| nodes from the
-!			boundary the non linear terms are switched off.
-!			(Default 0)
+!			boundary the non linear terms are switched off. For
+!			|nad=0| all terms are computed for the boundary. For
+!			the default value of -1 the value of |nad| is taken
+!			from the global value of !nadist|.
+!			(Default -1)
 
 	call addpar('nad',-1.)		!no advective terms for this boundary
 

@@ -96,7 +96,7 @@ ENKOBJ = analysis.o m_ensmean.o m_ensvar.o \
 	 m_multa.o m_random.o mod_anafunc.o
 
 SAMPOBJ = m_pseudo2D.o m_fixsample2D.o m_newton2D.o m_newtonfunc2D.o \
-	  m_sample2D.o mod_fftw3.o
+	  m_sample2D.o mod_fftw3.o m_set_random_seed2.o
           
 ENSOBJ = $(ENKOBJ) $(SAMPOBJ) subenkf.o mod_mod_err.o mod_enkf.o \
 	 mod_ens_state.o mod_init_enkf.o mod_manage_obs.o mod_mod_states.o \
@@ -128,6 +128,7 @@ ENSMOD = \
 	 $(MODDIR)/m_fixsample2d.mod \
 	 $(MODDIR)/mod_obs_states.mod \
 	 $(MODDIR)/mod_mod_states.mod \
+	 $(MODDIR)/m_set_random_seed2.mod \
 
 #-------------------- all the exec files
 
@@ -164,7 +165,7 @@ enKF2enKS: enKF2enKS.o
 #------------------- var
 
 depend:
-	@$(MAKEDEPEND) -moddir=$(MODDIR) *.F90
+	@$(MAKEDEPEND) -moddir=$(MODDIR) *.f90
 
 clean:
 	rm -f $(EXES) *.o $(ENSMOD)
@@ -243,7 +244,8 @@ m_sample2D.o: ../../../lib/mod/m_fixsample2d.mod \
 		../../../lib/mod/m_randrot.mod 
 main.o: ../../../lib/mod/mod_enkf.mod \
 		../../../lib/mod/mod_mod_err.mod \
-		../../../lib/mod/mod_restart.mod 
+		../../../lib/mod/mod_restart.mod \
+		../../../lib/mod/m_set_random_seed2.mod
 make_antime_list.o: ../../../lib/mod/iso8601.mod
 make_eof_ens_meteo.o: ../../../lib/mod/m_random.mod
 mod_anafunc.o: ../../../lib/mod/m_ensmean.mod \
