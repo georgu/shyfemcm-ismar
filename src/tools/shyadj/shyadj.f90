@@ -102,11 +102,15 @@
 
 ! -------------------------------------------------------------------
 
-!  parse command line
+!---------------------------------------------------------------
+! parse command line
+!---------------------------------------------------------------
 
         call shyadj_init(file,bplot,nsmooth,asmooth)
 
-!  read grid file with nodes and elements
+!---------------------------------------------------------------
+! read grid file with nodes and elements
+!---------------------------------------------------------------
 
 	call grd_read(file)
 	call grd_get_params(nk,ne,nl,nne,nnl)
@@ -121,7 +125,9 @@
 	allocate(ipaux(nkn),iaux(nel))
 	allocate(raux(nel))
 
-!  save depth information in elements to nodes
+!---------------------------------------------------------------
+! save depth information in elements to nodes
+!---------------------------------------------------------------
 
 	call mod_depth_init(nkn,nel)
 	call grd_get_depth(nk,ne,hkv,hev)
@@ -136,32 +142,40 @@
 	  call hev2hkv
 	end if
 
-!  determine grade
+!---------------------------------------------------------------
+! determine grade and boundary nodes
+!---------------------------------------------------------------
 
-	call maxgrd(nkn,nel,nen3v,ngr)
-
+	call maxgrd(nkn,nel,nen3v,ngr)	  !determines ngr (on bnd 1 too low)
 	write(6,*) 'maximum grade: ',ngr
-	call mod_adj_grade_init(nkn,ngr)
-
-	call setgrd(nkn,nel,nen3v,ngrade)
+	call mod_adj_grade_init(nkn,ngr)  !allocates global arrays
+	call setgrd(nkn,nel,nen3v,ngrade) !sets ngrade (still wrong on bnd)
 
 	call stats('first call')
 
-!  make boundary nodes (flag nbound)
+! make boundary nodes (flag nbound)
 
 	call mkbound(nkn,nel,ngrdi,nen3v,ngrade,nbound,ngri)
         call mkstatic(nkn,ianv,nbound)
+        write(6,*) 'grading nodes done'
 	call stats('boundary nodes')
 
 	call node_info(kspecial)
 
-!  plot grade
+!---------------------------------------------------------------
+! initialize plot
+!---------------------------------------------------------------
 
-	if( bplot ) call qopen
-
-	if( bplot ) call plobas
+	if( bplot ) then
+	  call qopen
+	  call plobas
+	end if
 
         !call smooth_grid(nsmooth,asmooth)	!only for debug
+
+!---------------------------------------------------------------
+! first cycle
+!---------------------------------------------------------------
 
 !  eliminate 4- grades
 
@@ -171,8 +185,10 @@
 
         write(6,*) 'start eliminating nodes ...'
 
-	call chkgrd('first cycle - checking original grid')
+	call chkgrd('first cycle - checking before low')
 	call elimlow
+	call chkgrd('first cycle - checking after low')
+
 	if( bplot ) call plobas
 	call stats('first cycle - 4- grades')
 	call node_info(kspecial)
@@ -181,20 +197,20 @@
 
 	call chkgrd('first cycle - checking before 8+')
 	call elimhigh(8)
+	call chkgrd('first cycle - checking after 8+')
+
 	if( bplot ) call plobas
 	call stats('first cycle - 8+ grades')
-
-	call chkgrd('first cycle - checking after 8+')
 	call node_info(kspecial)
 
 !  eliminate 7+ grades
 
 	call chkgrd('first cycle - checking before 7+')
 	call elimhigh(7)
+	call chkgrd('first cycle - checking after 7+')
+
 	if( bplot ) call plobas
 	call stats('first cycle - 7+ grades')
-
-	call chkgrd('first cycle - checking after 7+')
 	call node_info(kspecial)
 
 !  smoothing
@@ -203,67 +219,73 @@
 
 	call chkgrd('first cycle - checking before smoothing')
         call smooth_grid(nsmooth,asmooth)
+	call chkgrd('first cycle - checking after sdmoothing')
+
 	if( bplot ) call plobas
-	call chkgrd('first cycle - checking after smoothing')
 	call node_info(kspecial)
 
 	!call write_grid('new_smooth1.grd')
 
-!  again ...
+!---------------------------------------------------------------
+! second cycle
+!---------------------------------------------------------------
 
         write(6,*) '================================='
         write(6,*) 'second cycle...'
         write(6,*) '================================='
 
-	call chkgrd('checking at start of second cycle')
+	call chkgrd('second cycle - before low/high')
         call elimlow
 	call elimhigh(8)
 	call elimhigh(7)
+	call chkgrd('second cycle - after low/high')
+
 	if( bplot ) call plobas
 	call stats('second cycle - after elimhigh')
 	call node_info(kspecial)
 
 !  eliminate 5-5 grades
 
-	!call write_grid('new_help.grd')
-
 	call chkgrd('second cycle - checking before 5-5')
 	call elim_5_5
+	call chkgrd('second cycle - checking after 5-5')
+
 	if( bplot ) call plobas
 	call stats('second cycle - 5-5 grades')
-
-	call chkgrd('second cycle - checking after 5-5')
 	call node_info(kspecial)
 
 !  eliminate 5-7-5 grades
 
-	call write_grid('new_help1.grd')
-
+	call chkgrd('second cycle - checking before 5-7-5')
 	call elim_5_7_5
-	!call write_grid('new_help2.grd')
+	call chkgrd('second cycle - checking after 5-7-5')
+
 	if( bplot ) call plobas
 	call stats('second cycle - 5-7-5 grades')
-	call chkgrd('second cycle - checking after 5-7-5')
 	call node_info(kspecial)
 
-!  one more time
+!---------------------------------------------------------------
+! third cycle
+!---------------------------------------------------------------
 
         write(6,*) '================================='
         write(6,*) 'third cycle...'
         write(6,*) '================================='
 
-	!call write_grid('cycle3_start.grd')
-
-	call chkgrd('checking at start of thrid cycle')
+	call chkgrd('third cycle - checking before high, 5-5, 5-7-5')
 	call elimhigh(8)
         call elimhigh(7)
         call elim_5_5
         call elim_5_7_5
-        call stats('thrid cycle - end')
 	call chkgrd('third cycle - checking after high, 5-5, 5-7-5')
+
+	if( bplot ) call plobas
+        call stats('thrid cycle - end')
 	call node_info(kspecial)
 
-!  smoothing
+!---------------------------------------------------------------
+! final smoothing
+!---------------------------------------------------------------
 
 	call write_grid('final_before_smoothing.grd')
 
@@ -271,13 +293,16 @@
         write(6,*) 'final smoothing...'
         write(6,*) '================================='
 
-	call chkgrd('third cycle - checking before smoothing')
+	call chkgrd('final - checking before smoothing')
         call smooth_grid(nsmooth,asmooth)
-	call chkgrd('third cycle - checking after smoothing')
+	call chkgrd('final - checking after smoothing')
+
 	if( bplot ) call plobas
 	call node_info(kspecial)
 
-!  write to grd file
+!---------------------------------------------------------------
+! write to grd file
+!---------------------------------------------------------------
 
         write(6,*) '================================='
         write(6,*) 'writing to grid...'
@@ -296,6 +321,10 @@
 
 	write(6,*) 'Successful completion.'// &
      &			' Output has been written to adjust.grd'
+
+!---------------------------------------------------------------
+! end of routine
+!---------------------------------------------------------------
 
 	stop
    97	continue

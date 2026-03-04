@@ -64,22 +64,29 @@
 	implicit none
 
         integer k,n
+	integer ielim
+	logical bok
 
         write(6,*) 'eliminating grades for grade 5... '
+
+	ielim = 0
 
         do k=1,nkn
           n = ngrade(k)
           if( n .eq. 5 .and. nbound(k) .eq. 0 ) then
-            call elim55(k)
-	    call chkgrd('checking in 5 grade')
-          end if
+            call elim55(k,bok)
+	    if( bok ) ielim = ielim + 1
+	    if( bok ) call chkgrd('checking inside 5 grade')
+	  end if
         end do
+
+        write(6,*) ielim, ' nodes have been changed'
 
 	end
 
 ! ***********************************************************
 
-	subroutine elim55(k)
+	subroutine elim55(k,bok)
 
 !  eliminates 5-5 connections
 
@@ -89,6 +96,7 @@
 	implicit none
 
 	integer k
+	logical bok
 
 	logical berr
         integer n,i,nc,nmax,ii,ks,nks
@@ -107,6 +115,7 @@
 	integer ifindel
 
 	berr = .false.
+	bok = .false.
 
 	if( k .gt. nkn ) return
 
@@ -332,5 +341,9 @@
 	if( berr ) write(6,*) 'finished calling checkarea'
 	! should only check elements around ks -> we need element index
 
+	bok = .true.
+
 	end
+
+! ***********************************************************
 

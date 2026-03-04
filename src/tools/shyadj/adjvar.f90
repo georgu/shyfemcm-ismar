@@ -370,11 +370,34 @@
 	call checkarea(0,text)
 
 ! --------------------------------------------------
+!  compare total - computes new grade index and compares
+! --------------------------------------------------
+
+	if( bcheck_all ) then
+	  call mkbound(nkn,nel,ngrdi,nen3v,ngrade_aux,nbound_aux,ngri_aux)
+	  do k=1,nkn
+	    if( ngrade(k) /= ngrade_aux(k) ) goto 99
+	    if( nbound(k) /= nbound_aux(k) ) goto 99
+	    if( any(ngri(:,k) /= ngri_aux(:,k)) ) goto 99
+	  end do
+	end if
+
+! --------------------------------------------------
 !  end of routine
 ! --------------------------------------------------
 
         if( bverb ) write(6,*) 'check ok ...'
 
+	return
+   99	continue
+	write(6,*) 'inconsistency in grade index of node ',k,ngr
+	write(6,*) 'ngrade: ',ngrade(k),ngrade_aux(k)
+	write(6,*) 'nbound: ',nbound(k),nbound_aux(k)
+	write(6,*) 'ngri: '
+	write(6,*) ngri(:,k)
+	write(6,*) 'ngri_aux: '
+	write(6,*) ngri_aux(:,k)
+	stop 'error stop chkgrd: inconsistency'
 	end
 
 ! *******************************************************
@@ -536,6 +559,8 @@
 ! ****************************************************************
 
 	subroutine make_unique(n,list)
+
+	use mod_sort 
 
 	implicit none
 

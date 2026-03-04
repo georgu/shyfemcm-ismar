@@ -137,7 +137,7 @@ print STDERR "total elems: $::totelems\n";
 #-------------------------------------------------
 
 $grid->delete_unused();			#delete unused node
-$grid->writegrd("gsmh_msh.grd");
+$grid->writegrd("gmsh_msh.grd");
 
 #--------------------------------------
 #--------------------------------------

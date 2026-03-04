@@ -118,7 +118,7 @@
 !***********************************************************
 !***********************************************************
 
-      subroutine sort(n,ra)
+      subroutine sort_real(n,ra)
 
 ! heapsort (real, direct)
 
@@ -740,7 +740,7 @@
 	  if( bwrite ) write(6,*) i,ra(i)
 	end do
 
-        call sort(n,ra)
+        call sort_real(n,ra)
 
 	if( bwrite ) write(6,*) 1,ra(1)
 	do i=2,n

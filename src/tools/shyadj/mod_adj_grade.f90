@@ -42,11 +42,16 @@
 
 	logical, save :: bdebug = .false.
 	logical, save :: bcheck = .true.
+	logical, save :: bcheck_all = .true.	!checks grade index thorougly
 	logical, save :: bplot_error = .true.
 
-	integer, save, allocatable :: ngrade(:)
-	integer, save, allocatable :: nbound(:)
-	integer, save, allocatable :: ngri(:,:)
+	integer, save, allocatable :: ngrade(:)	!grade of node
+	integer, save, allocatable :: nbound(:)	!is boundary node (1)
+	integer, save, allocatable :: ngri(:,:)	!grid index on nodes
+
+	integer, save, allocatable :: ngrade_aux(:)	!grade of node
+	integer, save, allocatable :: nbound_aux(:)	!is boundary node (1)
+	integer, save, allocatable :: ngri_aux(:,:)	!grid index on nodes
 
 !===================================================================
 	contains
@@ -61,6 +66,10 @@
 	allocate(ngrade(nkn))
 	allocate(nbound(nkn))
 	allocate(ngri(2*ngr,nkn))
+
+	allocate(ngrade_aux(nkn))
+	allocate(nbound_aux(nkn))
+	allocate(ngri_aux(2*ngr,nkn))
 
 	end subroutine mod_adj_grade_init
 

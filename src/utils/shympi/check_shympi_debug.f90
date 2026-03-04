@@ -553,7 +553,7 @@
 
 	irec = irec + 1
 
-	if( .not. bquiet ) then
+	if( .not. bsilent ) then
 	  write(6,*) 'irec = ',irec,'  time = ',dtime
 	end if
 
@@ -879,8 +879,10 @@
 	text1 = textk
 	if( belem ) text1 = texte
 
-	write(6,*) 'differences found reading ',trim(text)
-	write(6,*) trim(text1) // trim(text2)
+	if( .not. bquiet ) then
+	  write(6,*) 'differences found reading ',trim(text)
+	  write(6,*) trim(text1) // trim(text2)
+	end if
 
 	ierr = 0
 	maxdif = 0.
@@ -898,9 +900,13 @@
 	  i = index(j)
 	  iv = 1 + mod((i-1),nv)
 	  ih = 1 + (i-1)/nv
-	  write(6,1000) 'diff: ',i,ih,iv,ipvv(ih),val1(i),val2(i)
+	  if( .not. bquiet ) then
+	    write(6,1000) 'diff: ',i,ih,iv,ipvv(ih),val1(i),val2(i)
+	  end if
 	end do
-	write(6,*) 'maximum difference: ',maxdif
+	if( .not. bquiet ) then
+	  write(6,*) 'maximum difference: ',maxdif
+	end if
 
  1000	format(a,4i8,2f18.6)
 	end
@@ -945,8 +951,10 @@
 	text1 = textk
 	if( belem ) text1 = texte
 
-	write(6,*) 'differences found reading ',trim(text)
-	write(6,*) trim(text1) // trim(text2)
+	if( .not. bquiet ) then
+	  write(6,*) 'differences found reading ',trim(text)
+	  write(6,*) trim(text1) // trim(text2)
+	end if
 
 	ierr = 0
 	maxdif = 0.
@@ -964,9 +972,13 @@
 	  i = index(j)
 	  iv = 1 + mod((i-1),nv)
 	  ih = 1 + (i-1)/nv
-	  write(6,1000) 'diff: ',i,ih,iv,ipvv(ih),val1(i),val2(i)
+	  if( .not. bquiet ) then
+	    write(6,1000) 'diff: ',i,ih,iv,ipvv(ih),val1(i),val2(i)
+	  end if
 	end do
-	write(6,*) 'maximum difference: ',maxdif
+	if( .not. bquiet ) then
+	  write(6,*) 'maximum difference: ',maxdif
+	end if
 
  1000	format(a,4i8,2f18.6)
 	end
@@ -1012,8 +1024,10 @@
 	text1 = textk
 	if( belem ) text1 = texte
 
-	write(6,*) 'differences found reading ',trim(text)
-	write(6,*) trim(text1) // trim(text2)
+	if( .not. bquiet ) then
+	  write(6,*) 'differences found reading ',trim(text)
+	  write(6,*) trim(text1) // trim(text2)
+	end if
 	if( iu > 0 ) write(iu,*) trim(text1) // trim(text2)
 
 	do i=1,nh*nv
@@ -1024,7 +1038,9 @@
 	  else if( val1(i) /= val2(i) ) then
 	    ierr = ierr + 1
 	    if( imax > 0 .and. ierr > imax ) cycle
-	    write(6,1000) 'diff: ',i,ih,iv,ipvv(ih),val1(i),val2(i)
+	    if( .not. bquiet ) then
+	      write(6,1000) 'diff: ',i,ih,iv,ipvv(ih),val1(i),val2(i)
+	    end if
 	  end if
 	end do
 
