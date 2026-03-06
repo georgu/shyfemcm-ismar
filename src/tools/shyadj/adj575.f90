@@ -37,6 +37,7 @@
 !  18.12.2018	ggu	changed VERS_7_5_52
 !  21.05.2019	ggu	changed VERS_7_5_62
 !  23.02.2026   ggu     checks to avoid negative areas
+!  06.03.2026   ggu     completely restructured
 ! 
 !  description :
 ! 
@@ -56,28 +57,45 @@
 !  eliminates 5-7-5 grades
 
 	use mod_adj_grade
+        use mod_progress_bar
 	use basin
 
 	implicit none
 
+	logical bok,bprog
         integer k,n
+	integer itot,ielim
+	real perc
+	character*10 string
 
-        write(6,*) 'eliminating grades for grade 5-7-5... '
+        bprog = bquiet .and. .not. bsilent
+        bprog = .not. bverbose .and. .not. bsilent
+
+        if( .not. bquiet ) write(6,*) 'eliminating 5-7-5 grades... '
+	if( bprog ) call progress_bar_init('elim575')
+
+	itot = 0
+	ielim = 0
 
         do k=1,nkn
+          perc = k/float(nkn)
+          if( bprog ) call progress_bar_print(k,nkn)
           n = ngrade(k)
           if( n .eq. 7 .and. nbound(k) .eq. 0 ) then
-            call elim575(k)
-	    call checkarea(k,'checking in 575 grade')
-	    !call chkgrd('checking in 575 grade')
+            call elim575(k,bok)
+            itot = itot + 1
+            if( bok ) ielim = ielim + 1
+	    !call chkgrd('checking in elim575')
           end if
         end do
+
+        if( bprog ) call progress_bar_finalize
 
 	end
 
 ! ***********************************************************
 
-	subroutine elim575(k)
+	subroutine elim575(k,bok)
 
 !  eliminates 5-7-5 connections
 ! 
@@ -89,8 +107,8 @@
 	implicit none
 
 	integer k
+	logical bok
 
-	logical berr
         integer n,i,nc,ii
 	integer ie,kk,iii,ks,nks
 	integer ip1,ip2,ipos
@@ -103,11 +121,11 @@
 	real x,y,xm,ym
 	real amax
 
+	bok = .false.
+
 	if( k .gt. nkn ) return
 
 	if( bdebug ) write(6,*) 'elim575 new node: ',k
-
-	berr = .false.
 
 !  make list
 
@@ -140,7 +158,7 @@
         nks = ngrade(ks)
         call check_angles(ks,nks,ngri(:,ks),amax,ipos)
         if( amax > 180 ) then
-          write(6,*) 'cannot eliminate... ks angle > 180'
+          if( bverbose ) write(6,*) 'cannot eliminate... ks angle > 180: ',k
           return
         end if
 
@@ -170,7 +188,9 @@
 	idp = ip2 - ip1
 	if( idp .le. 2 .or. idp .ge. 5 ) return
 
-	write(6,*) 'elim575: ',k,ip1,ip2,idp
+	if( bverbose ) write(6,*) 'elim575: ',k,ip1,ip2,idp
+
+	bok = .true.
 
 	if( bdebug ) then
 	  write(6,*) ngav(ip1),ngav(ip2)
@@ -178,8 +198,6 @@
 	  write(6,'(7i10)') (ngrv(i),i=1,7)
 	  write(6,'(7i10)') (nbav(i),i=1,7)
 	end if
-
-! 	call plosno(k)
 
 !  reorder node list
 !  node 1 is a 5-grade, and node 5 is a 5-grade
@@ -224,22 +242,32 @@
 !  adjust grade index of old node (5 grade)
 
 	call delgr(k,ngav(2),ngrdi,ngrade,ngri)
+	n = ngrade(k)
 	call delgr(k,ngav(3),ngrdi,ngrade,ngri)
+	n = ngrade(k)
 	call delgr(k,ngav(4),ngrdi,ngrade,ngri)
+	n = ngrade(k)
 	call insgr(k,ngav(1),nkn,ngrdi,ngrade,ngri)
+	n = ngrade(k)
 
 !  adjust grade index of new node (6 grade)
 
+	ngri(:,nkn) = 0
 	do i=1,5
 	  ngri(i,nkn) = ngav(i)
 	end do
-	ngri(6,nkn) = k
-	ngrade(nkn) = 6
+	n = 6
+	ngri(n,nkn) = k
+	ngrade(nkn) = n
+	call resort_index(n,ngri(:n,nkn))
 
 !  adjust grade index of 5-5 nodes
 
+	n = ngrade(k)
 	call insgrb(ngav(1),k,nkn,ngrdi,ngrade,ngri)
+	n = ngrade(k)
 	call insgr(ngav(5),k,nkn,ngrdi,ngrade,ngri)
+	n = ngrade(k)
 
 !  substitute new node in grade index of nodes close to new node
 
@@ -265,10 +293,6 @@
 	ygv(k) = ym + (1./3.) * ( y - ym )
 	xgv(nkn) = xm + (2./3.) * ( x - xm )
 	ygv(nkn) = ym + (2./3.) * ( y - ym )
-
-! 	call plosel2(nel-1,nel)
-
-! 	call node_debug(k,nkn,nel,nen3v,xgv,ygv)
 
 	end
 

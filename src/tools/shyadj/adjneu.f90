@@ -34,6 +34,7 @@
 !  18.12.2018	ggu	changed VERS_7_5_52
 !  21.05.2019	ggu	changed VERS_7_5_62
 !  23.02.2026   ggu     checks to avoid negative areas
+!  06.03.2026   ggu     completely restructured
 ! 
 !  description :
 ! 
@@ -201,10 +202,7 @@
 
 	ngrade(knew) = ngrade(kold)
 	nbound(knew) = nbound(kold)
-	n = ngrade(kold)
-	do i = 1,n
-	  ngri(i,knew) = ngri(i,kold)
-	end do
+	ngri(:,knew) = ngri(:,kold)
 
 	do kk=1,nkn
 	  n = ngrade(kk)

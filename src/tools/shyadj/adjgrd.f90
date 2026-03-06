@@ -61,6 +61,7 @@
 !  30.07.2015	ggu	changed VERS_7_1_83
 !  18.12.2018	ggu	changed VERS_7_5_52
 !  21.05.2019	ggu	changed VERS_7_5_62
+!  06.03.2026   ggu     completely restructured
 ! 
 ! ***********************************************************
 
@@ -124,7 +125,7 @@
 
 ! ***********************************************************
 
-	subroutine statgrd(text,nkn,nmax,ngrade,nbound)
+	subroutine statgrd(iu,text,nkn,nmax,ngrade,nbound)
 
 !  computes statistics on grade
 
@@ -132,6 +133,7 @@
 
 	implicit none
 
+	integer iu
 	character*(*) text
 	integer nkn,nmax
 	integer ngrade(nkn)
@@ -144,6 +146,8 @@
 	integer i,k,n,nb
 	integer naux,ndiff
 	integer nin,nbn,nto,nis
+	integer nnmin,nnmax
+	logical, save :: bvertical = .false.
 
 	do i=0,nmax
 	  nsa(i) = 0
@@ -154,9 +158,13 @@
 	nin = 0			! total number of internal nodes
 	nbn = 0			! total number of boundary nodes
 	nto = 0			! total grade
+	nnmin = nmax
+	nnmax = 0
 
 	do k=1,nkn
 	  n = ngrade(k)
+	  if( n > nnmax ) nnmax = n
+	  if( n < nnmin ) nnmin = n
 	  nb = nbound(k)	! = 1 if on boundary
 	  if( nb .eq. nbstatic ) nb = 0	!NBSTATIC
 	  nto = nto + n
@@ -181,13 +189,24 @@
 	ndiff = nto-naux	! must be divisible by 6, -6 for no island
 	nis = ndiff/6 + 1	! total number of islands
 
-	write(6,'(a,a)') 'statistics on grades: ',text
-	write(6,'(5x,a)') '  internal  boundary   islands    total grade'
-	write(6,'(5x,3i10,i15)') nin,nbn,nis,nto
-	write(6,'(3x,a)') 'grade       all  internal  boundary'
-	do i=0,nmax
-	  write(6,'(3x,i5,3i10)') i,nsa(i),nsi(i),nsb(i)
-	end do
+	if( bvertical ) then
+	  write(iu,'(a,a)') 'statistics on grades: ',text
+	  write(iu,'(5x,a)') '  internal  boundary   islands    total grade'
+	  write(iu,'(5x,3i10,i15)') nin,nbn,nis,nto
+	  write(iu,'(3x,a)') 'grade       all  internal  boundary'
+	  do i=nnmin,nnmax
+	    write(iu,'(3x,i5,3i10)') i,nsa(i),nsi(i),nsb(i)
+	  end do
+	else
+	  nsa(9) = sum(nsa(9:nnmax))
+	  nsb(9) = sum(nsb(9:nnmax))
+	  nsi(9) = sum(nsi(9:nnmax))
+	  write(iu,'(a,a)') 'statistics on grades: ',text
+	  write(iu,'(a,8i8,a)') ' grade ',(i,i=2,9),'+'
+	  write(iu,'(a,8i8)') ' total ',(nsa(i),i=2,9)
+	  write(iu,'(a,8i8)') ' bound ',(nsb(i),i=2,9)
+	  write(iu,'(a,8i8)') ' inner ',(nsi(i),i=2,9)
+	end if
 
 	if( mod(ndiff,6) .ne. 0 .and. nbn .gt. 0 ) then	!not on first call
 	  write(6,*) 'error in element layout'
@@ -441,18 +460,19 @@
 
 	do i=1,n
 	  kn = ngri(i,k)
-	  if( kn .eq. kgr) goto 1
+	  if( kn .eq. kgr) exit
 	end do
 
-	write(6,*) k,kgr,n,ngrddi
-        call nint2ext(k,kext)
-        write(6,*) 'int/ext k: ',k,kext
-        call nint2ext(kgr,kext)
-        write(6,*) 'int/ext kgr: ',kgr,kext
-        write(6,*) (ngri(i,k),i=1,n)
-	stop 'error stop nextgr: no such node'
+	if( i > n ) then
+	  write(6,*) k,kgr,n,ngrddi
+          call nint2ext(k,kext)
+          write(6,*) 'int/ext k: ',k,kext
+          call nint2ext(kgr,kext)
+          write(6,*) 'int/ext kgr: ',kgr,kext
+          write(6,*) (ngri(i,k),i=1,n)
+	  stop 'error stop nextgr: no such node'
+	end if
 
-    1	continue
 	i = i + 1
 	if( i .gt. n ) i = 1
 	nextgr = ngri(i,k)
@@ -514,14 +534,14 @@
 	    ngri(i-idiff,k) = ngri(i,k)
 	  end if
 	end do
-	ngri(n,k) = 0
-	n = n - 1
 
 	if( idiff .eq. 0 ) then
 	  write(6,*) k,kold
 	  stop 'error stop delgr: no such node'
 	end if
 
+	ngri(n,k) = 0
+	n = n - 1
 	call resort_index(n,ngri(:n,k))
 
 	end

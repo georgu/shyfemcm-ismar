@@ -35,6 +35,7 @@
 !  18.12.2018	ggu	changed VERS_7_5_52
 !  21.05.2019	ggu	changed VERS_7_5_62
 !  23.02.2026	ggu	checks to avoid negative areas
+!  06.03.2026	ggu	completely restructured
 ! 
 !  description :
 ! 
@@ -54,54 +55,68 @@
 !  eliminates grade=4 nodes (and less)
 
 	use mod_adj_grade
+	use mod_progress_bar
 	use basin
 
 	implicit none
 
-	logical b3
+	logical bok,bprog
 	integer k,n,nc
+	integer itot,ielim
+	real perc
 
-!  iterate over 3 grades as long as there is no 3 grade node left
+	bprog = bquiet .and. .not. bsilent
+	bprog = .not. bverbose .and. .not. bsilent
 
-	write(6,*) 'eliminating 3 grades...'
+	if( .not. bquiet ) write(6,*) 'eliminating 3 grades...'
+	if( bprog ) call progress_bar_init('elim3')
 
-	b3 = .true.
-	do while( b3 )
-	 b3 = .false.
-	 nc = 0
-	 do k=1,nkn
+	itot = 0
+	ielim = 0
+
+	do k=1,nkn
+          perc = k/float(nkn)
+          if( bprog ) call progress_bar_print(k,nkn)
 	  if( nbound(k) .eq. 0 ) then
 	    n = ngrade(k)
 	    if( n .eq. 3 ) then
-	      call elim3(k)
-	      b3 = .true.
-	      nc = nc + 1
+	      call elim3(k,bok)
+	      itot = itot + 1
+	      if( bok ) ielim = ielim + 1
 	    end if
 	  end if
-	 end do
 	end do
 
-	call chkgrd('checking after 3 grades')
+	if( bprog ) call progress_bar_finalize
+	if( .not. bsilent ) write(6,*) 'nodes eliminated: ',ielim,' of ',itot
 
-	write(6,*) 'eliminating 4 grades...'
+	if( .not. bquiet ) write(6,*) 'eliminating 4 grades...'
+	if( bprog ) call progress_bar_init('elim4')
+
+	itot = 0
+	ielim = 0
 
 	do k=1,nkn
+          perc = k/float(nkn)
+          if( bprog ) call progress_bar_print(k,nkn)
 	  if( nbound(k) .eq. 0 ) then
 	    n = ngrade(k)
 	    if( n .eq. 4 ) then
-	      call elim4(k)
-	      if( bcheck ) call chkgrd(' ')
+	      call elim4(k,bok)
+	      itot = itot + 1
+	      if( bok ) ielim = ielim + 1
 	    end if
 	  end if
 	end do
 
-	call chkgrd('checking after 4 grades')
+	if( bprog ) call progress_bar_finalize
+	if( .not. bsilent ) write(6,*) 'nodes eliminated: ',ielim,' of ',itot
 
 	end
 
 ! ***********************************************************
 
-	subroutine elim3(k)
+	subroutine elim3(k,bok)
 
 !  eliminates node and all attached elements
 
@@ -111,6 +126,7 @@
 	implicit none
 
 	integer k
+	logical bok
 
 	integer i,n,kk,ie
 	integer neibs(ngr),ngneib(ngr)
@@ -122,7 +138,8 @@
 	n = ngrade(k)
 	if( n .ne. 3 ) stop 'error stop elim3: not grade 3'
 
-	write(6,*) k,n
+	bok = .true.
+	if( bverbose ) write(6,*) 'elim3 ',k,n
 
 	do i=1,n
 	  neibs(i) = ngri(i,k)
@@ -158,7 +175,7 @@
 
 ! ***********************************************************
 
-	subroutine elim4(k)
+	subroutine elim4(k,bok)
 
 !  eliminates node
 
@@ -168,6 +185,7 @@
 	implicit none
 
 	integer k
+	logical bok
 
 	integer i,n,k1,k2
 	integer ipos,ipos1,ipos2,iposa
@@ -180,6 +198,8 @@
 
 	if( k .gt. nkn ) return
 
+	bok = .false.
+
 	n = ngrade(k)
 
 	do i=1,n
@@ -190,7 +210,6 @@
 	call check_angles(k,n,neibs,amax,iposa)
 	if( amax < 180 ) iposa = 0
 	if( iposa > 2 ) iposa = iposa - 2
-	if( iposa > 0 ) write(6,*) 'angle>180: ',iposa
 
 !  we have two solutions -> eliminate 1/3 or 2/4 connection
 ! 	can eliminate only if grade on both nodes is at least 6
@@ -200,7 +219,6 @@
 	ipos2 = 0
 	if( ngneib(2) .ge. 6 .and. ngneib(4) .ge. 6 ) ipos2 = 1
 
-	if( iposa > 0 ) write(6,*) 'A ipos1,ipos2: ',ipos1,ipos2
 	if( ipos1*ipos2 .eq. 0 ) then	!at least one not possible
 	  if( ipos1+ipos2 .eq. 0 ) then	!none possible
 		ipos = 0
@@ -233,15 +251,12 @@
 	end if
 
 	if( ipos .eq. 0 ) then
-		write(6,*) 'Cannot eliminate node: ',k
-! 		write(6,*) (neibs(i),i=1,4)
-! 		write(6,*) (ngneib(i),i=1,4)
+		if( bverbose ) write(6,*) 'Cannot eliminate node: ',k
 	else if( ipos1 .eq. ipos2 ) then
 ! 		write(6,*) 'Both solutions equivalent; first chosen'
 	else
 ! 		write(6,*) 'Best solutions: ',ipos
 	end if
-	write(6,*) 'node: ',k,n,ipos
 
 	if( bdebug ) then
 	  write(6,*) 'poss: ',ipos1,ipos2
@@ -249,9 +264,13 @@
 	  write(6,*) 'grade: ',(ngneib(i),i=1,n)
 	end if
 
+	if( ipos .eq. 0 ) return
+
 !  now we have the information -> eliminate node
 
-	if( ipos .eq. 0 ) return
+	bok = .true.
+
+	if( bverbose ) write(6,*) 'elim4: ',k,n,ipos
 
 !  get element numbers and index -> ielem, ieind
 
@@ -294,8 +313,6 @@
 	end do
 	end if
 
-! 	write(6,*) '***',1764,(nen3v(ii,1764),ii=1,3)
-
 !  copy new elements -> still need to copy hev,...
 
 	do i=1,2
@@ -303,16 +320,12 @@
 	  call setele(ie,ienew(1,i),ienew(2,i),ienew(3,i),nen3v)
 	end do
 
-! 	write(6,*) '***',1764,(nen3v(ii,1764),ii=1,3)
-
 !  nodes that change grade -> adjust
 
 	do ip=ipos,4,2
 	  kk = neibs(ip)
 	  call delgr(kk,k,ngrdi,ngrade,ngri)
 	end do
-
-! 	write(6,*) '***',1764,(nen3v(ii,1764),ii=1,3)
 
 !  nodes that do not change grade -> exchange information
 
@@ -324,8 +337,6 @@
 	call exchgr(k1,k,k2,ngrdi,ngrade,ngri)
 	call exchgr(k2,k,k1,ngrdi,ngrade,ngri)
 
-! 	write(6,*) '***',1764,(nen3v(ii,1764),ii=1,3)
-
 !  eliminate other two elements
 !  here we must count downward, otherwise, if the last element
 !  to be eliminated is number nel, we will have a bug
@@ -335,13 +346,9 @@
 	  call delele(ie)
 	end do
 
-! 	write(6,*) '***',1764,(nen3v(ii,1764),ii=1,3)
-
 !  eliminate node
 
 	call delnod(k)
-
-! 	write(6,*) '***',1764,(nen3v(ii,1764),ii=1,3)
 
 	end
 	
@@ -388,14 +395,6 @@
 	end if
 
 	call unifel(k,ieind(1,ip(1)),ieind(1,ip(2)),ienew(1,2))
-
-! 	write(6,*) 'el4to2: ',k,k1,k2
-! 	do i=1,4
-! 	  write(6,*) (ieind(ii,i),ii=1,3)
-! 	end do
-! 	do i=1,2
-! 	  write(6,*) (ienew(ii,i),ii=1,3)
-! 	end do
 
 	end
 
@@ -446,11 +445,6 @@
 	  write(6,*) (ik2(ii),ii=1,3)
 	  stop 'error stop unifel: no second common node'
 	end if
-
-! 	write(6,*) 'unifel : ',k
-! 	  write(6,*) (ik1(ii),ii=1,3)
-! 	  write(6,*) (ik2(ii),ii=1,3)
-! 	  write(6,*) (inew(ii),ii=1,3)
 
 	end
 

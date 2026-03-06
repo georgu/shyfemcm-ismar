@@ -30,7 +30,8 @@
 ! 30.07.2015	ggu	written
 ! 18.12.2018	ggu	changed VERS_7_5_52
 ! 21.05.2019	ggu	changed VERS_7_5_62
-! 23.02.2026   ggu     checks to avoid negative areas
+! 23.02.2026    ggu     checks to avoid negative areas
+! 06.03.2026    ggu     completely restructured
 !
 !--------------------------------------------------------------------------
 
@@ -40,10 +41,20 @@
 
 	integer, save :: ngrdi = 0
 
+	logical, save :: bverbose = .false.
+	logical, save :: bquiet = .false.
+	logical, save :: bsilent = .false.
+	logical, save :: bplot = .false.
+
 	logical, save :: bdebug = .false.
-	logical, save :: bcheck = .true.
-	logical, save :: bcheck_all = .true.	!checks grade index thorougly
-	logical, save :: bplot_error = .true.
+	logical, save :: bcheck = .false.
+	logical, save :: bcheck_all = .false.	!checks grade index thorougly
+	logical, save :: bplot_error = .true.	!plots vicinity on error
+
+	integer, save :: iugrade = 6		!unit to write grade stats
+
+	integer, save :: nsmooth = 50
+	real, save :: asmooth = 0.01
 
 	integer, save, allocatable :: ngrade(:)	!grade of node
 	integer, save, allocatable :: nbound(:)	!is boundary node (1)
