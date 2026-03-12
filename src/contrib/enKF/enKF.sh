@@ -152,9 +152,11 @@ Read_ens_list
 Read_antime_list
 
 # Assimilation cycle for every analysis time step
+echo "running Assimilation cycle..."
+
 rm -f X5*.uf backKF_*.rst analKF_*.rst
 for (( na = 1; na <= nran; na++ )); do
-   echo -e "\n--- STEP $na OF $nran ---"
+   echo -e "\n--- Assimilation cycle STEP $na OF $nran ---"
 
    Write_obs_file "$na"
 
@@ -165,7 +167,7 @@ for (( na = 1; na <= nran; na++ )); do
 
    # 2. FORECAST (only if not the last step)
    if [ "$na" -ne "$nran" ]; then
-      echo "[FORECAST] Advancing ensemble..."
+      echo "[FORECAST] Advancing ensemble... $na/$nran"
       str_list=""
       for (( ne = 0; ne < nrens; ne++ )); do
          nel=$(printf "%05d" "$ne"); nal=$(printf "%05d" "$na")
@@ -205,7 +207,7 @@ for (( na = 1; na <= nran; na++ )); do
    cat $filename1 >> analKF_mean.rst
    cat $filename2 >> analKF_std.rst
    rm -f $filename1 $filename2
-   rm -f an*_en*b.inf an*_en*.log an*_en*b.str 
-
+   #rm -f an*_en*b.inf an*_en*.log an*_en*b.str 
+   rm -f an*_en*b.inf 
 done
 echo -e "\n[SUCCESS] All files saved in the current directory."

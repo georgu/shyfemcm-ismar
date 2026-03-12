@@ -101,6 +101,7 @@
 ! 08.03.2025    ggu     extracted mod_restart in its own file
 ! 09.03.2025    ggu     call shympi_barrier after finishing restart file
 ! 15.11.2025	ggu	check compatibility of concentrations
+! 12.03.2026	ggu	bug fix: use nlv in rst_read_vertical()
 !
 ! notes :
 !
@@ -936,7 +937,7 @@
           if( nelaux .ne. nel_global ) goto 99
           if( nlvaux .ne. nlv_global ) goto 99
 
-	  call rst_read_vertical(iunit,nvers,nkn,nel,nlv)
+	  call rst_read_vertical(iunit,nvers,nkn,nel,nlvaux)
 
 	  id = id_hydro_rst
 	  call rst_add_flag(id,iflag)
@@ -1199,7 +1200,7 @@
 	logical, parameter :: bn = .false.
 
 	if( .not. allocated(hlvrst) ) then
-	  allocate(hlvrst(nlv_global))
+	  allocate(hlvrst(nlv))
 	  allocate(ilhrst(nel))
 	  allocate(ilhkrst(nkn))
 	  hlvrst = 0.
@@ -1240,7 +1241,7 @@
 	if( nkn <= 0 .or. nel <= 0 .or. nlv <= 0 ) goto 98
 
 	if( .not. allocated(hlvrst) ) then
-	  stop 'error stop rst_get_hlv: hlvrst not allocated'
+	  stop 'error stop rst_get_vertical: hlvrst not allocated'
 	end if
 	if( nlv /= size(hlvrst) ) goto 99
 	if( nkn /= size(ilhkrst) ) goto 99
@@ -1253,12 +1254,12 @@
 	return
    98	continue
 	write(6,*) 'nkn,nel,nlv: ',nkn,nel,nlv
-	stop 'error stop rst_get_hlv: error in parameters'
+	stop 'error stop rst_get_vertical: error in parameters'
    99	continue
 	write(6,*) 'nkn: ',nkn,size(ilhkrst)
 	write(6,*) 'nel: ',nel,size(ilhrst)
 	write(6,*) 'nlv: ',nlv,size(hlvrst)
-	stop 'error stop rst_get_hlv: arrays not compatible'
+	stop 'error stop rst_get_vertical: arrays not compatible'
 	end 
 
 !*******************************************************************

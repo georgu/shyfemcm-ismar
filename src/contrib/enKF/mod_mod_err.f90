@@ -110,7 +110,8 @@ contains
     fmult  = fmult_er
     theta  = theta_er
 
-    call make_2Dpert(kvec, nnkn, nrens, fmult, theta, nx, ny)
+    !call make_2Dpert(kvec, nnkn, nrens, fmult, theta, nx, ny)	!ggu bug
+    call make_2Dpert(kvec, nnkn, nrens)
 
     allocate(qA(nrens))
     do ne = 1, nrens

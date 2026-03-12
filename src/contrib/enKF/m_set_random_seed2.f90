@@ -160,4 +160,25 @@ contains
     deallocate(seed, stat=istat)
   end subroutine init_random_seed_persistent
 
+  subroutine init_random_seed_constant
+
+        implicit none
+        integer n,i
+        integer, allocatable :: seed(:)
+        integer, save :: icall = 0
+
+        if( icall > 0 ) return
+        icall = icall + 1
+
+        call RANDOM_SEED(size=n)
+
+        write(6,*) 'seed size = ',n
+        allocate(seed(n))
+        do i=1,n
+          seed(i) = i*2
+        end do
+        call RANDOM_SEED(put=seed)
+
+  end subroutine init_random_seed_constant
+
 end module m_set_random_seed2

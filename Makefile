@@ -73,6 +73,7 @@ FEMUTIL   = $(REGRESSDIR) femdoc fembin femlib femanim
 FEMOPT    = femgotm femersem
 FEMEXTRA  = 
 PARAMDIRS = fem3d femplot femadj #femspline
+ENKFDIR   = src/contrib/enKF
 
 ifeq ($(useX11),false)
   FEMGRID = 
@@ -128,6 +129,9 @@ compile: shyfem
 fem: shyfem
 shyfem: checkv libmod
 	cd src; make
+
+enkf: checkv libmod
+	cd $(ENKFDIR); make
 
 para_get:
 	@cd fempara; ./para_get.sh $(PARADIR)
@@ -204,7 +208,7 @@ cleanlocal:
 	-rm -f errout.dat a.out plot.ps
 	-rm -f .memory
 
-clean: cleanlocal
+clean: cleanlocal cleanenkf
 	$(FEMBIN)/recursivemake $@ $(SUBDIRS)
 
 cleanall: cleanlocal cleanregress
@@ -214,6 +218,9 @@ cleandist: cleanall
 
 cleanregress:
 	if [ -d $(REGRESSDIR) ]; then cd $(REGRESSDIR); make cleanall; fi
+
+cleanenkf:
+	cd $(ENKFDIR); make cleanall
 	
 cleanbck:
 	-rm -rf *.bck

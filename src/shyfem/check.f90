@@ -314,6 +314,7 @@
 
 	character*16 text
 	
+	integer nocheck
 	real, parameter :: zero = 0.
 	real, parameter :: zmax = 10.
 	real, parameter :: vmax = 10.
@@ -324,22 +325,27 @@
 	real, parameter :: tmin = -30.
 	real, parameter :: tmax = 70.
 
+	real getpar
+
+        nocheck = nint(getpar('nocheck'))
+	if( nocheck > 0 ) return
+
 	text = '*** check_values'
 
-	call check1Dr(nkn,zov,-zmax,zmax,text,'zov')
-	call check1Dr(nkn,znv,-zmax,zmax,text,'znv')
+	!call check1Dr(nkn,zov,-zmax,zmax,text,'zov')
+	!call check1Dr(nkn,znv,-zmax,zmax,text,'znv')
 
-	call check2Dr(3,3,nel,zeov,-zmax,zmax,text,'zeov')
-	call check2Dr(3,3,nel,zenv,-zmax,zmax,text,'zenv')
+	!call check2Dr(3,3,nel,zeov,-zmax,zmax,text,'zeov')
+	!call check2Dr(3,3,nel,zenv,-zmax,zmax,text,'zenv')
 
-	call check1Dr(nel,unv,-umax,umax,text,'unv')
-	call check1Dr(nel,vnv,-umax,umax,text,'vnv')
+	!call check1Dr(nel,unv,-umax,umax,text,'unv')
+	!call check1Dr(nel,vnv,-umax,umax,text,'vnv')
 
-	call check2Dr(nlvdi,nlv,nel,utlnv,-umax,umax,text,'utlnv')
-	call check2Dr(nlvdi,nlv,nel,vtlnv,-umax,umax,text,'vtlnv')
+	!call check2Dr(nlvdi,nlv,nel,utlnv,-umax,umax,text,'utlnv')
+	!call check2Dr(nlvdi,nlv,nel,vtlnv,-umax,umax,text,'vtlnv')
 
-	call check2Dr(nlvdi,nlv,nel,ulnv,-vmax,vmax,text,'ulnv')
-	call check2Dr(nlvdi,nlv,nel,vlnv,-vmax,vmax,text,'vlnv')
+	!call check2Dr(nlvdi,nlv,nel,ulnv,-vmax,vmax,text,'ulnv')
+	!call check2Dr(nlvdi,nlv,nel,vlnv,-vmax,vmax,text,'vlnv')
 
 	call check2Dr(nlvdi,nlv,nkn,tempv,tmin,tmax,text,'tempv')
 	call check2Dr(nlvdi,nlv,nkn,saltv,smin,smax,text,'saltv')

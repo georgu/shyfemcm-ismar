@@ -16,11 +16,11 @@ module mod_ens_state
    type(states) :: Abk_std, Aan_std
 
    ! Interface to external single-precision function ipint (from subnsu.f)
-   interface
-      integer function ipint(i)
-         integer, intent(in) :: i
-      end function ipint
-   end interface
+   !interface
+   !   integer function ipint(i)
+   !      integer, intent(in) :: i
+   !   end function ipint
+   !end interface
 
 contains
 
@@ -40,6 +40,7 @@ subroutine read_ensemble()
    character(len=5) :: nrel, nal
    character(len=200) :: rstname
    integer :: ne
+   logical :: bexist
 
 
    !-----------------------------
@@ -74,6 +75,11 @@ subroutine read_ensemble()
       do ne = 1, nrens
          call num2str(ne-1, nrel)
          rstname = 'an'//nal//'_'//'en'//nrel//'b.rst'
+	 inquire(file=rstname,exist=bexist)
+	 if( .not. bexist ) then
+	   write(6,*) 'restart file does not exists: ',trim(rstname)
+	   error stop 'error stop read_ensemble: no restart file'
+	 end if
          call read_state(Abk(ne), rstname)
       end do
 
@@ -351,9 +357,12 @@ subroutine bc_correction(stype, id, nbc, bcid, bcrho, w)
    real(dp), intent(in) :: bcrho(nbc)
    real(dp), intent(out) :: w
 
+   integer*4 :: kext
    integer :: i, k, kbc
    real(dp) :: x, y, bcx, bcy
    real(dp) :: d, dmin, rho
+
+   integer*4 ipint
 
    x = 0.0_dp ; y = 0.0_dp
    dmin = 1.0e15_dp
@@ -374,7 +383,8 @@ subroutine bc_correction(stype, id, nbc, bcid, bcrho, w)
    end if
 
    do i = 1, nbc
-      kbc = ipint(bcid(i))
+      kext = bcid(i)
+      kbc = ipint(kext)
       bcx = xgv(kbc)
       bcy = ygv(kbc)
       d = sqrt((x-bcx)**2 + (y-bcy)**2)

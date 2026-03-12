@@ -161,6 +161,18 @@
 
 !***************************************************************
 
+	subroutine grandom_number(r)
+
+	implicit none
+
+	real r
+
+	r = shyrand2(idum)
+
+	end
+	
+!***************************************************************
+
         function shyrand2(idum)
 
 	implicit none

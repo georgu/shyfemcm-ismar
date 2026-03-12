@@ -507,6 +507,8 @@
 
 	subroutine make_unique(n,list)
 
+	use mod_sort
+
 	implicit none
 
 	integer n

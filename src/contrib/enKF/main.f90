@@ -33,7 +33,8 @@ program main
    !--------------------------------------------------------------------------
    ! Init a random seed and save in random_seed.dat, or read it from this file
    !--------------------------------------------------------------------------
-   call init_random_seed_persistent('random_seed.dat',.true.)
+   !call init_random_seed_persistent('random_seed.dat',.true.)
+   call init_random_seed_constant
 
    !--------------------------------------------------------------------------
    ! Read configuration, parameters, runtime flags (sets rmode, mode_an, etc.)
