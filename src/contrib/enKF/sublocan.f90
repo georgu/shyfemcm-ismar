@@ -200,6 +200,7 @@ subroutine locan_k(nk, kdim, nren, no_tot, xo, yo, rhoo, &
   real(dp) :: dist, w
   real(dp), allocatable :: innovl(:), D1l(:,:), Sl(:,:), El(:,:), Rl(:,:)
   real(dp), parameter :: eps_la = 1.0e-4_dp   ! Minimum GC weight to include obs
+  real(dp) :: lon_m, lat_m, rhoo_m
   integer, save :: icall = 0
 
   Ak_loc = Ak_bk   ! Start from background
@@ -210,8 +211,11 @@ subroutine locan_k(nk, kdim, nren, no_tot, xo, yo, rhoo, &
 
   ! Build local obs list around node position
   do no = 1, no_tot
-     dist = sqrt( (xgv(nk)-xo(no))**2 + (ygv(nk)-yo(no))**2 )
-     call find_weight_GC(rhoo(no), dist, w)
+     call deg2meters(xo(no), yo(no), rhoo(no), .false., rhoo_m)
+     call deg2meters(real(xgv(nk), dp), real(ygv(nk), dp), real(xgv(nk), dp) - xo(no), .true., lon_m)
+     call deg2meters(real(xgv(nk), dp), real(ygv(nk), dp), real(ygv(nk), dp) - yo(no), .false., lat_m)
+     dist = sqrt( lon_m**2 + lat_m**2 )
+     call find_weight_GC(rhoo_m, dist, w)
      if (w > eps_la) then
         nno = nno + 1
         ido(nno) = no
