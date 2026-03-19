@@ -81,7 +81,6 @@ end subroutine make_matrices
 ! 0D SCALARS: Sea level / Temperature / Salinity
 !===================================================================
 subroutine fill_scalar_0d(olabel, nfile, ostate)
-   use iso_fortran_env, only : dp => real64
    implicit none
 
    character(len=5), intent(in)    :: olabel

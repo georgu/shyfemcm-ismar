@@ -25,6 +25,7 @@
 !    Updated comments and corrections (2026-02-13).
 !======================================================================
 module mod_manage_obs
+  use iso_fortran_env, only : dp => real64
   use mod_para
   use mod_init_enkf
   use mod_obs_states
@@ -62,9 +63,9 @@ contains
     integer            :: kinit, kend
     logical            :: linit
     integer            :: nobs
-    double precision   :: tobs
-    real               :: xobs, yobs, zobs
-    real               :: vobs, stdobs, rho
+    real(dp)   :: tobs
+    real(dp)               :: xobs, yobs, zobs
+    real(dp)               :: vobs, stdobs, rho
     integer            :: statobs
 
     ! Reset type flags
@@ -82,7 +83,7 @@ contains
     write(*,*) 'Reading observations...'
 
     !-------------------------------
-    ! Count lines in obsfile (no GOTO)
+    ! Count lines in obsfile
     !-------------------------------
     open(25, file=obsfile, status='old', form='formatted', iostat=ios)
     if (ios /= 0) error stop 'read_obs: error opening file list'
@@ -147,7 +148,7 @@ contains
       end select
     end do
 
-    ! Enforce single-type assimilation per cycle (as per original note)
+    ! Enforce single-type assimilation per cycle
     if ((islev + isvel + istemp + issalt) > 1) then
       write(*,*) 'islev ',  islev
       write(*,*) 'isvel ',  isvel
@@ -259,15 +260,15 @@ contains
     character(len=*), intent(in)  :: olabel
     logical,          intent(in)  :: linit
     character(len=*), intent(in)  :: filin
-    double precision, intent(in)  :: eps
+    real(dp), intent(in)  :: eps
     integer,          intent(in)  :: kinit
     integer,          intent(out) :: kend
-    double precision, intent(out) :: atime_obs
-    real,             intent(out) :: xv, yv, zv, vv, stdvv, rho
+    real(dp), intent(out) :: atime_obs
+    real(dp),             intent(out) :: xv, yv, zv, vv, stdvv, rho
     integer,          intent(out) :: ostatusv
 
     integer :: ios
-    real    :: x, y, z, v, stdv
+    real(dp)    :: x, y, z, v, stdv
     integer :: ostatus
     character(len=80) :: dstring
     integer :: ierr
@@ -332,28 +333,28 @@ contains
     character(len=*), intent(in)  :: filin
     integer,          intent(in)  :: fid
     integer,          intent(in)  :: nrec
-    double precision, intent(in)  :: eps
+    real(dp), intent(in)  :: eps
     integer,          intent(out) :: nobs
 
     integer :: ios
     integer :: np, iformat, iunit
     integer :: irec, i, ii, jj
     integer :: nvers, lmax, nvar, ntype
-    double precision :: tt
+    real(dp) :: tt
     integer :: datetime(2), ierr, nlvddi
     real*4, allocatable :: hhlv(:)
     real*4              :: regpar(7)
     integer :: nx, ny
-    real    :: flag, dx, dy, x0, y0
+    real(dp)    :: flag, dx, dy, x0, y0
     integer, allocatable :: ilhkv(:)
     real*4,  allocatable :: hd(:)
     real*4,  allocatable :: idata(:,:,:)
     character(len=50) :: string
     integer :: ostatus
     logical :: bdata
-    real    :: uu, vv, ostd, rho
+    real(dp)    :: uu, vv, ostd, rho
     integer :: ix, iy
-    double precision :: atime_obs
+    real(dp) :: atime_obs
 
     nobs  = 0
     bdata = .false.
@@ -436,8 +437,8 @@ contains
       ! Coordinates
       do ii = 1, nx
         do jj = 1, ny
-          o2dvel(nrec)%x(ii,jj) = x0 + dx * real(ii-1)
-          o2dvel(nrec)%y(ii,jj) = y0 + dy * real(jj-1)
+          o2dvel(nrec)%x(ii,jj) = x0 + dx * real(ii-1, dp)
+          o2dvel(nrec)%y(ii,jj) = y0 + dy * real(jj-1, dp)
         end do
       end do
       o2dvel(nrec)%z   = 0.0
@@ -473,9 +474,9 @@ contains
   subroutine check_obs(ty, v1, v2, flag, stat)
     implicit none
     character(len=*), intent(in)  :: ty
-    real,            intent(in)   :: v1, v2, flag
+    real(dp),            intent(in)   :: v1, v2, flag
     integer,         intent(out)  :: stat
-    real :: vmin, vmax
+    real(dp) :: vmin, vmax
 
     stat = 0
 
@@ -502,175 +503,294 @@ contains
 !======================================================================
 !  make_super_1dlev
 !  ----------------
-!  Distance in double precision; unchanged interface.
+!  Create superobservations for sea-level scalar observations.
+!  Distances are computed in meters using deg2meters.
 !======================================================================
-  subroutine make_super_1dlev
-    implicit none
-    integer, allocatable :: near_sts(:), near_sts_mat(:,:)
-    integer, allocatable :: id_sorted(:), near_sts_sort(:)
-    double precision     :: dist
-    real                 :: x, y, vstd, val, vrhol
-    real, parameter      :: mult_coeff = 0.25
-    integer :: i, j, kk, nid
-    integer :: knorm, ksup, kbad
+subroutine make_super_1dlev
+  implicit none
+  integer, allocatable :: near_sts(:), near_sts_mat(:,:)
+  integer, allocatable :: id_sorted(:), near_sts_sort(:)
+  real(dp) :: dist_mx, dist_my, rho_m1, rho_m2, dist_m
+  real(dp) :: x, y, vstd, val, vrhol
+  real(dp), parameter :: mult_coeff = 1.
+  integer :: i, j, kk, nid
+  integer :: knorm, ksup, kbad
 
-    if (n_0dlev < 2) return
+  if (n_0dlev < 2) return
 
-    allocate(near_sts(n_0dlev), near_sts_mat(n_0dlev,n_0dlev))
-    allocate(near_sts_sort(n_0dlev), id_sorted(n_0dlev))
+  allocate(near_sts(n_0dlev), near_sts_mat(n_0dlev,n_0dlev))
+  allocate(near_sts_sort(n_0dlev), id_sorted(n_0dlev))
 
-    write(*,*) 'Making superobs for the sea level...'
-    near_sts     = 0
-    near_sts_mat = 0
+  near_sts     = 0
+  near_sts_mat = 0
 
-    do i = 1, n_0dlev
-      do j = 1, n_0dlev
-        dist = sqrt( dble(o0dlev(i)%x - o0dlev(j)%x)**2 + dble(o0dlev(i)%y - o0dlev(j)%y)**2 )
-        if ( (dist < dble(o0dlev(i)%rhol)*dble(mult_coeff)) .or. &
-             (dist < dble(o0dlev(j)%rhol)*dble(mult_coeff)) ) then
-          near_sts(i)       = near_sts(i) + 1
-          near_sts_mat(i,j) = 1
-        end if
-      end do
+  do i = 1, n_0dlev
+    do j = 1, n_0dlev
+
+      if (i == j) cycle
+
+      call deg2meters(o0dlev(i)%x, o0dlev(i)%y, o0dlev(i)%x - o0dlev(j)%x, .true.,  dist_mx)
+      call deg2meters(o0dlev(i)%x, o0dlev(i)%y, o0dlev(i)%y - o0dlev(j)%y, .false., dist_my)
+      call deg2meters(o0dlev(i)%x, o0dlev(i)%y, o0dlev(i)%rhol, .false., rho_m1)
+      call deg2meters(o0dlev(j)%x, o0dlev(j)%y, o0dlev(j)%rhol, .false., rho_m2)
+
+      dist_m = sqrt(dist_mx*dist_mx + dist_my*dist_my)
+      if ( (dist_m < rho_m1 * mult_coeff) .or. &
+           (dist_m < rho_m2 * mult_coeff) ) then
+        write(*,*) 'Making super-observation: ', dist_m, rho_m1 * mult_coeff, rho_m2 * mult_coeff
+        near_sts(i)       = near_sts(i) + 1
+        near_sts_mat(i,j) = 1
+      end if
     end do
+  end do
 
-    call dsort(n_0dlev, near_sts, near_sts_sort, id_sorted)
+  call dsort(n_0dlev, near_sts, near_sts_sort, id_sorted)
 
-    do i = 1, n_0dlev
-      nid  = id_sorted(i)
-      kk   = 0;  x = 0.0; y = 0.0; vstd = 0.0; vrhol = 0.0; val = 0.0
+  do i = 1, n_0dlev
+    nid = id_sorted(i)
+    kk  = 0;  x = 0.0; y = 0.0; vstd = 0.0; vrhol = 0.0; val = 0.0
 
-      do j = 1, n_0dlev
-        if ((near_sts_mat(nid,j) == 1) .and. (o0dlev(j)%stat == 0)) then
-          x     = x     + o0dlev(j)%x
-          y     = y     + o0dlev(j)%y
-          vstd  = vstd  + o0dlev(j)%std
-          vrhol = vrhol + o0dlev(j)%rhol
-          val   = val   + o0dlev(j)%val
-          if (nid /= j) o0dlev(j)%stat = 2
-          kk = kk + 1
-        end if
-      end do
-
-      if (kk > 1) then
-        write(*,*) 'Making sea-level superobservation...'
-        o0dlev(nid)%x    = x    / kk
-        o0dlev(nid)%y    = y    / kk
-        o0dlev(nid)%std  = vstd / kk
-        o0dlev(nid)%val  = val  / kk
-        o0dlev(nid)%rhol = vrhol/ kk
-        o0dlev(nid)%stat = 1
+    do j = 1, n_0dlev
+      if ((near_sts_mat(nid,j)==1) .and. (o0dlev(j)%stat==0)) then
+        x     = x     + o0dlev(j)%x
+        y     = y     + o0dlev(j)%y
+        vstd  = vstd  + o0dlev(j)%std
+        val   = val   + o0dlev(j)%val
+        vrhol = vrhol + o0dlev(j)%rhol
+        if (j /= nid) o0dlev(j)%stat = 2
+        kk = kk + 1
       end if
     end do
 
-    knorm = 0; ksup = 0; kbad = 0
-    !write(*,*) 'Final sea-level observations:'
-    do i = 1, n_0dlev
-      !write(*,'(a24,i1,1x,f8.3,1x,f8.3,1x,f8.3,1x,f8.3,1x,f8.3)')  &
-      !   'status,x,y,val,std,rho: ', o0dlev(i)%stat, o0dlev(i)%x, o0dlev(i)%y, &
-      !   o0dlev(i)%val, o0dlev(i)%std, o0dlev(i)%rhol
-      if (o0dlev(i)%stat == 0) knorm = knorm + 1
-      if (o0dlev(i)%stat == 1) ksup  = ksup  + 1
-      if (o0dlev(i)%stat >  1) kbad  = kbad  + 1
-    end do
-    write(*,*) 'Normal sea-level observations: ', knorm
-    write(*,*) 'Super sea-level observations:  ', ksup
-    write(*,*) 'Bad or merged sea-level obs:   ', kbad
-  end subroutine make_super_1dlev
+    if (kk >= 1) then
+      o0dlev(nid)%x    = x/kk
+      o0dlev(nid)%y    = y/kk
+      o0dlev(nid)%std  = vstd/kk
+      o0dlev(nid)%val  = val/kk
+      o0dlev(nid)%rhol = vrhol/kk
+      o0dlev(nid)%stat = 1
+    end if
+  end do
 
-!======================================================================
-!  dsort
-!  -----
-!  Sort integer array A (descending). 
-!======================================================================
-  subroutine dsort(ndim, A, B, IA)
-    implicit none
-    integer, intent(in)  :: ndim
-    integer, intent(in)  :: A(ndim)
-    integer, intent(out) :: B(ndim), IA(ndim)
+  knorm = 0; ksup = 0; kbad = 0
+  !write(*,*) 'Final sea-level observations:'
+  do i = 1, n_0dlev
+    !write(*,'(a24,i1,1x,f8.3,1x,f8.3,1x,f8.3,1x,f8.3,1x,f8.3)')  &
+    !   'status,x,y,val,std,rho: ', o0dlev(i)%stat, o0dlev(i)%x, o0dlev(i)%y, &
+    !   o0dlev(i)%val, o0dlev(i)%std, o0dlev(i)%rhol
+    if (o0dlev(i)%stat == 0) knorm = knorm + 1
+    if (o0dlev(i)%stat == 1) ksup  = ksup  + 1
+    if (o0dlev(i)%stat >  1) kbad  = kbad  + 1
+  end do
+  write(*,*) 'Normal sea-level observations: ', knorm
+  write(*,*) 'Super sea-level observations:  ', ksup
+  write(*,*) 'Bad or merged sea-level obs:   ', kbad
 
-    integer :: i, j, pos, best_val
-
-    ! Initialize index array
-    do i = 1, ndim
-      IA(i) = i
-    end do
-
-    ! Simple selection sort on indices (descending by A)
-    do i = 1, ndim
-      pos = i
-      best_val = A(IA(i))
-      do j = i+1, ndim
-        if (A(IA(j)) > best_val) then
-          pos = j
-          best_val = A(IA(j))
-        end if
-      end do
-      if (pos /= i) then
-        call swap_int(IA(i), IA(pos))
-      end if
-      B(i) = A(IA(i))
-    end do
-  contains
-    subroutine swap_int(a, b)
-      integer, intent(inout) :: a, b
-      integer :: t
-      t = a; a = b; b = t
-    end subroutine swap_int
-  end subroutine dsort
+end subroutine make_super_1dlev
 
 !======================================================================
 !  make_super_2dvel
 !  ----------------
-!  Correct linear indexing (idx = (jj-1)*nx + ii).
+!  Flatten 2D velocity fields and send the observations to
+!  superobs_horiz_el, which performs FEM-element horizontal clustering.
 !======================================================================
-  subroutine make_super_2dvel
-    implicit none
-    integer :: nobs, nx, ny
-    real,    allocatable :: x(:), y(:), v1(:), v2(:)
-    integer, allocatable :: stat(:)
-    integer :: n, ii, jj, idx
+subroutine make_super_2dvel
+  implicit none
 
-    if (n_2dvel < 1) return
+  integer :: nobs, nx, ny
+  real(dp), allocatable :: x(:), y(:), u(:), v(:)
+  integer,  allocatable :: stat(:)
+  integer :: n, ii, jj, idx
 
-    do n = 1, n_2dvel
-      nx = o2dvel(n)%nx
-      ny = o2dvel(n)%ny
-      nobs = nx * ny
+  if (n_2dvel < 1) return
 
-      allocate(x(nobs), y(nobs), v1(nobs), v2(nobs), stat(nobs))
+  write(*,*) 'Making 2D velocity super-observations'
 
-      do jj = 1, ny
-        do ii = 1, nx
-          idx      = (jj-1)*nx + ii
-          x(idx)   = o2dvel(n)%x(ii,jj)
-          y(idx)   = o2dvel(n)%y(ii,jj)
-          stat(idx)= o2dvel(n)%stat(ii,jj)
-          v1(idx)  = o2dvel(n)%u(ii,jj)
-          v2(idx)  = o2dvel(n)%v(ii,jj)
-        end do
+  do n = 1, n_2dvel
+
+    nx   = o2dvel(n)%nx
+    ny   = o2dvel(n)%ny
+    nobs = nx * ny
+
+    allocate(x(nobs), y(nobs), u(nobs), v(nobs), stat(nobs))
+
+    !--------------------------------------------------------------
+    ! Flatten 2D fields into 1D vectors
+    !--------------------------------------------------------------
+    do jj = 1, ny
+      do ii = 1, nx
+        idx        = (jj-1)*nx + ii
+        x(idx)     = o2dvel(n)%x(ii,jj)
+        y(idx)     = o2dvel(n)%y(ii,jj)
+        u(idx)     = o2dvel(n)%u(ii,jj)
+        v(idx)     = o2dvel(n)%v(ii,jj)
+        stat(idx)  = o2dvel(n)%stat(ii,jj)
       end do
-
-      call superobs_horiz_el(nobs, x, y, stat, v1, v2)
-
-      do jj = 1, ny
-        do ii = 1, nx
-          idx = (jj-1)*nx + ii
-          o2dvel(n)%stat(ii,jj) = stat(idx)
-          o2dvel(n)%u(ii,jj)    = v1(idx)
-          o2dvel(n)%v(ii,jj)    = v2(idx)
-        end do
-      end do
-
-      deallocate(x, y, v1, v2, stat)
     end do
-  end subroutine make_super_2dvel
+
+    !--------------------------------------------------------------
+    ! Perform super-observations per FEM element
+    !--------------------------------------------------------------
+    call superobs_horiz_el(nobs, x, y, stat, u, v)
+
+    !--------------------------------------------------------------
+    ! Copy back to 2D
+    !--------------------------------------------------------------
+    do jj = 1, ny
+      do ii = 1, nx
+        idx = (jj-1)*nx + ii
+        o2dvel(n)%u(ii,jj)    = u(idx)
+        o2dvel(n)%v(ii,jj)    = v(idx)
+        o2dvel(n)%stat(ii,jj) = stat(idx)
+      end do
+    end do
+
+    deallocate(x, y, u, v, stat)
+
+  end do
+
+end subroutine make_super_2dvel
+
+!----------------------------------------------------------------------
+!  superobs_horiz_el  (versione compatibile con find_element in real*4)
+!----------------------------------------------------------------------
+subroutine superobs_horiz_el(no, x, y, ostatus, val1, val2)
+  use basin                      ! find_element expects real(4)
+  implicit none
+
+  integer,  intent(in)    :: no
+  real(dp), intent(in)    :: x(no), y(no)
+  integer,  intent(inout) :: ostatus(no)
+  real(dp), intent(inout) :: val1(no), val2(no)
+
+  integer :: n, ie, nn
+  integer, allocatable :: ieobs(:)
+  integer, allocatable :: oindex(:,:)
+  integer :: nobs(nel)
+  integer :: omax
+  real(dp) :: av1, av2
+  real*4 :: x4, y4
+
+  if (no <= 0 .or. nel <= 0) return
+
+  allocate(ieobs(no))
+  ieobs = -999
+  nobs  = 0
+
+  !--------------------------------------------------------------
+  ! 1. Identify containing FEM element for each observation
+  !--------------------------------------------------------------
+  do n = 1, no
+    if (ostatus(n) > 0) cycle
+
+    ! convert safely to real*4 for find_element
+    x4 = x(n)
+    y4 = y(n)
+
+    call find_element(x4, y4, ie)
+
+    ieobs(n) = ie
+    if (ie >= 1 .and. ie <= nel) nobs(ie) = nobs(ie) + 1
+  end do
+
+  !--------------------------------------------------------------
+  ! 2. Determine maximum occupancy
+  !--------------------------------------------------------------
+  omax = maxval(nobs)
+  if (omax < 1) then
+    deallocate(ieobs)
+    return
+  end if
+
+  !--------------------------------------------------------------
+  ! 3. Build observation index per element
+  !--------------------------------------------------------------
+  allocate(oindex(0:omax, nel))
+  oindex = 0
+
+  do n = 1, no
+    if (ostatus(n) > 0) cycle
+    ie = ieobs(n)
+    if (ie < 1 .or. ie > nel) cycle
+    nn = oindex(0, ie) + 1
+    oindex(nn, ie) = n
+    oindex(0, ie)  = nn
+  end do
+
+  !--------------------------------------------------------------
+  ! 4. Build super-observations (average per element)
+  !--------------------------------------------------------------
+  do ie = 1, nel
+    nn = oindex(0, ie)
+    if (nn <= 0) cycle
+
+    av1 = sum(val1(oindex(1:nn, ie))) / real(nn, dp)
+    av2 = sum(val2(oindex(1:nn, ie))) / real(nn, dp)
+
+    val1(oindex(1, ie)) = av1
+    val2(oindex(1, ie)) = av2
+
+    ostatus(oindex(1, ie)) = 1
+    if (nn > 1) ostatus(oindex(2:nn, ie)) = 2
+  end do
+
+  deallocate(ieobs, oindex)
+end subroutine superobs_horiz_el
+
+!======================================================================
+!  dsort
+!  -----
+!  Sort integer array A in descending order.
+!  Output:
+!     IA(i) = index of i-th sorted element of A
+!     B(i)  = sorted values (B = A(IA))
+!======================================================================
+subroutine dsort(ndim, A, B, IA)
+  implicit none
+  integer, intent(in)  :: ndim
+  integer, intent(in)  :: A(ndim)
+  integer, intent(out) :: B(ndim), IA(ndim)
+
+  integer :: i, j, pos, best_val
+
+  if (ndim <= 0) return
+
+  do i = 1, ndim
+    IA(i) = i
+  end do
+
+  do i = 1, ndim
+    pos = i
+    best_val = A(IA(i))
+
+    do j = i+1, ndim
+      if (A(IA(j)) > best_val) then
+        pos = j
+        best_val = A(IA(j))
+      end if
+    end do
+
+    if (pos /= i) then
+      call swap_int(IA(i), IA(pos))
+    end if
+
+    B(i) = A(IA(i))
+  end do
+
+contains
+
+  subroutine swap_int(a, b)
+    integer, intent(inout) :: a, b
+    integer :: t
+    t = a; a = b; b = t
+  end subroutine swap_int
+
+end subroutine dsort
 
 !======================================================================
 !  screen_observation
 !======================================================================
 subroutine screen_observation(obs, x_ens, nmem, obs_std, k_std, k_rel, accept_obs)
-  use iso_fortran_env, only : dp => real64
   implicit none
 
   !------------------------------------------------------------------
@@ -756,12 +876,12 @@ end subroutine screen_observation
     use levels
     use mod_ens_state
     implicit none
-    real, intent(in)    :: d
-    real, intent(in)    :: mvalm, mval(nrens)
-    real, intent(inout) :: stdv
+    real(dp), intent(in)    :: d
+    real(dp), intent(in)    :: mvalm, mval(nrens)
+    real(dp), intent(inout) :: stdv
     integer :: ne
     integer, save :: icall = 0
-    real :: ens_std, stdv_new
+    real(dp) :: ens_std, stdv_new
 
     if (icall == 0) write(*,*) 'Obs error variance limited to KSTD times the ensemble spread (Sakov 2012).'
     if (KSTD <= 0.0) return
@@ -770,11 +890,11 @@ end subroutine screen_observation
     do ne = 1, nrens
       ens_std = ens_std + (mval(ne) - mvalm)**2
     end do
-    ens_std = sqrt( ens_std / real(nrens - 1) )
+    ens_std = sqrt( ens_std / real(nrens - 1, dp) )
 
     if (abs(d) > KSTD * ens_std) then
       stdv_new = sqrt( sqrt( (ens_std**2 + stdv**2)**2 + ( (1.0/KSTD) * ens_std * d )**2 ) - ens_std**2 )
-      write(*,'(a20,1x,3f8.3)') 'STDe,STDo,STDo_new: ', ens_std, stdv, stdv_new
+      write(*,'(a22,1x,3f8.3)') 'STDe, STDo, STDo_new: ', ens_std, stdv, stdv_new
       stdv = stdv_new
     end if
     icall = 1
@@ -786,12 +906,12 @@ end subroutine screen_observation
   subroutine check_spread_speed(d1, d2, stdv, um, vm, umm, vmm)
     use mod_ens_state
     implicit none
-    real, intent(in)    :: d1, d2
-    real, intent(inout) :: stdv
-    real, intent(in)    :: um(nrens), vm(nrens), umm, vmm
-    real :: cs(nrens), csm, inn
+    real(dp), intent(in)    :: d1, d2
+    real(dp), intent(inout) :: stdv
+    real(dp), intent(in)    :: um(nrens), vm(nrens), umm, vmm
+    real(dp) :: cs(nrens), csm, inn
     integer :: ne
-    real :: ens_std, stdv_new
+    real(dp) :: ens_std, stdv_new
 
     if (KSTD <= 0.0) return
 
@@ -802,7 +922,7 @@ end subroutine screen_observation
     do ne = 1, nrens
       ens_std = ens_std + (cs(ne) - csm)**2
     end do
-    ens_std = sqrt( ens_std / real(nrens - 1) )
+    ens_std = sqrt( ens_std / real(nrens - 1, dp) )
 
     inn = sqrt( d1**2 + d2**2 )
 

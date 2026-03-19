@@ -41,7 +41,8 @@ subroutine local_analysis
   ! ------------------------------------------------------------------------
 
   ! ------------------------------- EXECUTION ------------------------------
-  l_verbose = verbose   ! assume 'verbose' is provided by one of the used modules
+  !l_verbose = verbose   ! assume 'verbose' is provided by one of the used modules
+  l_verbose = .false.
 
   ! Local block dimensions (node and element)
   if (ibarcl_rst == 0) then
