@@ -40,7 +40,6 @@ module mod_manage_obs
   integer :: n_0dsalt, n_1dsalt, n_2dsalt
 
   integer :: nobs_tot
-  integer :: nobs_ok
 
   type(scalar_0d), allocatable :: o0dlev(:),  o0dtemp(:), o0dsalt(:)
   type(vector_2d), allocatable :: o2dvel(:)
@@ -180,7 +179,7 @@ contains
         call read_scalar_0d('0DLEV', linit, trim(ofile(n)%name), TEPS, &
                             kinit, kend, tobs, xobs, yobs, zobs, vobs, stdobs, statobs, rho)
         if (kend > kinit) then
-          if (verbose) write(*,*) 'Station n. ', n
+          !if (verbose) write(*,*) 'Station n. ', n
           o0dlev(kend)%t    = tobs
           o0dlev(kend)%x    = xobs
           o0dlev(kend)%y    = yobs
@@ -199,7 +198,7 @@ contains
         call read_scalar_0d('0DTEM', linit, trim(ofile(n)%name), TEPS, &
                             kinit, kend, tobs, xobs, yobs, zobs, vobs, stdobs, statobs, rho)
         if (kend > kinit) then
-          if (verbose) write(*,*) 'Station n. ', n
+          !if (verbose) write(*,*) 'Station n. ', n
           o0dtemp(kend)%t    = tobs
           o0dtemp(kend)%x    = xobs
           o0dtemp(kend)%y    = yobs
@@ -218,7 +217,7 @@ contains
         call read_scalar_0d('0DSAL', linit, trim(ofile(n)%name), TEPS, &
                             kinit, kend, tobs, xobs, yobs, zobs, vobs, stdobs, statobs, rho)
         if (kend > kinit) then
-          if (verbose) write(*,*) 'Station n. ', n
+          !if (verbose) write(*,*) 'Station n. ', n
           o0dsalt(kend)%t    = tobs
           o0dsalt(kend)%x    = xobs
           o0dsalt(kend)%y    = yobs
@@ -565,11 +564,11 @@ contains
     end do
 
     knorm = 0; ksup = 0; kbad = 0
-    write(*,*) 'Final sea-level observations:'
+    !write(*,*) 'Final sea-level observations:'
     do i = 1, n_0dlev
-      write(*,'(a24,i1,1x,f8.3,1x,f8.3,1x,f8.3,1x,f8.3,1x,f8.3)')  &
-         'status,x,y,val,std,rho: ', o0dlev(i)%stat, o0dlev(i)%x, o0dlev(i)%y, &
-         o0dlev(i)%val, o0dlev(i)%std, o0dlev(i)%rhol
+      !write(*,'(a24,i1,1x,f8.3,1x,f8.3,1x,f8.3,1x,f8.3,1x,f8.3)')  &
+      !   'status,x,y,val,std,rho: ', o0dlev(i)%stat, o0dlev(i)%x, o0dlev(i)%y, &
+      !   o0dlev(i)%val, o0dlev(i)%std, o0dlev(i)%rhol
       if (o0dlev(i)%stat == 0) knorm = knorm + 1
       if (o0dlev(i)%stat == 1) ksup  = ksup  + 1
       if (o0dlev(i)%stat >  1) kbad  = kbad  + 1
@@ -666,6 +665,89 @@ contains
       deallocate(x, y, v1, v2, stat)
     end do
   end subroutine make_super_2dvel
+
+!======================================================================
+!  screen_observation
+!======================================================================
+subroutine screen_observation(obs, x_ens, nmem, obs_std, k_std, k_rel, accept_obs)
+  use iso_fortran_env, only : dp => real64
+  implicit none
+
+  !------------------------------------------------------------------
+  ! Inputs
+  !------------------------------------------------------------------
+  real(dp), intent(in) :: obs              ! observed scalar value
+  real(dp), intent(in) :: x_ens(nmem)      ! ensemble model values
+  integer, intent(in)  :: nmem             ! number of ensemble members
+  real(dp), intent(in) :: obs_std          ! observation std deviation
+  real(dp), intent(in) :: k_std            ! threshold multiplier for std (e.g., 3.0)
+  real(dp), intent(in) :: k_rel            ! relative threshold (0.1 - 0.5 typical)
+
+  !------------------------------------------------------------------
+  ! Output
+  !------------------------------------------------------------------
+  logical, intent(inout) :: accept_obs       ! .true. = keep observation
+
+  !------------------------------------------------------------------
+  ! Local variables
+  !------------------------------------------------------------------
+  real(dp) :: innovation
+  real(dp) :: mean_model
+  real(dp) :: scale_value
+  real(dp) :: spread
+  real(dp) :: thresh
+
+  !==================================================================
+  ! Compute ensemble mean
+  !==================================================================
+  mean_model = sum(x_ens) / real(nmem, dp)
+
+  !==================================================================
+  ! Innovation = obs - H(x)
+  !==================================================================
+  innovation = obs - mean_model
+
+  !==================================================================
+  ! Physical scale for relative screening
+  ! (prevents rejecting deep-water Z or large T/S values)
+  !==================================================================
+  scale_value = max(abs(mean_model), abs(obs))
+
+!  !==================================================================
+!  ! 1) Std-based check
+!  !==================================================================
+!  if (abs(innovation) > k_std * obs_std) then
+!     write(*,*) 'Std-based check not passed: ', abs(innovation), k_std*obs_std
+!     accept_obs = .false.
+!     return
+!  end if
+
+  !==================================================================
+  ! 2) Relative-scale check
+  !==================================================================
+  if (scale_value > 0.0_dp) then
+     if (abs(innovation) > k_rel * scale_value) then
+	write(*,*) 'Relative-scale check not passed: ', abs(innovation), k_rel*scale_value
+        accept_obs = .false.
+        return
+     end if
+  end if
+
+  !==================================================================
+  ! 3) Spread check
+  !==================================================================
+  spread = sqrt(sum(x_ens**2)/real(nmem, dp) - mean_model * mean_model)
+  thresh = 3._dp * sqrt(obs_std**2 + spread**2)
+  if (abs(innovation) > thresh) then
+	write(*,*) 'Spread check not passed: ', abs(innovation), thresh
+	accept_obs = .false.
+	return
+  end if
+
+  ! Passed both checks → accept
+  accept_obs = .true.
+
+end subroutine screen_observation
 
 !======================================================================
 !  check_spread
