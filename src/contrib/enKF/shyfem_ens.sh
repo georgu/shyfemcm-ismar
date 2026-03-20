@@ -38,7 +38,7 @@ else
   SCRIPT="$(cd "$(dirname "$SCRIPT")" && pwd)/$(basename "$SCRIPT")"
 fi
 SCRIPTPATH="$(cd "$(dirname "$SCRIPT")" && pwd)"
-FEMDIR="${SCRIPTPATH}/.."   # fem directory (as in the original)
+FEMDIR="${SCRIPTPATH}/../../.."   # fem directory (as in the original)
 
 #------------------------------------------------------------------------------
 # Args parsing and validation
@@ -54,7 +54,7 @@ fbasename="$2"
 # Dependency checks
 #------------------------------------------------------------------------------
 command -v parallel >/dev/null 2>&1 || die "'parallel' is not installed."
-[ -x "${FEMDIR}/fem3d/shyfem" ] || die "Executable not found: ${FEMDIR}/fem3d/shyfem"
+[ -x "${FEMDIR}/bin/shyfem" ] || die "Executable not found: ${FEMDIR}/bin/shyfem"
 
 #------------------------------------------------------------------------------
 # Collect .str files matching the basename (safe glob, no 'ls' parsing)
@@ -80,10 +80,10 @@ fi
 # Worker: run a single simulation
 #------------------------------------------------------------------------------
 Make_sim() {
-  local strfile="$1" fem3d_dir="$2"
+  local strfile="$1" bin_dir="$2"
   local basen
   basen="$(basename "$strfile" .str)"
-  "${fem3d_dir}/shyfem" "$strfile" > "${basen}.log"
+  "${bin_dir}/shyfem" "$strfile" > "${basen}.log"
 }
 export -f Make_sim
 export FEMDIR
@@ -93,7 +93,7 @@ export FEMDIR
 #------------------------------------------------------------------------------
 echo "Running ${#strfiles[@]} simulations with parallelism P=${nth} ..."
 # shellcheck disable=SC2086
-parallel --no-notice -P "$nth" Make_sim ::: "${strfiles[@]}" ::: "${FEMDIR}/fem3d"
+parallel --no-notice -P "$nth" Make_sim ::: "${strfiles[@]}" ::: "${FEMDIR}/bin"
 
 echo "All simulations completed."
 exit 0

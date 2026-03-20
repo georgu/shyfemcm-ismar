@@ -25,7 +25,7 @@ else
   SCRIPT="$(cd "$(dirname "$SCRIPT")" && pwd)/$(basename "$SCRIPT")"
 fi
 SCRIPTPATH="$(cd "$(dirname "$SCRIPT")" && pwd)"
-FEMDIR="${SCRIPTPATH}/.."     # fem directory (kept for compatibility)   # not used directly
+FEMDIR="${SCRIPTPATH}/../../.."     # fem directory (kept for compatibility)   # not used directly
 SIMDIR="$(pwd)"               # current dir
 
 Usage() {

@@ -29,7 +29,7 @@ else
   SCRIPT="$(cd "$(dirname "$SCRIPT")" && pwd)/$(basename "$SCRIPT")"
 fi
 SCRIPTPATH="$(cd "$(dirname "$SCRIPT")" && pwd)"
-FEMDIR="${SCRIPTPATH}/.."   # fem directory
+FEMDIR="${SCRIPTPATH}/../../.."   # fem directory
 SIMDIR="$(pwd)"             # current dir
 
 Usage() {
@@ -61,7 +61,7 @@ check_file() { [ -s "$1" ] || die "File '$1' does not exist or has zero size."; 
 require_cmd awk
 require_cmd sed
 require_cmd cut
-[ -x "${FEMDIR}/fembin/shyelab" ] || die "shyelab not found at ${FEMDIR}/fembin/shyelab."
+[ -x "${FEMDIR}/bin/shyelab" ] || die "shyelab not found at ${FEMDIR}/bin/shyelab."
 
 #------------------------------------------------------------------------------
 # Parse args
@@ -119,7 +119,7 @@ Merge_timeseries() {
     check_file "$fil"
     echo "Processing file: $fil"
     # Split into <var>.<lev>.ext / shyelab writes var.* in cwd
-    "${FEMDIR}/fembin/shyelab" -split "$fil" &>/dev/null
+    "${FEMDIR}/bin/shyelab" -split "$fil" &>/dev/null
 
     # For each selected variable, scan all its levels and append (drop header/footer)
     for vv in $vars; do
@@ -160,7 +160,7 @@ Merge_shy() {
   [ "${#files[@]}" -gt 0 ] || die "No '.hydro.shy' files found for member ${nen}."
 
   # shyelab concatenation (catmode +1)
-  "${FEMDIR}/fembin/shyelab" -out -catmode +1 "${files[@]}"
+  "${FEMDIR}/bin/shyelab" -out -catmode +1 "${files[@]}"
   mv -f out.shy "en${nen}.hydro.shy"
 }
 

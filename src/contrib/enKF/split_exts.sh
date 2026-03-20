@@ -26,7 +26,7 @@ else
   SCRIPT="$(cd "$(dirname "$SCRIPT")" && pwd)/$(basename "$SCRIPT")"
 fi
 SCRIPTPATH="$(cd "$(dirname "$SCRIPT")" && pwd)"
-FEMDIR="${SCRIPTPATH}/.."   # fem directory (as in the original)
+FEMDIR="${SCRIPTPATH}/../../.."   # fem directory (as in the original)
 
 Usage() {
   echo "Usage: $(basename "$0") [basename]"
@@ -47,7 +47,7 @@ fbase="$1"
 #------------------------------------------------------------------------------
 # Dependencies
 #------------------------------------------------------------------------------
-[ -x "${FEMDIR}/fembin/shyelab" ] || die "shyelab not found at ${FEMDIR}/fembin/shyelab."
+[ -x "${FEMDIR}/bin/shyelab" ] || die "shyelab not found at ${FEMDIR}/bin/shyelab."
 
 #------------------------------------------------------------------------------
 # Variables list to look for after split (kept from your original script)
@@ -72,7 +72,7 @@ for efile in "${ext_files[@]}"; do
 
   # Split into var.* chunks in the current directory
   # Log to base-specific log to avoid clobbering
-  "${FEMDIR}/fembin/shyelab" -split "$efile" > "${basefile}.ext.log" 2>&1
+  "${FEMDIR}/bin/shyelab" -split "$efile" > "${basefile}.ext.log" 2>&1
 
   # Remove previous outputs for this base (only those produced by this step)
   rm -f "${basefile}_"*.ts || true
