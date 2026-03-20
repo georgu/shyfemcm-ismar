@@ -349,6 +349,11 @@
 	call check_real('utlnv',iu1,iu2,nlv,nel)
 	call check_real('vtlnv',iu1,iu2,nlv,nel)
 
+	call check_real('zov',iu1,iu2,1,nkn)
+	call check_real('zeov',iu1,iu2,3,nel)
+	call check_real('utlov',iu1,iu2,nlv,nel)
+	call check_real('vtlov',iu1,iu2,nlv,nel)
+
 	call check_real('hm3v',iu1,iu2,3,nel)
 
 	call get_integer('ibarcl',iu1,iu2,ival)
@@ -573,6 +578,7 @@
 	integer date1,time1,nkn1,nel1,nlv1
 	integer date2,time2,nkn2,nel2,nlv2
 	double precision atime1,atime2
+	character*20 aline
 
 	call read_header(iu1,nvers1,date1,time1,atime1,nkn1,nel1,nlv1,ierr)
 	if( ierr /= 0 ) return
@@ -597,6 +603,10 @@
    99	continue
 	write(6,*) nvers1,date1,time1,atime1,nkn1,nel1,nlv1
 	write(6,*) nvers2,date2,time2,atime2,nkn2,nel2,nlv2
+	call dts_format_abs_time(atime1,aline)
+	write(6,*) 'date of record of file 1: ',aline
+	call dts_format_abs_time(atime2,aline)
+	write(6,*) 'date of record of file 2: ',aline
 	stop 'error stop: error comparing header'
 	end
 

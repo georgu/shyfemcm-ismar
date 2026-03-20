@@ -31,11 +31,37 @@
 !
 ! contents :
 !
-! subroutine wrrst(it,iunit)	writes one record of restart data
-! subroutine rdrst(itrst,iunit)	reads one record of restart data
+! subroutine rst_perform_restart
+!	reads and initializes values from restart
+! subroutine rst_read_restart_file(iunit,atrst,iflag,ierr)
+!	reads restart file until it finds atrst
+! subroutine rst_write_restart
+!	administers writing of restart file
 !
-! subroutine skip_rst(iunit,atime,it,nvers,nrec,nkn,nel,nlv,iflag,ierr)
-!				returns info on record in restart file
+! function rst_has_restart(id)
+!	gives indication if data from restart is available
+! function rst_want_restart(id)
+!	see if restart for a specific variable is wanted
+! function rst_use_restart(id)
+!	see if restart for a specific variable has been used (avail and wanted)
+!
+! subroutine rst_write_record(atime,iunit)
+!	writes one record of restart data
+! subroutine rst_skip_record(iunit,atime,nvers,nrec,nkn,nel,nlv,iflag,ierr)
+!	returns info on record in restart file and skips data records
+! subroutine rst_read_record(iunit,atime,iflag,ierr)
+!	reads one record of restart data
+! subroutine rst_read_dummy(iunit,atime,iflag,ierr)
+!	dummy read of one record of restart data
+!
+! subroutine rst_read_vertical(iunit,nvers,nkn,nel,nlv)
+!	reads arrays dealing with vertical structure
+!
+! function rst_is_rst_file(file)
+!	finds out if file is a restart file
+
+!*********************************************************************
+
 !
 ! revision log :
 !
@@ -101,6 +127,7 @@
 ! 08.03.2025    ggu     extracted mod_restart in its own file
 ! 09.03.2025    ggu     call shympi_barrier after finishing restart file
 ! 15.11.2025	ggu	check compatibility of concentrations
+! 20.03.2026	ggu	new experimental version 18
 !
 ! notes :
 !
@@ -143,8 +170,6 @@
 !	integer, save :: id_gotm_rst  = 8	!10000000	gotm
 !	integer, save :: id_bfm_rst   = 9	!100000000	bfm
 !
-!*********************************************************************
-
 ! mod_restart is defined in own file
 
 !*********************************************************************
@@ -268,8 +293,6 @@
         write(6,*) ' itend = ',aline
         write(6,*) '---------------------------------------------'
 
-	call init_old_vars	!initializes also old values
-
 	bok_rst = .true.
 
 !-----------------------------------------------------------------
@@ -359,88 +382,6 @@
         return
         end
 
-!*******************************************************************
-!*******************************************************************
-!*******************************************************************
-
-	function rst_has_restart(id)
-
-! gives indication if data from restart is available
-!
-! id indicates what information is requested
-
-	use mod_restart
-
-	implicit none
-
-	logical rst_has_restart
-	integer id
-
-	logical rst_is_set
-
-	if( .not. bok_rst ) then		!no restart file read
-	  rst_has_restart = .false.
-	else if( id .eq. 0 ) then		!general restart data available
-	  rst_has_restart = .true.
-	else if( id .ge. 1 .and. id .le. nidmax ) then
-	  rst_has_restart = rst_is_set(id,iflag_avail_rst)
-	else
-	  rst_has_restart = .false.
-	end if
-
-	end
-
-!*******************************************************************
-
-	function rst_want_restart(id)
-
-! see if restart for a specific variable is wanted
-!
-! if id < 0		restart is always wanted
-!
-! example: iflag = 1011 means that for id 1,2,4 function is true, else false
-
-	use mod_restart
-
-	implicit none
-
-	logical rst_want_restart
-	integer id		!number of feature desired
-
-	logical rst_is_set
-
-	rst_want_restart = .true.
-	if( iflag_want_rst < 0 ) return
-
-	rst_want_restart = rst_is_set(id,iflag_want_rst)
-
-	end
-
-!*******************************************************************
-
-	function rst_use_restart(id)
-
-! see if restart for a specific variable has been used (available and wanted)
-!
-! if id < 0		restart is always wanted
-!
-! example: iflag = 1011 means that for id 1,2,4 function is true, else false
-
-	use mod_restart
-
-	implicit none
-
-	logical rst_use_restart
-	integer id		!number of feature desired
-
-	logical rst_has_restart,rst_want_restart
-
-	rst_use_restart = rst_has_restart(id) .and. rst_want_restart(id)
-
-	end
-
-!*******************************************************************
-!*******************************************************************
 !*******************************************************************
 
         subroutine rst_write_restart
@@ -548,6 +489,86 @@
 !*******************************************************************
 !*******************************************************************
 
+	function rst_has_restart(id)
+
+! gives indication if data from restart is available
+!
+! id indicates what information is requested
+
+	use mod_restart
+
+	implicit none
+
+	logical rst_has_restart
+	integer id
+
+	logical rst_is_set
+
+	if( .not. bok_rst ) then		!no restart file read
+	  rst_has_restart = .false.
+	else if( id .eq. 0 ) then		!general restart data available
+	  rst_has_restart = .true.
+	else if( id .ge. 1 .and. id .le. nidmax ) then
+	  rst_has_restart = rst_is_set(id,iflag_avail_rst)
+	else
+	  rst_has_restart = .false.
+	end if
+
+	end
+
+!*******************************************************************
+
+	function rst_want_restart(id)
+
+! see if restart for a specific variable is wanted
+!
+! if id < 0		restart is always wanted
+!
+! example: iflag = 1011 means that for id 1,2,4 function is true, else false
+
+	use mod_restart
+
+	implicit none
+
+	logical rst_want_restart
+	integer id		!number of feature desired
+
+	logical rst_is_set
+
+	rst_want_restart = .true.
+	if( iflag_want_rst < 0 ) return
+
+	rst_want_restart = rst_is_set(id,iflag_want_rst)
+
+	end
+
+!*******************************************************************
+
+	function rst_use_restart(id)
+
+! see if restart for a specific variable has been used (available and wanted)
+!
+! if id < 0		restart is always wanted
+!
+! example: iflag = 1011 means that for id 1,2,4 function is true, else false
+
+	use mod_restart
+
+	implicit none
+
+	logical rst_use_restart
+	integer id		!number of feature desired
+
+	logical rst_has_restart,rst_want_restart
+
+	rst_use_restart = rst_has_restart(id) .and. rst_want_restart(id)
+
+	end
+
+!*******************************************************************
+!*******************************************************************
+!*******************************************************************
+
         subroutine rst_write_record(atime,iunit)
 
 ! writes one record of restart data
@@ -614,6 +635,12 @@
 	call restart_write_value(iunit,be,utlnv)
 	call restart_write_value(iunit,be,vtlnv)
 
+	call restart_write_value(iunit,be,iwetv)
+	call restart_write_value(iunit,bn,zov)
+	call restart_write_value(iunit,be,3,zeov)
+	call restart_write_value(iunit,be,utlov)
+	call restart_write_value(iunit,be,vtlov)
+
 	call restart_write_value(iunit,be,3,hm3v)
 
 	call restart_write_value(iunit,ibarcl)
@@ -636,6 +663,7 @@
 	call restart_write_value(iunit,nlv_global-1)
 	if( nlv_global .gt. 1 ) then
 	  call restart_write_value(iunit,bn,wlnv)
+          call restart_write_value(iunit,bn,wlov)
 	end if
 
 	call restart_write_value(iunit,ieco)
@@ -660,7 +688,8 @@
 
 !*******************************************************************
 
-	subroutine rst_skip_record(iunit,atime,nvers,nrec,nkn,nel,nlv,iflag,ierr)
+	subroutine rst_skip_record(iunit,atime,nvers,nrec,nkn,nel,nlv &
+     &					,iflag,ierr)
 
 ! returns info on record in restart file and skips data records
 !
@@ -760,6 +789,27 @@
 	  write(iuout,*) rval3d2(1:nlv*nel)
 	end if
 
+	if( nvers >= 18 ) then
+	read(iunit) ival(1:nel)
+	read(iunit) rval2d(1:nkn)
+	read(iunit) rval2d3(1:3*nel)
+	read(iunit) rval3d1(1:nlv*nel)
+	read(iunit) rval3d2(1:nlv*nel)
+
+	if( brewrite ) then
+	  write(iuout,*) 'rst: iwetv'
+	  write(iuout,*) ival(1:nel)
+	  write(iuout,*) 'rst: zov'
+	  write(iuout,*) rval2d(1:nkn)
+	  write(iuout,*) 'rst: zeov'
+	  write(iuout,*) rval2d3(1:3*nel)
+	  write(iuout,*) 'rst: utlov'
+	  write(iuout,*) rval3d1(1:nlv*nel)
+	  write(iuout,*) 'rst: vtlov'
+	  write(iuout,*) rval3d2(1:nlv*nel)
+	end if
+	end if
+
 	if( nvers .ge. 4 ) then
 	  id = id_depth_rst
 	  call rst_add_flag(id,iflag)
@@ -778,16 +828,15 @@
 	    read(iunit) rval3d1(1:nlv*nkn)
 	    read(iunit) rval3d2(1:nlv*nkn)
 	    read(iunit) rval3d3(1:nlv*nkn)
+	    if( brewrite ) then
+	      write(iuout,*) 'rst: saltv'
+	      write(iuout,*) rval3d1(1:nlv*nkn)
+	      write(iuout,*) 'rst: tempv'
+	      write(iuout,*) rval3d2(1:nlv*nkn)
+	      write(iuout,*) 'rst: rhov'
+	      write(iuout,*) rval3d3(1:nlv*nkn)
+	    end if
 	  end if
-	end if
-
-	if( brewrite ) then
-	  write(iuout,*) 'rst: saltv'
-	  write(iuout,*) rval3d1(1:nlv*nkn)
-	  write(iuout,*) 'rst: tempv'
-	  write(iuout,*) rval3d2(1:nlv*nkn)
-	  write(iuout,*) 'rst: rhov'
-	  write(iuout,*) rval3d3(1:nlv*nkn)
 	end if
 
 	if( nvers .ge. 15 ) then
@@ -814,9 +863,14 @@
 	  if( iwvert .gt. 0 ) then
 	    call rst_add_flag(id,iflag)
 	    read(iunit) rval3d1((nlv+1)*nkn)
+	    if( nvers .ge. 18 ) read(iunit) rval3d2((nlv+1)*nkn)
 	    if( brewrite ) then
 	      write(iuout,*) 'rst: wlnv'
 	      write(iuout,*) rval3d1((nlv+1)*nkn)
+	      if( nvers .ge. 18 ) then
+	        write(iuout,*) 'rst: wlov'
+	        write(iuout,*) rval3d2((nlv+1)*nkn)
+	      end if
 	    end if
 	  end if
 	end if
@@ -951,6 +1005,22 @@
             read(iunit)
 	  end if
 
+          if( nvers .ge. 18 ) then
+	    if( rst_want_restart(id) ) then
+	      call restart_read_value(iunit,be,iwetv)
+	      call restart_read_value(iunit,bn,zov)
+	      call restart_read_value(iunit,be,3,zeov)
+	      call restart_read_value(iunit,be,utlov)
+	      call restart_read_value(iunit,be,vtlov)
+	    else
+              read(iunit)
+              read(iunit)
+              read(iunit)
+              read(iunit)
+              read(iunit)
+	    end if
+	  end if
+
           if( nvers .ge. 4 ) then
 	    id = id_depth_rst
 	    call rst_add_flag(id,iflag)
@@ -1015,6 +1085,9 @@
 	      call rst_add_flag(id,iflag)
 	      if( rst_want_restart(id) ) then
 	        call restart_read_value(iunit,bn,wlnv)
+		if( nvers .ge. 18 ) then
+	          call restart_read_value(iunit,bn,wlov)
+		end if
 	      else
                 read(iunit)
 	      end if
@@ -1096,7 +1169,7 @@
 
         subroutine rst_read_dummy(iunit,atime,iflag,ierr)
 
-! reads one record of restart data
+! dummy read of one record of restart data
 !
 ! iflag is returned, which indicates the available data in the file
 ! this can be different from the actually read data (if not wanted)
@@ -1181,7 +1254,9 @@
 
 	subroutine rst_read_vertical(iunit,nvers,nkn,nel,nlv)
 
-! nkn,... are local values
+! reads arrays dealing with vertical structure
+!
+! nkn, nel, nlv are local values
 
 	use mod_restart
 	use shympi
@@ -1219,80 +1294,6 @@
 	end if
 
 	return
-	end
-
-!*******************************************************************
-
-	subroutine rst_get_vertical(nkn,nel,nlv,hlv,ilhv,ilhkv)
-
-	use mod_restart
-
-	implicit none
-
-	integer nkn,nel,nlv
-	real hlv(nlv)
-	integer ilhv(nel)
-	integer ilhkv(nkn)
-
-	if( nkn <= 0 .or. nel <= 0 .or. nlv <= 0 ) goto 98
-
-	if( .not. allocated(hlvrst) ) then
-	  stop 'error stop rst_get_hlv: hlvrst not allocated'
-	end if
-	if( nlv /= size(hlvrst) ) goto 99
-	if( nkn /= size(ilhkrst) ) goto 99
-	if( nel /= size(ilhrst) ) goto 99
-
-	hlv = hlvrst
-	ilhv = ilhrst
-	ilhkv = ilhkrst
-
-	return
-   98	continue
-	write(6,*) 'nkn,nel,nlv: ',nkn,nel,nlv
-	stop 'error stop rst_get_hlv: error in parameters'
-   99	continue
-	write(6,*) 'nkn: ',nkn,size(ilhkrst)
-	write(6,*) 'nel: ',nel,size(ilhrst)
-	write(6,*) 'nlv: ',nlv,size(hlvrst)
-	stop 'error stop rst_get_hlv: arrays not compatible'
-	end 
-
-!*******************************************************************
-
-	subroutine init_old_vars
-
-! this copies vars just read to old so that they are available
-
-	use mod_hydro_vel
-	use mod_hydro
-	!use mod_hydro_print
-	!use mod_hydro_baro
-
-	implicit none
-
-	zeov = zenv
-	zov = znv
-	utlov = utlnv
-	vtlov = vtlnv
-	wlov = wlnv
-
-        !call make_new_depth
-        !call copy_depth
-        !call make_new_depth
-
-	!call ttov
-	!call uvint
-	!call uvtopr
-	!call uvtop0
-
-        !upro  = uprv
-        !vpro  = vprv
-        !uov   = unv
-        !vov   = vnv
-        !ulov  = ulnv
-        !vlov  = vlnv
-
 	end
 
 !*******************************************************************
