@@ -12,6 +12,9 @@ function ProgressBar {
 
     # Process data
 
+    [ "$2" = "0" ] && return
+    [ "$1" -gt "$2" ] && return
+
     let _progress=(${1}*100/${2}*100)/100
     let _done=(${_progress}*4)/10
     let _left=40-$_done

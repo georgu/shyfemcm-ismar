@@ -1060,6 +1060,8 @@
 
 ! finds first time record equal in both files
 
+	use mod_shympi_debug
+
 	implicit none
 
 	integer iu,nrec
@@ -1072,7 +1074,9 @@
 
 	!write(6,*) 'balance: ',dtime1, dtime2
 	if( dtime1 == dtime2 ) then	!same time in initial record
-	  write(6,*) 'time_balance: starting time found ',dtime1
+	  if( .not. bsilent ) then
+	    write(6,*) 'time_balance: starting time found ',dtime1
+	  end if
 	  return
 	else if( dtime1 < dtime2 ) then
 	  iu = 1
@@ -1260,24 +1264,24 @@
 	logical bignore
 
 	blcheck = .true.
-	return
+	!return
 
 	if( ntime > 2 ) return		!only do for first data record
 
 	bignore = .false.
 
-	if( trim(text) == 'zov' ) bignore = .true.
-	if( trim(text) == 'zeov' ) bignore = .true.
-	if( trim(text) == 'hdkov' ) bignore = .true.
-	if( trim(text) == 'hdeov' ) bignore = .true.
+	!if( trim(text) == 'zov' ) bignore = .true.
+	!if( trim(text) == 'zeov' ) bignore = .true.
+	!if( trim(text) == 'hdkov' ) bignore = .true.
+	!if( trim(text) == 'hdeov' ) bignore = .true.
 	if( trim(text) == 'utlov' ) bignore = .true.
 	if( trim(text) == 'vtlov' ) bignore = .true.
 	if( trim(text) == 'uov' ) bignore = .true.
 	if( trim(text) == 'vov' ) bignore = .true.
 	if( trim(text) == 'wlov' ) bignore = .true.
-	if( trim(text) == 'mfluxv' ) bignore = .true.
-	if( trim(text) == 'fxv' ) bignore = .true.
-	if( trim(text) == 'fyv' ) bignore = .true.
+	!if( trim(text) == 'mfluxv' ) bignore = .true.
+	!if( trim(text) == 'fxv' ) bignore = .true.
+	!if( trim(text) == 'fyv' ) bignore = .true.
 
 	if( bignore ) then
 	  blcheck = .false.

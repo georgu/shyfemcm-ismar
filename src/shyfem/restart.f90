@@ -159,6 +159,7 @@
 ! 15	write gotm arrays
 ! 16	adapted for mpi
 ! 17	write bfm restart
+! 18	write zov, zeov, iwetv
 !
 !	integer, save :: id_hydro_rst = 1	!1		hydro
 !	integer, save :: id_depth_rst = 2	!10		depth
@@ -638,8 +639,8 @@
 	call restart_write_value(iunit,be,iwetv)
 	call restart_write_value(iunit,bn,zov)
 	call restart_write_value(iunit,be,3,zeov)
-	call restart_write_value(iunit,be,utlov)
-	call restart_write_value(iunit,be,vtlov)
+	!call restart_write_value(iunit,be,utlov)
+	!call restart_write_value(iunit,be,vtlov)
 
 	call restart_write_value(iunit,be,3,hm3v)
 
@@ -663,7 +664,7 @@
 	call restart_write_value(iunit,nlv_global-1)
 	if( nlv_global .gt. 1 ) then
 	  call restart_write_value(iunit,bn,wlnv)
-          call restart_write_value(iunit,bn,wlov)
+          !call restart_write_value(iunit,bn,wlov)
 	end if
 
 	call restart_write_value(iunit,ieco)
@@ -793,8 +794,8 @@
 	read(iunit) ival(1:nel)
 	read(iunit) rval2d(1:nkn)
 	read(iunit) rval2d3(1:3*nel)
-	read(iunit) rval3d1(1:nlv*nel)
-	read(iunit) rval3d2(1:nlv*nel)
+	!read(iunit) rval3d1(1:nlv*nel)
+	!read(iunit) rval3d2(1:nlv*nel)
 
 	if( brewrite ) then
 	  write(iuout,*) 'rst: iwetv'
@@ -803,10 +804,10 @@
 	  write(iuout,*) rval2d(1:nkn)
 	  write(iuout,*) 'rst: zeov'
 	  write(iuout,*) rval2d3(1:3*nel)
-	  write(iuout,*) 'rst: utlov'
-	  write(iuout,*) rval3d1(1:nlv*nel)
-	  write(iuout,*) 'rst: vtlov'
-	  write(iuout,*) rval3d2(1:nlv*nel)
+	  !write(iuout,*) 'rst: utlov'
+	  !write(iuout,*) rval3d1(1:nlv*nel)
+	  !write(iuout,*) 'rst: vtlov'
+	  !write(iuout,*) rval3d2(1:nlv*nel)
 	end if
 	end if
 
@@ -863,14 +864,14 @@
 	  if( iwvert .gt. 0 ) then
 	    call rst_add_flag(id,iflag)
 	    read(iunit) rval3d1((nlv+1)*nkn)
-	    if( nvers .ge. 18 ) read(iunit) rval3d2((nlv+1)*nkn)
+	    !if( nvers .ge. 18 ) read(iunit) rval3d2((nlv+1)*nkn)
 	    if( brewrite ) then
 	      write(iuout,*) 'rst: wlnv'
 	      write(iuout,*) rval3d1((nlv+1)*nkn)
-	      if( nvers .ge. 18 ) then
-	        write(iuout,*) 'rst: wlov'
-	        write(iuout,*) rval3d2((nlv+1)*nkn)
-	      end if
+	      !if( nvers .ge. 18 ) then
+	      !  write(iuout,*) 'rst: wlov'
+	      !  write(iuout,*) rval3d2((nlv+1)*nkn)
+	      !end if
 	    end if
 	  end if
 	end if
@@ -1010,14 +1011,14 @@
 	      call restart_read_value(iunit,be,iwetv)
 	      call restart_read_value(iunit,bn,zov)
 	      call restart_read_value(iunit,be,3,zeov)
-	      call restart_read_value(iunit,be,utlov)
-	      call restart_read_value(iunit,be,vtlov)
+	      !call restart_read_value(iunit,be,utlov)
+	      !call restart_read_value(iunit,be,vtlov)
 	    else
               read(iunit)
               read(iunit)
               read(iunit)
-              read(iunit)
-              read(iunit)
+              !read(iunit)
+              !read(iunit)
 	    end if
 	  end if
 
@@ -1085,11 +1086,12 @@
 	      call rst_add_flag(id,iflag)
 	      if( rst_want_restart(id) ) then
 	        call restart_read_value(iunit,bn,wlnv)
-		if( nvers .ge. 18 ) then
-	          call restart_read_value(iunit,bn,wlov)
-		end if
+		!if( nvers .ge. 18 ) then
+	        !  call restart_read_value(iunit,bn,wlov)
+		!end if
 	      else
                 read(iunit)
+		!if( nvers .ge. 18 ) read(iunit)
 	      end if
 	    end if
 	  end if
