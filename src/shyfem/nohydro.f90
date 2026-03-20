@@ -166,7 +166,7 @@
         call setzev 
         call setuvd 
 	call baro2l
-  	call make_new_depth 
+  	call make_new_layer_depth 
 	call check_volume
 
 !        Finally adjust NH pressure q

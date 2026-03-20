@@ -351,7 +351,7 @@
 
 	if( bhydro ) then
 	  call copy_uvz
-	  call copy_depth
+	  call copy_layer_depth
 	end if
 
 !	---------------------------------------------------------
@@ -386,7 +386,7 @@
 !	---------------------------------------------------------
 
 	if( bhydro ) then
-	  call make_new_depth
+	  call make_new_layer_depth
 	  call uvint
           call ttov
           call make_prvel
