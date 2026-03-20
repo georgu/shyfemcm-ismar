@@ -935,3 +935,43 @@
 
 ! ************************************************************
 
+	subroutine plot_nodes_with_grade(ng)
+
+	use mod_adj_grade
+	use basin
+
+        implicit none
+
+	integer ng
+
+	integer ntot,n,nstride,ib
+	integer k
+
+	ntot = 0
+	do k=1,nkn
+	  n = ngrade(k)
+	  ib = nbound(k)
+	  if( n == ng .and. ib == 0 ) ntot = ntot + 1
+	end do
+
+	nstride = ntot / 10		!plot around 10 nodes
+	if( nstride == 0 ) nstride = 1
+
+	write(6,*) 'plotting nodes with grade ',ng,ntot,nstride
+	ntot = 0
+	do k=1,nkn
+	  n = ngrade(k)
+	  ib = nbound(k)
+	  if( n == ng .and. ib == 0 ) then
+	    ntot = ntot + 1
+	    if( mod(ntot,nstride) == 0 ) then
+	      write(6,*) 'plot node: ',ntot,k,n
+	      call plot_node_with_neibors(k)
+	    end if
+	  end if
+	end do
+
+	end
+
+! ************************************************************
+
