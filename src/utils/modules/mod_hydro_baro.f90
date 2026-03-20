@@ -69,6 +69,11 @@
         allocate(unv(nel))
         allocate(vnv(nel))
 
+	uov = 0.
+	vov = 0.
+	unv = 0.
+	vnv = 0.
+
         end subroutine mod_hydro_baro_init
 
 !************************************************************

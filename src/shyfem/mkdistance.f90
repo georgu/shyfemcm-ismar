@@ -61,6 +61,7 @@
 ! 12.12.2022	ggu	new routine mkdist_mpi() -> results will change
 ! 16.12.2022	ggu	nadist now running with mpi
 ! 25.02.2026	ggu	some factorization
+! 20.03.2026	ggu	mpi bug fix in mkdist_mpi()
 !
 !****************************************************************
 
@@ -172,7 +173,7 @@
 ! make distance
 !-----------------------------------------------------------------
 
-        write(6,*) 'Making distance rdist'
+        write(6,*) 'making distance rdist'
         !call mkdist(nadist,nkn,idist,rdist)		!old version
         !call mkdist_new(nkn,idist,rdist)		!new non-mpi version
         call mkdist_mpi(idist,rdist)			!mpi-version
@@ -496,6 +497,7 @@
 	  iloop = iloop + 1
 	  !write(6,*) 'changes computing idist: ',my_id,iloop,nchange
 	  if( iloop >= nadmax ) exit
+	  nchange = shympi_sum(nchange)		!bug fix
 	  if( nchange == 0 ) exit
 	  call shympi_exchange_2d_node(idist)
 	end do

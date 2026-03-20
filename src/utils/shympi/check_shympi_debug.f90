@@ -229,6 +229,8 @@
 	integer i
 	integer, save :: ndim = 0
 	integer, save :: iu = 444
+	integer, save :: ndump = 500
+	integer :: strive
 	character*40, save :: dump = 'dump.txt'
 
 	if( ndim == 0 ) then
@@ -240,21 +242,23 @@
 
 	call read_data_record1(nt,ntot)
 
+	strive = ntot / ndump
+
 	write(6,*) 'dumping data record for ',trim(text),' to ',trim(dump)
 
 	write(iu,*) 'time = ',dtime
 	write(iu,*) 'var  = ',trim(text)
 
 	if( nt == 1 ) then			!integer
-	  do i=1,ntot
+	  do i=1,ntot,strive
 	    write(iu,*) i,ival1(i)
 	  end do
 	else if( nt == 2 ) then			!real
-	  do i=1,ntot
+	  do i=1,ntot,strive
 	    write(iu,*) i,rval1(i)
 	  end do
 	else if( nt == 3 ) then			!double
-	  do i=1,ntot
+	  do i=1,ntot,strive
 	    write(iu,*) i,dval1(i)
 	  end do
 	else
@@ -376,12 +380,6 @@
 	  write(6,*) 'file 2: ',trim(name_two)
 	end if
 
-	if( bbalance ) then
-	  call read_header(1,nipv,nipev,ipv,ipev)
-	  call read_header(2,nipv,nipev,ipv,ipev)
-	  call time_balance
-	end if
-
 	idiff_tot = 0
 	idiff_rec = 0
 	rdiff_max = 0
@@ -389,6 +387,12 @@
 	ntime = 0
 	nipv = 0
 	nipev = 0
+
+	if( bbalance ) then
+	  call read_header(1,nipv,nipev,ipv,ipev)
+	  call read_header(2,nipv,nipev,ipv,ipev)
+	  call time_balance
+	end if
 
 	do while(.true.)	!read next time record
 
@@ -1066,6 +1070,7 @@
 	call peek_time_record(2,dtime2,ierr2)
 	if( ierr1 /= 0 .or. ierr2 /= 0 ) goto 99
 
+	!write(6,*) 'balance: ',dtime1, dtime2
 	if( dtime1 == dtime2 ) then	!same time in initial record
 	  write(6,*) 'time_balance: starting time found ',dtime1
 	  return
@@ -1255,6 +1260,7 @@
 	logical bignore
 
 	blcheck = .true.
+	return
 
 	if( ntime > 2 ) return		!only do for first data record
 
