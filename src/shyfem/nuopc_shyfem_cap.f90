@@ -33,6 +33,7 @@
 
 	!! We call the modules of the libraries. First the SHYFEM library:
 	use mod_shyfem
+	use mod_shyfem_intern
 	!! and of course ESMF and NUOPC:
 	use ESMF
         use NUOPC

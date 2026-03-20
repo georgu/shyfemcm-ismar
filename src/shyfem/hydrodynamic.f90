@@ -292,6 +292,7 @@
 	use mod_hydro_print
 	use mod_hydro_vel
 	use mod_hydro
+	use mod_shyfem
 	use levels, only : nlvdi,nlv
 	!use basin, only : nkn,nel,ngr,mbw
 	use basin
@@ -302,14 +303,15 @@
 
 	implicit none
 
-	logical boff,bdebout
+	logical boff
 	logical bzcorr
-	integer i,l,k,ie,ier,ii
+	integer i,l,ie,ier,ii
+	!integer i,l,k,ie,ier,ii
 	integer nrand
 	integer iw,iwa,iloop
 	integer nmat
 	integer kspecial
-	integer iwhat
+	!integer iwhat
 	real azpar,ampar
 	real dzeta(nkn)
 	double precision dtime
@@ -322,7 +324,6 @@
 
         integer iwvel !DWNH
 	kspecial = 0
-	bdebout = .false.
 
 	if( nint(getpar('ihydro')) <= 0 ) return	!only for debug
 
@@ -423,7 +424,7 @@
 	call baro2l 			!sets transports in dry areas
 
 	call trace_point('make_new_depth')
-	call make_new_depth
+	call make_new_layer_depth
 	call check_volume		!checks for negative volume 
 	call trace_point('arper')
         call arper
@@ -526,19 +527,6 @@
 
 	real azpar,ampar
 	real dt
-
-	!real az,am,af
-	!real zm
-	!real ht
-	!real amatr(3,3)
-	!real delta,h11,hh999
-	!real z(3)
-	!real andg,zndg(3)
-	!real b(3),c(3)
-	!real acu
-	!real uold,vold
-	!real ut,vt,uhat,vhat
-	!real dbb,dbc,dcb,dcc,abn,acn
 
 	double precision aj,rw,ddt
 	double precision amatr(3,3)

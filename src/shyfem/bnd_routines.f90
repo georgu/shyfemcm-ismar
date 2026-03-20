@@ -195,6 +195,7 @@
 ! 13.11.2024    ggu     marked old code with INTEL_BUG_OLD
 ! 03.12.2024    ggu     run init_flux() only for ibtyp>1
 ! 12.06.2025    clc     set dvols to 0 to avoid compiler warning
+! 20.03.2026    ggu     changes in sp111() init and set_mass_flux() -> mode
 !
 !***************************************************************
 
@@ -415,28 +416,11 @@
 	call setznv		!adjusts znv
 
 	call set_area		!initializes area	!bugfix MPI_SET_AREA
-	call initialize_layer_depth
-
-	call init_uvt		!initializes utlnv, vtlnv
 	call init_z0		!initializes surface and bottom roughness
-
-	!call uvint
-	call init_uv		!computes velocities
-	call copy_uvz		!copies to old time level
-	call copy_depth		!copies layer thickness
 
 !	-----------------------------------------------------
 !       finish
 !	-----------------------------------------------------
-
-! next only for radiation condition
-!
-!        write(78,*) 46728645,1
-!        write(78,*) 50,0
-!        write(78,*) 0,50,-0.01,0.01
-!        write(79,*) 46728645,1
-!        write(79,*) 50,0
-!        write(79,*) 0,50,-0.01,0.01
 
 	return
 
@@ -1066,8 +1050,8 @@
 ! initialize arrays and parameter
 !------------------------------------------------------------------
 
+	mode = +1		!new time step
 	mode = -1		!old time step
-	mode = +1		!old time step
 
 	ksext = 39140		!goro debug
 	ksext = 861		!vistula debug

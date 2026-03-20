@@ -53,6 +53,7 @@ MOD  = \
 	mod_system_matrix.o \
 	mod_ts.o \
 	mod_waves.o \
+	mod_shyfem.o \
 
 OBJ  = \
 
@@ -183,6 +184,7 @@ zip:	cleanall
 ../../../lib/mod/mod_roughness.mod: mod_roughness.o
 ../../../lib/mod/mod_sediment.mod: mod_sedim.o
 ../../../lib/mod/mod_sediment_para.mod: mod_sedim.o
+../../../lib/mod/mod_shyfem.mod: mod_shyfem.o
 ../../../lib/mod/mod_sinking.mod: mod_sinking.o
 ../../../lib/mod/mod_system.mod: mod_system_matrix.o
 ../../../lib/mod/mod_system_interface.mod: mod_system_matrix.o

@@ -205,7 +205,7 @@
 
 
 !================================================================
-	module mod_shyfem
+	module mod_shyfem_intern
 !================================================================
 
 	use mod_bound_geom
@@ -249,10 +249,8 @@
 
 ! internal variables
 
-	logical bdebout,bdebug,bmpirun
-	logical, save ::  bfirst = .true.
-	integer k,ic,n
-	integer iwhat
+	!integer k,ic,n
+	!integer iwhat
 	integer date,time
 	integer nthreads
 	integer*8 count1,count2,count3,count_rate,count_max
@@ -269,11 +267,11 @@
 	character*80 mpi_code,omp_code
 
 !================================================================
-	end module mod_shyfem
+	end module mod_shyfem_intern
 !================================================================
 
 	subroutine shyfem_main
-	use mod_shyfem
+	use mod_shyfem_intern
 	implicit none
 	call shyfem_initialize(.true.)
 	call shyfem_run(zero)
@@ -289,11 +287,12 @@
 !-----------------------------------------------------------
 
 	use mod_shyfem
+	use mod_shyfem_intern
 
 	implicit none
 
 	logical, intent(in) :: mpi_init
-	logical bquiet,bsilent
+	integer n
 
 	call cpu_time(time1)
 	call cpu_time_init
@@ -311,7 +310,7 @@
 ! copyright and command line options
 !-----------------------------------------------------------
 
-        call shyfem_init(strfile,bdebug,bdebout,bmpirun,bquiet,bsilent)
+        call shyfem_init(strfile)
 
 !-----------------------------------------------------------
 ! write  real start time
@@ -405,25 +404,32 @@
      &                          ,hkv_max,hev,hlv,date,time)
 
 	call init_zadaptation
-	call sp111(1)           !here zenv, utlnv, vtlnv are initialized
+	call sp111(1)           !here znv and zenv are initialized
 
 !-----------------------------------------------------------
 ! initialize depth arrays and barene data structure
 !-----------------------------------------------------------
 
-	call setweg(0,n)
-	call setznv		! -> change znv since zenv has changed
+	!call setweg(0,n)
+	!call setznv		! -> change znv since zenv has changed
+	zov = znv
+	zeov = zenv
+	utlnv = 0
+	vtlnv = 0
+	utlov = 0
+	vtlov = 0
+	wlov = 0
+	wlnv = 0
 
-        call rst_perform_restart        !restart
-	call compute_velocities
-	call copy_uvz
+        call rst_perform_restart        !performs restart
 
-	!call init_vertical	!do again after restart
+	call initialize_layer_depth		!old and new hdk/ev
+	call compute_derived_variables
+	call compute_old_derived_variables
 
 	call setnod
 	call set_area
 
-	call initialize_layer_depth
 	!call check_max_depth
 
 	call setup_time		!in case start time has changed with rst
@@ -450,7 +456,7 @@
 !-----------------------------------------------------------
 
 	call init_uv            !set vel, w, pr, ... from transports
-	call copy_uvz		!copy new to old
+	!call copy_uvz		!copy new to old
 	call trace_point('calling barocl')
 	call barocl(0)
 	call trace_point('wrfvla')
@@ -521,10 +527,7 @@
 	call sp111(2)           	!initialize BC and read first data
 	call trace_point('finished sp111')
 
-	!call custom(it)		!call for initialization
-
-	!write(6,*) 'starting time loop'
-        !call shympi_comment('starting time loop...')
+	call rst_write_restart		!write restart for initial time step
 
 	call print_time
 
@@ -534,9 +537,6 @@
 	call off_print_debug_var
 
 	if( bdebout ) call handle_debug_output(dtime)
-
-        !call test_forcing(dtime,dtend)
-        !call test_zeta_debug(dtime)
 
 	call test_zeta_init
 	call cpu_time_start(2)
@@ -552,6 +552,7 @@
 	subroutine shyfem_run(dtstep)
 
 	use mod_shyfem
+	use mod_shyfem_intern
 
 	implicit none
 
@@ -589,7 +590,7 @@
 	   call trace_point_0('before copy')
 	   call copy_uvz		!copies new to old time level
 	   call nonhydro_copy   	!copies non hydrostatic pressure terms
-	   call copy_depth		!copies layer depth to old
+	   call copy_layer_depth	!copies layer depth to old
 	   call trace_point_0('after copy')
 
 	   call handle_offline(2)	!read from offline file
@@ -670,6 +671,7 @@
 	subroutine shyfem_finalize
 
 	use mod_shyfem
+	use mod_shyfem_intern
 
 	implicit none
 
@@ -737,6 +739,7 @@
         write(6,*) 'simulation start:   ',aline_start 
         write(6,*) 'simulation end:     ',aline_end 
         write(6,*) 'simulation runtime: ',atime_end-atime_start
+        write(6,*) 'shyfem simulation successfully finished'
 
 	call getinfo(iuinfo)
 	if( iuinfo > 0 ) flush(iuinfo)
@@ -774,19 +777,19 @@
 
 !*****************************************************************
 
-        subroutine shyfem_init(strfile,bdebug,bdebout,bmpirun,bquiet,bsilent)
+        subroutine shyfem_init(strfile)
 
         use clo
         use shympi
 	use mod_zeta_system
 	use mod_trace_point
 	use mod_compatibility
+	use mod_shyfem
 
         implicit none
 
         character*(*) strfile
-        logical bdebug,bdebout,bmpirun,bmpidebug,bltrace
-        logical bquiet,bsilent
+        logical bmpidebug,bltrace
 
         character*80 version
         character*80 scompiler
@@ -801,7 +804,8 @@
         call clo_add_info('runs the 3D shyfem routine')
 
 	call clo_add_sep('general options:')
-        call clo_add_option('quiet',.false.,'do not be verbose')
+        call clo_add_option('verbose',.false.,'be verbose')
+        call clo_add_option('quiet',.false.,'be quiet')
         call clo_add_option('silent',.false.,'be silent')
 
 	call clo_add_sep('mpi options:')
@@ -817,6 +821,7 @@
 
         call clo_parse_options
 
+        call clo_get_option('verbose',bverbose)
         call clo_get_option('quiet',bquiet)
         call clo_get_option('silent',bsilent)
 
@@ -828,6 +833,7 @@
         call clo_get_option('trace',bltrace)
 
         if( bsilent ) bquiet = .true.
+        if( bquiet ) bverbose = .false.
         !if( bmpirun ) call shympi_set_debug(bmpidebug)
         call shympi_set_debug(bmpidebug)
 	call set_trace_point(bltrace)
@@ -1087,7 +1093,7 @@
 
 	subroutine handle_debug_output(dtime)
 
-! the output should be checked with check_debug
+! the output should be checked with check_shympi_debug
 
 	use mod_debug
 	use shympi_debug
@@ -1125,7 +1131,6 @@
               if( ios /= 0 ) goto 99
 	      call set_debug_unit(iunit)
 	      call shympi_write_debug_unit(iunit)
-              !call info_output_d('debug_output',da_out)
               icall = 1
 	    else
               icall = -1
@@ -1133,13 +1138,10 @@
 	  end if
 	  call shympi_bcast(icall)
 	  call shympi_bcast(da_out)
-	  !write(6,*) 'after broadcast: ',icall,da_out
-	  !write(6,*) 'finished setting up handle_debug_output',my_id
         end if
 
         if( next_output_d(da_out) ) then
 	  call shympi_debug_output(dtime)
-	  !call debug_output(dtime)		!serial
 	end if
 
 	call is_time_last(blast)
@@ -1179,6 +1181,7 @@
 	use mod_layer_thickness
 	use mod_diff_visc_fric
 	use mod_bound_dynamic
+	use mod_geom_dynamic
 	use tide
 	use mod_meteo
 
@@ -1190,7 +1193,7 @@
 	integer, save :: icall = 0
 
 	if( shympi_is_master() ) then
-	  write(6,*) 'shympi_debug_output: writing records'
+	  write(6,*) 'shympi_debug_output: writing records',dtime
 	end if
 
 	call shympi_write_debug_init		!can be called more than once
@@ -1230,6 +1233,9 @@
 	call shympi_write_debug_node('wxv',wxv)
 	call shympi_write_debug_node('wyv',wyv)
 
+	call shympi_write_debug_elem('iwegv',iwegv)
+	call shympi_write_debug_node('inodv',inodv)
+
 	call shympi_write_debug_elem('fxv',fxv)
 	call shympi_write_debug_elem('fyv',fyv)
 	call shympi_write_debug_node('zeqv',zeqv)
@@ -1266,6 +1272,28 @@
 	call shympi_write_debug_node('vprv',vprv)
 
 	call shympi_write_debug_final
+
+	end
+
+!*****************************************************************
+
+	subroutine special_debug_output(dtime)
+
+! special debug output (to be customized)
+
+	double precision dtime
+	double precision, save :: ddtime = -1
+	integer, save :: step = 0
+
+	if( dtime <= 86400 ) return
+	if( dtime /= ddtime ) then
+	  step = 0
+	  ddtime = dtime
+	end if
+
+	step = step + 1
+
+	call shympi_debug_output(dtime+step)	!write unconditionally
 
 	end
 
@@ -1945,6 +1973,48 @@
 	call shympi_barrier
 
         end
+
+!*****************************************************************
+
+	subroutine write_z_values(text)
+
+! for debug
+
+	use basin
+	use levels
+	use mod_hydro
+	use mod_layer_thickness
+
+	implicit none
+
+	character*(*) text
+
+	double precision dtime
+	integer it
+	integer nstrive,k,iu,l
+
+        call get_act_dtime(dtime)
+        it = nint(dtime)
+
+	if( it < 86400 ) return
+	if( it > 86400 + 900 ) return
+
+	iu = 66
+	nstrive = nkn/20
+
+	write(iu,*) '========================================'
+	write(iu,*) '=========== ',trim(text),' ============='
+	write(iu,*) dtime,it
+	write(iu,*) '========================================'
+
+	do k=1,nkn,nstrive
+	  !do l=1,nlv,3
+	  !  write(iu,*) k,l,hdkov(l,k),hdknv(l,k)
+	  !end do
+	  write(iu,*) k,hdkov(1,k),zov(k)
+	end do
+
+	end
 
 !*****************************************************************
 !*****************************************************************

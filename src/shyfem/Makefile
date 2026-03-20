@@ -410,7 +410,7 @@ cleanlinks:
 ../../lib/mod/mod_renewal_time.mod: water_ren_time.o
 ../../lib/mod/mod_rstinf.mod: rstinf.o
 ../../lib/mod/mod_sedtrans05.mod: sedim_util.o
-../../lib/mod/mod_shyfem.mod: shyfem_subs.o
+../../lib/mod/mod_shyfem_intern.mod: shyfem_subs.o
 ../../lib/mod/mod_subset.mod: subset.o
 ../../lib/mod/mod_system_global.mod: simsys_spkaux.o
 ../../lib/mod/mod_test_zeta.mod: test_zeta.o
@@ -689,6 +689,7 @@ hydrodynamic.o: ../../lib/mod/basin.mod ../../lib/mod/evgeom.mod \
 		../../lib/mod/mod_meteo.mod \
 		../../lib/mod/mod_nudging.mod \
 		../../lib/mod/mod_roughness.mod \
+		../../lib/mod/mod_shyfem.mod \
 		../../lib/mod/mod_system.mod \
 		../../lib/mod/mod_trace_point.mod \
 		../../lib/mod/mod_waves.mod \
@@ -848,6 +849,7 @@ nudge.o: ../../lib/mod/basin.mod ../../lib/mod/intp_fem_file.mod \
 		../../lib/mod/shympi.mod 
 nuopc_shyfem_cap.o: ../../lib/mod/esmf.mod \
 		../../lib/mod/mod_shyfem.mod \
+		../../lib/mod/mod_shyfem_intern.mod \
 		../../lib/mod/nuopc.mod 
 offline_data.o: ../../lib/mod/basin.mod ../../lib/mod/levels.mod \
 		../../lib/mod/mod_diff_visc_fric.mod \
@@ -950,6 +952,7 @@ shyfem_subs.o: ../../lib/mod/basin.mod \
 		../../lib/mod/mod_quad_tree.mod \
 		../../lib/mod/mod_roughness.mod \
 		../../lib/mod/mod_sediment.mod \
+		../../lib/mod/mod_shyfem.mod \
 		../../lib/mod/mod_sinking.mod \
 		../../lib/mod/mod_subset.mod \
 		../../lib/mod/mod_test_zeta.mod \
