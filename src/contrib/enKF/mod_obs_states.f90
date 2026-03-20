@@ -30,6 +30,7 @@
 !      type declarations and is intentionally minimal.
 !===============================================================
 module mod_obs_states
+  use iso_fortran_env, only : dp => real64
   implicit none
   private
 
@@ -48,46 +49,31 @@ module mod_obs_states
 
   !-------------------------------------------------------------
   ! 0-D scalar observation at a single location
-  !   t     : observation time (absolute), double precision
-  !   x,y,z : coordinates (model grid / projected units)
-  !   val   : observed value
-  !   std   : observation standard deviation
-  !   stat  : status flag (0..4, see header)
-  !   id    : originating file index (as read from list)
-  !   rhol  : localisation radius (if localisation is used)
   !-------------------------------------------------------------
   type scalar_0d
-     double precision :: t     ! time (absolute)
-     real             :: x     ! x coordinate
-     real             :: y     ! y coordinate
-     real             :: z     ! z coordinate
-     real             :: val   ! observed value
-     real             :: std   ! observation std
+     real(dp)             :: t     ! time (absolute)
+     real(dp)             :: x     ! x coordinate
+     real(dp)             :: y     ! y coordinate
+     real(dp)             :: z     ! z coordinate
+     real(dp)             :: val   ! observed value
+     real(dp)             :: std   ! observation std
      integer          :: stat  ! status = 0,1,2,3,4
      integer          :: id    ! id number of the source file
-     real             :: rhol  ! radius for local analysis
+     real(dp)             :: rhol  ! radius for local analysis
   end type scalar_0d
 
   !-------------------------------------------------------------
   ! 2-D vector field observation on a regular grid
-  !   t        : field time (absolute), double precision
-  !   nx, ny   : grid dimensions
-  !   x, y     : 2-D arrays of grid coordinates (nx, ny)
-  !   z        : representative depth/level (scalar)
-  !   u, v     : vector components on the grid (nx, ny)
-  !   std      : per-point std on the grid (nx, ny)
-  !   stat     : per-point status flag (nx, ny)
-  !   id       : originating file index (as read from list)
   !-------------------------------------------------------------
   type vector_2d
-     double precision   :: t           ! time of the field (absolute)
-     integer            :: nx, ny      ! dimensions
-     real, allocatable  :: x(:,:)      ! x coordinates
-     real, allocatable  :: y(:,:)      ! y coordinates
-     real               :: z           ! depth (if applicable)
-     real, allocatable  :: u(:,:)      ! u component
-     real, allocatable  :: v(:,:)      ! v component
-     real, allocatable  :: std(:,:)    ! observation std
+     real(dp)               :: t           ! time of the field (absolute)
+     integer                :: nx, ny      ! dimensions
+     real(dp), allocatable  :: x(:,:)      ! x coordinates
+     real(dp), allocatable  :: y(:,:)      ! y coordinates
+     real(dp)               :: z           ! depth (if applicable)
+     real(dp), allocatable  :: u(:,:)      ! u component
+     real(dp), allocatable  :: v(:,:)      ! v component
+     real(dp), allocatable  :: std(:,:)    ! observation std
      integer, allocatable :: stat(:,:) ! status flags (0..4)
      integer            :: id          ! id number of the source file
   end type vector_2d

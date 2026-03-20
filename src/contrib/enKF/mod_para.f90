@@ -68,6 +68,15 @@ module mod_para
   !--------------------------------------------------------------------
   real(dp), parameter :: KSTD = 2.0       ! std limiter factor (<=0 disables)
 
+  ! Makes superobservations, depending on the local analysis radius
+  logical, parameter  :: SUPEROBS = .true.
+
+  ! Maximum biases to keep
+  logical, parameter  :: NOBIAS = .false.
+  real(dp), parameter :: ZBIAS_MAX = 0.2
+  real(dp), parameter :: TBIAS_MAX = 2.
+  real(dp), parameter :: SBIAS_MAX = 4.
+
   ! SVD truncation and perturbation options
   real(dp),    parameter :: truncation     = 0.99
   logical, parameter :: lrandrot       = .false.
