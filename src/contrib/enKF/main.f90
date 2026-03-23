@@ -46,9 +46,6 @@ program main
    write(*,*) '***'
 
    ! Basic sanity checks on control flags (defensive programming).
-   if (mode_an < 0 .or. mode_an > 2) then
-      error stop 'main: mode_an must be 0 (state), 1 (augmented), or 2 (params TODO)'
-   end if
    if (is_local /= 0 .and. is_local /= 1) then
       error stop 'main: is_local must be 0 (global) or 1 (local)'
    end if

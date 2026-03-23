@@ -134,9 +134,12 @@ subroutine fill_scalar_0d(olabel, nfile, ostate)
          mvalm = Abk_m%s(1, kmin)
       end select
 
-      accept_obs = .true.
-      if (nanal > 3) call screen_observation(ostate(nf)%val, mval, nrens, ostate(nf)%std, 3._dp, 0.6_dp, accept_obs)
-      if (.not. accept_obs) cycle
+      ! Last check of the observations, if accept_obs = .false. the observation is excluded.
+      if ( OBSCHK ) then
+         accept_obs = .true.
+         if (nanal > 3) call screen_observation(ostate(nf)%val, mval, nrens, ostate(nf)%std, 3._dp, 0.6_dp, accept_obs)
+         if (.not. accept_obs) cycle
+      end if
 
       nobs_ok = nobs_ok + 1
    end do
@@ -189,17 +192,27 @@ subroutine fill_scalar_0d(olabel, nfile, ostate)
          mvalm = Abk_m%s(1, kmin)
       end select
 
-      accept_obs = .true.
-      if (nanal > 3) call screen_observation(ostate(nf)%val, mval, nrens, ostate(nf)%std, 3._dp, 0.6_dp, accept_obs)
-      if (.not. accept_obs) cycle
+      ! Last check of the observations, if accept_obs = .false. the observation is excluded.
+      if ( OBSCHK ) then
+         accept_obs = .true.
+         if (nanal > 3) call screen_observation(ostate(nf)%val, mval, nrens, ostate(nf)%std, 3._dp, 0.6_dp, accept_obs)
+         if (.not. accept_obs) cycle
+      end if
 
       n_obs = n_obs + 1
 
+      ! Get obs values
       val     = ostate(nf)%val
       std     = ostate(nf)%std
       val_o(n_obs) = val
+
+      ! Covariance error obs matrix
       R(n_obs,n_obs) = std**2
 
+      ! Innovation
+      inn1 = val - mvalm
+
+      ! Modify the obs STD according to the ens spread
       call check_spread(inn1, std_o, mval, mvalm)
 
       innov(n_obs) = inn1
@@ -210,6 +223,8 @@ subroutine fill_scalar_0d(olabel, nfile, ostate)
       E(n_obs,:)   = std_o * pvec
       D(n_obs,:)   = val + E(n_obs,:)
       D1(n_obs,:)  = D(n_obs,:) - HA(n_obs,:)
+
+      if (verbose) write(*,*) 'val, val_o, std_o, inn: ', mvalm, val, std, inn1
 
    end do
 

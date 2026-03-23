@@ -77,6 +77,9 @@ module mod_para
   real(dp), parameter :: TBIAS_MAX = 2.
   real(dp), parameter :: SBIAS_MAX = 4.
 
+  ! Check on observations
+  logical, parameter  :: OBSCHK = .true.
+
   ! SVD truncation and perturbation options
   real(dp),    parameter :: truncation     = 0.99
   logical, parameter :: lrandrot       = .false.
