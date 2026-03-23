@@ -95,7 +95,7 @@ subroutine fill_scalar_0d(olabel, nfile, ostate)
    real(dp) :: mvalm
    real(dp) :: mval(nrens)
    real(dp) :: pvec(nrens)
-   real(dp) :: inn1, std_o
+   real(dp) :: inn1
    real(dp) :: spread, thresh
    logical  :: accept_obs
 
@@ -213,18 +213,18 @@ subroutine fill_scalar_0d(olabel, nfile, ostate)
       inn1 = val - mvalm
 
       ! Modify the obs STD according to the ens spread
-      call check_spread(inn1, std_o, mval, mvalm)
+      call check_spread(inn1, std, mval, mvalm)
 
       innov(n_obs) = inn1
       S(n_obs,:)   = mval(:) - mvalm
       HA(n_obs,:)  = mval(:)
 
       call make_0Dpert(olabel, nrens, nanal, ostate(nf)%id, pvec, atime_an, TTAU_0D)
-      E(n_obs,:)   = std_o * pvec
+      E(n_obs,:)   = std * pvec
       D(n_obs,:)   = val + E(n_obs,:)
       D1(n_obs,:)  = D(n_obs,:) - HA(n_obs,:)
 
-      if (verbose) write(*,*) 'val, val_o, std_o, inn: ', mvalm, val, std, inn1
+      if (verbose) write(*,*) 'val_m, val_o, std_o, inn: ', mvalm, val, std, inn1
 
    end do
 
