@@ -180,7 +180,6 @@ contains
         call read_scalar_0d('0DLEV', linit, trim(ofile(n)%name), TEPS, &
                             kinit, kend, tobs, xobs, yobs, zobs, vobs, stdobs, vmean, statobs, rho)
         if (kend > kinit) then
-          !if (verbose) write(*,*) 'Station n. ', n
           call check_mean('0DLEV',vmean,zobs,vobs)
           o0dlev(kend)%t    = tobs
           o0dlev(kend)%x    = xobs
@@ -200,8 +199,8 @@ contains
         call read_scalar_0d('0DTEM', linit, trim(ofile(n)%name), TEPS, &
                             kinit, kend, tobs, xobs, yobs, zobs, vobs, stdobs, vmean, statobs, rho)
         if (kend > kinit) then
-          !if (verbose) write(*,*) 'Station n. ', n
-          call check_mean('0DTEM',vmean,zobs,vobs)
+	  ! not very correct for temp
+          !call check_mean('0DTEM',vmean,zobs,vobs)
           o0dtemp(kend)%t    = tobs
           o0dtemp(kend)%x    = xobs
           o0dtemp(kend)%y    = yobs
@@ -220,8 +219,8 @@ contains
         call read_scalar_0d('0DSAL', linit, trim(ofile(n)%name), TEPS, &
                             kinit, kend, tobs, xobs, yobs, zobs, vobs, stdobs, vmean, statobs, rho)
         if (kend > kinit) then
-          !if (verbose) write(*,*) 'Station n. ', n
-          call check_mean('0DSAL',vmean,zobs,vobs)
+	  ! not very correct for salt
+          !call check_mean('0DSAL',vmean,zobs,vobs)
           o0dsalt(kend)%t    = tobs
           o0dsalt(kend)%x    = xobs
           o0dsalt(kend)%y    = yobs

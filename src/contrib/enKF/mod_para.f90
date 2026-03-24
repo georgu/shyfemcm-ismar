@@ -71,8 +71,10 @@ module mod_para
   ! Makes superobservations, depending on the local analysis radius
   logical, parameter  :: SUPEROBS = .true.
 
-  ! Maximum biases to keep
-  logical, parameter  :: NOBIAS = .false.
+  ! Maximum biases to keep. This is not very correct for T/S and 
+  ! dangerous for Z. Compare obs time mean with model spatial mean.
+  ! Not activated by default
+  logical, parameter  :: NOBIAS = .true.
   real(dp), parameter :: ZBIAS_MAX = 0.2
   real(dp), parameter :: TBIAS_MAX = 2.
   real(dp), parameter :: SBIAS_MAX = 4.
