@@ -146,7 +146,7 @@ endif
 
 #---------------------	all libs	-----------------------
 
-LIBF = $(LIBFUM) $(LIBFMP) $(LIBFSU) $(LIBFUT) $(LIBFSP)
+LIBF = $(LIBFUM) $(LIBFMP) $(LIBFSU) $(LIBFUT) $(LIBFSP) $(LIBFGOTM)
 LIBL = $(LIBLUM) $(LIBLMP) $(LIBLSU) $(LIBLUT) $(LIBLGOTM)
 LIBL += $(LIBLGOTM) $(LIBG_PARMETIS) $(LIBG_METIS) $(LIBG_PETSC) $(LIBLSP) $(LIB_NETCDF)
 #$(info ------------------------------ )

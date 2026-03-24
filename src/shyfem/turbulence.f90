@@ -85,16 +85,20 @@
 
 ! administers turbulence closure
 
+	use mod_info_output
+
 	implicit none
 
 	real getpar
 	logical boff
+	logical bw
 
-	integer iturb
-	save iturb
-	data iturb / 0 /
+	integer, save :: iturb = 0
 
 	if( iturb .lt. 0 ) return
+
+	bw = print_not_quiet()
+	call set_gotm_output(bw)
 
 	call is_offline(4,boff)
 	if( boff ) return
@@ -103,7 +107,7 @@
 	  iturb = nint(getpar('iturb'))
 	  if( iturb .le. 0 ) iturb = -1
 	  if( iturb .lt. 0 ) return
-	  write(*,*) 'starting turbulence model: iturb = ',iturb
+	  if( bw ) write(*,*) 'starting turbulence model: iturb = ',iturb
 	end if
 
 	if( iturb .eq. 1 ) then		!Gotm
@@ -130,6 +134,7 @@
 	use basin, only : nkn,nel,ngr,mbw
 	use pkonst
 	use femtime
+	use mod_info_output
 
 	implicit none
 
@@ -154,6 +159,7 @@
 
 	real getpar
 
+	logical bw
 	logical, save :: brilimit
 	integer, save :: icall = 0
 	real rimax
@@ -164,8 +170,10 @@
 
 	if( icall .lt. 0 ) return
 
+	bw = print_not_quiet()
+
 	if( icall .eq. 0 ) then
-	  write(*,*) 'starting Munk Anderson turbulence model'
+	  if( bw ) write(*,*) 'starting Munk Anderson turbulence model'
 	  vistur = getpar('vistur')
 	  diftur = getpar('diftur')
 	  brilimit = rilimit > 0.
@@ -253,6 +261,7 @@
 	use mod_diff_visc_fric
 	use mod_layer_thickness
 	use mod_hydro_print
+	use mod_info_output
 	use levels, only : nlvdi,nlv
 	use basin
 	use shympi
@@ -310,6 +319,7 @@
 	real getpar
 	integer ipext
 
+	logical bw
 	logical bwave,has_waves,bgotm,bdeb
 	save bwave
 
@@ -334,6 +344,8 @@
 !------------------------------------------------------
 
 	if( icall .lt. 0 ) return
+
+	bw = print_not_quiet()
 
 	kdebug = 8
 	kdebug = 2100
@@ -365,7 +377,9 @@
 !         Initializes gotm arrays 
 !         --------------------------------------------------------
 
-	  write(*,*) 'starting initializing GOTM turbulence model'
+	  if( bw ) then
+	    write(*,*) 'starting initializing GOTM turbulence model'
+	  end if
 
 	  call handle_gotm_init
 
@@ -377,7 +391,9 @@
 	  iunit = 10
 	  call init_gotm_turb(iunit,fn,nlvdi)
 
-	  write(*,*) 'finished initializing GOTM turbulence model'
+	  if( bw ) then
+	    write(*,*) 'finished initializing GOTM turbulence model'
+	  end if
 
 	  icall = 1
 	  call shympi_barrier
@@ -766,9 +782,11 @@
 	use levels
 	use mod_gotm_aux
 	use mod_diff_visc_fric
+	use mod_info_output
 
 	implicit none
 
+	logical bw
 	logical bdebug
 	integer k,l,lmax,lmin,laux
 	integer, save :: iudbg = 0
@@ -780,9 +798,12 @@
 	if( icall > 0 ) return
 	icall = 1
 
+	bw = print_not_quiet()
 	bdebug = ( iudbg > 0 )
 
-	write(6,*) 'handle_gotm_init: ',rst_use_restart(8)
+	if( bw ) then
+	  write(6,*) 'handle_gotm_init: ',rst_use_restart(8)
+	end if
 
 	if( bdebug ) then
 	  write(iudbg,*) 'handle_gotm_init: ',rst_use_restart(8)
@@ -807,18 +828,6 @@
 	    difv(l,k) = nuhv_gotm(laux,k)
 	  end do
 	end do
-
-	if( bdebug ) then
-	!do k=1,nkn,200
-	!write(iudbg,*) 'init: ',k,ilhkv(k),numv_gotm(:,k)
-	!end do
-	write(iudbg,*) '----------------'
-	k=2201
-	lmax = 10
-	call dep3dnod(k,+1,lmin,lmax,h)
-	write(iudbg,*) 'init: ',k,ilhkv(k),numv_gotm(:,k)
-	write(iudbg,*) '----------------'
-	end if
 
 	end
 

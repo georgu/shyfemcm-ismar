@@ -209,6 +209,7 @@
 	use mod_bound_geom
 	use mod_bnd_aux
 	use mod_bound_dynamic
+	use mod_info_output
 	use levels, only : nlvdi,nlv
 	use basin, only : nkn,nel,ngr,mbw
 	use intp_fem_file
@@ -334,8 +335,10 @@
 	    intpol = 2
 	    if( ibtyp .eq. 1 ) intpol = 4
 	  end if
+	  if( print_verbose_once() ) then
 	  write(6,'(a,3i5)') 'opening boundary file: (ibc,ibtyp,intpol) ' &
      &				,ibc,ibtyp,intpol
+	  end if
           call iff_init(dtime0,zfile,nvar,nk,0,intpol &
      &                          ,nodes,vconst,id)
 	  if( ibtyp .eq. 0 ) then
@@ -351,8 +354,10 @@
 	  end if
 	  call iff_set_description(id,ibc,auxname)
 	  ids(ibc) = id
+	  if( print_verbose_once() ) then
 	  write(6,'(a,2i5,4a)') ' boundary file opened: ' &
      &			,ibc,id,' ',auxname,' ',trim(zfile)
+	  end if
 	end do
 
 	!call iff_print_info(ids(1))

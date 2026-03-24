@@ -43,8 +43,8 @@
 
 	private
 
-        logical, parameter :: binfo_do = .true.	!enables info output
-        !logical, parameter :: binfo_do = .false.	!enables info output
+        logical, parameter :: binfo_do = .true.		!enables info output
+        !logical, parameter :: binfo_do = .false.	!disables info output
 
         logical, parameter :: binfo = binfo_do		!accessible outside
         logical, save :: binfo_init = .false.		!has been initialized?
@@ -57,6 +57,10 @@
 
 	public :: binfo
 	public :: info_output
+
+	public :: print_verbose , print_verbose_once , print_regular &
+     &			, print_not_quiet , print_not_quiet_once &
+     &			, print_quiet , print_silent
 
 !================================================================
         contains
@@ -139,6 +143,115 @@
 
 	end subroutine info_output_array
 
+!**********************************************************************
+!**********************************************************************
+!**********************************************************************
+
+	function print_verbose()
+
+	use mod_shyfem
+	use shympi
+
+	implicit none
+
+	logical print_verbose
+
+	print_verbose = bverbose
+
+	end function print_verbose
+	
+!**********************************************************************
+
+	function print_verbose_once()
+
+	use mod_shyfem
+	use shympi
+
+	implicit none
+
+	logical print_verbose_once
+
+	print_verbose_once = bverbose .and. my_id == 0
+
+	end function print_verbose_once
+	
+!**********************************************************************
+
+	function print_regular()
+
+	use mod_shyfem
+	use shympi
+
+	implicit none
+
+	logical print_regular
+
+	print_regular = .not. bquiet .and. .not. bverbose .and. my_id == 0
+
+	end function print_regular
+	
+!**********************************************************************
+
+	function print_not_quiet_once()
+
+	use mod_shyfem
+	use shympi
+
+	implicit none
+
+	logical print_not_quiet_once
+
+	print_not_quiet_once = .not. bquiet .and. my_id == 0
+
+	end function print_not_quiet_once
+	
+!**********************************************************************
+
+	function print_not_quiet()
+
+	use mod_shyfem
+	use shympi
+
+	implicit none
+
+	logical print_not_quiet
+
+	print_not_quiet = print_regular() .or. print_verbose()
+
+	end function print_not_quiet
+	
+!**********************************************************************
+
+	function print_quiet()
+
+	use mod_shyfem
+	use shympi
+
+	implicit none
+
+	logical print_quiet
+
+	print_quiet = .not. bsilent .and. my_id == 0
+
+	end function print_quiet
+	
+!**********************************************************************
+
+	function print_silent()
+
+	use mod_shyfem
+	use shympi
+
+	implicit none
+
+	logical print_silent
+
+	print_silent = bsilent .and. my_id == 0
+
+	end function print_silent
+	
+!**********************************************************************
+
 !================================================================
         end module mod_info_output
 !================================================================
@@ -167,5 +280,7 @@
 
         end
 
+!**********************************************************************
+!**********************************************************************
 !**********************************************************************
 

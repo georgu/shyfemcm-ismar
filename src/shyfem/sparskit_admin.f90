@@ -60,16 +60,19 @@
 
 	use mod_system
 	use mod_system_interface
+	use mod_info_output
 
 	implicit none
 
 	type(smatrix) :: matrix
 
+	logical bglobal
 	integer n2max,n3max
 	integer n2zero,n3zero
 
 	  call coo_init_new(matrix) !construct pointers for coo matrix format
 
+	  bglobal = matrix%bglobal
 	  n2max = matrix%n2max
 	  n3max = matrix%n3max
 	  n2zero = matrix%n2zero
@@ -82,10 +85,14 @@
 	    stop 'error stop spk_initialize_system: non zero 3d max'
 	  end if
 
+	  if( print_not_quiet() ) then
 	  write(6,*) 'SOLVER: Sparskit'
-          print*, 'coo-matrix initialisation...'
+          print*, 'coo-matrix initialisation... global = ',bglobal
+	  end if
+	  if( print_verbose() ) then
           print*, 'Number of non-zeros 2d: ',n2zero,n2max
           print*, 'Number of non-zeros 3d: ',n3zero,n3max
+	  end if
 
 	end
 

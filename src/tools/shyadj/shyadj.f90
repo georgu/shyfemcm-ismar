@@ -314,7 +314,7 @@
           write(6,*) '================================='
 	end if
 
-	call plot_nodes_with_grade(4)
+	!call plot_nodes_with_grade(4)
 
 	call chkgrd('final check')
         call stats('final solution')

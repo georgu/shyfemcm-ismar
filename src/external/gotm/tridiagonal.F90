@@ -74,6 +74,7 @@
 !  elimination.
 !
 ! !USES:
+   use fem_gotm_output
    IMPLICIT NONE
 !
 ! !INPUT PARAMETERS:
@@ -89,7 +90,9 @@
 !
 !-----------------------------------------------------------------------
 !BOC
-   LEVEL1 'init_tridiagonal'
+   if( boutput ) then
+     LEVEL1 'init_tridiagonal'
+   end if
    allocate(au(0:N),stat=rc)
    if (rc /= 0) stop 'init_tridiagonal: Error allocating au)'
    au = 0.

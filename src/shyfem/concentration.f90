@@ -2398,6 +2398,7 @@
 
 	use levels
 	use basin
+	use mod_info_output
 
 	implicit none
 
@@ -2456,6 +2457,7 @@
 	  if( climit1 /= flag ) bclimit1 = .true.
 	  if( bclimit0 .and. bclimit1 .and. climit0 > climit1 ) goto 99
 	  
+	  if( print_verbose() ) then
 	  write(6,*) 'limiting scalars has been set up'
 	  if( btlimit0 ) write(6,*) 'limiting min temp: ',tlimit0
 	  if( btlimit1 ) write(6,*) 'limiting max temp: ',tlimit1
@@ -2463,6 +2465,7 @@
 	  if( bslimit1 ) write(6,*) 'limiting max salt: ',slimit1
 	  if( bclimit0 ) write(6,*) 'limiting min conz: ',climit0
 	  if( bclimit1 ) write(6,*) 'limiting max conz: ',climit1
+	  end if
 	end if
 
 	if( what == 'temp' ) then

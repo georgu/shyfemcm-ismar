@@ -864,6 +864,7 @@
 
 	use mod_bnd
 	use mod_bound_geom
+	use mod_info_output
 
 	implicit none
 
@@ -874,6 +875,8 @@
 	logical, parameter :: ball = .false.	!write all file names
 
 	if( nbc .le. 0 ) return
+
+	if( print_verbose() ) then
 
 	write(6,*)
 	write(6,*) '====== info on open boundaries ========='
@@ -896,6 +899,8 @@
 	write(6,*)
 	write(6,*) '==== end info on open boundaries ======='
 	write(6,*)
+
+	end if
 
 	return
 	end

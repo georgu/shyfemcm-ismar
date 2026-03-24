@@ -1029,6 +1029,7 @@
 
 	use chezy
 	use shympi
+	use mod_info_output
 
 	implicit none
 
@@ -1039,7 +1040,7 @@
 	iunit = 6
 	if( bdebug ) iunit = iczunit
 
-	if( .not. bdebug .and. .not. shympi_is_master() ) return
+	if( print_not_quiet() .or. bdebug ) then
  
         ianf=0
         if(czdum(1,0).eq.0) ianf=1
@@ -1060,6 +1061,8 @@
         end do
 
 	flush(iunit)
+
+	end if
 
 	return
  1007   format(' area,cz,cz1,cz2,k1,k2,flag : ')

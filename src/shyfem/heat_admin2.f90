@@ -182,6 +182,7 @@
         use mod_hydro_print  
 	use heat_const
 	use meteo_forcing_module, only : iatm
+	use mod_info_output
 
 	implicit none
 
@@ -326,9 +327,11 @@
 	  if( icall < 0 ) return
 
 !$OMP CRITICAL
+	  if( print_verbose() ) then
 	  write(6,*) 'qflux3d routines are active'
 	  write(6,*) 'qflux3d: bqflux,bheat,bice: ',bqflux,bheat,bice
 	  write(6,*) 'qflux3d: iheat,hdecay,botabs: ',iheat,hdecay,botabs  
+	  end if
 !$OMP END CRITICAL
 
 	  allocate(dtw(nkn))

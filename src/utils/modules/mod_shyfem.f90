@@ -35,7 +35,7 @@
 
 	implicit none
 
-        logical, save :: bdebug		= .false.
+        logical, save :: bdebug_shyfem	= .false.
         logical, save :: bdebout	= .false.
         logical, save :: bmpirun	= .false.
 

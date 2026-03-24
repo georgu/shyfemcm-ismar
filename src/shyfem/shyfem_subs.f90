@@ -445,7 +445,7 @@
 	call trace_point('bndo_init')
 
 	call bndo_init
-	if( bdebug ) then
+	if( bdebug_shyfem ) then
 	  call bndo_info_file('bndo_info.dat')
 	end if
 
@@ -631,7 +631,7 @@
 
 	   call tracer_write
 
-           if( bfirst ) call print_file_usage
+           if( bfirst .and. bverbose ) call print_file_usage
 
 	   call print_time			!output to terminal
 
@@ -827,7 +827,7 @@
 
         call clo_get_option('mpi',bmpirun)	!not used anymore
 
-        call clo_get_option('debug',bdebug)
+        call clo_get_option('debug',bdebug_shyfem)
         call clo_get_option('debout',bdebout)
         call clo_get_option('mpi_debug',bmpidebug)
         call clo_get_option('trace',bltrace)

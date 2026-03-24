@@ -340,6 +340,7 @@
 	subroutine prflxa
 
 	use mod_flux
+	use mod_info_output
 
 	implicit none
 
@@ -350,13 +351,15 @@
 	integer ipext
 	logical nextline
 
+	if( kfluxm == 0 ) return
+
+	if( print_not_quiet() ) then
+
 	write(6,*)
 	write(6,*) 'flux section :'
 	write(6,*)
 	write(6,*) 'nsect,kfluxm ',nsect,kfluxm
 	write(6,*)
-
-	if( kfluxm == 0 ) return
 
 	ns = 0
 	nnode = 0
@@ -367,6 +370,8 @@
 	  write(6,*) 'section : ',ns,ntotal,'  ',trim(chflx(ns))
 	  write(6,'(12i6)') (ipext(kflux(i)),i=ifirst,ilast)
 	end do
+
+	end if
 
 	end
 

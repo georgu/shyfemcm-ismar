@@ -184,6 +184,7 @@
 	use mod_diff_aux
 	use evgeom
 	use basin
+	use mod_info_output
 
         implicit none
 
@@ -214,7 +215,9 @@
 	bdebug = .false.
 	wacu_max = 0.
 
+	if( print_not_quiet_once() ) then
         write(6,*) 'diffweight: computing weights'
+	end if
 
 !-----------------------------------------------------------------
 ! loop over elements
@@ -350,9 +353,11 @@
 ! end of loop over elements
 !-----------------------------------------------------------------
 
+	if( print_verbose() ) then
         write(6,*) 'diffweight: total weights changed = ', nchange
         write(6,*) 'diffweight: type of hor diffus    = ', idtype
         write(6,*) 'diffweight: maximum error         = ', wacu_max
+	end if
 
 !-----------------------------------------------------------------
 ! end of routine

@@ -937,6 +937,10 @@
 
 	subroutine plot_nodes_with_grade(ng)
 
+! plots nodes with grade == ng
+!
+! plots circa nmax nodes
+
 	use mod_adj_grade
 	use basin
 
@@ -946,6 +950,7 @@
 
 	integer ntot,n,nstride,ib
 	integer k
+	integer, save :: nmax = 10
 
 	ntot = 0
 	do k=1,nkn
@@ -954,10 +959,11 @@
 	  if( n == ng .and. ib == 0 ) ntot = ntot + 1
 	end do
 
-	nstride = ntot / 10		!plot around 10 nodes
+	nstride = ntot / nmax		!plot circa nmax nodes
 	if( nstride == 0 ) nstride = 1
 
 	write(6,*) 'plotting nodes with grade ',ng,ntot,nstride
+
 	ntot = 0
 	do k=1,nkn
 	  n = ngrade(k)

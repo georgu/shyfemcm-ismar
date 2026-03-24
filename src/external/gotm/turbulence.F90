@@ -40,6 +40,8 @@
 !
 !
 ! !USES:
+   use fem_gotm_output
+
    IMPLICIT NONE
 
 !  default: all is private.
@@ -398,20 +400,24 @@
 !
 !-----------------------------------------------------------------------
 !BOC
-   LEVEL1 'init_turbulence: v',RELEASE
+   if( boutput ) then
+     LEVEL1 'init_turbulence: v',RELEASE
+   end if
 
    ! read the variables from the namelist file
 
    open(namlst,file=fn,status='old',action='read',err=80)
 
-   LEVEL2 'reading turbulence namelists..'
+   if( boutput ) then
+     LEVEL2 'reading turbulence namelists..'
+   end if
 
    read(namlst,nml=turbulence,err=81)
 
    if (turb_method.eq.99) then
       close (namlst)
-      LEVEL2 'done.'
-      LEVEL1 'done.'
+      !LEVEL2 'done.'
+      !LEVEL1 'done.'
       return
    else
       read(namlst,nml=bc,err=82)
@@ -422,13 +428,13 @@
       read(namlst,nml=scnd,err=87)
       read(namlst,nml=iw,err=88)
       close (namlst)
-      LEVEL2 'done.'
+      !LEVEL2 'done.'
    endif
 
 
 !  allocate memory
 
-   LEVEL2 'allocation memory..'
+   !LEVEL2 'allocation memory..'
    allocate(tke(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (tke)'
    tke = k_min
@@ -445,12 +451,12 @@
    if (rc /= 0) stop 'init_turbulence: Error allocating (L)'
    L = _ZERO_
 
-   LEVEL2 'allocation memory..'
+   !LEVEL2 'allocation memory..'
    allocate(kb(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (kb)'
    kb = kb_min
 
-   LEVEL2 'allocation memory..'
+   !LEVEL2 'allocation memory..'
    allocate(epsb(0:nlev),stat=rc)
    if (rc /= 0) stop 'init_turbulence: Error allocating (epsb)'
    epsb = epsb_min
@@ -571,7 +577,7 @@
 
 # endif
 
-   LEVEL2 'done.'
+   !LEVEL2 'done.'
 
 
 !  initialize the parameters of the second-order closure
@@ -602,7 +608,7 @@
    endif
 
 !  report on parameters and properties of the model
-   call report_model
+   !call report_model
 
    return
 

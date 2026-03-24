@@ -175,6 +175,7 @@
 	use shympi
 	use simul
 	use befor_after
+	use mod_info_output
 
 	implicit none
 
@@ -186,7 +187,7 @@
 	real dt
 	character*20 aline
 
-	if( .not. shympi_is_master() ) return
+	if( print_not_quiet_once() ) then
 
         nrb = nkbnd()
         nbc = nbnds()
@@ -207,6 +208,8 @@
 	call get_orig_timestep(dt)
 	call get_time_iterations(niter,nits)
 
+	write(6,*)
+	write(6,*) '     Description of run time :'
 	call dts_format_abs_time(atime0+dtanf,aline)
 	write(6,*) '     start time = ',aline
 	call dts_format_abs_time(atime0+dtend,aline)
@@ -223,16 +226,18 @@
 	write(6,*) '     Description of basin :'
 	call bas_info
 
+	write(6,*)
 	write(6,*) '     Description of boundary values :'
 	write(6,*)
 	write(6,*) '     nbc,nrb     :',nbc,nrb
 
+	if( print_verbose_once() ) then
 	write(6,*)
 	write(6,*) '     Values from parameter file :'
 	write(6,*)
-
 	call pripar(6)
 	call check_parameter_values('prilog')
+	end if
 
 	call prbnds		!prints boundary info
 
@@ -257,6 +262,8 @@
 	write(6,*)
 	write(6,1030)
 	write(6,*)
+
+	end if
 
 	return
  1030   format(1x,78('='))
