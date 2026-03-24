@@ -14,14 +14,10 @@ module mod_init_enkf
   implicit none
 
   !-----------------------------
-  ! Dimension of the grid
-  !-----------------------------
-  integer            :: nnkn
-  integer            :: nnel
-
-  !-----------------------------
   ! Control parameters read from analysis.info
   !-----------------------------
+  integer            :: nnkn       ! number of nodes
+  integer            :: nnel       ! number of elements
   integer            :: nnlv       ! number of vertical levels
   integer            :: nrens      ! number of ensemble members
   integer            :: nanal      ! analysis step index
@@ -60,6 +56,12 @@ contains
     if (ios /= 0) then
        error stop 'read_info: cannot open analysis.info'
     end if
+
+    read(20, *, iostat=ios) nnkn
+    if (ios /= 0) error stop 'read_info: error reading nnkn'
+
+    read(20, *, iostat=ios) nnel
+    if (ios /= 0) error stop 'read_info: error reading nnel'
 
     read(20, *, iostat=ios) nnlv
     if (ios /= 0) error stop 'read_info: error reading nnlv'

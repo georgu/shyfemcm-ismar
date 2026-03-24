@@ -42,7 +42,6 @@ subroutine read_ensemble()
    integer :: ne
    logical :: bexist
 
-
    !-----------------------------
    ! Read basin file
    !-----------------------------
@@ -50,18 +49,17 @@ subroutine read_ensemble()
    call basin_read_by_unit(21)
    close(21)
 
-   ! Set dimensions
-   nnkn = nkn
-   nnel = nel
-   nlv  = nnlv
+   ! check dimensions
+   if (( nnkn /= nkn ).or.( nnel /= nel )) error stop 'Horizontal dimensions of restart and basin differ.'
 
    ! Initialize SHYFEM modules BEFORE reading restart
-   call mod_geom_dynamic_init(nkn, nel)
-   call mod_hydro_init(nkn, nel, nlv)
-   call mod_hydro_vel_init(nkn, nel, nlv)
-   call mod_ts_init(nkn, nlv)
-   call levels_init(nkn, nel, nlv)
-   call mod_gotm_aux_init(nkn, nlv)
+   nlv  = nnlv
+   call mod_geom_dynamic_init(nnkn, nnel)
+   call mod_hydro_init(nnkn, nnel, nnlv)
+   call mod_hydro_vel_init(nnkn, nnel, nnlv)
+   call mod_ts_init(nnkn, nnlv)
+   call levels_init(nnkn, nnel, nnlv)
+   call mod_gotm_aux_init(nnkn, nnlv)
    call shympi_set_hlv(nnlv, hlv)
    call shympi_init(.false.)
 

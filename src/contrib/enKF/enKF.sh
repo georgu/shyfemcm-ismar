@@ -19,13 +19,11 @@ SIMDIR=$(pwd)		# current dir
 
 #----------------------------------------------------------
 Usage() {
-    echo "Usage: enKF.sh [method] [localisation] [bas-file] [nlv] [n] [out]"
+    echo "Usage: enKF.sh [method] [localisation] [n] [out]"
     echo ""
     echo "Arguments:"
     echo "  method        : Analysis algorithm (11|12|13|21|22|23)"
     echo "  localisation  : Spatial localization (0: Off, 1: On)"
-    echo "  bas-file      : Basin (.bas) file"
-    echo "  nlv           : Vertical levels"
     echo "  n             : Threads/cores"
     echo "  out           : Output (0: mean/std only, 1: save all restarts)"
     exit 1
@@ -44,10 +42,24 @@ Check_files() {
     echo "[INFO] Validating executables..."
     command -v parallel > /dev/null 2>&1 || { echo "[ERROR] GNU Parallel not found."; exit 1; }
     [ ! -s "$SRCDIR/shyfem/shyfem" ] && echo "[ERROR] SHYFEM binary missing." && exit 1
+    [ ! -s "$SRCDIR/shyfem/rstinf" ] && echo "[ERROR] SHYFEM binary missing." && exit 1
     [ ! -s "$SRCDIR/contrib/enKF/main" ] && echo "[ERROR] EnKF main binary missing." && exit 1
 
     echo "[INFO] Validating input lists..."
     for f in ens_list.txt obs_list.txt antime_list.txt; do Check_file "$f"; done
+
+    echo "[INFO] Validating bas file..."
+    bas_file=$(ls *.bas | head -1 2>/dev/null)
+    [[ -z "$bas_file" ]] && echo "[ERROR] bas file missing." && exit 1
+
+
+    rstfile_init=$(cat ens_list.txt | awk '{print $2; exit}')
+    Check_file "$rstfile_init"
+    echo "[INFO] Grabbing dimensions from the restart file..."
+    nnkn=$($SRCDIR/shyfem/rstinf $rstfile_init | awk '/nkn +nel +nlv/ {getline; print $3; exit}')
+    nnel=$($SRCDIR/shyfem/rstinf $rstfile_init | awk '/nkn +nel +nlv/ {getline; print $4; exit}')
+    nnlv=$($SRCDIR/shyfem/rstinf $rstfile_init | awk '/nkn +nel +nlv/ {getline; print $5; exit}')
+    echo "[INFO] Dimensions: $nnkn, $nnel, $nnlv"
 }
 
 #----------------------------------------------------------
@@ -111,7 +123,8 @@ Write_obs_file() {
 Write_info_file() {
     local na=$1
     {
-        echo "$nnlv"; echo "$nrens"; echo "$na"; echo "$bas_file"
+        echo "$nnkn"; echo "$nnel"; echo "$nnlv"; 
+        echo "$nrens"; echo "$na"; echo "$bas_file"
         echo "${timeo[$na]}"; echo "obs_list_tmp.txt"; echo "$is_new_ens"
         echo "$rmode"; echo "$islocal"
     } > analysis.info
@@ -137,10 +150,8 @@ Run_ensemble_analysis() {
 # ------------------------------ MAIN -------------------------------
 # -------------------------------------------------------------------
 
-[ $# -lt 6 ] && Usage
-rmode=$1; islocal=$2; bas_file=$3; nnlv=$4; nthreads=$5; out_verb=$6
-
-export OMP_NUM_THREADS=$nthreads
+[ $# -ne 4 ] && Usage
+rmode=$1; islocal=$2; nthreads=$5; out_verb=$6
 
 # Checking the executable programs
 Check_files
@@ -155,6 +166,7 @@ Read_antime_list
 echo "running Assimilation cycle..."
 
 rm -f X5*.uf backKF_*.rst analKF_*.rst
+export OMP_NUM_THREADS=$nthreads
 for (( na = 1; na <= nran; na++ )); do
    echo -e "\n--- Assimilation cycle STEP $na OF $nran ---"
 

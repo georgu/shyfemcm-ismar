@@ -20,25 +20,24 @@ Kalman Filter for the SHYFEM model
     GNU General Public License.
     See <http://www.gnu.org/licenses/>.
 
+-------------------------------------------------------------------------------
+ SCRIPT AND UTILITY:
+-------------------------------------------------------------------------------
 
-Programs
-===================
+ - enKF.sh                : Main script to orchestrate the assimilation run.
+ - run_ens_shyfem_noDA.sh : Runs multiple SHYFEM simulations using different 
+                            STR files (common basename) without DA.
+ - process_ext_analysis.sh: Splits analysis .ext files, merges them by 
+                            variable, and generates ensemble statistics.
+ - process_shy_analysis.sh: Utility to merge all .shy files in analysis.
+ - perturbeBC             : Generates an ensemble of perturbed boundary 
+                            conditions (lateral, surface, FEM, time series).
+ - make_eof_ens_meteo     : (OBSOLETE) Creates perturbed winds using PCA.
+ - make_antime_list       : Creates the antime_list.txt for time series.
+ - enKF2enKS              : Kalman Smoother from Filter output. 
+                            NOTE: Incompatible with localization.
 
-- enKF.sh : main script to run the assimilation;
-- shyfem_ens.sh : run many SHYFEM simulations using different STR files
-  with a common basename;
-- split_exts.sh : split multiple EXT files with a common basename;
-- merge_ens.sh : post-process EXT and SHY files during the analysis,
-  merging all ensemble members;
-- mean_std_ts.sh : compute mean and standard deviation time series of an
-  ensemble of time series with a common basename;
-- perturbeBC : generate an ensemble of perturbed boundary conditions
-  (lateral, surface, FEM-files, time series);
-- make_eof_ens_meteo : create an ensemble of perturbed winds using PCA;
-- make_antime_list : create the file antime_list.txt (for time series only);
-- enKF2enKS : Kalman Smoother built from Kalman Filter output. Do not use
-  with localisation.
-
+-------------------------------------------------------------------------------
 
 Before running the code
 ===================
@@ -55,12 +54,10 @@ Running the code
 
 To run the code, execute enKF.sh. The mandatory arguments are:
 
-Usage: enKF.sh [method] [localisation] [bas-file] [nlv] [n] [out]
+Usage: enKF.sh [method] [localisation] [n] [out]
 
 - method = 11|12|13|21|22|23       (see analysis.f90)
 - localisation = 0 (disable), 1 (enable)
-- bas-file = name of the basin BAS file
-- nlv = number of vertical levels in the simulations
 - n = number of threads
 - out = 0 saves only mean and std restarts
         1 saves all restarts (required by enKS)
