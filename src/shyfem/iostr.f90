@@ -771,6 +771,7 @@
 	subroutine setup_omp_parallel
 
 	use shympi
+	use mod_info_output
 
 	implicit none
 
@@ -791,7 +792,7 @@
 	call openmp_set_num_threads(nomp)
 	call putpar('nomp',float(nomp))
 
-	if( .not. shympi_is_master() ) return
+	if( print_not_quiet_once() ) then
 
 	write(6,*) 'start of setup of parallel OMP threads'
 
@@ -804,6 +805,8 @@
 	write(6,*) 'maximum available OMP threads: ',n
 	write(6,*) 'for simulation used OMP threads: ',nomp
 	write(6,*) 'end of setup of parallel OMP threads'
+
+	end if
 
 	end
 

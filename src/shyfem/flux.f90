@@ -301,6 +301,7 @@
         subroutine rdflxa
 
 	use mod_flux
+	use mod_info_output
 
         implicit none
 
@@ -308,7 +309,9 @@
 
         call flx_read_section(n,ns)
 
+	if( print_not_quiet_once() ) then
 	write(6,*) 'running rdflxa: ',n,ns
+	end if
 
         if( n .lt. 0 ) then
           write(6,*) 'read error in section $flux'
@@ -324,12 +327,15 @@
 ! converts external to internal nodes
 
 	use mod_flux
+	use mod_info_output
 
         implicit none
 
 	if( kfluxm <= 0 ) return
 
+	if( print_not_quiet_once() ) then
 	write(6,*) 'running ckflxa: '
+	end if
 
 	call convert_nodes(kfluxm,kflux)
 
@@ -353,7 +359,7 @@
 
 	if( kfluxm == 0 ) return
 
-	if( print_not_quiet() ) then
+	if( print_not_quiet_once() ) then
 
 	write(6,*)
 	write(6,*) 'flux section :'

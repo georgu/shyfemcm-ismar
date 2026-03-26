@@ -477,7 +477,7 @@
 	save eps
 	data eps /1.e-5/
 
-	write(6,*) 'testing setup of ev...'
+	!write(6,*) 'testing setup of ev...'
 
 	atria = 180.
 
@@ -509,7 +509,7 @@
 
 	end do
 
-	write(6,*) 'test of ev passed...'
+	!write(6,*) 'test of ev passed...'
 
 	return
    99	continue

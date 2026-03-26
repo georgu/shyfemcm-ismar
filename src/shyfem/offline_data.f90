@@ -95,6 +95,7 @@
 	use basin, only : nkn,nel,ngr,mbw
 	use mod_offline
 	use shympi
+	use mod_info_output
 
 	implicit none
 
@@ -113,7 +114,7 @@
 
 	if( icall .lt. 0 ) return
 
-	bwrite = shympi_is_master()
+	bwrite = print_not_quiet_once()
 
 !-------------------------------------------------------------
 ! initialize

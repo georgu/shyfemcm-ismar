@@ -148,6 +148,7 @@
 	use levels
 	use basin, only : nkn,nel,ngr,mbw
 	use shympi
+	use mod_info_output
 
 	implicit none
 
@@ -157,18 +158,22 @@
 	real hmax,hsigma
 	real, allocatable :: hlv_aux(:)
 
+	if( print_not_quiet_once() ) then
 	write(6,*) 'setting up vertical structure'
+	end if
 
 !------------------------------------------------------------------
 ! sanity check
 !------------------------------------------------------------------
 
 	call get_hmax_global(hmax)
-	write(6,*) 'maximum depth: ',hmax
-
 	nlv_est = nlv
 	call estimate_nlv(nlv_est,hmax)
+
+	if( print_not_quiet_once() ) then
+	write(6,*) 'maximum depth: ',hmax
 	write(6,*) 'nlv,nlv_est,nlvdi: ',nlv,nlv_est,nlvdi
+	end if
 
 	call check_nlv
 
@@ -221,7 +226,9 @@
 	call check_vertical
 	call shympi_set_hlv(nlv,hlv)
 
+	if( print_verbose() ) then
 	write(6,*) 'init_vertical: nlvdi = ',nlvdi,'  nlv = ',nlv
+	end if
 
 !------------------------------------------------------------------
 ! end of routine
@@ -401,13 +408,16 @@
 	subroutine check_hlv
 
 	use levels
+	use mod_info_output
 
 	implicit none
 
 	integer l
 
+	if (print_verbose() ) then
 	write(6,*) 'check_hlv: ',nlv,nlvdi
 	write(6,'(5g14.6)') (hlv(l),l=1,nlv)
+	end if
 
 	end
 
@@ -421,7 +431,7 @@
 
 	implicit none
 
-	write(6,*) 'check_nlv : ',nlvdi,nlv
+	!write(6,*) 'check_nlv : ',nlvdi,nlv
 
 	if(nlv.gt.nlvdi) stop 'error stop check_nlv: level dimension'
 
@@ -486,6 +496,7 @@
 
 	use levels
 	use basin
+	use mod_info_output
 
 	implicit none
 
@@ -498,7 +509,9 @@
 
 	real getpar
 
+	if( print_not_quiet_once() ) then
 	write(6,*) 'adjust layer structure'
+	end if
 
 !--------------------------------------------------------------
 ! create hlv values
@@ -507,7 +520,10 @@
 	second = 2
 	dzreg = getpar('dzreg')
 	call get_sigma(nsigma,hsigma)
+
+	if( print_not_quiet_once() ) then
 	write(6,*) 'nlv,nsigma,hsigma: ',nlv,nsigma,hsigma
+	end if
 
 	bsigma = nsigma .gt. 0
 	bhybrid = hsigma .lt. hmax
@@ -607,10 +623,12 @@
 	  hldv(l) = hbot - htop
 	end do
 
+	if( print_not_quiet_once() ) then
 	write(6,*) 'adjust_levels: '
 	write(6,*) 'nlv,nsigma,hsigma: ',nlv,nsigma,hsigma
 	write(6,'(5g14.6)') 'hlv:  ',(hlv(l),l=1,nlv)
 	write(6,'(5g14.6)') 'hldv: ',(hldv(l),l=1,nlv)
+	end if
 
 !--------------------------------------------------------------
 ! check hlv and hldv values
@@ -621,7 +639,9 @@
 
 	call check_levels
 
+	if( print_not_quiet_once() ) then
 	write(6,*) 'finished adjusting layer structure ',nlv
+	end if
 
 !--------------------------------------------------------------
 ! end of routine
@@ -790,6 +810,7 @@
 
 	use levels
 	use basin
+	use mod_info_output
 
 	implicit none
 
@@ -800,6 +821,10 @@
 
 	real h,hmax,hm
 	real hev(nel)		!local
+
+	if( print_not_quiet_once() ) then
+	write(6,*) 'setting ilhv and nlv'
+	end if
 
 	lmax=0
 	hmax = 0.
@@ -837,10 +862,12 @@
 
 	nlv = lmax
 
+	if( print_verbose() ) then
 	write(6,*) 'finished setting ilhv and nlv'
 	write(6,*) 'nsigma,hsigma: ',nsigma,hsigma
 	write(6,*) 'nlv,lmax,hmax: ',nlv,lmax,hmax
 	write(6,'(5g14.6)') (hlv(l),l=1,nlv)
+	end if
 
 	return
    99	continue
@@ -1026,6 +1053,7 @@
 
 	use levels
 	use basin
+	use mod_info_output
 
 	implicit none
 
@@ -1174,12 +1202,14 @@
 
 	nlv=lmax
 
+	if( print_verbose() ) then
 	write(6,*) 'set_last_layer (nlv used) : ',nlv
 	write(6,*) 'Total number of elements with adjusted depth: ' &
      &			,ihtot
 	write(6,*) 'Incomplete depth:     ',ic1
 	write(6,*) 'Differing last layer: ',ic2
 	write(6,*) 'One layer elements:   ',ic3
+	end if
 
 !------------------------------------------------------------
 ! end of routine
@@ -1216,6 +1246,7 @@
 	use shympi
 	use pkonst
 	use mkonst
+	use mod_info_output
 
 	implicit none
 
@@ -1295,10 +1326,12 @@
 
 	fcor = aux1		! coriolis value of average latitude
 
+	if( print_not_quiet_once() ) then
 	write(6,*) 'pi, dlat     : ',pi,dlat
 	write(6,*) 'icor, fcor   : ',icor,fcor
 	write(6,*) 'f_0, beta    : ',aux1,aux2
 	write(6,*) 'yc,ymin,ymax : ',yc,ymin,ymax
+	end if
 
 	do ie_mpi=1,nel
           ie = ip_sort_elem(ie_mpi)
@@ -1420,10 +1453,13 @@
 
 ! initializes water levels (znv and zenv)
 
+	use mod_info_output
+
 	implicit none
 
 	real zconst		!constant z value to impose
 
+	logical bw
 	character*80 name
 	logical rst_use_restart
 
@@ -1443,10 +1479,21 @@
 ! initialize from file or with constant
 !--------------------------------------------------------
 
+	bw = print_not_quiet_once()
+
+	if( bw ) write(6,'(a)') 'Initializing water levels...'
+
 	if(name.ne.' ') then
 	  call init_file_z(name)
+	  if( bw ) then
+	    write(6,*) 'Initial water levels read from file : '
+	    write(6,*) trim(name)
+	  end if
 	else
 	  call init_const_z(zconst)
+	  if( bw ) then
+            write(6,*) 'Water levels initialized with constant z = ',zconst
+	  end if
 	end if
 
 !--------------------------------------------------------
@@ -1478,8 +1525,6 @@
 
 	znv = zconst
 	zenv = zconst
-
-        write(6,*) 'Water levels initialized with constant z = ',zconst
 
 	end
 
@@ -1515,7 +1560,6 @@
         what = 'zeta init'
         zconst = 0.
 
-	write(6,'(a)') 'Initializing water levels...'
         call iff_init(dtime,name,nvar,np,lmax,nintp &
      &                          ,nodes,zconst,idzeta)
         call iff_set_description(idzeta,ibc,what)
@@ -1525,9 +1569,6 @@
         call iff_time_interpolate(idzeta,dtime,1,np,lmax,znv)
 
 	call iff_forget_file(idzeta)
-
-	write(6,*) 'Initial water levels read from file : '
-	write(6,*) trim(name)
 
 	end
 
@@ -1718,6 +1759,7 @@
         subroutine print_spherical
 
 	use shympi
+	use mod_info_output
 
         implicit none
 
@@ -1727,12 +1769,14 @@
 
 	call get_coords_ev(isphe)
 
+	if( print_not_quiet_once() ) then
         write(6,*) 'setting for coordinates: isphe = ',isphe
         if( isphe .eq. 0 ) then
           write(6,*) 'using cartesian coordinates'
         else
           write(6,*) 'using lat/lon coordinates'
         end if
+	end if
 
         end
 

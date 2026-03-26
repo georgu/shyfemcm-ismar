@@ -178,7 +178,7 @@
             qvmax=max(qvmax,abs(qpnv(l,k)))
           end do
         enddo
-        write(6,*) 'qmax=',qvmax
+        !write(6,*) 'qmax=',qvmax
 
 	end
 
@@ -513,7 +513,7 @@
           wlnv(lmax,k) = 0.0                    
         end do
 
-        write(6,*) 'wmax=',wvmax
+        !write(6,*) 'wmax=',wvmax
 
 !--------------------------------------------------------
 ! end of routine
@@ -611,7 +611,6 @@
 
 	real pvar(nlvdi,nkn)
 
- 
 	integer kn(3)
 	integer ie,i,j,j1,j2,n,m,kk,l,k
 	integer lmax
@@ -876,7 +875,6 @@
 
 	use levels
 
-
 	implicit none
 
 	double precision da_out(4)
@@ -975,6 +973,7 @@
 !   qdist:   0   0  1/4 2/4 3/4  1   1   1   ...
 
 	use basin
+	use mod_info_output
 
 	implicit none
 
@@ -1032,7 +1031,10 @@
 ! make distance
 !-----------------------------------------------------------------
 
+	if( print_not_quiet_once() ) then
         write(6,*) 'Making distance qdist'
+	end if
+
         call mkdist_new(nkn,idist,qdist)
 
 !-----------------------------------------------------------------

@@ -234,6 +234,7 @@
 !================================================================
 
 	use intp_fem_file
+	use mod_info_output
 
 	implicit none
 
@@ -268,7 +269,7 @@
 
 	logical, save :: has_pressure = .false.
 
-	logical, save, private :: bdebug = .true.
+	logical, save, private :: bdebug = .false.
 
 	integer, save, private :: icall = 0
 
@@ -330,6 +331,7 @@
 
 	logical bbspline	!interpolate wind with 4th order bspline
 	logical bbwrite		!write spline output to file fort.77
+	logical bw
 	real getpar
 
 !------------------------------------------------------------------
@@ -340,6 +342,8 @@
 	bbspline = .true.
 	bbwrite = .true.
 	bbwrite = .false.
+
+	bw = print_not_quiet_once()
 
 	batm = iatm == 1 .and. icall_nuopc == 1
 
@@ -353,7 +357,7 @@
 
 	if( icall .eq. 0 ) then
 
-	  write(6,*) 'initialization of meteo forcing fem'
+	  if( bw ) write(6,*) 'initialization of meteo forcing fem'
 
 !	  ---------------------------------------------------------
 !	  initialization of data files
@@ -370,7 +374,7 @@
 !	  initializing wind file
 !	  ---------------------------------------------------------
 
-	  write(6,'(a)') 'opening wind file...'
+	  if( bw ) write(6,'(a)') 'opening wind file...'
           nvar = 0      !not sure if 2 or 3
           call iff_get_file_nvar(windfile,nvar)
           if( nvar <= 0 ) nvar = 3      !if no file fake 3
@@ -387,7 +391,7 @@
 !	  initializing ice file
 !	  ---------------------------------------------------------
 
-	  write(6,'(a)') 'opening ice file...'
+	  if( bw ) write(6,'(a)') 'opening ice file...'
 	  nvar = 1
 	  nintp = 2
 	  what = 'ice'
@@ -406,7 +410,7 @@
 !	  initializing rain file
 !	  ---------------------------------------------------------
 
-	  write(6,'(a)') 'opening rain file...'
+	  if( bw ) write(6,'(a)') 'opening rain file...'
 	  nvar = 1
 	  nintp = 2
 	  what = 'rain'
@@ -420,7 +424,7 @@
 !	  initializing heat file
 !	  ---------------------------------------------------------
 
-	  write(6,'(a)') 'opening heat flux file...'
+	  if( bw ) write(6,'(a)') 'opening heat flux file...'
 	  nvar = 4
 	  nintp = 2
 	  what = 'heat'
@@ -855,6 +859,7 @@
 
         call putpar('iwtype',real(iwtype))
 
+	if( print_verbose_once() ) then
 	if( iwtype == 0 ) then
 	  write(6,*) 'no wind file opened'
 	else
@@ -868,6 +873,7 @@
 	    call iff_get_var_description(id,3,string)
 	    write(6,*) ' 3    ',trim(string)
 	  end if
+	end if
 	end if
 
 !	---------------------------------------------------------
@@ -1116,6 +1122,7 @@
 !	remember values and write to monitor
 !	---------------------------------------------------------
 
+	if( print_verbose_once() ) then
 	if( irtype == 0 ) then
 	  write(6,*) 'no rain file opened'
 	else
@@ -1123,6 +1130,7 @@
 	  call iff_get_var_description(id,1,string)
 	  write(6,*) 'content: '
 	  write(6,*) ' 1    ',string
+	end if
 	end if
 
 !	---------------------------------------------------------
@@ -1223,6 +1231,7 @@
 !	remember values and write to monitor
 !	---------------------------------------------------------
 
+	if( print_verbose_once() ) then
 	if( ictype == 0 ) then
 	  write(6,*) 'no ice file opened'
 	else
@@ -1230,6 +1239,7 @@
 	  call iff_get_var_description(id,1,string)
 	  write(6,*) 'content: '
 	  write(6,*) ' 1    ',string
+	end if
 	end if
 
 !	---------------------------------------------------------
@@ -1440,6 +1450,7 @@
 !	remember values and write to monitor
 !	---------------------------------------------------------
 
+	if( print_verbose_once() ) then
 	if( ihtype == 0 ) then
 	  write(6,*) 'no heat file opened'
 	else
@@ -1450,6 +1461,7 @@
 	    if( i == 3 ) call adjust_humidity_string(string)		!FIXME
 	    write(6,*) i,'    ',trim(string)
 	  end do
+	end if
 	end if
 
 !	---------------------------------------------------------

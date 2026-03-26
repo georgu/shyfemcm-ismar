@@ -313,17 +313,11 @@
         call shyfem_init(strfile)
 
 !-----------------------------------------------------------
-! write  real start time
-!-----------------------------------------------------------
-
-        write(6,*) 'simulation start:   ',aline_start 
-
-!-----------------------------------------------------------
 ! read STR file
 !-----------------------------------------------------------
 
 	call cstinit
-	call cstfile(strfile,bquiet,bsilent)	!read STR and basin
+	call cstfile(strfile)			!read STR and basin
 	call set_spherical			!this has to be done here
 
 	call shympi_init(.true., mpi_init)
@@ -404,6 +398,9 @@
      &                          ,hkv_max,hev,hlv,date,time)
 
 	call init_zadaptation
+	if( print_not_quiet_once() ) then
+	  call print_zadaptation
+	end if
 	call sp111(1)           !here znv and zenv are initialized
 
 !-----------------------------------------------------------
@@ -672,6 +669,7 @@
 
 	use mod_shyfem
 	use mod_shyfem_intern
+	use mod_info_output
 
 	implicit none
 
@@ -689,7 +687,7 @@
 
 	call cpu_time_end(1)
 
-	if( shympi_is_master() ) then
+	if( print_not_quiet_once() ) then
 
 !$OMP PARALLEL
 !$OMP MASTER
@@ -888,6 +886,7 @@
 	use tide
 	use coordinates
 	use basin, only : nkn,nel,ngr,mbw
+	use mod_info_output
 
 	implicit none
 
@@ -911,7 +910,9 @@
 
 	!call mod_tvd_init(nel)
 
+	if( print_not_quiet_once() ) then
 	write(6,*) '2D arrays allocated: ',nkn,nel,ngr
+	end if
 
 	end
 
@@ -941,6 +942,7 @@
 	use mod_hydro
 	use levels, only : nlvdi,nlv
 	use basin, only : nkn,nel,ngr,mbw
+	use mod_info_output
 
 	implicit none
 
@@ -974,7 +976,9 @@
 	call mod_sedim_init(nkn,nlvddi)
 	call mod_bstress_init(nkn)
 
+	if( print_not_quiet_once() ) then
 	write(6,*) '3D arrays allocated: ',nkn,nel,ngr,nlvddi
+	end if
 
 	end
 

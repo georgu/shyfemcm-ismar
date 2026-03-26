@@ -48,6 +48,8 @@
         module mod_subset
 !==================================================================
 
+	use mod_info_output
+
         implicit none
 
         integer, save :: subset_num		!total number of subsets
@@ -96,7 +98,7 @@
       !! CREATE NODE COUNTER  
       !----------------------------------------------
       
-      print *,"  ----------- STARTING DOMAIN CLUSTERING -----------"
+      print *,"starting domain clustering"
 
       allocate(nodes_counter(2,nkn))
             
@@ -378,6 +380,7 @@
         !integer,save,allocatable,dimension(:)   :: subset_el !elems in subset
         !integer,save,allocatable,dimension(:,:) :: indipendent_subset !elems
 
+	logical bw
 	integer ie
 	integer ncol,nmax,ncolor,naver
 	integer ic,n,ntot
@@ -388,7 +391,11 @@
 	color = 0
 	colork = 0
 
-        print *,"  ----------- STARTING DOMAIN CLUSTERING -----------"
+	bw = print_verbose()
+
+	if( print_not_quiet_once() ) then
+        print *,"starting domain clustering"
+	end if
 
 !	-------------------------------------------
 !	color elements
@@ -396,7 +403,9 @@
 
 	call compute_color(ncolor,nmax)
 	naver = nint(nel/float(ncolor))
+	if( print_verbose() ) then
 	write(6,*) 'ncolor=',ncolor,' average=',naver,' nmax=',nmax
+	end if
 
 !	-------------------------------------------
 !	set parameters and allocate arrays
@@ -444,16 +453,18 @@
 !	write to terminal
 !	-------------------------------------------
 
+	if( bw ) then
         print *,"  ---------- DOMAIN CLUSTERING INFORMATION ----------"
         print *,"  NUM NODES = ",nkn," NUM ELEMENTS = ",nel
         print *,"  NUMBER OF SUBSETS = ",subset_num
+	end if
         ntot = 0
         do ic=1,subset_num
   	  n = subset_el(ic)
 	  ntot = ntot + n
-          print *,"  SUBSET = ",ic," LENGTH = ",n
+          if( bw ) print *,"  SUBSET = ",ic," LENGTH = ",n
         end do
-        print *,"  SUM SUBSET LENGTH = ",ntot
+        if( bw ) print *,"  SUM SUBSET LENGTH = ",ntot
 
 	if( ntot /= nel ) then
 	  write(6,*) 'ntot,nel: ',ntot,nel
@@ -519,7 +530,7 @@
 
 	subroutine adjust_color
 
-	logical bdebug
+	logical bdebug,bw
 	integer ic
 	integer icmin,icmax,ncolor
 	integer ncmin,ncmax
@@ -534,7 +545,9 @@
 	icmax = 1
 	icmin = ncolor
 
-	write(6,'(20i6)') (subset_el(ic),ic=1,ncolor)
+	bw = print_verbose()
+
+	if( bw ) write(6,'(20i6)') (subset_el(ic),ic=1,ncolor)
 
 	do
 
@@ -549,14 +562,15 @@
 
 	  call compute_subset_filling(nmax)	!sets subset_el
 
-	  write(6,'(20i6)') (subset_el(ic),ic=1,ncolor)
+	  if( bw ) write(6,'(20i6)') (subset_el(ic),ic=1,ncolor)
 	  if( bdebug ) write(6,*) 'changes done and max: ',ncol,nmax
 
 	  if( ncol == 0 ) exit
 
 	end do
 
-	write(6,*) 'difference in filling: ',ncmin,ncmax,ncmax-ncmin
+	if( bw ) write(6,*) 'difference in filling: ',ncmin,ncmax,ncmax-ncmin
+
 	end subroutine adjust_color
 
 !***********************
@@ -700,8 +714,6 @@
 
 	if( berror ) then
 	  stop 'error stop check_color: internal error (1)'
-	else
-	  write(6,*) 'check_color passed...'
 	end if
 
 	end subroutine check_color

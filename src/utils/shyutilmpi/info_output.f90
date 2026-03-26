@@ -61,6 +61,7 @@
 	public :: print_verbose , print_verbose_once , print_regular &
      &			, print_not_quiet , print_not_quiet_once &
      &			, print_quiet , print_silent
+	public :: is_quiet , is_silent
 
 !================================================================
         contains
@@ -249,6 +250,36 @@
 	print_silent = bsilent .and. my_id == 0
 
 	end function print_silent
+	
+!**********************************************************************
+
+	function is_silent()
+
+	use mod_shyfem
+	use shympi
+
+	implicit none
+
+	logical is_silent
+
+	is_silent = bsilent
+
+	end function is_silent
+	
+!**********************************************************************
+
+	function is_quiet()
+
+	use mod_shyfem
+	use shympi
+
+	implicit none
+
+	logical is_quiet
+
+	is_quiet = bquiet
+
+	end function is_quiet
 	
 !**********************************************************************
 

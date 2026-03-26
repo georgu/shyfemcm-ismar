@@ -125,6 +125,7 @@
 	use basin
 	use mod_tvd
 	use shympi
+	use mod_info_output
 
         implicit none
 
@@ -143,7 +144,7 @@
 
 	itvd_type = itvd
 	btvd2 = itvd == 2
-	write(6,*) 'tvd type: ',itvd_type
+	!write(6,*) 'tvd type: ',itvd_type
 
 	if( btvd2 ) call mod_tvd_init(nel)
 
@@ -160,10 +161,12 @@
 	  if( bdebug ) call write_tvd_debug(nel) !only if btvddebug==.true.
 	end if
 
+	if( print_not_quiet_once() ) then
 	if( itvd .eq. 0 ) then
 	  write(6,*) 'no horizontal TVD scheme used'
 	else
 	  write(6,*) 'horizontal TVD scheme initialized: ',itvd
+	end if
 	end if
 
 	end

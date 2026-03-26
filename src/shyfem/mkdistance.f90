@@ -81,6 +81,7 @@
 
 	use basin
 	use shympi
+	use mod_info_output
 
 	implicit none
 
@@ -132,7 +133,10 @@
 
 	!write(6,*) my_id,nadist,nadmax
 	call shympi_barrier
+
+	if( print_not_quiet_once() ) then
 	write(6,*) 'using nadist = ',nadist
+	end if
 
 !-----------------------------------------------------------------
 ! initialize arrays
@@ -173,7 +177,10 @@
 ! make distance
 !-----------------------------------------------------------------
 
+	if( print_not_quiet_once() ) then
         write(6,*) 'making distance rdist'
+	end if
+
         !call mkdist(nadist,nkn,idist,rdist)		!old version
         !call mkdist_new(nkn,idist,rdist)		!new non-mpi version
         call mkdist_mpi(idist,rdist)			!mpi-version

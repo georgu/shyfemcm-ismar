@@ -1089,6 +1089,8 @@
 
 ! checks nudiging values (debug)
 
+	use mod_info_output
+
 	implicit none
 
 	double precision dtime
@@ -1102,11 +1104,16 @@
 
 	integer, save :: iu = 6
 
+	if( print_not_quiet_once() ) then
 	write(iu,*) 'checking nudge values at time ',dtime
+	end if
+
+	if( print_verbose() ) then
 	write(iu,*) 'tobs: ',minval(tobsv),maxval(tobsv)
 	write(iu,*) 'sobs: ',minval(sobsv),maxval(sobsv)
 	write(iu,*) 'ttau: ',minval(ttauv),maxval(ttauv)
 	write(iu,*) 'stau: ',minval(stauv),maxval(stauv)
+	end if
 
 	end
 

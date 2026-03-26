@@ -403,7 +403,9 @@
 
 	zconst = shympi_max(zconst)	!choose highest value
 
+	if( print_not_quiet_once() ) then
 	write(6,*) 'zconst = ',zconst,flag,zflag
+	end if
 
 	if( zconst == flag .or. zconst == zflag ) then
 	  stop 'error stop sp111: error in zconst'

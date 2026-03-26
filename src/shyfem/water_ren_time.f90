@@ -159,6 +159,7 @@
 	use shympi
 	use custom_dates
 	use simul
+	use mod_info_output
 
         implicit none
 
@@ -223,7 +224,7 @@
 
         if( icall .eq. 0 ) then
 
-	  if( bmaster ) then
+	  if( print_not_quiet_once() ) then
             write(6,*) 'Initialization of WRT routine renewal time'
 	  end if
 
@@ -235,7 +236,9 @@
 
 	  if( ddtwrt < 0 ) then
 	    icall = -1
-            if( bmaster ) write(6,*) 'No renewal time computation'
+            if( print_not_quiet_once() ) then
+	      write(6,*) 'No renewal time computation'
+	    end if
 	    return
 	  end if
 
@@ -382,7 +385,7 @@
 
         if( breset ) then		!reset concentrations to c0
 
-	  if( bmaster ) then
+	  if( print_verbose_once() ) then
        	    write(6,*) 'resetting concentrations for renewal time ' &
      &				,aline
 	  end if
@@ -402,10 +405,8 @@
      &					,narea,massa,massa0,wrta)
 	    nrepl = nrepl + 1
 
-	    if( bmaster ) then
-	      write(6,*) '-------------------------------------------'
+	    if( print_verbose_once() ) then
 	      write(6,*) 'computing res time: ',aline,conz,nrepl
-	      write(6,*) '-------------------------------------------'
 	    end if
 	  end if
 
@@ -437,9 +438,11 @@
         if( mass0 .ne. 0. ) then
 	  perc = mass / mass0
           if( perc .lt. percmin ) then
+	    if( print_not_quiet_once() ) then
 		write(6,*) 'mass,mass0: ',mass,mass0
 		write(6,*) 'perc,percmin: ',perc,percmin
-                stop 'finished computing renewal time'
+	    end if
+            stop 'finished computing renewal time'
 	  end if
         end if
 

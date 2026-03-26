@@ -103,9 +103,11 @@
 	use basin
 	use shympi
 	use shympi_tripple
+	use mod_info_output
 
 	implicit none
 
+	logical bw
 	integer ie,itr,idn,ide,iee
 	integer ii,i1,i2,i0,ip
 	integer k,k1,k2,kext1,kext2
@@ -124,7 +126,10 @@
 	if( itrtot >= 0 ) return	!already set up
 
 	call shympi_syncronize
-	write(6,*) 'starting tripple_points_init: ',my_id
+
+	if( print_not_quiet_once() ) then
+	write(6,*) 'starting tripple_points_init: '
+	end if
 
 	iu = 0
 	if( bmpi_debug ) iu = 300 + my_id
@@ -133,11 +138,13 @@
 	! get general information on tripple points
 	!--------------------------------------------------
 
+	bw = print_verbose()
+
 	itr = 0
 	do ie=1,nel_unique
 	  idn = id_elem(0,ie)
 	  if( idn == 3 ) then
-	    write(6,1000) 'tripple point found: ',my_id,ie,id_elem(:,ie)
+	    if( bw ) write(6,1000) 'new tripple point: ',my_id,ie,id_elem(:,ie)
 	    itr = itr + 1
 	  end if
 	end do
@@ -145,13 +152,15 @@
 	call shympi_syncronize
 
 	itrtot = shympi_sum(itr)
-	if( my_id == 0 ) then
+	if( print_verbose_once() ) then
 	  write(6,*) 'summary for tripple points:'
 	  write(6,*) '                                  '// &
      &			'     domain         itr      itrtot'
 	end if
 	call shympi_syncronize
+	if( print_verbose() ) then
 	write(6,*) 'total numbers of tripple points: ',my_id,itr,itrtot
+	end if
 
 	nmax_tripple = 2 * (nlv_global+1)
 	allocate(buffer_tripple_in(nmax_tripple,itrtot))
@@ -165,7 +174,9 @@
 	if( itrtot == 0 ) return
 
 	if( .not. btripple ) then
+	  if( print_not_quiet_once() ) then
 	  write(6,*) 'not handling tripple points: ',my_id,itrtot
+	  end if
 	  return
 	end if
 
@@ -277,7 +288,7 @@
 
 	call shympi_syncronize
 
-	if( shympi_is_master() ) then
+	if( print_verbose_once() ) then
 	  write(6,*) 'list of tripple points: ',itrtot
 	  call ielist_info
 	end if
@@ -305,7 +316,9 @@
 
 	call shympi_syncronize
 
-	write(6,*) 'finished tripple_points_init: ',my_id
+	if( print_verbose_once() ) then
+	write(6,*) 'finished tripple_points_init: '
+	end if
 
 	!stop	!debug stop
 

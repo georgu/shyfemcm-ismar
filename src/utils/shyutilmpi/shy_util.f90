@@ -770,6 +770,7 @@
 	use shyfile
 	use shympi
 	use mod_trace_point
+	use mod_info_output
 
 	implicit none
 
@@ -812,7 +813,9 @@
 	call trace_point('after shy_copy_levels_to_shy')
 
 	if( bopen ) then
+	  if( print_verbose_once() ) then
 	  write(6,*) 'initialized shy file ',trim(file)
+	  end if
 	end if
 
 !-----------------------------------------------------

@@ -430,6 +430,24 @@
 	call set_nzadapt_info(nzadapt)
 	call init_rzmov_info(nlv,nzadapt,hlv,rzmov)
 
+	end
+
+!******************************************************************
+
+        subroutine print_zadaptation
+
+        use levels, only : nlv,hlv
+        use basin, only : nkn,nel		
+	use zadapt
+
+	implicit none		
+
+	integer lmin,nzadapt
+	real rzmov,testz
+
+	call get_nzadapt_info(nzadapt)
+        call get_rzmov_info(rzmov)
+
         write(6,'(a)') ' Initializing z-layers parameters ...'
         write(6,*) ' nzadapt,rzmov: ', nzadapt,rzmov
 

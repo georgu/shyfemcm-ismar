@@ -536,7 +536,7 @@
 	h = maxval(hm3v)
 	hmax = shympi_max(h)
 
-	write(6,*) 'hmax: ',my_id,h,hmax
+	!write(6,*) 'hmax: ',my_id,h,hmax
 
 	end
 

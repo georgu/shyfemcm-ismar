@@ -179,10 +179,13 @@
 ! initializes meteo variables
 
 	use meteo_forcing_module
+	use mod_info_output
 
 	implicit none
 
+	if( print_not_quiet_once() ) then
 	write(6,*) 'initializing meteo'
+	end if
 
 	call evap_init
 	call windcd_init
