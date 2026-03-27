@@ -24,18 +24,21 @@ Kalman Filter for the SHYFEM model
  SCRIPT AND UTILITY:
 -------------------------------------------------------------------------------
 
- - enKF.sh                : Main script to orchestrate the assimilation run.
- - run_ens_shyfem_noDA.sh : Runs multiple SHYFEM simulations using different 
-                            STR files (common basename) without DA.
- - process_ext_analysis.sh: Splits analysis .ext files, merges them by 
-                            variable, and generates ensemble statistics.
- - process_shy_analysis.sh: Utility to merge all .shy files in analysis.
- - perturbeBC             : Generates an ensemble of perturbed boundary 
-                            conditions (lateral, surface, FEM, time series).
- - make_eof_ens_meteo     : (OBSOLETE) Creates perturbed winds using PCA.
- - make_antime_list       : Creates the antime_list.txt for time series.
- - enKF2enKS              : Kalman Smoother from Filter output. 
-                            NOTE: Incompatible with localization.
+ - enKF.sh                     : Main script to orchestrate the assimilation run.
+ - prepare_enssim_from_DA.sh   : Prepare an ensemble of str files without DA.
+                                 It uses the DA files to retrieve info. Then
+                                 use run_ens_shyfem_noDA.sh.
+ - run_ens_shyfem_noDA.sh      : Runs multiple SHYFEM simulations using different 
+                                 STR files (common basename) without DA.
+ - process_ext.sh:               Splits DA or noDA .ext files, merges them by 
+                                 variable, and generates ensemble statistics.
+ - process_shy_analysis.sh     : Utility to merge all .shy files in analysis.
+ - perturbeBC                  : Generates an ensemble of perturbed boundary 
+                                 conditions (lateral, surface, FEM, time series).
+ - make_eof_ens_meteo          : (OBSOLETE) Creates perturbed winds using PCA.
+ - make_antime_list            : Creates the antime_list.txt for time series.
+ - enKF2enKS                   : Kalman Smoother from Filter output. 
+                                 NOTE: Incompatible with localization.
 
 -------------------------------------------------------------------------------
 

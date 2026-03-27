@@ -151,7 +151,7 @@ Run_ensemble_analysis() {
 # -------------------------------------------------------------------
 
 [ $# -ne 4 ] && Usage
-rmode=$1; islocal=$2; nthreads=$5; out_verb=$6
+rmode=$1; islocal=$2; nthreads=$3; out_verb=$4
 
 # Checking the executable programs
 Check_files
@@ -191,7 +191,15 @@ for (( na = 1; na <= nran; na++ )); do
       done
 
       export OMP_NUM_THREADS=1
-      parallel --jobs "$nthreads" "$SRCDIR/shyfem/shyfem {} > {.}.log 2>&1" ::: $str_list
+      # This saves the error files, if they are not present in the same moment
+      parallel --jobs "$nthreads" "
+        $SRCDIR/shyfem/shyfem {} > {.}.log 2>&1
+        if [ -f fort.999 ]; then
+          mv fort.999 fort.999_{.}
+          echo 'Process {} failed: fort.999 saved as fort.999_{.}'
+        fi
+        " ::: $str_list
+      #parallel --jobs "$nthreads" "$SRCDIR/shyfem/shyfem {} > {.}.log 2>&1" ::: $str_list
       export OMP_NUM_THREADS=$nthreads
    fi
 

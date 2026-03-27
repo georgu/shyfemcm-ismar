@@ -201,36 +201,38 @@ subroutine fill_scalar_0d(olabel, nfile, ostate)
 
       n_obs = n_obs + 1
 
-      ! Get obs values
+      ! Get obs values 
       val     = ostate(nf)%val
       std     = ostate(nf)%std
       val_o(n_obs) = val
 
-      ! Covariance error obs matrix
-      R(n_obs,n_obs) = std**2
-
       ! Innovation
       inn1 = val - mvalm
 
-      ! Modify the obs STD according to the ens spread
+      ! This ensures the Kalman Gain (which uses R) sees the inflated error
       call check_spread(inn1, std, mval, mvalm)
+
+      ! Now update the Observation Error Covariance Matrix with the NEW std
+      R(n_obs,n_obs) = std**2
 
       innov(n_obs) = inn1
       S(n_obs,:)   = mval(:) - mvalm
       HA(n_obs,:)  = mval(:)
 
+      ! Generate perturbations using the updated (possibly inflated) std
       call make_0Dpert(olabel, nrens, nanal, ostate(nf)%id, pvec, atime_an, TTAU_0D)
       E(n_obs,:)   = std * pvec
+      
+      ! D contains the perturbed observations used in the analysis
       D(n_obs,:)   = val + E(n_obs,:)
+      
+      ! D1 is the actual innovation used for each member: (Obs + Pert) - Model
       D1(n_obs,:)  = D(n_obs,:) - HA(n_obs,:)
 
       if (verbose) write(*,*) 'val_m, val_o, std_o, inn: ', mvalm, val, std, inn1
 
    end do
 
-   if (n_obs /= nobs_ok) error stop 'Mismatch in scalar observation count'
-
-   write(*,*) 'Number of valid 0D observations: ', nobs_ok
 
 end subroutine fill_scalar_0d
 

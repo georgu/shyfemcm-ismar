@@ -974,33 +974,61 @@ end subroutine screen_observation
 !======================================================================
 !  check_spread
 !======================================================================
-  subroutine check_spread(d, stdv, mval, mvalm)
+subroutine check_spread(d, stdv, mval, mvalm)
     use levels
     use mod_ens_state
     implicit none
-    real(dp), intent(in)    :: d
-    real(dp), intent(in)    :: mvalm, mval(nrens)
-    real(dp), intent(inout) :: stdv
+    
+    ! Input/Output
+    real(dp), intent(in)    :: d          ! Innovation (Observation - Ensemble Mean)
+    real(dp), intent(in)    :: mvalm      ! Ensemble mean at the specific node
+    real(dp), intent(in)    :: mval(nrens)! Values for all ensemble members
+    real(dp), intent(inout) :: stdv       ! Observation error (Standard Deviation)
+    
+    ! Local variables
     integer :: ne
     integer, save :: icall = 0
-    real(dp) :: ens_std, stdv_new
+    real(dp) :: var_e, var_o, var_o_new, d2
+    real(dp), parameter :: tiny_spread = 1.0e-12_dp ! Guard against zero spread
 
-    if (icall == 0) write(*,*) 'Obs error variance limited to KSTD times the ensemble spread (Sakov 2012).'
-    if (KSTD <= 0.0) return
-
-    ens_std = 0.0
-    do ne = 1, nrens
-      ens_std = ens_std + (mval(ne) - mvalm)**2
-    end do
-    ens_std = sqrt( ens_std / real(nrens - 1, dp) )
-
-    if (abs(d) > KSTD * ens_std) then
-      stdv_new = sqrt( sqrt( (ens_std**2 + stdv**2)**2 + ( (1.0/KSTD) * ens_std * d )**2 ) - ens_std**2 )
-      write(*,'(a22,1x,3f8.3)') 'STDe, STDo, STDo_new: ', ens_std, stdv, stdv_new
-      stdv = stdv_new
+    if (icall == 0) then
+        write(*,*) 'EnKF: R-adaptive inflation active (Sakov 2012), KSTD = ', KSTD
+        icall = 1
     end if
-    icall = 1
-  end subroutine check_spread
+
+    ! Exit if KSTD is not set or invalid
+    if (KSTD <= 0.0_dp) return
+
+    ! 1. Calculate Ensemble Variance (var_e)
+    var_e = 0.0_dp
+    do ne = 1, nrens
+        var_e = var_e + (mval(ne) - mvalm)**2
+    end do
+    var_e = var_e / real(nrens - 1, dp)
+
+    ! 2. Square the innovation and get current observation variance (var_o)
+    d2 = d**2
+    var_o = stdv**2
+
+    ! 3. Sakov (2012) logic: If innovation exceeds expected spread
+    ! Condition: d^2 > KSTD^2 * var_e
+    if (d2 > (KSTD**2 * var_e)) then
+        
+        ! Robustness: Ensure var_e is not zero to avoid numerical instability
+        if (var_e < tiny_spread) var_e = tiny_spread
+        
+        ! Correct formula for inflated observation variance (var_o_new)
+        ! This limits the influence of outliers by increasing R
+        var_o_new = sqrt( (var_e + var_o)**2 + (d2 * var_e / KSTD**2) ) - var_e
+        
+        ! Safety cap: Prevent the error from growing indefinitely at unstable nodes
+        if (var_o_new > 100.0_dp * var_o) var_o_new = 100.0_dp * var_o
+        
+        ! Update the standard deviation for the analysis step
+        stdv = sqrt(max(var_o_new, var_o))
+    end if
+
+end subroutine check_spread
 
 !======================================================================
 !  check_spread_speed

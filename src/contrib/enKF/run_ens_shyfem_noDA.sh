@@ -78,6 +78,7 @@ run_shy_sim() {
   local strfile="$1"
   local bin_exe="$2"
   local log_name="${strfile%.str}.log"
+  local err_name="${strfile%.str}.err"
 
   echo "Starting: $strfile"
   # Run shyfem and redirect output to log
@@ -87,6 +88,7 @@ run_shy_sim() {
     echo "Completed: $strfile"
   else
     echo "FAILED: $strfile (Check $log_name)"
+    [[ -e "fort.999" ]] && mv fort.999 $err_name
   fi
 }
 export -f run_shy_sim
