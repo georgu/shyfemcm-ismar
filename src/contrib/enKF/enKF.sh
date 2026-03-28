@@ -165,7 +165,7 @@ Read_antime_list
 # Assimilation cycle for every analysis time step
 echo "running Assimilation cycle..."
 
-rm -f X5*.uf backKF_*.rst analKF_*.rst
+rm -f X5*.* X3*.* backKF_*.rst analKF_*.rst
 export OMP_NUM_THREADS=$nthreads
 for (( na = 1; na <= nran; na++ )); do
    echo -e "\n--- Assimilation cycle STEP $na OF $nran ---"

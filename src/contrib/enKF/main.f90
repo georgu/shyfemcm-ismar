@@ -24,6 +24,7 @@ program main
    use mod_enkf
    use mod_mod_err
    use mod_restart, only : ibarcl_rst
+   use m_analysis
    implicit none
 
    real(dp), allocatable :: Amat(:,:)
@@ -126,12 +127,12 @@ program main
          ! Global analysis on Amat
          call analysis(Amat, R, E, S, D1, innov, ndim, nrens, nobs_ok, verbose, &
                        truncation, rmode, lrandrot, lupdate_randrot, lsymsqrt, &
-                       inflate, infmult)
+                       inflate, infmult, .false.)
 
          call matrix_to_tystate(ibarcl_rst, nrens, ndim, Amat, Aan)
          deallocate(Amat)
 
-         call save_X5('global', atime_an)
+         call save_X5(atime_an)
       else
          ! Local analysis: convert first, then run location-wise update
          write(*,*) 'Running local analysis...'

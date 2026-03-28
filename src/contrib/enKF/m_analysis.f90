@@ -1,5 +1,9 @@
+module m_analysis
+
+contains
+
 subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncation, mode, &
-                    lrandrot, lupdate_randrot, lsymsqrt, inflate, infmult)
+                    lrandrot, lupdate_randrot, lsymsqrt, inflate, infmult, islocal)
 
   !=======================================================================
   !  PURPOSE:
@@ -49,9 +53,12 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
 
   integer, intent(in) :: inflate          ! 0=Off, 1=Multiplicative, 2=Adaptive (Evensen 2009)
   real(dp), intent(in) :: infmult         ! Inflation multiplier / adjustment
+  logical, intent(in) :: islocal          ! Local analysis
 
   !---------------------- Local variables ----------------------
   real(dp) :: X5(nrens,nrens)     ! Transformation matrix for ensemble perturbations
+  real(dp) :: den
+  real(dp), parameter :: eps_inv = 1.0e-14_dp ! Stability floor
   real(dp) :: inffac              ! Inflation factor
   real(dp) :: ave(ndim)           ! Ensemble mean
 
@@ -81,8 +88,16 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
       ! C is scalar → invert directly
       nrmin = 1
       allocate(Z(1,1), eig(1))
-      eig(1) = dot_product(S(1,:), S(1,:)) + real(nrens-1,dp)*R(1,1)
-      eig(1) = 1.0_dp / eig(1)
+      !eig(1) = dot_product(S(1,:), S(1,:)) + real(nrens-1,dp)*R(1,1)
+      !eig(1) = 1.0_dp / eig(1)
+      ! Robust scalar inversion (use the old one if not good)
+      den = dot_product(S(1,:), S(1,:)) + real(nrens-1, dp)*R(1,1)
+      if (den > eps_inv) then
+          eig(1) = 1.0_dp / den
+      else
+          if (verbose) write(*,*) 'Warning: Singular obs at node, skipping update'
+          eig(1) = 0.0_dp
+      end if
       Z(1,1) = 1.0_dp
 
   else
@@ -137,16 +152,26 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
           X3 = D * eig(1)
       end if
 
-      ! Choose representers vs X5 based on work estimate (avoid overflow with 64-bit literals)
+      ! Work estimate to choose between Representer or X5 approach
       if (2_8*ndim*nrobs < 1_8*nrens*(nrobs+ndim) .and. inflate /= 2) then
           if (verbose) print '(a)', 'analysis: Representer approach is used'
           lreps = .true.
-
           allocate(Reps(ndim,nrobs))
+          ! Reps = A * S'
           call dgemm('N','T', ndim, nrobs, nrens, 1.0_dp, A, ndim, S, nrobs, 0.0_dp, Reps, ndim)
-
       else
           if (verbose) print '(a)', 'analysis: X5 approach is used'
+          ! X5 = S' * X3
+          call dgemm('T','N', nrens, nrens, nrobs, 1.0_dp, S, nrobs, X3, nrobs, 0.0_dp, X5, nrens)
+          ! Add Identity matrix to X5
+          do i = 1, nrens
+              X5(i,i) = X5(i,i) + 1.0_dp
+          end do
+      end if
+
+      ! MANDATORY FIX: If adaptive inflation (inflate=2) is requested, 
+      ! X5 must be computed even if the Representer approach was used for the update.
+      if (inflate == 2 .and. lreps) then
           call dgemm('T','N', nrens, nrens, nrobs, 1.0_dp, S, nrobs, X3, nrobs, 0.0_dp, X5, nrens)
           do i = 1, nrens
               X5(i,i) = X5(i,i) + 1.0_dp
@@ -174,12 +199,12 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
   if (lreps) then
       ! Representer update: A += Reps * X3
       call dgemm('N','N', ndim, nrens, nrobs, 1.0_dp, Reps, ndim, X3, nrobs, 1.0_dp, A, ndim)
-      if (ndim > 1000) call dumpX3(X3, S, nrobs, nrens)   ! no write for local analysis (omp) - mbj
+      if (.not. islocal) call dumpX3(X3, S, nrobs, nrens)   ! no write for local analysis (omp) - mbj
   else
       ! Full X5 transform: A = A * X5
       iblkmax = min(ndim, 200)
       call multa(A, X5, ndim, nrens, iblkmax)
-      if (ndim > 1000) call dumpX5(X5, nrens)            ! no write for local analysis (omp) - mbj
+      if (.not. islocal) call dumpX5(X5, nrens)            ! no write for local analysis (omp) - mbj
   end if
 
   if (verbose) print '(a)', 'analysis: final update done'
@@ -187,22 +212,52 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
   !=======================================================================
   !  STEP 4: INFLATION (optional)
   !=======================================================================
-  if (inflate == 1) then
-      inffac = infmult
-  elseif (inflate == 2) then
-      call inflationfactor(X5, nrens, inffac)              ! adaptive inflation factor
-      inffac = 1.0_dp + (inffac - 1.0_dp)*infmult          ! adjust adaptive factor
+! Old code
+!  if (inflate == 1) then
+!      inffac = infmult
+!  elseif (inflate == 2) then
+!      call inflationfactor(X5, nrens, inffac)              ! adaptive inflation factor
+!      inffac = 1.0_dp + (inffac - 1.0_dp)*infmult          ! adjust adaptive factor
+!  end if
+!
+!  if (inflate > 0) then
+!      if (verbose) print '(a,f10.4)', 'analysis: inflation update with inflation factor= ', inffac
+!      call ensmean(A, ave, ndim, nrens)
+!      do j = 1, nrens
+!          do i = 1, ndim
+!              A(i,j) = ave(i) + (A(i,j) - ave(i))*inffac
+!          end do
+!      end do
+!  end if
+  call ensmean(A, ave, ndim, nrens) ! Update mean after analysis
+
+  if (inflate == 1) inffac = infmult
+  if (inflate == 2) then
+      call inflationfactor(X5, nrens, inffac)
+      inffac = 1.0_dp + (inffac - 1.0_dp)*infmult
   end if
 
-  if (inflate > 0) then
-      if (verbose) print '(a,f10.4)', 'analysis: inflation update with inflation factor= ', inffac
-      call ensmean(A, ave, ndim, nrens)
-      do j = 1, nrens
-          do i = 1, ndim
-              A(i,j) = ave(i) + (A(i,j) - ave(i))*inffac
-          end do
+!$omp parallel do private(i) shared(A, ave, nrens, ndim, inflate, inffac)
+  do j = 1, nrens
+      do i = 1, ndim
+          ! Apply Multiplicative Inflation if requested
+          if (inflate > 0) A(i,j) = ave(i) + (A(i,j) - ave(i)) * inffac
+
+          ! --- SELECTIVE SAFETY CLIPPING ---
+          ! 1. Remove NaNs or extreme overflows
+          if (A(i,j) /= A(i,j) .or. abs(A(i,j)) > 1.0e15_dp) then
+              A(i,j) = ave(i)
+              cycle
+          end if
+
+          ! 2. Variable-dependent Clipping (Logic for T and S)
+          ! Replace i-range logic with your grid index logic if needed
+          ! Example: Temperature > -2.0 and < 45.0, Salinity > 0.0
+          if (abs(A(i,j)) > 1.0e5_dp) A(i,j) = ave(i) ! Generic cap for runaway members
       end do
-  end if
+  end do
+!$omp end parallel do
+
 
   !=======================================================================
   !  STEP 5: DEALLOCATIONS
@@ -214,3 +269,5 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
   if (allocated(Reps)) deallocate(Reps)
 
 end subroutine analysis
+
+endmodule m_analysis

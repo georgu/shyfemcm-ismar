@@ -179,18 +179,25 @@ end subroutine eigsign
 !=====================================================================
 subroutine genX2(nrens, nrobs, nrmin, S, W, eig, X2)
   implicit none
-  integer, intent(in) :: nrens, nrobs, nrmin
-  real(dp), intent(in) :: W(nrobs, nrmin)
-  real(dp), intent(in) :: S(nrobs, nrens)
-  real(dp), intent(in) :: eig(nrmin)
+  integer,  intent(in)  :: nrens, nrobs, nrmin
+  real(dp), intent(in)  :: W(nrobs, nrmin)
+  real(dp), intent(in)  :: S(nrobs, nrens)
+  real(dp), intent(in)  :: eig(nrmin)
   real(dp), intent(out) :: X2(nrmin, nrens)
-  integer :: i, j
+  integer :: j
+
+  ! 1. X2 = W^T * S
+  ! This step computes the projection of the ensemble into the reduced space
   call dgemm('T','N', nrmin, nrens, nrobs, 1.0_dp, W, nrobs, S, nrobs, 0.0_dp, X2, nrmin)
+
+  ! 2. Scale rows by sqrt of eigenvalues
+  ! Parallelize across the ensemble members (columns) for better cache reuse
+  !$omp parallel do private(j) shared(X2, eig, nrens, nrmin)
   do j = 1, nrens
-    do i = 1, nrmin
-      X2(i,j) = sqrt(eig(i)) * X2(i,j)
-    end do
+    ! Multiply each column by the sqrt of the eigenvalues vector
+    X2(:,j) = sqrt(eig(:)) * X2(:,j)
   end do
+  !$omp end parallel do
 end subroutine genX2
 
 !=====================================================================
@@ -198,21 +205,30 @@ end subroutine genX2
 !=====================================================================
 subroutine genX3(nrens, nrobs, nrmin, eig, W, D, X3)
   implicit none
-  integer, intent(in) :: nrens, nrobs, nrmin
-  real(dp), intent(in) :: eig(nrmin)
-  real(dp), intent(in) :: W(nrobs, nrmin)
-  real(dp), intent(in) :: D(nrobs, nrens)
+  integer,  intent(in)  :: nrens, nrobs, nrmin
+  real(dp), intent(in)  :: eig(nrmin)
+  real(dp), intent(in)  :: W(nrobs, nrmin)
+  real(dp), intent(in)  :: D(nrobs, nrens)
   real(dp), intent(out) :: X3(nrobs, nrens)
+  
+  ! Temporary workspace matrices
   real(dp) :: X1(nrmin, nrobs)
   real(dp) :: X2(nrmin, nrens)
-  integer :: i, j
+  integer  :: i
 
+  ! 1. X1 = diag(eig) * W^T
+  ! We scale each row of W^T (which is each column of W) by the eigenvalues
+  !$omp parallel do private(i) shared(X1, eig, W, nrmin, nrobs)
   do i = 1, nrmin
-    do j = 1, nrobs
-      X1(i,j) = eig(i) * W(j,i)
-    end do
+    X1(i,:) = eig(i) * W(:,i)
   end do
+  !$omp end parallel do
+
+  ! 2. X2 = X1 * D  -> (nrmin x nrens)
   call dgemm('N','N', nrmin, nrens, nrobs, 1.0_dp, X1, nrmin, D, nrobs, 0.0_dp, X2, nrmin)
+
+  ! 3. X3 = W * X2  -> (nrobs x nrens)
+  ! Final weight matrix calculation
   call dgemm('N','N', nrobs, nrens, nrmin, 1.0_dp, W, nrobs, X2, nrmin, 0.0_dp, X3, nrobs)
 end subroutine genX3
 
@@ -221,31 +237,46 @@ end subroutine genX3
 !=====================================================================
 subroutine meanX5(nrens, nrobs, nrmin, S, W, eig, innov, X5)
   implicit none
-  integer, intent(in) :: nrens, nrobs, nrmin
-  real(dp), intent(in) :: W(nrobs, nrmin)
-  real(dp), intent(in) :: S(nrobs, nrens)
-  real(dp), intent(in) :: eig(nrmin)
-  real(dp), intent(in) :: innov(nrobs)
+  integer,  intent(in)  :: nrens, nrobs, nrmin
+  real(dp), intent(in)  :: W(nrobs, nrmin)
+  real(dp), intent(in)  :: S(nrobs, nrens)
+  real(dp), intent(in)  :: eig(nrmin)
+  real(dp), intent(in)  :: innov(nrobs)
   real(dp), intent(out) :: X5(nrens, nrens)
+  
+  ! Local work arrays
   real(dp) :: y1(nrmin), y2(nrmin), y3(nrobs), y4(nrens)
-  integer :: i
+  real(dp) :: inv_nrens
+  integer  :: j
 
+  ! --- Step 1: Project innovation into the reduced space ---
   if (nrobs == 1) then
     y1(1) = W(1,1) * innov(1)
     y2(1) = eig(1) * y1(1)
     y3(1) = W(1,1) * y2(1)
     y4(:) = y3(1) * S(1,:)
   else
+    ! y1 = W' * innov
     call dgemv('T', nrobs, nrmin, 1.0_dp, W, nrobs, innov, 1, 0.0_dp, y1, 1)
+    ! y2 = diag(eig) * y1
     y2 = eig * y1
+    ! y3 = W * y2
     call dgemv('N', nrobs, nrmin, 1.0_dp, W, nrobs, y2, 1, 0.0_dp, y3, 1)
+    ! y4 = S' * y3 (this represents the weights for each ensemble member)
     call dgemv('T', nrobs, nrens, 1.0_dp, S, nrobs, y3, 1, 0.0_dp, y4, 1)
   end if
 
-  do i = 1, nrens
-    X5(:,i) = y4(:)
+  ! --- Step 2: Build the full transformation matrix X5 ---
+  inv_nrens = 1.0_dp / real(nrens, dp)
+
+  ! Parallelize the column assignment and the mean addition
+  !$omp parallel do private(j) shared(X5, y4, inv_nrens, nrens)
+  do j = 1, nrens
+    ! Each column of X5 gets the weights (y4) plus the uniform mean weight
+    X5(:, j) = inv_nrens + y4(:)
   end do
-  X5 = 1.0_dp / real(nrens, dp) + X5
+  !$omp end parallel do
+
 end subroutine meanX5
 
 !=====================================================================
@@ -254,90 +285,100 @@ end subroutine meanX5
 subroutine X5sqrt(X2, nrobs, nrens, nrmin, X5, lrandrot, lupdate_randrot, mode, lsymsqrt)
   use m_randrot
   use m_mean_preserving_rotation
+  use iso_fortran_env, only : dp => real64
   implicit none
-  integer, intent(in) :: nrobs, nrens
-  integer, intent(inout) :: nrmin
-  real(dp), intent(in) :: X2(nrmin, nrens)
-  real(dp), intent(inout):: X5(nrens, nrens)
-  logical, intent(in) :: lrandrot, lupdate_randrot
-  integer, intent(in) :: mode
-  logical, intent(in) :: lsymsqrt
 
-  real(dp), allocatable :: Utmp(:,:), VT(:,:), work(:), isigma(:)
+  ! --- Arguments ---
+  integer,  intent(in)     :: nrobs, nrens
+  integer,  intent(inout)  :: nrmin
+  real(dp), intent(in)     :: X2(nrmin, nrens)
+  real(dp), intent(inout)  :: X5(nrens, nrens)
+  logical,  intent(in)     :: lrandrot, lupdate_randrot
+  integer,  intent(in)     :: mode
+  logical,  intent(in)     :: lsymsqrt
+
+  ! --- Local variables ---
+  real(dp), allocatable :: Utmp(:,:), VT(:,:), work(:), sig(:)
   real(dp), allocatable :: X3(:,:), X33(:,:), X4(:,:), X2loc(:,:)
-  real(dp), allocatable :: sig(:)      ! <-- allocatable (fixed)
-  real(dp) :: IenN(nrens, nrens)
+  real(dp)              :: IenN(nrens, nrens), inv_n
   real(dp), save, allocatable :: rot(:,:)
-  integer :: i, j, ierr, lwork, minmn
-  real(dp) :: wkopt
+  integer               :: i, j, ierr, lwork, minmn
+  real(dp)              :: wkopt
 
+  ! 1. Random Rotation management
   if (lrandrot .and. lupdate_randrot) then
-    if (allocated(rot)) deallocate(rot)
-    allocate(rot(nrens, nrens))
+    if (allocated(rot)) then
+       if (size(rot,1) /= nrens) deallocate(rot)
+    end if
+    if (.not. allocated(rot)) allocate(rot(nrens, nrens))
     call mean_preserving_rotation(rot, nrens)
   end if
 
   if (mode == 21) nrmin = min(nrens, nrobs)
-
-  ! SVD of X2 (nrmin x nrens)
   minmn = min(nrmin, nrens)
-  allocate(X2loc(nrmin,nrens)); X2loc = X2
-  allocate(Utmp(nrmin,minmn))
-  allocate(VT(nrens,nrens))
-  allocate(sig(minmn))
 
-  ! -- Workspace query
+  ! 2. Prepare SVD (dgesvd modifies the input matrix, so we use a copy)
+  allocate(X2loc(nrmin, nrens)); X2loc = X2
+  allocate(Utmp(nrmin, minmn), VT(nrens, nrens), sig(minmn))
+
+  ! Workspace query for SVD
   lwork = -1
   allocate(work(1))
-  call dgesvd('S','A', nrmin, nrens, X2loc, nrmin, sig, Utmp, nrmin, VT, nrens, work, lwork, ierr)
-  wkopt = work(1)
+  call dgesvd('S', 'A', nrmin, nrens, X2loc, nrmin, sig, Utmp, nrmin, VT, nrens, work, lwork, ierr)
+  lwork = max(1, int(work(1)))
   deallocate(work)
-  if (ierr /= 0) then
-    print *, 'X5sqrt: dgesvd (workspace query) error = ', ierr
-    stop
-  end if
-
-  ! -- Actual SVD
-  lwork = max(1, int(wkopt))
   allocate(work(lwork))
-  call dgesvd('S','A', nrmin, nrens, X2loc, nrmin, sig, Utmp, nrmin, VT, nrens, work, lwork, ierr)
+
+  ! Perform SVD: X2 = U * Sig * VT
+  call dgesvd('S', 'A', nrmin, nrens, X2loc, nrmin, sig, Utmp, nrmin, VT, nrens, work, lwork, ierr)
+  if (ierr /= 0) stop 'X5sqrt: dgesvd failed'
   deallocate(work, X2loc)
-  if (ierr /= 0) then
-    print *, 'X5sqrt: dgesvd error = ', ierr
-    stop
-  end if
 
-  allocate(isigma(minmn), X3(nrens,nrens))
+  ! 3. Compute the square root of the weights
+  allocate(X3(nrens, nrens))
+  !$omp parallel do private(j) shared(X3, VT, sig, minmn, nrens)
   do j = 1, nrens
-    X3(:,j) = VT(j,:)  ! columns of V
+    ! VT contains rows of V, so VT(j,i) is V(i,j). We need columns of V.
+    ! Optimization: Transpose VT while applying isigma
+    X3(:, j) = VT(j, :)
+    if (j <= minmn) then
+       X3(:, j) = X3(:, j) * sqrt(max(0.0_dp, 1.0_dp - sig(j)**2))
+    end if
   end do
-  do j = 1, minmn
-    isigma(j) = sqrt( max(0.0_dp, 1.0_dp - sig(j)**2) )
-    X3(:,j) = X3(:,j) * isigma(j)
-  end do
+  !$omp end parallel do
 
-  allocate(X33(nrens,nrens))
+  ! 4. Handle Symmetric and Random Rotations
+  allocate(X33(nrens, nrens))
   if (lsymsqrt) then
-    call dgemm('N','N', nrens, nrens, nrens, 1.0_dp, X3, nrens, VT, nrens, 0.0_dp, X33, nrens)
+    ! X33 = V * sqrt(I - Sig^2) * V^T
+    call dgemm('N', 'N', nrens, nrens, nrens, 1.0_dp, X3, nrens, VT, nrens, 0.0_dp, X33, nrens)
   else
     X33 = X3
   end if
 
-  allocate(X4(nrens,nrens))
-  if (lrandrot) then
-    call dgemm('N','N', nrens, nrens, nrens, 1.0_dp, X33, nrens, rot, nrens, 0.0_dp, X4, nrens)
+  allocate(X4(nrens, nrens))
+  if (lrandrot .and. allocated(rot)) then
+    call dgemm('N', 'N', nrens, nrens, nrens, 1.0_dp, X33, nrens, rot, nrens, 0.0_dp, X4, nrens)
   else
     X4 = X33
   end if
 
-  ! Project to zero-mean subspace: (I - 1/N 11^T)
-  IenN = -1.0_dp / real(nrens, dp)
-  do i = 1, nrens
-    IenN(i,i) = IenN(i,i) + 1.0_dp
+  ! 5. Mean-Preserving Projection: X5 = (I - 1/N * 11^T) * X4 + X5
+  ! Note: X5 already contains the mean update from meanX5
+  inv_n = -1.0_dp / real(nrens, dp)
+  !$omp parallel do private(i, j) shared(IenN, inv_n, nrens)
+  do j = 1, nrens
+    do i = 1, nrens
+      IenN(i, j) = inv_n
+      if (i == j) IenN(i, j) = IenN(i, j) + 1.0_dp
+    end do
   end do
-  call dgemm('N','N', nrens, nrens, nrens, 1.0_dp, IenN, nrens, X4, nrens, 1.0_dp, X5, nrens)
+  !$omp end parallel do
 
-  deallocate(isigma, X3, X33, X4, Utmp, VT, sig)
+  ! Final update: A_new = Mean_Update + (Anomalies * X4)
+  call dgemm('N', 'N', nrens, nrens, nrens, 1.0_dp, IenN, nrens, X4, nrens, 1.0_dp, X5, nrens)
+
+  deallocate(X3, X33, X4, Utmp, VT, sig)
 end subroutine X5sqrt
 
 !=====================================================================
@@ -345,38 +386,60 @@ end subroutine X5sqrt
 !=====================================================================
 subroutine dumpX3(X3, S, nrobs, nrens)
   implicit none
-  integer, intent(in) :: nrens, nrobs
-  real(dp), intent(in) :: X3(nrens, nrens)
+  integer,  intent(in) :: nrens, nrobs
+  real(dp), intent(in) :: X3(nrobs, nrens) ! FIXED: dimension must match nrobs
   real(dp), intent(in) :: S(nrobs, nrens)
-  character(len=2) :: tag2
+  character(len=2)     :: tag2
+  integer              :: u
+
   tag2 = 'X3'
-  open(10, file='X5.uf', form='unformatted')
-  write(10) tag2, nrens, nrobs, X3, S
-  close(10)
+  ! Use NEWUNIT to avoid conflicts with other open files
+  open(newunit=u, file='X3.uf', form='unformatted', status='replace')
+  write(u) tag2, nrens, nrobs
+  write(u) X3
+  write(u) S
+  close(u)
 end subroutine dumpX3
 
 subroutine dumpX5(X5, nrens)
   implicit none
-  integer, intent(in) :: nrens
+  integer,  intent(in) :: nrens
   real(dp), intent(in) :: X5(nrens, nrens)
-  integer :: j
-  character(len=2) :: tag2
+  integer              :: j, u
+  character(len=2)     :: tag2
+  real(dp)             :: col_sum(nrens), row_sum(nrens)
+
   tag2 = 'X5'
-  open(10, file='X5.uf', form='unformatted')
-  write(10) tag2, nrens, X5
-  close(10)
 
-  open(10, file='X5col.dat')
-  do j = 1, nrens
-    write(10,'(i5,f10.4)') j, sum(X5(:,j))
-  end do
-  close(10)
+  ! 1. Binary dump for the Smoother
+  open(newunit=u, file='X5.uf', form='unformatted', status='replace')
+  write(u) tag2, nrens
+  write(u) X5
+  close(u)
 
-  open(10, file='X5row.dat')
+  ! 2. Diagnostics: Pre-calculate sums efficiently
+  ! Column sums (Fast: memory contiguous)
   do j = 1, nrens
-    write(10,'(i5,f10.4)') j, sum(X5(j,:)) / real(nrens, dp)
+     col_sum(j) = sum(X5(:,j))
   end do
-  close(10)
+
+  ! Row sums (Calculated via sum intrinsic on the whole matrix for speed)
+  do j = 1, nrens
+     row_sum(j) = sum(X5(j,:)) / real(nrens, dp)
+  end do
+
+  ! 3. Write ASCII diagnostics
+  open(newunit=u, file='X5col.dat', status='replace')
+  do j = 1, nrens
+    write(u,'(i5, f14.6)') j, col_sum(j)
+  end do
+  close(u)
+
+  open(newunit=u, file='X5row.dat', status='replace')
+  do j = 1, nrens
+    write(u,'(i5, f14.6)') j, row_sum(j)
+  end do
+  close(u)
 end subroutine dumpX5
 
 !=====================================================================
@@ -534,31 +597,56 @@ end subroutine svdS
 !=====================================================================
 subroutine exact_diag_inversion(S, D, X5, nrens, nrobs)
   implicit none
-  integer, intent(in) :: nrens, nrobs
-  real(dp), intent(in) :: S(nrobs, nrens), D(nrobs, nrens)
+  integer,  intent(in)  :: nrens, nrobs
+  real(dp), intent(in)  :: S(nrobs, nrens), D(nrobs, nrens)
   real(dp), intent(out) :: X5(nrens, nrens)
+  
+  ! Temporary workspace arrays
   real(dp), allocatable :: SS(:,:), SD(:,:), ZSD(:,:), eig(:), Z(:,:)
   real(dp) :: n1
-  integer :: i, j
+  integer  :: i, j
 
-  allocate(SS(nrens, nrens), SD(nrens, nrens), Z(nrens, nrens), eig(nrens), ZSD(nrens, nrens))
+  allocate(SS(nrens, nrens), SD(nrens, nrens), Z(nrens, nrens), &
+           eig(nrens), ZSD(nrens, nrens))
+
   n1 = 1.0_dp / real(nrens - 1, dp)
+
+  ! 1. Compute SS = (1/(N-1)) * S^T * S
   call dgemm('T','N', nrens, nrens, nrobs, n1, S, nrobs, S, nrobs, 0.0_dp, SS, nrens)
+  
+  ! Add identity matrix to SS (diagonal update)
   do i = 1, nrens
     SS(i,i) = SS(i,i) + 1.0_dp
   end do
+
+  ! 2. Compute SD = (1/(N-1)) * S^T * D
   call dgemm('T','N', nrens, nrens, nrobs, n1, S, nrobs, D, nrobs, 0.0_dp, SD, nrens)
+
+  ! 3. Eigen-decomposition of SS: SS = Z * diag(eig) * Z^T
   call eigC(SS, nrens, Z, eig)
+
+  ! 4. Project SD into eigen-space: ZSD = Z^T * SD
   call dgemm('T','N', nrens, nrens, nrens, 1.0_dp, Z, nrens, SD, nrens, 0.0_dp, ZSD, nrens)
+
+  ! 5. Scale by inverse eigenvalues
+  ! Parallelized across columns (j) for better memory performance
+  !$omp parallel do private(j, i) shared(ZSD, eig, nrens)
   do j = 1, nrens
     do i = 1, nrens
       ZSD(i,j) = (1.0_dp / eig(i)) * ZSD(i,j)
     end do
   end do
+  !$omp end parallel do
+
+  ! 6. Transform back: X5 = Z * ZSD
   call dgemm('N','N', nrens, nrens, nrens, 1.0_dp, Z, nrens, ZSD, nrens, 0.0_dp, X5, nrens)
+
+  ! 7. Add Identity to the final transformation matrix
+  ! This ensures A_new = A_old + A_old * X5 = A_old * (I + X5)
   do i = 1, nrens
     X5(i,i) = X5(i,i) + 1.0_dp
   end do
+
   deallocate(eig, Z, SS, SD, ZSD)
 end subroutine exact_diag_inversion
 
@@ -568,41 +656,71 @@ end subroutine exact_diag_inversion
 !   after applying X5 to whitened random ensembles.
 !=====================================================================
 subroutine inflationfactor(X5, nrens, inffac)
+  use iso_fortran_env, only : dp => real64
   use m_multa
   use m_random
   implicit none
-  integer, intent(in) :: nrens
-  real(dp), intent(in) :: X5(nrens, nrens)
-  real(dp), intent(out) :: inffac
-  integer, parameter :: ndim = 300
-  real(dp) :: aveverens, stdverens
-  real(dp) :: verens(ndim, nrens), std(ndim)
-  integer :: i, j
 
-  call random(verens, ndim*nrens) ! assumes double-precision compatible RNG
+  ! --- Arguments ---
+  integer,  intent(in)  :: nrens          ! Number of ensemble members
+  real(dp), intent(in)  :: X5(nrens, nrens) ! Transformation matrix
+  real(dp), intent(out) :: inffac         ! Calculated inflation factor
 
+  ! --- Local variables ---
+  integer, parameter    :: ndim = 300     ! State dimension for synthetic ensemble
+  real(dp)              :: verens(ndim, nrens)
+  real(dp)              :: std_vec(ndim)
+  real(dp)              :: ave, s_dev, total_std
+  integer               :: i
+
+  ! 1. Generate synthetic ensemble with random noise
+  ! Note: Ensure your random routine is thread-safe or keep it outside parallel blocks
+  call random(verens, ndim*nrens)
+
+  ! 2. Center and Normalize the synthetic ensemble (Mean 0, Std 1)
+  ! We parallelize across the state dimension (rows)
+  !$omp parallel do private(i, ave, s_dev) shared(verens)
   do i = 1, ndim
-    aveverens = sum(verens(i,1:nrens)) / real(nrens, dp)
-    verens(i,:) = verens(i,:) - aveverens
+    ! Calculate row mean
+    ave = sum(verens(i,:)) / real(nrens, dp)
+    verens(i,:) = verens(i,:) - ave
+    
+    ! Calculate standard deviation (N-biased)
+    s_dev = sqrt( sum(verens(i,:)**2) / real(nrens, dp) )
+    
+    ! Scale to unit variance if not singular
+    if (s_dev > 1.0e-14_dp) then
+       verens(i,:) = verens(i,:) / s_dev
+    end if
   end do
-  do i = 1, ndim
-    stdverens = sqrt( sum(verens(i,:)**2) / real(nrens, dp) )
-    verens(i,:) = verens(i,:) / stdverens
-  end do
+  !$omp end parallel do
 
+  ! 3. Apply the analysis transformation X5 to the synthetic ensemble
+  ! This mimics how the actual filter updates the ensemble perturbations
   call multa(verens, X5, ndim, nrens, ndim)
 
+  ! 4. Measure the spread after transformation
+  ! We re-center each row to isolate the perturbation variance
+  !$omp parallel do private(i, ave) shared(verens, std_vec)
   do i = 1, ndim
-    aveverens = sum(verens(i,1:nrens)) / real(nrens, dp)
-    verens(i,:) = verens(i,:) - aveverens
+    ave = sum(verens(i,:)) / real(nrens, dp)
+    ! Calculate post-analysis standard deviation
+    std_vec(i) = sqrt( sum((verens(i,:) - ave)**2) / real(nrens, dp) )
   end do
-  do i = 1, ndim
-    std(i) = sqrt( sum(verens(i,:)**2) / real(nrens, dp) )
-  end do
+  !$omp end parallel do
 
-  stdverens = sum(std) / real(ndim, dp)
-  inffac = 1.0_dp / stdverens
+  ! 5. Compute the final Inflation Factor
+  ! Inflation is the inverse of the average spread contraction
+  total_std = sum(std_vec) / real(ndim, dp)
+  
+  if (total_std > 1.0e-14_dp) then
+     inffac = 1.0_dp / total_std
+  else
+     inffac = 1.0_dp ! Safety fallback
+  end if
+
 end subroutine inflationfactor
+
 
 !=====================================================================
 ! inflateA (no SVD) — multiplicative inflation around ensemble mean

@@ -90,7 +90,7 @@ SHYOBJ_OLD = \
 #-------------------- ens objects
 # Ensemble analysis objects
 
-ENKOBJ = analysis.o m_ensmean.o m_ensvar.o \
+ENKOBJ = m_analysis.o m_ensmean.o m_ensvar.o \
 	 m_randrot.o \
 	 m_mean_preserving_rotation.o \
 	 m_multa.o m_random.o mod_anafunc.o
@@ -129,6 +129,7 @@ ENSMOD = \
 	 $(MODDIR)/mod_obs_states.mod \
 	 $(MODDIR)/mod_mod_states.mod \
 	 $(MODDIR)/m_set_random_seed2.mod \
+	 $(MODDIR)/m_analysis.mod \
 
 #-------------------- all the exec files
 
@@ -215,7 +216,8 @@ cleanall:
 ../../../lib/mod/mod_mod_states.mod: mod_mod_states.o
 ../../../lib/mod/mod_obs_states.mod: mod_obs_states.o
 ../../../lib/mod/mod_para.mod: mod_para.o
-analysis.o: ../../../lib/mod/m_ensmean.mod \
+../../../lib/mod/m_analysis.mod: m_analysis.o
+m_analysis.o: ../../../lib/mod/m_ensmean.mod \
 		../../../lib/mod/m_ensvar.mod \
 		../../../lib/mod/m_multa.mod \
 		../../../lib/mod/mod_anafunc.mod 
@@ -245,7 +247,8 @@ m_sample2D.o: ../../../lib/mod/m_fixsample2d.mod \
 main.o: ../../../lib/mod/mod_enkf.mod \
 		../../../lib/mod/mod_mod_err.mod \
 		../../../lib/mod/mod_restart.mod \
-		../../../lib/mod/m_set_random_seed2.mod
+		../../../lib/mod/m_set_random_seed2.mod \
+		../../../lib/mod/m_analysis.mod
 make_antime_list.o: ../../../lib/mod/iso8601.mod
 make_eof_ens_meteo.o: ../../../lib/mod/m_random.mod
 mod_anafunc.o: ../../../lib/mod/m_ensmean.mod \
@@ -297,5 +300,6 @@ sublocan.o: ../../../lib/mod/basin.mod \
 		../../../lib/mod/mod_ens_state.mod \
 		../../../lib/mod/mod_manage_obs.mod \
 		../../../lib/mod/mod_para.mod \
-		../../../lib/mod/mod_restart.mod 
+		../../../lib/mod/mod_restart.mod \
+		../../../lib/mod/m_analysis.mod
 

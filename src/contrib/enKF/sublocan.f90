@@ -184,6 +184,7 @@ end subroutine local_analysis
 subroutine locan_k(nk, kdim, nren, no_tot, xo, yo, rhoo, &
                    Ak_bk, local_upd_rand, Ak_loc, did_update)
   use iso_fortran_env, only: dp => real64
+  use m_analysis
   use basin
   use mod_enkf
   implicit none
@@ -240,7 +241,8 @@ subroutine locan_k(nk, kdim, nren, no_tot, xo, yo, rhoo, &
 
      call analysis(Ak_loc, Rl, El, Sl, D1l, innovl, kdim, nren, no_k, .false., &
                    truncation, rmode, lrandrot, local_upd_rand, lsymsqrt, &
-                   inflate, infmult)
+                   inflate, infmult, .true.)
+
 
      deallocate(innovl, D1l, Sl, El, Rl)
 
@@ -268,6 +270,7 @@ end subroutine locan_k
 subroutine locan_e(ne, nedim, nren, no_tot, xo, yo, rhoo, &
                    xe, ye, Ae_bk, local_upd_rand, Ae_loc, did_update)
   use iso_fortran_env, only: dp => real64
+  use m_analysis
   use mod_enkf
   implicit none
 
@@ -319,7 +322,7 @@ subroutine locan_e(ne, nedim, nren, no_tot, xo, yo, rhoo, &
 
      call analysis(Ae_loc, Rl, El, Sl, D1l, innovl, nedim, nren, no_e, .false., &
                    truncation, rmode, lrandrot, local_upd_rand, lsymsqrt, &
-                   inflate, infmult)
+                   inflate, infmult, .true.)
 
      deallocate(innovl, D1l, Sl, El, Rl)
 
