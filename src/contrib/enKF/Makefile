@@ -228,6 +228,7 @@ enKF2enKS.o: ../../../lib/mod/basin.mod \
 		../../../lib/mod/mod_geom_dynamic.mod \
 		../../../lib/mod/mod_hydro.mod \
 		../../../lib/mod/mod_hydro_vel.mod \
+		../../../lib/mod/mod_gotm_aux.mod \
 		../../../lib/mod/mod_restart.mod \
 		../../../lib/mod/mod_ts.mod \
 		../../../lib/mod/shympi.mod 

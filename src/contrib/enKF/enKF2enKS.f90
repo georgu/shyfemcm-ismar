@@ -187,6 +187,7 @@ subroutine init_shyfem(basinf, nnlv)
    use mod_ts
    use mod_restart
    use shympi
+   use mod_gotm_aux
    implicit none
       
    character(len=*), intent(in) :: basinf
@@ -206,10 +207,13 @@ subroutine init_shyfem(basinf, nnlv)
    call mod_hydro_vel_init(nkn,nel,nlv)
    call mod_ts_init(nkn,nlv)
    call levels_init(nkn,nel,nlv)
+   call mod_gotm_aux_init(nkn, nlv)
+   call shympi_set_hlv(nlv, hlv)
+   call shympi_init(.false.)
 
-   nkn_global=nkn
-   nel_global=nel
-   nlv_global=nlv
+   nkn_global = nkn
+   nel_global = nel
+   nlv_global = nlv
 end subroutine init_shyfem
 
 ! ======================================================================
@@ -226,11 +230,11 @@ subroutine num2str(num, str)
 end subroutine num2str
 
 ! ======================================================================
-subroutine rst_read(rstname, atimea)
+subroutine read_rst(rstname, atimea)
    use iso_fortran_env, only : dp=>real64
    use mod_restart
    use levels, only : nlvdi, nlv, hlv, ilhv, ilhkv
-   !use shympi
+   use shympi
    use mod_enks_data, only : equal_time
    implicit none
 
@@ -244,13 +248,13 @@ subroutine rst_read(rstname, atimea)
    zero4 = 0.0
       
    open(24,file=trim(rstname),status='old',form='unformatted',action='read',iostat=ios)
-   if (ios /= 0) error stop "rst_read: cannot open"
+   if (ios /= 0) error stop "read_rst: cannot open"
       
    do 
       call rst_read_record(24, atimef, iflag, ierr)
       if (ierr /= 0) then
          close(24)
-         error stop "rst_read: time not found"
+         error stop "read_rst: time not found"
       end if
       if (equal_time(atimef, atimea)) exit
    end do
@@ -258,7 +262,7 @@ subroutine rst_read(rstname, atimea)
 
    if (icall==0) then
       hlv        = hlvrst
-      !hlv_global = hlvrst
+      hlv_global = hlvrst
       ilhv       = ilhrst
       ilhkv      = ilhkrst
 
@@ -297,7 +301,7 @@ subroutine rst_read(rstname, atimea)
    end if
 
    icall = icall + 1
-end subroutine rst_read
+end subroutine read_rst
 
 ! ======================================================================
 subroutine push_matrix(sdim, nrens, nre, Amat)
@@ -510,7 +514,7 @@ program enKF2enKS
           call num2str(nre-1, nrel)
 
           ! Read the specific restart for this member and time
-          call rst_read("analKF_en"//nrel//".rst", atime)
+          call read_rst("analKF_en"//nrel//".rst", atime)
 
           ! Allocate matrices on the first successful read
           if (.not. allocated(Astate)) then
