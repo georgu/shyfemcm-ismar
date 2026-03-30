@@ -197,6 +197,7 @@ for (( na = 1; na <= nran; na++ )); do
         if [ -f fort.999 ]; then
           mv fort.999 fort.999_{.}
           echo 'Process {} failed: fort.999 saved as fort.999_{.}'
+	  exit
         fi
         " ::: $str_list
       #parallel --jobs "$nthreads" "$SRCDIR/shyfem/shyfem {} > {.}.log 2>&1" ::: $str_list

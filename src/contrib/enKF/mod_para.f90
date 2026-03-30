@@ -80,7 +80,10 @@ module mod_para
   real(dp), parameter :: SBIAS_MAX = 4.
 
   ! Check on observations
-  logical, parameter  :: OBSCHK = .true.
+  logical, parameter  ::  OBSCHK = .true.
+  real(dp), parameter  :: THRSTD = 5.   ! threshold multiplier for std (e.g., 3.0). 
+                                        ! Not recommended, use a very high value to disable.
+  real(dp), parameter  :: THRABS = 1.   ! relative threshold (0.1 - 0.5 typical). Absolute value.
 
   ! SVD truncation and perturbation options
   real(dp),    parameter :: truncation     = 0.99

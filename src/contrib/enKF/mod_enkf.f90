@@ -91,9 +91,9 @@ subroutine fill_scalar_0d(olabel, nfile, ostate)
    integer :: iemin, kmin
    integer :: n_obs
    real(dp) :: x, y
-   real(dp) :: val, std
+   real(dp) :: valo, stdo
    real(dp) :: mvalm
-   real(dp) :: mval(nrens)
+   real(dp) :: valm(nrens)
    real(dp) :: pvec(nrens)
    real(dp) :: inn1
    real(dp) :: spread, thresh
@@ -106,7 +106,7 @@ subroutine fill_scalar_0d(olabel, nfile, ostate)
    !-------------------------------------------------
    nobs_ok = 0
 
-!$omp parallel do default(shared) private(nf,x,y,iemin,kmin,ne,mval,mvalm,spread,thresh,accept_obs) reduction(+:nobs_ok)
+!$omp parallel do default(shared) private(nf,x,y,iemin,kmin,ne,valm,mvalm,spread,thresh,accept_obs) reduction(+:nobs_ok)
    do nf = 1, nfile
       if (ostate(nf)%stat > 1) cycle
 
@@ -117,19 +117,19 @@ subroutine fill_scalar_0d(olabel, nfile, ostate)
       select case (olabel)
       case ('0DLEV')
          do ne = 1, nrens
-            mval(ne) = Abk(ne)%z(kmin)
+            valm(ne) = Abk(ne)%z(kmin)
          end do
          mvalm = Abk_m%z(kmin)
 
       case ('0DTEM')
          do ne = 1, nrens
-            mval(ne) = Abk(ne)%t(1, kmin)
+            valm(ne) = Abk(ne)%t(1, kmin)
          end do
          mvalm = Abk_m%t(1, kmin)
 
       case ('0DSAL')
          do ne = 1, nrens
-            mval(ne) = Abk(ne)%s(1, kmin)
+            valm(ne) = Abk(ne)%s(1, kmin)
          end do
          mvalm = Abk_m%s(1, kmin)
       end select
@@ -137,7 +137,7 @@ subroutine fill_scalar_0d(olabel, nfile, ostate)
       ! Last check of the observations, if accept_obs = .false. the observation is excluded.
       if ( OBSCHK ) then
          accept_obs = .true.
-         if (nanal > 3) call screen_observation(ostate(nf)%val, mval, nrens, ostate(nf)%std, 3._dp, 0.6_dp, accept_obs)
+         if (nanal > 3) call screen_observation(ostate(nf)%val, valm, nrens, ostate(nf)%std, THRSTD, THRABS, accept_obs)
          if (.not. accept_obs) cycle
       end if
 
@@ -175,61 +175,63 @@ subroutine fill_scalar_0d(olabel, nfile, ostate)
       select case (olabel)
       case ('0DLEV')
          do ne = 1, nrens
-            mval(ne) = Abk(ne)%z(kmin)
+            valm(ne) = Abk(ne)%z(kmin)
          end do
          mvalm = Abk_m%z(kmin)
 
       case ('0DTEM')
          do ne = 1, nrens
-            mval(ne) = Abk(ne)%t(1, kmin)
+            valm(ne) = Abk(ne)%t(1, kmin)
          end do
          mvalm = Abk_m%t(1, kmin)
 
       case ('0DSAL')
          do ne = 1, nrens
-            mval(ne) = Abk(ne)%s(1, kmin)
+            valm(ne) = Abk(ne)%s(1, kmin)
          end do
          mvalm = Abk_m%s(1, kmin)
       end select
 
+      ! Get obs values 
+      valo     = ostate(nf)%val
+      stdo     = ostate(nf)%std
+
+      ! Innovation
+      inn1 = valo - mvalm
+
+      ! This ensures the Kalman Gain (which uses R) sees the inflated error
+      call check_spread(inn1, stdo, valm, mvalm)
+
       ! Last check of the observations, if accept_obs = .false. the observation is excluded.
       if ( OBSCHK ) then
          accept_obs = .true.
-         if (nanal > 3) call screen_observation(ostate(nf)%val, mval, nrens, ostate(nf)%std, 3._dp, 0.6_dp, accept_obs)
+         if (nanal > 3) call screen_observation(valo, valm, nrens, stdo, THRSTD, THRABS, accept_obs)
          if (.not. accept_obs) cycle
       end if
 
+      ! if everything is ok use the obs
       n_obs = n_obs + 1
 
-      ! Get obs values 
-      val     = ostate(nf)%val
-      std     = ostate(nf)%std
-      val_o(n_obs) = val
-
-      ! Innovation
-      inn1 = val - mvalm
-
-      ! This ensures the Kalman Gain (which uses R) sees the inflated error
-      call check_spread(inn1, std, mval, mvalm)
+      val_o(n_obs) = valo
 
       ! Now update the Observation Error Covariance Matrix with the NEW std
-      R(n_obs,n_obs) = std**2
+      R(n_obs,n_obs) = stdo**2
 
       innov(n_obs) = inn1
-      S(n_obs,:)   = mval(:) - mvalm
-      HA(n_obs,:)  = mval(:)
+      S(n_obs,:)   = valm(:) - mvalm
+      HA(n_obs,:)  = valm(:)
 
       ! Generate perturbations using the updated (possibly inflated) std
       call make_0Dpert(olabel, nrens, nanal, ostate(nf)%id, pvec, atime_an, TTAU_0D)
-      E(n_obs,:)   = std * pvec
+      E(n_obs,:)   = stdo * pvec
       
       ! D contains the perturbed observations used in the analysis
-      D(n_obs,:)   = val + E(n_obs,:)
+      D(n_obs,:)   = valo + E(n_obs,:)
       
       ! D1 is the actual innovation used for each member: (Obs + Pert) - Model
       D1(n_obs,:)  = D(n_obs,:) - HA(n_obs,:)
 
-      if (verbose) write(*,*) 'val_m, val_o, std_o, inn: ', mvalm, val, std, inn1
+      if (verbose) write(*,*) 'val_m, val_o, std_o, inn: ', mvalm, valo, stdo, inn1
 
    end do
 

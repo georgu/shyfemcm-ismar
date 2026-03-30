@@ -930,23 +930,18 @@ subroutine screen_observation(obs, x_ens, nmem, obs_std, k_std, k_rel, accept_ob
   innovation = obs - mean_model
 
   !==================================================================
-  ! Physical scale for relative screening
-  ! (prevents rejecting deep-water Z or large T/S values)
+  ! 1) Std-based check
   !==================================================================
-  scale_value = max(abs(mean_model), abs(obs))
-
-!  !==================================================================
-!  ! 1) Std-based check
-!  !==================================================================
-!  if (abs(innovation) > k_std * obs_std) then
-!     write(*,*) 'Std-based check not passed: ', abs(innovation), k_std*obs_std
-!     accept_obs = .false.
-!     return
-!  end if
+  if (abs(innovation) > k_std * obs_std) then
+     write(*,*) 'Std-based check not passed: ', abs(innovation), k_std*obs_std
+     accept_obs = .false.
+     return
+  end if
 
   !==================================================================
   ! 2) Relative-scale check
   !==================================================================
+  scale_value = max(abs(mean_model), abs(obs))
   if (scale_value > 0.0_dp) then
      if (abs(innovation) > k_rel * scale_value) then
 	write(*,*) 'Relative-scale check not passed: ', abs(innovation), k_rel*scale_value
