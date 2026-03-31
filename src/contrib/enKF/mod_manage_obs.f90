@@ -916,7 +916,7 @@ subroutine screen_observation(obs, x_ens, nmem, obs_std, k_std, k_rel, accept_ob
   real(dp) :: innovation
   real(dp) :: mean_model
   real(dp) :: scale_value
-  real(dp) :: spread
+  real(dp) :: ens_spread
   real(dp) :: thresh
 
   !==================================================================
@@ -933,7 +933,7 @@ subroutine screen_observation(obs, x_ens, nmem, obs_std, k_std, k_rel, accept_ob
   ! 1) Std-based check
   !==================================================================
   if (abs(innovation) > k_std * obs_std) then
-     write(*,*) 'Std-based check not passed: ', abs(innovation), k_std*obs_std
+     write(*,*) 'Std-based check not passed (inn > k*stdo): ', abs(innovation), k_std*obs_std
      accept_obs = .false.
      return
   end if
@@ -944,7 +944,7 @@ subroutine screen_observation(obs, x_ens, nmem, obs_std, k_std, k_rel, accept_ob
   scale_value = max(abs(mean_model), abs(obs))
   if (scale_value > 0.0_dp) then
      if (abs(innovation) > k_rel * scale_value) then
-	write(*,*) 'Relative-scale check not passed: ', abs(innovation), k_rel*scale_value
+	write(*,*) 'Relative-scale check not passed (inn > k*scale): ', abs(innovation), k_rel*scale_value
         accept_obs = .false.
         return
      end if
@@ -953,10 +953,10 @@ subroutine screen_observation(obs, x_ens, nmem, obs_std, k_std, k_rel, accept_ob
   !==================================================================
   ! 3) Spread check
   !==================================================================
-  spread = sqrt(sum(x_ens**2)/real(nmem, dp) - mean_model * mean_model)
-  thresh = 3._dp * sqrt(obs_std**2 + spread**2)
+  ens_spread = sqrt(sum(x_ens**2)/real(nmem, dp) - mean_model * mean_model)
+  thresh = 3._dp * sqrt(obs_std**2 + ens_spread**2)
   if (abs(innovation) > thresh) then
-	write(*,*) 'Spread check not passed: ', abs(innovation), thresh
+	write(*,*) 'Spread check not passed (inn > thresh): ', abs(innovation), thresh
 	accept_obs = .false.
 	return
   end if
@@ -984,7 +984,7 @@ subroutine check_spread(d, stdv, mval, mvalm)
     integer :: ne
     integer, save :: icall = 0
     real(dp) :: var_e, var_o, var_o_new, d2
-    real(dp), parameter :: tiny_spread = 1.0e-12_dp ! Guard against zero spread
+    real(dp), parameter :: tiny_spread = 1.0e-12_dp ! Guard against zero ens_spread
 
     if (icall == 0) then
         write(*,*) 'EnKF: R-adaptive inflation active (Sakov 2012), KSTD = ', KSTD
@@ -1005,7 +1005,7 @@ subroutine check_spread(d, stdv, mval, mvalm)
     d2 = d**2
     var_o = stdv**2
 
-    ! 3. Sakov (2012) logic: If innovation exceeds expected spread
+    ! 3. Sakov (2012) logic: If innovation exceeds expected ens_spread
     ! Condition: d^2 > KSTD^2 * var_e
     if (d2 > (KSTD**2 * var_e)) then
         

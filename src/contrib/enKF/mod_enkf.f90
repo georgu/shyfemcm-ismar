@@ -96,77 +96,57 @@ subroutine fill_scalar_0d(olabel, nfile, ostate)
    real(dp) :: valm(nrens)
    real(dp) :: pvec(nrens)
    real(dp) :: inn1
-   real(dp) :: spread, thresh
    logical  :: accept_obs
 
    real(dp), allocatable :: val_o(:)
 
-   !-------------------------------------------------
-   ! PASS 1 — count valid obs (OpenMP safe)
-   !-------------------------------------------------
-   nobs_ok = 0
+   integer :: i, count
+   integer, allocatable :: valid_idx(:)
+   ! Temporary allocatable arrays for shrinking
+   real(dp), allocatable :: tmp_v(:), tmp_m(:,:)
 
-!$omp parallel do default(shared) private(nf,x,y,iemin,kmin,ne,valm,mvalm,spread,thresh,accept_obs) reduction(+:nobs_ok)
+!  Fortran 2018 code, use a temporary index for allocation.
+   !-------------------------------------------------
+   ! PHASE 1: Identify valid observations
+   !-------------------------------------------------
+   ! Allocate a temporary index array to store nf of valid observations
+   allocate(valid_idx(nfile))
+   count = 0
+
    do nf = 1, nfile
+      ! Quick check on state
       if (ostate(nf)%stat > 1) cycle
 
-      x = ostate(nf)%x
-      y = ostate(nf)%y
-      call find_el_node(x, y, iemin, kmin)
-
-      select case (olabel)
-      case ('0DLEV')
-         do ne = 1, nrens
-            valm(ne) = Abk(ne)%z(kmin)
-         end do
-         mvalm = Abk_m%z(kmin)
-
-      case ('0DTEM')
-         do ne = 1, nrens
-            valm(ne) = Abk(ne)%t(1, kmin)
-         end do
-         mvalm = Abk_m%t(1, kmin)
-
-      case ('0DSAL')
-         do ne = 1, nrens
-            valm(ne) = Abk(ne)%s(1, kmin)
-         end do
-         mvalm = Abk_m%s(1, kmin)
-      end select
-
-      ! Last check of the observations, if accept_obs = .false. the observation is excluded.
-      if ( OBSCHK ) then
-         accept_obs = .true.
-         if (nanal > 3) call screen_observation(ostate(nf)%val, valm, nrens, ostate(nf)%std, THRSTD, THRABS, accept_obs)
-         if (.not. accept_obs) cycle
-      end if
-
-      nobs_ok = nobs_ok + 1
+      ! Increment count and store the file index
+      count = count + 1
+      valid_idx(count) = nf
    end do
-!$omp end parallel do
+
+   nobs_ok = count
 
    if (nobs_ok == 0) then
       write(*,*) 'WARNING: no valid scalar observations'
+      deallocate(valid_idx)
       return
    end if
 
    !-------------------------------------------------
-   ! Allocate matrices
+   ! PHASE 2: Allocation
    !-------------------------------------------------
-   allocate(val_o(nobs_ok))
-   allocate(R(nobs_ok, nobs_ok), S(nobs_ok, nrens))
-   allocate(HA(nobs_ok, nrens), innov(nobs_ok))
+   ! Arrays are now sized exactly to nobs_ok
+   allocate(val_o(nobs_ok), innov(nobs_ok))
+   allocate(R(nobs_ok, nobs_ok), S(nobs_ok, nrens), HA(nobs_ok, nrens))
    allocate(D(nobs_ok, nrens), D1(nobs_ok, nrens), E(nobs_ok, nrens))
 
    R = 0.0_dp
-   n_obs = 0
+   n_obs = 0 ! Counter for the actual filled observations (after OBSCHK)
 
    !-------------------------------------------------
-   ! PASS 2 — fill structures
+   ! PHASE 3: Main Computation
    !-------------------------------------------------
-   do nf = 1, nfile
-
-      if (ostate(nf)%stat > 1) cycle
+   ! Now we iterate only over the previously identified candidates
+   do i = 1, nobs_ok
+      nf = valid_idx(i)
 
       x = ostate(nf)%x
       y = ostate(nf)%y
@@ -192,49 +172,78 @@ subroutine fill_scalar_0d(olabel, nfile, ostate)
          mvalm = Abk_m%s(1, kmin)
       end select
 
-      ! Get obs values 
-      valo     = ostate(nf)%val
-      stdo     = ostate(nf)%std
-
-      ! Innovation
+      ! Get obs values
+      valo = ostate(nf)%val
+      stdo = ostate(nf)%std
       inn1 = valo - mvalm
 
-      ! This ensures the Kalman Gain (which uses R) sees the inflated error
+      ! Adjust spread/error inflation
       call check_spread(inn1, stdo, valm, mvalm)
 
-      ! Last check of the observations, if accept_obs = .false. the observation is excluded.
+      ! Optional: Advanced screening
       if ( OBSCHK ) then
          accept_obs = .true.
          if (nanal > 3) call screen_observation(valo, valm, nrens, stdo, THRSTD, THRABS, accept_obs)
-         if (.not. accept_obs) cycle
+         if (.not. accept_obs) cycle ! If rejected here, this slot in allocated matrices will stay empty or needs packing
       end if
 
-      ! if everything is ok use the obs
+      ! Update global counter for valid output
       n_obs = n_obs + 1
 
-      val_o(n_obs) = valo
-
-      ! Now update the Observation Error Covariance Matrix with the NEW std
+      ! Fill structures using n_obs as the row index
+      val_o(n_obs)   = valo
+      innov(n_obs)   = inn1
       R(n_obs,n_obs) = stdo**2
+      S(n_obs,:)     = valm(:) - mvalm
+      HA(n_obs,:)    = valm(:)
 
-      innov(n_obs) = inn1
-      S(n_obs,:)   = valm(:) - mvalm
-      HA(n_obs,:)  = valm(:)
-
-      ! Generate perturbations using the updated (possibly inflated) std
+      ! Perturbations and Innovations
       call make_0Dpert(olabel, nrens, nanal, ostate(nf)%id, pvec, atime_an, TTAU_0D)
-      E(n_obs,:)   = stdo * pvec
-      
-      ! D contains the perturbed observations used in the analysis
-      D(n_obs,:)   = valo + E(n_obs,:)
-      
-      ! D1 is the actual innovation used for each member: (Obs + Pert) - Model
-      D1(n_obs,:)  = D(n_obs,:) - HA(n_obs,:)
+
+      E(n_obs,:)  = stdo * pvec
+      D(n_obs,:)  = valo + E(n_obs,:)
+      D1(n_obs,:) = D(n_obs,:) - HA(n_obs,:)
 
       if (verbose) write(*,*) 'val_m, val_o, std_o, inn: ', mvalm, valo, stdo, inn1
-
    end do
 
+   ! Cleanup temporary index
+   deallocate(valid_idx)
+
+   !-------------------------------------------------
+   ! PHASE 4: Shrink matrices to actual accepted obs
+   !-------------------------------------------------
+   if (n_obs < nobs_ok) then
+      if (verbose) write(*,*) 'Shrinking matrices from ', nobs_ok, ' to ', n_obs
+
+      block
+
+         ! Shrink vectors
+         allocate(tmp_v(n_obs))
+
+         tmp_v = val_o(1:n_obs);    call move_alloc(tmp_v, val_o)
+         allocate(tmp_v(n_obs)) ! Re-allocate for next use
+         tmp_v = innov(1:n_obs);    call move_alloc(tmp_v, innov)
+
+         ! Shrink matrices (2D)
+         allocate(tmp_m(n_obs, n_obs))
+         tmp_m = R(1:n_obs, 1:n_obs); call move_alloc(tmp_m, R)
+
+         allocate(tmp_m(n_obs, nrens))
+         tmp_m = S(1:n_obs, :);      call move_alloc(tmp_m, S)
+         allocate(tmp_m(n_obs, nrens))
+         tmp_m = HA(1:n_obs, :);     call move_alloc(tmp_m, HA)
+         allocate(tmp_m(n_obs, nrens))
+         tmp_m = D(1:n_obs, :);      call move_alloc(tmp_m, D)
+         allocate(tmp_m(n_obs, nrens))
+         tmp_m = D1(1:n_obs, :);     call move_alloc(tmp_m, D1)
+         allocate(tmp_m(n_obs, nrens))
+         tmp_m = E(1:n_obs, :);      call move_alloc(tmp_m, E)
+      end block
+
+      ! Update nobs_ok so the rest of the code knows the actual count
+      nobs_ok = n_obs
+   end if
 
 end subroutine fill_scalar_0d
 
