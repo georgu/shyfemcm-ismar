@@ -436,6 +436,7 @@
 	use mod_flux
 	use shympi
 	use mod_trace_point
+	use mod_info_output
 
 	implicit none
 
@@ -477,8 +478,6 @@
         if( icall .eq. 0 ) then
 		call trace_point('initializing flux')
 
-		icall = 1
-
 		btemp = ( nint(getpar('itemp')) > 0 )
 		bsalt = ( nint(getpar('isalt')) > 0 )
 		bconz = ( nint(getpar('iconz')) == 1 )
@@ -498,7 +497,9 @@
                 if( nsect .le. 0 ) icall = -1
                 if( icall .eq. -1 ) return
 
+		if( print_not_quiet_once() ) then
 		write(6,*) 'initializing flux sections'
+		end if
 		bflxinit = .true.
 
        		call flx_alloc_arrays(nlvdi,nsect)
@@ -538,6 +539,9 @@
 		fluxes_global = 0.
 
 !               here we could also compute and write section in m**2
+
+		icall = 1
+		return
 
         end if
 

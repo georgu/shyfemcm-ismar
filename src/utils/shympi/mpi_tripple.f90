@@ -81,6 +81,7 @@
 
 	use shympi
 	use shympi_tripple
+	use mod_shyfem
 
 	implicit none
 
@@ -103,11 +104,11 @@
 	use basin
 	use shympi
 	use shympi_tripple
-	use mod_info_output
+	use mod_shyfem
 
 	implicit none
 
-	logical bw
+	logical bmaster
 	integer ie,itr,idn,ide,iee
 	integer ii,i1,i2,i0,ip
 	integer k,k1,k2,kext1,kext2
@@ -127,7 +128,9 @@
 
 	call shympi_syncronize
 
-	if( print_not_quiet_once() ) then
+	bmaster = shympi_is_master()
+
+	if( .not. bquiet .and. bmaster ) then
 	write(6,*) 'starting tripple_points_init: '
 	end if
 
@@ -138,13 +141,13 @@
 	! get general information on tripple points
 	!--------------------------------------------------
 
-	bw = print_verbose()
-
 	itr = 0
 	do ie=1,nel_unique
 	  idn = id_elem(0,ie)
 	  if( idn == 3 ) then
-	    if( bw ) write(6,1000) 'new tripple point: ',my_id,ie,id_elem(:,ie)
+	    if( bverbose ) then
+	      write(6,1000) 'new tripple point: ',my_id,ie,id_elem(:,ie)
+	    end if
 	    itr = itr + 1
 	  end if
 	end do
@@ -152,13 +155,13 @@
 	call shympi_syncronize
 
 	itrtot = shympi_sum(itr)
-	if( print_verbose_once() ) then
+	if( bverbose .and. bmaster ) then
 	  write(6,*) 'summary for tripple points:'
 	  write(6,*) '                                  '// &
      &			'     domain         itr      itrtot'
 	end if
 	call shympi_syncronize
-	if( print_verbose() ) then
+	if( bverbose ) then
 	write(6,*) 'total numbers of tripple points: ',my_id,itr,itrtot
 	end if
 
@@ -174,7 +177,7 @@
 	if( itrtot == 0 ) return
 
 	if( .not. btripple ) then
-	  if( print_not_quiet_once() ) then
+	  if( .not. bquiet .and. bmaster ) then
 	  write(6,*) 'not handling tripple points: ',my_id,itrtot
 	  end if
 	  return
@@ -288,7 +291,7 @@
 
 	call shympi_syncronize
 
-	if( print_verbose_once() ) then
+	if( bverbose .and. bmaster ) then
 	  write(6,*) 'list of tripple points: ',itrtot
 	  call ielist_info
 	end if
@@ -316,7 +319,7 @@
 
 	call shympi_syncronize
 
-	if( print_verbose_once() ) then
+	if( bverbose .and. bmaster ) then
 	write(6,*) 'finished tripple_points_init: '
 	end if
 

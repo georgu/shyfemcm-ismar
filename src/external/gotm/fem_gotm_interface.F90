@@ -149,10 +149,15 @@
    integer,          intent(in)        :: namlst
    character(len=*), intent(in)        :: fn
    integer,          intent(in)        :: nlev
+   integer, save		       :: icall = 0
+
+   if( icall > 0 ) return
 
    call init_tridiagonal(nlev)
 
    call init_turbulence(namlst,fn,nlev)
+
+   icall = icall + 1
 
    end
 

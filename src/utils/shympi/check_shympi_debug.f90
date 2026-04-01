@@ -1280,8 +1280,8 @@
 	if( trim(text) == 'vov' ) bignore = .true.
 	if( trim(text) == 'wlov' ) bignore = .true.
 	!if( trim(text) == 'mfluxv' ) bignore = .true.
-	!if( trim(text) == 'fxv' ) bignore = .true.
-	!if( trim(text) == 'fyv' ) bignore = .true.
+	if( trim(text) == 'fxv' ) bignore = .true.
+	if( trim(text) == 'fyv' ) bignore = .true.
 
 	if( bignore ) then
 	  blcheck = .false.

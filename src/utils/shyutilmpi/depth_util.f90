@@ -431,6 +431,8 @@
 ! adjusts depth to reference and min/max values - only hm3v is changed
 
 	use basin
+	use mod_info_output
+	use shympi
 
 	implicit none
 
@@ -438,9 +440,45 @@
 
 	integer iaux,ie,ii
 	real hmed
+	real daux,aaux,area
 
-! adjust depth to constant in element %%%%%%%%%%%%%%%%%%%%%%
+! adjust depth to reference level %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+	iaux = 0
+	daux = 0.
+	aaux = 0
+	if( href /= 0 ) then
+	  do ie=1,nel
+	    do ii=1,3
+	      hm3v(ii,ie)=hm3v(ii,ie)-href
+	      if( ie <= nel_unique ) then
+	        iaux = iaux + 1
+		area = 1		!here we should really use the area
+	        daux = daux + hm3v(ii,ie) * area
+	        aaux = aaux + area	!here we should really use the area
+	      end if
+	    end do
+	  end do
+	end if
+
+	iaux = shympi_sum(iaux)
+	daux = shympi_sum(daux)
+	aaux = shympi_sum(aaux)
+	if( aaux > 0 ) daux = daux / aaux
+	iaux = iaux / 3
+
+	if(iaux.gt.0) then
+	 if( print_not_quiet_once() ) then
+	  write(6,*) '***********************************************'
+	  write(6,*) '***********************************************'
+	  write(6,*) '***********************************************'
+	  write(6,*) '*********** daux = ',     daux  ,' ************'
+	  write(6,*) '*********** changes = ',  iaux  ,' ************'
+	  write(6,*) '***********************************************'
+	  write(6,*) '***********************************************'
+	  write(6,*) '***********************************************'
+	 end if
+	end if
 
 ! adjust depth to minimum depth %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -449,12 +487,15 @@
 	 do ii=1,3
 	  if(hm3v(ii,ie).lt.hmin) then
 	    hm3v(ii,ie)=hmin
-	    iaux=iaux+1
+	    if( ie <= nel_unique ) iaux=iaux+1
 	  end if
 	 end do
 	end do
 
+	iaux = shympi_sum(iaux)
+
 	if(iaux.gt.0) then
+	 if( print_not_quiet_once() ) then
 	  write(6,*) '***********************************************'
 	  write(6,*) '***********************************************'
 	  write(6,*) '***********************************************'
@@ -463,6 +504,7 @@
 	  write(6,*) '***********************************************'
 	  write(6,*) '***********************************************'
 	  write(6,*) '***********************************************'
+	 end if
 	end if
 
 ! adjust depth to maximum depth %%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -472,12 +514,15 @@
 	 do ii=1,3
 	  if(hm3v(ii,ie).gt.hmax) then
 	    hm3v(ii,ie)=hmax
-	    iaux=iaux+1
+	    if( ie <= nel_unique ) iaux=iaux+1
 	  end if
 	 end do
 	end do
 
+	iaux = shympi_sum(iaux)
+
 	if(iaux.gt.0) then
+	 if( print_not_quiet_once() ) then
 	  write(6,*) '***********************************************'
 	  write(6,*) '***********************************************'
 	  write(6,*) '***********************************************'
@@ -486,15 +531,8 @@
 	  write(6,*) '***********************************************'
 	  write(6,*) '***********************************************'
 	  write(6,*) '***********************************************'
+	 end if
 	end if
-
-! adjust depth to reference level %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-	do ie=1,nel
-	 do ii=1,3
-	  hm3v(ii,ie)=hm3v(ii,ie)-href
-	 end do
-	end do
 
 	end
 

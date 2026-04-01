@@ -179,6 +179,7 @@
 
 	use mod_tvd
 	use basin
+	use mod_info_output
 
         implicit none
 
@@ -191,7 +192,9 @@
 	real proc
 	!integer, save :: ifreq = nel/1000
 
-        write(6,*) 'setting up tvd upwind information...'
+	if( print_not_quiet_once() ) then
+          write(6,*) 'setting up tvd upwind information...'
+	end if
 
 	call get_coords_ev(isphe)
 	bsphe = isphe .eq. 1
@@ -206,7 +209,7 @@
             call tvd_upwind_init_elem(bsphe,ie)
 	    if( bwrite .and. mod(ie,ifreq) == 0 ) then
 	      proc = 100.*float(ie)/nel
-	      write(6,'(2i10,f8.2)') ie,nel,proc
+	      !write(6,'(2i10,f8.2)') ie,nel,proc
 	    end if
 	  end do
 
@@ -215,9 +218,11 @@
 	call is_init_ev(binit)
 
 	call get_clock_count_diff(it1,idt)
+	if( print_verbose() ) then
 	write(6,*) 'clock count: ',idt,nthreads
 	write(6,*) 'binit,nel: ',binit,nel
         write(6,*) '...tvd upwind setup done (itvd=2)'
+	end if
 
 	end
 
@@ -229,6 +234,7 @@
 
 	use mod_tvd
 	use basin
+	use mod_info_output
 
         implicit none
 
@@ -239,7 +245,9 @@
 
 	integer omp_get_num_threads
 
-        write(6,*) 'setting up tvd upwind information...'
+	if( print_not_quiet_once() ) then
+          write(6,*) 'setting up tvd upwind information...'
+	end if
 
 	call get_coords_ev(isphe)
 	bsphe = isphe .eq. 1
@@ -276,8 +284,10 @@
 !$OMP END PARALLEL      
 
 	call get_clock_count_diff(it1,idt)
+	if( print_verbose() ) then
 	write(6,*) 'clock count (old): ',idt,nthreads
         write(6,*) '...tvd upwind setup done (itvd=2)'
+	end if
 
 	end
 
@@ -289,24 +299,27 @@
 
 	use mod_tvd
 	use basin
+	use mod_info_output
 
         implicit none
 
-	logical bsphe
+	logical bsphe,bw
 	integer isphe
         integer ie,ies,ieend,nchunk,nthreads,nmax
 	integer it1,idt
 
 	integer omp_get_num_threads,OMP_GET_MAX_THREADS
 
-        write(6,*) 'setting up tvd upwind information...'
+	bw = print_not_quiet_once()
+
+        if( bw ) write(6,*) 'setting up tvd upwind information...'
 
 	call get_coords_ev(isphe)
 	bsphe = isphe .eq. 1
 
 	call openmp_get_max_threads(nmax)
 	call openmp_get_num_threads(nthreads)
-	write(6,*) 'nthreads,nmax = ',nthreads,nmax
+	if( bw ) write(6,*) 'nthreads,nmax = ',nthreads,nmax
 
 	call get_clock_count(it1)
 
@@ -323,8 +336,10 @@
 !$OMP END PARALLEL      
 
 	call get_clock_count_diff(it1,idt)
+	if( print_verbose() ) then
 	write(6,*) 'clock count (new): ',idt,nthreads
         write(6,*) '...tvd upwind setup done (itvd=2)'
+	end if
 
 	end
 

@@ -97,7 +97,7 @@
 
 	if( iturb .lt. 0 ) return
 
-	bw = print_not_quiet()
+	bw = print_not_quiet_once()
 	call set_gotm_output(bw)
 
 	call is_offline(4,boff)
@@ -170,13 +170,14 @@
 
 	if( icall .lt. 0 ) return
 
-	bw = print_not_quiet()
+	bw = print_not_quiet_once()
 
 	if( icall .eq. 0 ) then
 	  if( bw ) write(*,*) 'starting Munk Anderson turbulence model'
 	  vistur = getpar('vistur')
 	  diftur = getpar('diftur')
 	  brilimit = rilimit > 0.
+	  return
 	end if
 
 	icall = icall + 1
@@ -345,7 +346,7 @@
 
 	if( icall .lt. 0 ) return
 
-	bw = print_not_quiet()
+	bw = print_not_quiet_once()
 
 	kdebug = 8
 	kdebug = 2100
@@ -395,9 +396,13 @@
 	    write(*,*) 'finished initializing GOTM turbulence model'
 	  end if
 
-	  icall = 1
 	  call shympi_barrier
+
+	  icall = 1
+	  return			!first time only do initialization
 	end if
+
+	icall = icall + 1
 
 	call get_timestep(dtreal)
 	dt = dtreal
@@ -798,11 +803,11 @@
 	if( icall > 0 ) return
 	icall = 1
 
-	bw = print_not_quiet()
+	bw = print_not_quiet_once()
 	bdebug = ( iudbg > 0 )
 
 	if( bw ) then
-	  write(6,*) 'handle_gotm_init: ',rst_use_restart(8)
+	  write(6,*) '   handle_gotm_init: ',rst_use_restart(8)
 	end if
 
 	if( bdebug ) then
@@ -1338,8 +1343,10 @@
 
 	if( icall .eq. 0 ) then
 	  call keps_init
-	  icall = 1
+	  return
 	end if
+
+	icall = icall + 1
 
 	call get_timestep(dtreal)
 	dt = dtreal

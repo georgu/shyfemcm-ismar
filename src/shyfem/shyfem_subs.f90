@@ -244,6 +244,7 @@
 	use befor_after
 	use mod_trace_point
 	use mod_quad_tree
+	use mod_restart
 
 	implicit none
 
@@ -293,6 +294,7 @@
 
 	logical, intent(in) :: mpi_init
 	integer n
+	logical rst_use_restart
 
 	call cpu_time(time1)
 	call cpu_time_init
@@ -364,7 +366,9 @@
 !-----------------------------------------------------------
 
 	call trace_point('handle depth and vertical stuff')
-	call adjust_depth	!adjusts hm3v
+	if( .not. rst_use_restart(2) ) then
+	  call adjust_depth	!adjusts hm3v
+	end if
 	call init_vertical	!makes nlv,hlv,hldv,ilhv,ilhkv, adjusts hm3v
 
 !-----------------------------------------------------------
@@ -398,9 +402,6 @@
      &                          ,hkv_max,hev,hlv,date,time)
 
 	call init_zadaptation
-	if( print_not_quiet_once() ) then
-	  call print_zadaptation
-	end if
 	call sp111(1)           !here znv and zenv are initialized
 
 !-----------------------------------------------------------
@@ -462,6 +463,7 @@
 	call trace_point('init_wave')
 	call init_wave		!waves
 	call ww3_init
+        call turb_closure	!only initializes
 	call initsed		!sediments
         call init_bstress	!bottom shear stress
 
@@ -489,6 +491,7 @@
 	call tidepar_init
 	call submud_init
 	call handle_gotm_init
+	call wrflxa			!initializes flux section
 	call tripple_points_init
 
 	call trace_point('cstsetup')
@@ -526,8 +529,6 @@
 
 	call rst_write_restart		!write restart for initial time step
 
-	call print_time
-
 	call check_parameter_values('before main')
 
 	call debug_write_var
@@ -550,6 +551,7 @@
 
 	use mod_shyfem
 	use mod_shyfem_intern
+	use mod_info_output
 
 	implicit none
 
@@ -564,6 +566,12 @@
 	end if
 
 	call trace_point_0('starting shyfem_run')
+
+	if( print_not_quiet_once() ) then
+	  write(6,*) 'starting time loop...'
+	end if
+
+	call print_time
 
 	do while( dtime .lt. dtmax )
 
