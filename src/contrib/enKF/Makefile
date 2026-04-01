@@ -133,7 +133,7 @@ ENSMOD = \
 
 #-------------------- all the exec files
 
-EXES = main make_eof_ens_meteo enKF2enKS perturbeBC make_antime_list perturbe_state
+EXES = main make_eof_ens_meteo enKF2enKS perturbeBC make_antime_list perturbe_state perturbe_ts
 
 #------------------- targets
 
@@ -164,6 +164,10 @@ enKF2enKS: enKF2enKS.o
 perturbe_state: perturbe_state.o subenkf.o $(SAMPOBJ)
 	$(LINKER) $(SHYOBJ) subenkf.o $(SAMPOBJ) $@.o \
 	$(LFLAGS) $(LIBS) -o $@
+
+perturbe_ts: perturbe_ts.o
+	$(LINKER) $(SHYOBJ) $@.o \
+	$(LFLAGS) -o $@
 
 #------------------- var
 
