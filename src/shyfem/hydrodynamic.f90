@@ -454,7 +454,7 @@
 	if( bzcorr ) then
 	  call correct_zeta(dzeta)
           call setzev     !znv -> zenv
-	  call make_new_depth
+	  call make_new_layer_depth
 	  call hydro_vertical(dzeta)		!$$VERVEL
 	end if
 

@@ -534,9 +534,9 @@
         call clo_add_option('facts fstring',' ' &
      &			,'apply factors to data in data-file')
         call clo_add_option('offset ostring',' ' &
-     &			,'apply factors to data in data-file')
-        call clo_add_com('    fstring and ostring is comma' &
-     &			// ' separated factors,' &
+     &			,'apply offsets to data in data-file')
+        call clo_add_com('    fstring and ostring are comma' &
+     &			// ' separated values,' &
      &                  // ' empty for no change')
 
 	if( bfemfile ) then

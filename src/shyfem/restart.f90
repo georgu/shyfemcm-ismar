@@ -390,6 +390,7 @@
 ! administers writing of restart file
 
 	use shympi
+	use mod_info_output
 
         implicit none
 
@@ -461,7 +462,7 @@
 	!call check_values	!be sure values of restart are ok
 
 	if( bonce ) then
-	  if( bdebug .and. bmpi_master ) then
+	  if( print_verbose_once() ) then
 	    write(6,*) 'writing single restart record'
 	  end if
           iunit = ifemop('.rst','unformatted','new')
@@ -469,7 +470,7 @@
           call rst_write_record(atime,iunit)
 	  close(iunit)
 	else
-	  if( bdebug .and. bmpi_master ) then
+	  if( print_verbose_once() ) then
 	    write(6,*) 'writing restart record'
 	  end if
 	  iunit = nint(da_out(4))
