@@ -91,12 +91,12 @@ SHYOBJ_OLD = \
 # Ensemble analysis objects
 
 ENKOBJ = m_analysis.o m_ensmean.o m_ensvar.o \
-	 m_randrot.o \
 	 m_mean_preserving_rotation.o \
-	 m_multa.o m_random.o mod_anafunc.o
+	 m_multa.o mod_anafunc.o
 
 SAMPOBJ = m_pseudo2D.o m_fixsample2D.o m_newton2D.o m_newtonfunc2D.o \
-	  m_sample2D.o mod_fftw3.o m_set_random_seed2.o
+	  m_sample2D.o mod_fftw3.o m_set_random_seed2.o m_randrot.o \
+	  m_random.o
           
 ENSOBJ = $(ENKOBJ) $(SAMPOBJ) subenkf.o mod_mod_err.o mod_enkf.o \
 	 mod_ens_state.o mod_init_enkf.o mod_manage_obs.o mod_mod_states.o \
@@ -133,7 +133,7 @@ ENSMOD = \
 
 #-------------------- all the exec files
 
-EXES = main make_eof_ens_meteo enKF2enKS perturbeBC make_antime_list
+EXES = main make_eof_ens_meteo enKF2enKS perturbeBC make_antime_list perturbe_state
 
 #------------------- targets
 
@@ -145,10 +145,8 @@ main: $(ENSOBJ) main.o
 	$(LINKER) $(SHYOBJ) $@.o \
 	$(ENSOBJ) $(LFLAGS) $(LIBS) -o $@
 
-perturbeBC: perturbeBC.o m_sample2D.o m_pseudo2D.o m_newton2D.o \
-	m_randrot.o m_fixsample2D.o m_random.o m_newtonfunc2D.o
-	$(LINKER) $@.o m_sample2D.o m_pseudo2D.o m_newton2D.o \
-	m_randrot.o m_fixsample2D.o m_random.o m_newtonfunc2D.o \
+perturbeBC: perturbeBC.o $(SAMPOBJ)
+	$(LINKER) $@.o $(SAMPOBJ) \
 	$(SHYOBJENS) \
 	$(LFLAGS) $(LIBS) -o $@
 
@@ -161,6 +159,10 @@ make_eof_ens_meteo: make_eof_ens_meteo.o m_random.o
 
 enKF2enKS: enKF2enKS.o 
 	$(LINKER) $(SHYOBJ) $@.o \
+	$(LFLAGS) $(LIBS) -o $@
+
+perturbe_state: perturbe_state.o subenkf.o $(SAMPOBJ)
+	$(LINKER) $(SHYOBJ) subenkf.o $(SAMPOBJ) $@.o \
 	$(LFLAGS) $(LIBS) -o $@
 
 #------------------- var
@@ -222,16 +224,6 @@ m_analysis.o: ../../../lib/mod/m_ensmean.mod \
 		../../../lib/mod/m_multa.mod \
 		../../../lib/mod/mod_anafunc.mod 
 analysis2_EnOI.o: ../../../lib/mod/m_multa.mod
-enKF2enKS.o: ../../../lib/mod/basin.mod \
-		../../../lib/mod/levels.mod \
-		../../../lib/mod/mod_conz.mod \
-		../../../lib/mod/mod_geom_dynamic.mod \
-		../../../lib/mod/mod_hydro.mod \
-		../../../lib/mod/mod_hydro_vel.mod \
-		../../../lib/mod/mod_gotm_aux.mod \
-		../../../lib/mod/mod_restart.mod \
-		../../../lib/mod/mod_ts.mod \
-		../../../lib/mod/shympi.mod 
 m_mean_preserving_rotation.o: ../../../lib/mod/m_randrot.mod
 m_newton1D.o: ../../../lib/mod/m_newtonfunc1d.mod
 m_newton2D.o: ../../../lib/mod/m_newtonfunc2d.mod
@@ -303,4 +295,23 @@ sublocan.o: ../../../lib/mod/basin.mod \
 		../../../lib/mod/mod_para.mod \
 		../../../lib/mod/mod_restart.mod \
 		../../../lib/mod/m_analysis.mod
-
+enKF2enKS.o: ../../../lib/mod/basin.mod \
+		../../../lib/mod/levels.mod \
+		../../../lib/mod/mod_conz.mod \
+		../../../lib/mod/mod_geom_dynamic.mod \
+		../../../lib/mod/mod_hydro.mod \
+		../../../lib/mod/mod_hydro_vel.mod \
+		../../../lib/mod/mod_gotm_aux.mod \
+		../../../lib/mod/mod_restart.mod \
+		../../../lib/mod/mod_ts.mod \
+		../../../lib/mod/shympi.mod 
+perturbe_state.o: ../../../lib/mod/basin.mod \
+		../../../lib/mod/levels.mod \
+		../../../lib/mod/mod_conz.mod \
+		../../../lib/mod/mod_geom_dynamic.mod \
+		../../../lib/mod/mod_hydro.mod \
+		../../../lib/mod/mod_hydro_vel.mod \
+		../../../lib/mod/mod_gotm_aux.mod \
+		../../../lib/mod/mod_restart.mod \
+		../../../lib/mod/mod_ts.mod \
+		../../../lib/mod/shympi.mod 

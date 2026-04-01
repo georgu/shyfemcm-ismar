@@ -68,36 +68,17 @@ subroutine read_ensemble()
 
    call num2str(nanal, nal)
 
-   if (bnew_ens == 0 .or. nanal > 1) then
-      write(*,*) 'Loading existing ensemble...'
-      do ne = 1, nrens
-         call num2str(ne-1, nrel)
-         rstname = 'an'//nal//'_'//'en'//nrel//'b.rst'
-	 inquire(file=rstname,exist=bexist)
-	 if( .not. bexist ) then
-	   write(6,*) 'restart file does not exists: ',trim(rstname)
-	   error stop 'error stop read_ensemble: no restart file'
-	 end if
-         call read_state(Abk(ne), rstname)
-      end do
-
-   else if (bnew_ens == 1 .and. nanal == 1) then
-      write(*,*) 'Creating a new ensemble...'
-      call num2str(0, nrel)
-      rstname = 'an'//nal//'_en'//nrel//'b.rst'
-      call read_state(Abk(1), rstname)
-      call make_init_ens(Abk(1))
-
-      do ne = 1, nrens
-         call num2str(ne-1, nrel)
-         rstname='an'//nal//'_'//'en'//nrel//'b.rst'
-         call write_state(Abk(ne), rstname)
-      end do
-
-   else
-      write(*,*) 'Invalid bnew_ens option'
-      error stop
-   end if
+   write(*,*) 'Loading an ensemble of initial states (RSTs)...'
+   do ne = 1, nrens
+      call num2str(ne-1, nrel)
+      rstname = 'an'//nal//'_'//'en'//nrel//'b.rst'
+      inquire(file=rstname, exist=bexist)
+      if( .not. bexist ) then
+        write(6,*) 'restart file does not exists: ',trim(rstname)
+        error stop 'error stop read_ensemble: no restart file'
+      end if
+      call read_state(Abk(ne), rstname)
+   end do
 
 end subroutine read_ensemble
 !=======================================================================
@@ -127,46 +108,6 @@ subroutine write_ensemble()
    rstname = 'an'//nal//'_std_a.rst'
    call write_state(Aan_std, rstname)
 end subroutine write_ensemble
-!=======================================================================
-
-!=======================================================================
-! Create the initial ensemble using random 2D perturbations
-!=======================================================================
-subroutine make_init_ens(Ain)
-   use mod_restart
-   use mod_para
-   implicit none
-
-   type(states), intent(in) :: Ain
-   real(dp) :: kvec1(nnkn, nrens-1), kvec2(nnkn, nrens-1)
-   integer :: ne, nl
-
-   ! Generate perturbations for the free-surface level
-   call make_2Dpert(kvec1, nnkn, nrens-1)
-
-   Abk(1) = Ain
-
-   do ne = 2, nrens
-      Abk(ne) = Ain
-      Abk(ne)%z = Ain%z + kvec1(:, ne-1) * sigma_init_z
-   end do
-
-   ! Temperature–salinity perturbation if baroclinic mode active
-   if (ibarcl_rst /= 0) then
-      call make_2Dpert(kvec1, nnkn, nrens-1)
-      call make_2Dpert(kvec2, nnkn, nrens-1)
-
-      do ne = 2, nrens
-         do nl = 1, nnlv
-            Abk(ne)%t(nl,:) = Ain%t(nl,:) + kvec1(:, ne-1) * sigma_init_t
-            Abk(ne)%s(nl,:) = Ain%s(nl,:) + kvec2(:, ne-1) * sigma_init_s
-         end do
-      end do
-   end if
-end subroutine make_init_ens
-!=======================================================================
-
-
 
 !=======================================================================
 ! Check and correct ensemble fields near boundaries and ensure values

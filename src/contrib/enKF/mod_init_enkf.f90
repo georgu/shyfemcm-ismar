@@ -25,7 +25,6 @@ module mod_init_enkf
   character(len=80)  :: obsfile    ! name of the observation file list
   character(len=80)  :: ostring    ! date/time string for observation time
   double precision   :: atime_an   ! analysis time in absolute units
-  integer            :: bnew_ens   ! flag: 1 = create a new initial ensemble
 
 contains
 !======================================================================
@@ -80,9 +79,6 @@ contains
 
     read(20, *, iostat=ios) obsfile
     if (ios /= 0) error stop 'read_info: error reading obsfile'
-
-    read(20, *, iostat=ios) bnew_ens
-    if (ios /= 0) error stop 'read_info: error reading bnew_ens'
 
     ! rmode and is_local come from mod_para
     read(20, *, iostat=ios) rmode

@@ -98,7 +98,7 @@ contains
     if (alpha < 0.0d0) alpha = 0.0d0
     if (alpha > 1.0d0) alpha = 1.0d0
 
-    ! rho scales the cumulative effect over nst steps (as in original code)
+    ! rho scales the cumulative effect over nst steps 
     rho = sqrt( (1.0d0 - alpha)**2 / &
                 ( dt_er * ( dble(nst) - 2.0d0*alpha - dble(nst)*alpha**2 + 2.0d0*alpha*(dble(nst)+1.0d0) ) ) )
 

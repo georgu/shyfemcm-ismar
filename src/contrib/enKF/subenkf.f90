@@ -46,7 +46,7 @@ subroutine rst_read(rstname, atimea)
         write(*,*) 'Error in the restart file. Is the analysis time present among restart records?'
         error stop
      end if
-     if (atimef == atimea) exit   ! exact match as in original logic
+     if (abs(atimef - atimea) < epsilon(atimea)) exit   ! exact match
   end do
   close(24)
 
@@ -299,24 +299,32 @@ subroutine make_2Dpert(vec, n, nens)
   use m_sample2D
   use mod_para
   implicit none
-  integer, intent(in)  :: n, nens
-  real(dp),    intent(out) :: vec(n, nens)
-  integer :: nx, ny
-  real(dp) :: x1, x2, y1, y2, xlength, ylength
-  real(dp) :: dx, dy, rx, ry
-  real(dp) :: dx_m, dy_m, rx_m, ry_m
-  real*4 :: sdx, sdy, sx0, sy0
-  real*4, parameter :: sflag = -999.0
-  real(dp),    allocatable :: mat(:,:,:)
-  real*4,  allocatable :: mat4(:,:), vec4fem(:)
-  integer :: ne
 
-  ! Domain extents
+  ! Arguments
+  integer, intent(in)      :: n, nens
+  real(dp), intent(out)    :: vec(n, nens) ! Final ensemble perturbations
+
+  ! Local variables
+  integer                  :: nx, ny, ne
+  real(dp)                 :: x1, x2, y1, y2, xlength, ylength
+  real(dp)                 :: dx, dy, rx, ry
+  real(dp)                 :: dx_m, dy_m, rx_m, ry_m
+  real*4                   :: sdx, sdy, sx0, sy0
+  real*4, parameter        :: sflag = -999.0
+  real(dp), allocatable    :: mat(:,:,:)
+  real*4,   allocatable    :: mat4(:,:), vec4fem(:)
+
+  ! 1. Determine domain extents from FEM grid (xgv, ygv)
   x1 = floor(minval(xgv)); x2 = ceiling(maxval(xgv))
   y1 = floor(minval(ygv)); y2 = ceiling(maxval(ygv))
   xlength = x2 - x1; ylength = y2 - y1
-  if ((xlength > 180.0) .or. (ylength > 90.0)) error stop 'make_2Dpert: coordinates not geographical'
 
+  ! Safety check for geographical coordinates
+  if ((xlength > 180.0) .or. (ylength > 90.0)) then
+     error stop 'make_2Dpert: coordinates do not appear to be geographical (Lat/Lon)'
+  end if
+
+  ! 2. Set grid resolution and decorrelation scales based on domain size
   if (xlength < 4.0) then
      dx = 0.05; dy = 0.05
      rx = 2.0;  ry = 2.0
@@ -325,8 +333,9 @@ subroutine make_2Dpert(vec, n, nens)
      rx = 4.0;  ry = 4.0
   end if
 
-  nx = int(xlength/dx) + 1
-  ny = int(ylength/dy) + 1
+  ! Use nint to avoid truncation errors in grid size calculation
+  nx = nint(xlength/dx) + 1
+  ny = nint(ylength/dy) + 1
 
   if (verbose) then
      write(*,'(a20,2f8.4,i5,f8.4)') 'x1,xlength,nx,dx: ', x1, xlength, nx, dx
@@ -334,27 +343,47 @@ subroutine make_2Dpert(vec, n, nens)
      write(*,'(a14,2f10.4,1x,i3)') 'rx,ry,fmult: ', rx, ry, fmult_init
   end if
 
-  ! Create samples on regular grid
+  ! 3. Generate random samples on a regular grid (requires dp)
   allocate(mat(nx, ny, nens))
+
+  ! Convert degrees to meters at the reference latitude (y1)
   call deg2meters(x1, y1, dx, .true.,  dx_m)
   call deg2meters(x1, y1, dy, .false., dy_m)
   call deg2meters(x1, y1, rx, .true., rx_m)
   call deg2meters(x1, y1, ry, .false., ry_m)
-  call sample2D(mat, nx, ny, nens, fmult_init, dx_m, dy_m, rx_m, ry_m, theta_init, sample_fix_init, verbose)
 
-  ! Interpolate to FEM grid
+  ! Call the external library (seed is pre-set externally)
+  call sample2D(mat, nx, ny, nens, fmult_init, dx_m, dy_m, rx_m, ry_m, &
+                theta_init, sample_fix_init, verbose)
+
+  ! 4. Interpolate regular grid to SHYFEM (unstructured) grid
   write(*,*) 'Interpolating 2D field over the FEM grid...'
-  sdx = dx; sdy = dy; sx0 = x1; sy0 = y1
+
+  ! Casting to real*4 as required by SHYFEM interpolation routines
+  sdx = real(dx, 4); sdy = real(dy, 4)
+  sx0 = real(x1, 4); sy0 = real(y1, 4)
+
+  ! Initialize the interpolation engine
   call setgeo(sx0, sy0, sdx, sdy, sflag)
 
   allocate(mat4(nx, ny), vec4fem(n))
+
   do ne = 1, nens
-     mat4 = mat(:,:,ne)
+     ! Copy dp slice to real*4 temporary array
+     mat4 = real(mat(:,:,ne), 4)
+
+     ! am2av: Interpolation from regular grid (mat4) to FEM nodes (vec4fem)
      call am2av(mat4, vec4fem, nx, ny)
+
+     ! Store result back into the output array (auto-cast to dp)
      vec(:, ne) = vec4fem
   end do
+
+  ! 5. Clean up memory
   deallocate(mat, mat4, vec4fem)
+
 end subroutine make_2Dpert
+
 
 !-----------------------------------------------------------------------
 ! Convert a distance expressed in degrees (lon/lat direction) into meters

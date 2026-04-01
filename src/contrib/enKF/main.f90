@@ -46,11 +46,6 @@ program main
    write(*,*) '*** Analysis method code: ', rmode
    write(*,*) '***'
 
-   ! Basic sanity checks on control flags (defensive programming).
-   if (is_local /= 0 .and. is_local /= 1) then
-      error stop 'main: is_local must be 0 (global) or 1 (local)'
-   end if
-
    !--------------------------------------------------------------------------
    ! Load prior ensemble into module arrays (e.g., Abk)
    !--------------------------------------------------------------------------
