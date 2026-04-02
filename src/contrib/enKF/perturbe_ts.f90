@@ -179,7 +179,7 @@ program perturbe_ts
     character(len=255)      :: filename, basename, out_file
     integer                 :: dot_pos
     integer                 :: nrens, kdim, i, ne
-    real(dp)                :: std_obs, tau
+    real(dp)                :: std_obs, tau, vmin, vmax
     real(dp)                :: v_nom
     real(dp)                :: vtime
     character(len=80)       :: dstring
@@ -192,8 +192,8 @@ program perturbe_ts
     real(dp)                :: dt
 
     ! --- 1. CLI Arguments Parsing ---
-    if (command_argument_count() < 4) then
-        write(error_unit, '(A)') "Usage: ./perturbe_ts <filename> <nrens> <STD> <Tau>"
+    if (command_argument_count() /= 6) then
+        write(error_unit, '(A)') "Usage: ./perturbe_ts <filename> <nrens> <STD> <Tau> <MIN> <MAX>"
         write(error_unit, '(A)') "  Tau: Correlation scale (0.0: white noise, >0.0: red noise)"
         stop 1
     end if
@@ -207,10 +207,12 @@ program perturbe_ts
     end if
 
     block
-        character(len=32) :: arg
+        character(len=62) :: arg
         call get_command_argument(2, arg); read(arg, *) nrens
         call get_command_argument(3, arg); read(arg, *) std_obs
         call get_command_argument(4, arg); read(arg, *) tau
+        call get_command_argument(5, arg); read(arg, *) vmin
+        call get_command_argument(6, arg); read(arg, *) vmax
     end block
 
     ! --- 2. Read Time-Series (Initialization & Loading) ---
@@ -223,7 +225,7 @@ program perturbe_ts
     do i = 1, kdim
         call read_ts(.false., filename, kdim, ts_values(i), ts_times(i), ts_dates(i))
     end do
-    dt = (ts_times(kdim) - ts_times(1)) / kdim
+    dt = (ts_times(kdim) - ts_times(1)) / (kdim - 1)
     write(*, '(A,I0,A)') "Loaded ", kdim, " records from " // trim(filename)
 
     ! --- 3. Generate Noise and Apply Perturbations ---
@@ -251,6 +253,8 @@ program perturbe_ts
             ! Apply noise (pvec(i)) scaled by std_obs to the nominal value ts_values(i)
             ! We use a simplified inline version of apply_ts_perturbation for efficiency
             v_nom = ts_values(i) + (pvec(i) * std_obs)
+
+	    v_nom = max(vmin, min(vmax, v_nom))
 
             write(30, '(A20,2X,F12.5)') ts_dates(i), v_nom
         end do

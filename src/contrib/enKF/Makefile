@@ -145,13 +145,18 @@ main: $(ENSOBJ) main.o
 	$(LINKER) $(SHYOBJ) $@.o \
 	$(ENSOBJ) $(LFLAGS) $(LIBS) -o $@
 
+make_antime_list: make_antime_list.o 
+	$(LINKER) $(LFLAGS) $(SHYOBJENS) $@.o -o $@
+
 perturbeBC: perturbeBC.o $(SAMPOBJ)
 	$(LINKER) $@.o $(SAMPOBJ) \
 	$(SHYOBJENS) \
 	$(LFLAGS) $(LIBS) -o $@
 
-make_antime_list: make_antime_list.o 
-	$(LINKER) $(LFLAGS) $(SHYOBJENS) $@.o -o $@
+perturbe_fem_wind_press: perturbe_fem_wind_press.o $(SAMPOBJ)
+	$(LINKER) $@.o $(SAMPOBJ) \
+	$(SHYOBJENS) \
+	$(LFLAGS) $(LIBS) -o $@
 
 make_eof_ens_meteo: make_eof_ens_meteo.o m_random.o
 	$(LINKER) $@.o m_random.o $(SHYOBJENS) \

@@ -57,7 +57,7 @@ contains
       external :: dgesvd     ! implicit interface to LAPACK DGESVD
 
       !========================
-      ! Power-of-two pads n1,n2 >= 1.2*nx,ny (as in your original)
+      ! Power-of-two pads n1,n2 >= 1.2*nx,ny
       !========================
       n1 = int( real(nx,wp)*1.2_wp + 0.5_wp )
       n2 = int( real(ny,wp)*1.2_wp + 0.5_wp )
