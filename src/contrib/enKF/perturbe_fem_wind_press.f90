@@ -1,7 +1,7 @@
 
 !============================================================================================
 subroutine generate_ensemble_perturbations(nx, ny, nrens, &
-    dx_deg, dy_deg, y0_lat, rx_km, ry_km, std_p, alpha, pmat)
+    dx_deg, dy_deg, y0_lat, rx_km, ry_km, alpha, pmat)
 
     use iso_fortran_env, only : dp => real64
     use m_sample2D, only : sample2D
@@ -10,7 +10,7 @@ subroutine generate_ensemble_perturbations(nx, ny, nrens, &
     ! Arguments
     integer, intent(in)          :: nx, ny, nrens
     real(dp), intent(in)         :: dx_deg, dy_deg, y0_lat
-    real(dp), intent(in)         :: rx_km, ry_km, std_p, alpha
+    real(dp), intent(in)         :: rx_km, ry_km, alpha
     real(dp), intent(inout)      :: pmat(nx, ny, nrens)   ! Persistent AR1 state
 
     ! Local variables
@@ -39,22 +39,22 @@ subroutine generate_ensemble_perturbations(nx, ny, nrens, &
                   0.0_dp, .true., .false.)
 
     ! --- 3. Apply AR1 Temporal Evolution (Red Noise) ---
-    ! pmat is the noise field scaled by std_p
-    ! pmat(t) = alpha * pmat(t-1) + sqrt(1 - alpha^2) * std_p * NewNoise
-    pmat = alpha * pmat + sqrt(1.0_dp - alpha**2) * std_p * amat
+    ! pmat is the noise field
+    ! pmat(t) = alpha * pmat(t-1) + sqrt(1 - alpha^2) * NewNoise
+    pmat = alpha * pmat + sqrt(1.0_dp - alpha**2) * amat
 
     deallocate(amat)
 
 end subroutine generate_ensemble_perturbations
 
 !============================================================================================
-subroutine make_geo_field(nvar, ir, nrens, nx, ny, lmax, dx_deg, dy_deg, &
+subroutine make_geo_field(nvar, ne, nrens, nx, ny, lmax, dx_deg, dy_deg, &
                           pmat, var3d, var3d_ens, flag, std_p_pa, y0_lat)
     use iso_fortran_env, only : dp => real64
     implicit none
 
     ! Arguments
-    integer,  intent(in)    :: nvar, ir, nrens, nx, ny, lmax
+    integer,  intent(in)    :: nvar, ne, nrens, nx, ny, lmax
     real(dp), intent(in)    :: dx_deg, dy_deg, y0_lat, flag, std_p_pa
     real(dp), intent(in)    :: pmat(nx, ny, nrens)      ! Normalized noise
     real(dp), intent(in)    :: var3d(nvar, nx, ny, lmax) 
@@ -92,23 +92,23 @@ subroutine make_geo_field(nvar, ir, nrens, nx, ny, lmax, dx_deg, dy_deg, &
 
             ! --- A. Pressure Perturbation ---
             ! pmat is scaled directly by std_p_pa (Pascal)
-            var3d_ens(i_p, ix, iy, 1) = var3d(i_p, ix, iy, 1) + (pmat(ix, iy, ir) * std_p_pa)
+            var3d_ens(i_p, ix, iy, 1) = var3d(i_p, ix, iy, 1) + (pmat(ix, iy, ne) * std_p_pa)
 
             ! --- B. Gradients of the perturbation (Pa/m) ---
             if (ix == 1) then
-                dp_dx = (pmat(ix+1, iy, ir) - pmat(ix, iy, ir)) * std_p_pa / dx_m
+                dp_dx = (pmat(ix+1, iy, ne) - pmat(ix, iy, ne)) * std_p_pa / dx_m
             else if (ix == nx) then
-                dp_dx = (pmat(ix, iy, ir) - pmat(ix-1, iy, ir)) * std_p_pa / dx_m
+                dp_dx = (pmat(ix, iy, ne) - pmat(ix-1, iy, ne)) * std_p_pa / dx_m
             else
-                dp_dx = (pmat(ix+1, iy, ir) - pmat(ix-1, iy, ir)) * std_p_pa / (2.0_dp * dx_m)
+                dp_dx = (pmat(ix+1, iy, ne) - pmat(ix-1, iy, ne)) * std_p_pa / (2.0_dp * dx_m)
             end if
 
             if (iy == 1) then
-                dp_dy = (pmat(ix, iy+1, ir) - pmat(ix, iy, ir)) * std_p_pa / dy_m
+                dp_dy = (pmat(ix, iy+1, ne) - pmat(ix, iy, ne)) * std_p_pa / dy_m
             else if (iy == ny) then
-                dp_dy = (pmat(ix, iy, ir) - pmat(ix, iy-1, ir)) * std_p_pa / dy_m
+                dp_dy = (pmat(ix, iy, ne) - pmat(ix, iy-1, ne)) * std_p_pa / dy_m
             else
-                dp_dy = (pmat(ix, iy+1, ir) - pmat(ix, iy-1, ir)) * std_p_pa / (2.0_dp * dy_m)
+                dp_dy = (pmat(ix, iy+1, ne) - pmat(ix, iy-1, ne)) * std_p_pa / (2.0_dp * dy_m)
             end if
 
             ! --- C. Apply Geostrophic Balance ---
@@ -173,7 +173,13 @@ program perturbe_fem_wind_press
     dot_pos = index(filename, '.', back=.true.)
     basename = merge(filename(1:dot_pos-1), trim(filename), dot_pos > 0)
 
+    ! Check arguments
+    write(*,*) 'Input arguments: ', trim(filename), nrens, pert_type, std_p, tau
+    if ((nrens < 2).or.(pert_type > 2).or.(std_p < 0).or.(tau < 0)) error stop 'Bad input arguments, stopping.'
+    if (mod(nrens, 2) == 0) error stop 'The ensemble members must be odd with control.'
+
     ! --- 2. Open Input FEM File ---
+    write(*,*) 'Opening input FEM file...'
     call fem_file_read_open(trim(filename), fem_size, iformat, fem_unit)   
 
     n = 0
@@ -182,8 +188,12 @@ program perturbe_fem_wind_press
     read_loop: do 
         n = n + 1
         
+        write(*,*)
+        write(*,*) 'Time loop, record: ', n
+
         call fem_file_read_params(iformat, fem_unit, dtime, nvers, np, lmax, nvar, ntype, datetime, ierr)
         if (ierr < 0) exit read_loop 
+        if (lmax > 1) error stop 'In meteo FEM files lmax must be 1.'
         
         call dts_convert_to_atime(datetime, dtime, atime) ! atime in seconds
 
@@ -194,8 +204,10 @@ program perturbe_fem_wind_press
         if (.not. allocated(vstring)) allocate(vstring(nvar))
 
         call fem_file_read_2header(iformat, fem_unit, ntype, lmax, hlv, regpar, ierr)
-        nx = nint(regpar(1)); ny = nint(regpar(2)); flag = regpar(7)
-        y0 = regpar(4); dx = regpar(5); dy = regpar(6)
+        nx = nint(regpar(1)); ny = nint(regpar(2)); x0 = regpar(3)
+        y0 = regpar(4); dx = regpar(5); dy = regpar(6); flag = regpar(7)
+
+        if (n == 1) write(*,*) 'FEM parameters: ', nx, ny, x0, y0, dx, dy, flag
 
         if (.not. allocated(femdata))   allocate(femdata(lmax, nx, ny))
         if (.not. allocated(var3d))     allocate(var3d(nvar, nx, ny, lmax))
@@ -209,7 +221,7 @@ program perturbe_fem_wind_press
         do i = 1, nvar
             femdata = flag
             call fem_file_read_data(iformat, fem_unit, nvers, np, lmax, &
-                                    vstring(i), ilhkv, hd, lmax, femdata, ierr)
+                                    vstring(i), ilhkv, hd, 1, femdata, ierr)
             var3d(i, :, :, 1) = femdata(1, :, :)
         end do
 
@@ -225,35 +237,44 @@ program perturbe_fem_wind_press
         select case (pert_type)
         case(1) ! Pressure + Geostrophic Wind
             
+            if (n == 1) write(*,*) 'Pressure + Geostrophic Wind '
+
             ! Generate spatial innovation and update AR1 state (pmat)
             ! rx_km/ry_km set to 500km as placeholder
-            call generate_ensemble_perturbations(nx, ny, nrens, &
+            write(*,*) 'Making random - red noise perturbations...'
+            call generate_ensemble_perturbations(nx, ny, nrens-1, &
                         real(dx,dp), real(dy,dp), real(y0,dp), &
-                        500.0_dp, 500.0_dp, std_p, alpha, pmat)
+                        500.0_dp, 500.0_dp, alpha, pmat)
 
             do ne = 1, nrens
-                ! Compute perturbed field for this member
-		call make_geo_field(nvar, ne, nrens, nx, ny, lmax, &      ! 1-6
-                      real(dx,dp), real(dy,dp), &                         ! 7-8
-                      pmat, var3d, var3d_ens, &                           ! 9-11
-                      real(flag,dp), std_p, real(y0,dp))                  ! 12-14
 
                 ! Construct filename and handle file I/O
-                write(arg, '(I3.3)') ne
+                write(arg, '(I3.3)') ne - 1
                 out_file = trim(basename) // "_" // trim(arg) // ".fem"
                 fid = fem_unit + 10 + ne
 
                 ! Open member file only once at first time step
-                if (n == 1) call fem_file_write_open(trim(out_file), fid)
+                if (n == 1) call fem_file_write_open(trim(out_file), iformat, fid)
 
                 call fem_file_write_header(iformat, fid, dtime, nvers, np, lmax, &
-                       nvar, ntype, lmax, hlv, datetime, regpar)
+                       nvar, ntype, 1, hlv, datetime, regpar)
+
+                if (ne > 1) then
+                   ! Compute perturbed field for this member
+		   call make_geo_field(nvar, ne-1, nrens-1, nx, ny, lmax, &      ! 1-6
+                      real(dx,dp), real(dy,dp), &                                ! 7-8
+                      pmat, var3d, var3d_ens, &                                  ! 9-11
+                      real(flag,dp), std_p, real(y0,dp))                         ! 12-14
+                else
+                      var3d_ens = var3d
+                end if
 
                 do i = 1, nvar
                     femdata(1, :, :) = real(var3d_ens(i,:,:,1), sp)
                     call fem_file_write_data(iformat, fid, nvers, np, lmax, &
-                           vstring(i), ilhkv, hd, lmax, femdata)
+                           vstring(i), ilhkv, hd, 1, femdata)
                 end do
+
             end do
 
         case default
@@ -261,7 +282,7 @@ program perturbe_fem_wind_press
         end select
 
         atime_old = atime
-        write(*,'(A,F12.1,A,F6.4)') ' Processed atime: ', atime, ' | Alpha: ', alpha
+        write(*,'(A,F16.2,A,F6.4)') ' Processed atime: ', atime, ' | Alpha: ', alpha
     end do read_loop
 
     ! Close all open units

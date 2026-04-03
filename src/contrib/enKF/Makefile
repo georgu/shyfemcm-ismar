@@ -133,7 +133,8 @@ ENSMOD = \
 
 #-------------------- all the exec files
 
-EXES = main make_eof_ens_meteo enKF2enKS perturbeBC make_antime_list perturbe_state perturbe_ts
+EXES = main make_eof_ens_meteo enKF2enKS perturbeBC make_antime_list \
+	perturbe_state perturbe_ts perturbe_fem_wind_press
 
 #------------------- targets
 
