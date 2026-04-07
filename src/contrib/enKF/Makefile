@@ -133,8 +133,9 @@ ENSMOD = \
 
 #-------------------- all the exec files
 
-EXES = main make_eof_ens_meteo enKF2enKS perturbeBC make_antime_list \
-	perturbe_state perturbe_ts perturbe_fem_wind_press
+EXES = main make_eof_ens_meteo enKF2enKS make_antime_list \
+	perturbe_state perturbe_ts perturbe_fem_wind_press \
+	perturbe_fem_heat perturbe_fem_scalar
 
 #------------------- targets
 
@@ -149,12 +150,17 @@ main: $(ENSOBJ) main.o
 make_antime_list: make_antime_list.o 
 	$(LINKER) $(LFLAGS) $(SHYOBJENS) $@.o -o $@
 
-perturbeBC: perturbeBC.o $(SAMPOBJ)
+perturbe_fem_wind_press: perturbe_fem_wind_press.o $(SAMPOBJ)
 	$(LINKER) $@.o $(SAMPOBJ) \
 	$(SHYOBJENS) \
 	$(LFLAGS) $(LIBS) -o $@
 
-perturbe_fem_wind_press: perturbe_fem_wind_press.o $(SAMPOBJ)
+perturbe_fem_heat: perturbe_fem_heat.o $(SAMPOBJ)
+	$(LINKER) $@.o $(SAMPOBJ) \
+	$(SHYOBJENS) \
+	$(LFLAGS) $(LIBS) -o $@
+
+perturbe_fem_scalar: perturbe_fem_scalar.o $(SAMPOBJ)
 	$(LINKER) $@.o $(SAMPOBJ) \
 	$(SHYOBJENS) \
 	$(LFLAGS) $(LIBS) -o $@
@@ -287,9 +293,6 @@ mod_manage_obs.o: ../../../lib/mod/iso8601.mod \
 mod_mod_err.o: ../../../lib/mod/mod_ens_state.mod \
 		../../../lib/mod/mod_init_enkf.mod \
 		../../../lib/mod/mod_mod_states.mod 
-perturbeBC.o: ../../../lib/mod/iso8601.mod \
-		../../../lib/mod/m_random.mod \
-		../../../lib/mod/m_sample2d.mod 
 subenkf.o: ../../../lib/mod/basin.mod ../../../lib/mod/levels.mod \
 		../../../lib/mod/m_random.mod \
 		../../../lib/mod/m_sample2d.mod \

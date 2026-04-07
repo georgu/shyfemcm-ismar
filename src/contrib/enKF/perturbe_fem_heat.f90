@@ -1,4 +1,3 @@
-
 !============================================================================================
 subroutine generate_ensemble_perturbations(nx, ny, nrens, &
     dx_deg, dy_deg, y0_lat, rx_km, ry_km, alpha, pmat)
@@ -48,87 +47,8 @@ subroutine generate_ensemble_perturbations(nx, ny, nrens, &
 end subroutine generate_ensemble_perturbations
 
 !============================================================================================
-subroutine make_geo_field(nvar, ne, nrens, nx, ny, lmax, dx_deg, dy_deg, &
-                          pmat, var3d, var3d_ens, flag, std_p_pa, y0_lat)
-    use iso_fortran_env, only : dp => real64
-    implicit none
-
-    ! Arguments
-    integer,  intent(in)    :: nvar, ne, nrens, nx, ny, lmax
-    real(dp), intent(in)    :: dx_deg, dy_deg, y0_lat, flag, std_p_pa
-    real(dp), intent(in)    :: pmat(nx, ny, nrens)      ! Normalized noise
-    real(dp), intent(in)    :: var3d(nvar, nx, ny, lmax) 
-    real(dp), intent(out)   :: var3d_ens(nvar, nx, ny, lmax)
-    
-    ! Local variables
-    integer  :: ix, iy, i_u, i_v, i_p
-    real(dp) :: lat, f_coriolis, dx_m, dy_m, dp_dx, dp_dy, w_speed
-    real(dp), parameter :: PI = 3.141592653589793_dp
-    real(dp), parameter :: R_EARTH = 6371000.0_dp
-    real(dp), parameter :: OMEGA = 7.2921e-5_dp 
-    real(dp), parameter :: RHO_AIR = 1.225_dp    
-    real(dp), parameter :: V_MAX = 75.0_dp 
-
-    ! Index mapping: 1=U, 2=V, 3=P
-    i_u = 1; i_v = 2; i_p = 3
-    
-    var3d_ens = var3d
-    dy_m = R_EARTH * (dy_deg * PI / 180.0_dp)
-
-    do iy = 1, ny
-        lat = (y0_lat + (iy-1) * dy_deg) * PI / 180.0_dp
-        f_coriolis = 2.0_dp * OMEGA * sin(lat)
-        dx_m = R_EARTH * cos(lat) * (dx_deg * PI / 180.0_dp)
-
-        ! Avoid issues near equator
-        if (abs(f_coriolis) < 2.0e-5_dp) f_coriolis = 2.0e-5_dp 
-
-        do ix = 1, nx
-            ! Land mask check
-            if (abs(var3d(i_p, ix, iy, 1) - flag) < 1.0e-3_dp) then
-                var3d_ens(:, ix, iy, 1) = flag
-                cycle 
-            end if
-
-            ! --- A. Pressure Perturbation ---
-            ! pmat is scaled directly by std_p_pa (Pascal)
-            var3d_ens(i_p, ix, iy, 1) = var3d(i_p, ix, iy, 1) + (pmat(ix, iy, ne) * std_p_pa)
-
-            ! --- B. Gradients of the perturbation (Pa/m) ---
-            if (ix == 1) then
-                dp_dx = (pmat(ix+1, iy, ne) - pmat(ix, iy, ne)) * std_p_pa / dx_m
-            else if (ix == nx) then
-                dp_dx = (pmat(ix, iy, ne) - pmat(ix-1, iy, ne)) * std_p_pa / dx_m
-            else
-                dp_dx = (pmat(ix+1, iy, ne) - pmat(ix-1, iy, ne)) * std_p_pa / (2.0_dp * dx_m)
-            end if
-
-            if (iy == 1) then
-                dp_dy = (pmat(ix, iy+1, ne) - pmat(ix, iy, ne)) * std_p_pa / dy_m
-            else if (iy == ny) then
-                dp_dy = (pmat(ix, iy, ne) - pmat(ix, iy-1, ne)) * std_p_pa / dy_m
-            else
-                dp_dy = (pmat(ix, iy+1, ne) - pmat(ix, iy-1, ne)) * std_p_pa / (2.0_dp * dy_m)
-            end if
-
-            ! --- C. Apply Geostrophic Balance ---
-            ! u_g = -1/(f*rho) * dP/dy  |  v_g = 1/(f*rho) * dP/dx
-            var3d_ens(i_u, ix, iy, 1) = var3d(i_u, ix, iy, 1) - (1.0_dp / (f_coriolis * RHO_AIR)) * dp_dy
-            var3d_ens(i_v, ix, iy, 1) = var3d(i_v, ix, iy, 1) + (1.0_dp / (f_coriolis * RHO_AIR)) * dp_dx
-
-            ! Wind speed capping
-            w_speed = sqrt(var3d_ens(i_u, ix, iy, 1)**2 + var3d_ens(i_v, ix, iy, 1)**2)
-            if (w_speed > V_MAX) then
-                var3d_ens(i_u, ix, iy, 1) = var3d_ens(i_u, ix, iy, 1) * (V_MAX / w_speed)
-                var3d_ens(i_v, ix, iy, 1) = var3d_ens(i_v, ix, iy, 1) * (V_MAX / w_speed)
-            end if
-        end do
-    end do
-end subroutine make_geo_field
-
-!============================================================================================
-subroutine make_wind_speed_pert(nvar, ne, nrens, nx, ny, lmax, &
-    pmat, var3d, var3d_ens, std_p)
+subroutine make_pert_field(nvar, ne, nrens, nx, ny, lmax, var3d, var3d_ens, &
+    std_s, std_t, std_h, std_c, pmat)
 
     use iso_fortran_env, only : dp => real64
     implicit none
@@ -138,60 +58,65 @@ subroutine make_wind_speed_pert(nvar, ne, nrens, nx, ny, lmax, &
     real(dp), intent(in)    :: pmat(nx, ny, nrens)
     real(dp), intent(in)    :: var3d(nvar, nx, ny, lmax)
     real(dp), intent(out)   :: var3d_ens(nvar, nx, ny, lmax)
-    real(dp), intent(in)    :: std_p 
+    real(dp), intent(in)    :: std_s, std_t, std_h, std_c
 
     ! --- Local variables ---
-    real(dp), allocatable   :: up(:,:), vp(:,:), wp(:,:), w(:,:)
-    real(dp), parameter     :: wp_max = 50.0_dp
-    real(dp), parameter     :: eps    = 1.0e-10_dp ! Small value to avoid div by zero
+    real(dp), allocatable   :: pvar(:,:)
+    real(dp), parameter     :: sr_max = 1500.0_dp
+    real(dp), parameter     :: at_max = 50.0_dp
+    real(dp), parameter     :: ah_max = 100.0_dp
+    real(dp), parameter     :: cc_max = 1.0_dp
     integer                 :: i, j
-    real(dp)                :: ratio
 
-    ! Allocate temporary arrays
-    allocate(up(nx, ny), vp(nx, ny), wp(nx, ny), w(nx, ny))
+    allocate(pvar(nx, ny))
+    var3d_ens = var3d ! Initialize with background
 
-    ! Initialize ensemble with background (copies all variables/levels)
-    var3d_ens = var3d
-
-    ! 1. Calculate original wind speed (w) and perturbed speed (wp)
-    w(:,:)  = sqrt(var3d(1,:,:,1)**2 + var3d(2,:,:,1)**2)
-    wp(:,:) = w(:,:) + ( pmat(:,:,ne) * std_p )
-
-    ! 2. Apply clipping and calculate U/V
-    ! Using loops to handle the division by zero check safely
+    ! 1. Solar Radiation (Index 1)
+    pvar(:,:) = var3d(1,:,:,1) + std_s * pmat(:,:,ne)
     do j = 1, ny
        do i = 1, nx
-          
-          ! Physical check: wp cannot be negative
-          if (wp(i,j) < 0.0_dp) wp(i,j) = 0.0_dp
-          
-          ! Upper clipping
-          if (wp(i,j) > wp_max) wp(i,j) = wp_max
-
-          ! 3. Update U and V components
-          if (w(i,j) > eps) then
-             ratio = wp(i,j) / w(i,j)
-             up(i,j) = var3d(1,i,j,1) * ratio
-             vp(i,j) = var3d(2,i,j,1) * ratio
-          else
-             ! If original wind is zero, we can't scale it. 
-             ! We keep it zero or could apply a small random direction.
-             up(i,j) = 0.0_dp
-             vp(i,j) = 0.0_dp
-          end if
+          if (pvar(i,j) < 0.0_dp) pvar(i,j) = 0.0_dp
+          if (pvar(i,j) > sr_max) pvar(i,j) = sr_max
        end do
     end do
+    var3d_ens(1,:,:,1) = pvar
 
-    ! 4. Assign back to ensemble
-    var3d_ens(1,:,:,1) = up
-    var3d_ens(2,:,:,1) = vp
+    ! 2. Air Temperature (Index 2)
+    pvar(:,:) = var3d(2,:,:,1) + std_t * pmat(:,:,ne)
+    do j = 1, ny
+       do i = 1, nx
+          if (pvar(i,j) < -100.0_dp) pvar(i,j) = -100.0_dp
+          if (pvar(i,j) > at_max)    pvar(i,j) = at_max
+       end do
+    end do
+    var3d_ens(2,:,:,1) = pvar
 
-    deallocate(up, vp, wp, w)
+    ! 3. Air Humidity (Index 3 - Fix: was using index 1)
+    pvar(:,:) = var3d(3,:,:,1) + std_h * pmat(:,:,ne)
+    do j = 1, ny
+       do i = 1, nx
+          if (pvar(i,j) < 0.0_dp)  pvar(i,j) = 0.0_dp
+          if (pvar(i,j) > ah_max) pvar(i,j) = ah_max
+       end do
+    end do
+    var3d_ens(3,:,:,1) = pvar
 
-end subroutine make_wind_speed_pert
+    ! 4. Cloud Cover (Index 4 - Fix: was using index 1)
+    pvar(:,:) = var3d(4,:,:,1) + std_c * pmat(:,:,ne)
+    do j = 1, ny
+       do i = 1, nx
+          if (pvar(i,j) < 0.0_dp)  pvar(i,j) = 0.0_dp
+          if (pvar(i,j) > cc_max) pvar(i,j) = cc_max
+       end do
+    end do
+    var3d_ens(4,:,:,1) = pvar
+
+    deallocate(pvar)
+
+end subroutine make_pert_field
 
 !============================================================================================
-program perturbe_fem_wind_press
+program perturbe_fem_heat
 !============================================================================================
     use iso_fortran_env, only : dp => real64, sp => real32, error_unit
     implicit none
@@ -200,7 +125,7 @@ program perturbe_fem_wind_press
     character(len=255)                :: filename, arg
     character(len=255), allocatable   :: out_file(:)
     integer                           :: pert_type, nrens, dot_pos
-    real(dp)                          :: std_p, tau
+    real(dp)                          :: std_s, std_t, std_h, std_c, tau
 
     ! --- FEM format variables ---
     integer                 :: fem_size, iformat, fem_unit, nvers, np, lmax, nvar, ntype
@@ -224,14 +149,16 @@ program perturbe_fem_wind_press
     real(dp)                :: alpha, dt_sec
 
     ! CLI Arguments Parsing ---
-    if (command_argument_count() /= 5) then
+    if (command_argument_count() /= 7) then
 	write(error_unit, '(A)')
-        write(error_unit, '(A)') "Usage: ./perturbe_fem_wind_press <filename> <nrens> <pert_type> <STD> <Tau>"
+        write(error_unit, '(A)') "Usage: ./perturbe_fem_heat <filename> <nrens> <STD_s> <STD_a> <STD_h> <STD_c> <Tau>"
 	write(error_unit, '(A)')
 	write(error_unit, '(A)') "filename: FEM file"
 	write(error_unit, '(A)') "nrens: number of ensemble members, control included"
-	write(error_unit, '(A)') "pert_type: 1 - Pressure + Geostrophic Wind. 2 - Only wind speed."
-	write(error_unit, '(A)') "STD: error (standard deviation) for pressure (1), or wind speed (2)"
+	write(error_unit, '(A)') "STD_s: error (standard deviation) for solar radiation"
+	write(error_unit, '(A)') "STD_a: error (standard deviation) for air temperature"
+	write(error_unit, '(A)') "STD_h: error (standard deviation) for air humidity"
+	write(error_unit, '(A)') "STD_c: error (standard deviation) for cloud cover"
 	write(error_unit, '(A)') "Tau: Decay time (s) for the red noise"
 	write(error_unit, '(A)')
         stop 1
@@ -239,16 +166,22 @@ program perturbe_fem_wind_press
         
     call get_command_argument(1, filename)
     call get_command_argument(2, arg); read(arg, *) nrens
-    call get_command_argument(3, arg); read(arg, *) pert_type
-    call get_command_argument(4, arg); read(arg, *) std_p
-    call get_command_argument(5, arg); read(arg, *) tau ! Tau in seconds
+    call get_command_argument(3, arg); read(arg, *) std_s
+    call get_command_argument(4, arg); read(arg, *) std_t
+    call get_command_argument(5, arg); read(arg, *) std_h
+    call get_command_argument(6, arg); read(arg, *) std_c
+    call get_command_argument(7, arg); read(arg, *) tau ! Tau in seconds
+
+    ! only one for the moment
+    pert_type = 1
 
     dot_pos = index(filename, '.', back=.true.)
     basename = merge(filename(1:dot_pos-1), trim(filename), dot_pos > 0)
 
     ! Check arguments
-    write(*,*) 'Input arguments: ', trim(filename), nrens, pert_type, std_p, tau
-    if ((nrens < 2).or.(pert_type > 2).or.(std_p < 0).or.(tau < 0)) error stop 'Bad input arguments, stopping.'
+    write(*,*) 'Input arguments: ', trim(filename), nrens, std_s, std_t, std_h, std_c, tau
+    if ((nrens < 2).or.(std_s < 0).or.(std_t < 0).or.(std_h < 0).or.(std_c < 0).or.(tau < 0)) &
+	    error stop 'Bad input arguments, stopping.'
     if (mod(nrens, 2) == 0) error stop 'The ensemble members must be odd with control.'
 
     ! Open Input FEM File ---
@@ -306,6 +239,11 @@ program perturbe_fem_wind_press
             var3d(i, :, :, 1) = femdata(1, :, :)
         end do
 
+	! Variable check
+	if ((vstring(1) /= 'solar radiation').or.(vstring(2) /= 'air temperature').or. &
+		(vstring(3) /= 'humidity (relative)').or.(vstring(4) /= 'cloud cover')) &
+		error stop 'Bad string name of the FEM variables'
+
         ! --- 4. AR1 Coefficient Calculation ---
         if (atime_old < 0.0_dp .or. tau <= 0.0_dp) then
             alpha = 0.0_dp
@@ -317,9 +255,9 @@ program perturbe_fem_wind_press
         ! Perturbation Logic ---
         select case (pert_type)
 	! ------------------------------------
-        case(1) ! Pressure + Geostrophic Wind
+        case(1) ! 2D pseudo-Gaussian field. One for all variables
             
-            if (n == 1) write(*,*) 'Pressure + Geostrophic Wind '
+            if (n == 1) write(*,*) '2D pseudo-Gaussian field. One for all variables'
 
             ! Generate spatial innovation and update AR1 state (pmat)
             ! rx_km/ry_km set to 500km as placeholder
@@ -338,45 +276,8 @@ program perturbe_fem_wind_press
 
                 if (ne > 1) then
                    ! Compute perturbed field for this member
-		   call make_geo_field(nvar, ne-1, nrens-1, nx, ny, lmax, &      ! 1-6
-                      real(dx,dp), real(dy,dp), &                                ! 7-8
-                      pmat, var3d, var3d_ens, &                                  ! 9-11
-                      real(flag,dp), std_p, real(y0,dp))                         ! 12-14
-                else
-                      var3d_ens = var3d
-                end if
-
-                do i = 1, nvar
-                    femdata(1, :, :) = real(var3d_ens(i,:,:,1), sp)
-                    call fem_file_write_data(iformat, fid(ne), nvers, np, lmax, &
-                           vstring(i), ilhkv, hd, 1, femdata)
-                end do
-
-            end do
-
-	! ------------------------------------
-        case(2) ! Wind speed perturbations
-            if (n == 1) write(*,*) 'Wind speed perturbations '
-
-            ! Generate spatial innovation and update AR1 state (pmat)
-            ! rx_km/ry_km set to 500km as placeholder
-            write(*,*) 'Making random - red noise perturbations...'
-            call generate_ensemble_perturbations(nx, ny, nrens-1, &
-                        real(dx,dp), real(dy,dp), real(y0,dp), &
-                        500.0_dp, 500.0_dp, alpha, pmat)
-
-            do ne = 1, nrens
-
-                ! Open member file only once at first time step
-                if (n == 1) call fem_file_write_open(trim(out_file(ne)), iformat, fid(ne))
-
-                call fem_file_write_header(iformat, fid(ne), dtime, nvers, np, lmax, &
-                       nvar, ntype, 1, hlv, datetime, regpar)
-
-                if (ne > 1) then
-                   ! Compute perturbed field for this member
-                   call make_wind_speed_pert(nvar, ne-1, nrens-1, nx, ny, lmax, &
-			   pmat, var3d, var3d_ens, std_p)
+		   call make_pert_field(nvar, ne-1, nrens-1, nx, ny, lmax, var3d, var3d_ens, &
+                        std_s, std_t, std_h, std_c, pmat)
                 else
                       var3d_ens = var3d
                 end if
@@ -405,4 +306,4 @@ program perturbe_fem_wind_press
         close(fid(ne))
     end do
 
-end program perturbe_fem_wind_press
+end program perturbe_fem_heat
