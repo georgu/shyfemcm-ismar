@@ -33,9 +33,16 @@ Kalman Filter for the SHYFEM model
  - process_ext.sh:               Splits DA or noDA .ext files, merges them by 
                                  variable, and generates ensemble statistics.
  - process_shy_analysis.sh     : Utility to merge all .shy files in analysis.
- - perturbeBC                  : Generates an ensemble of perturbed boundary 
-                                 conditions (lateral, surface, FEM, time series).
- - make_eof_ens_meteo          : (OBSOLETE) Creates perturbed winds using PCA.
+ - perturbe_state              : Generates an ensemble of perturbed RST files
+ - perturbe_ts                 : Generates an ensemble of perturbed timeseries
+                                 with one valyue and SHYFEM time notation
+ - perturbe_fem_wind_press     : Generates an ensemble of perturbed FEM files
+                                 from a wind&pressure FEM file
+ - perturbe_fem_heat           : Generates an ensemble of perturbed FEM files
+                                 from a heat FEM file
+ - perturbe_fem_scalar         : Generates an ensemble of perturbed FEM files
+                                 from a scalar (2D) file (use for the rain)
+                                 (TODO: extend to 3D)
  - make_antime_list            : Creates the antime_list.txt for time series.
  - enKF2enKS                   : Kalman Smoother from Filter output. 
                                  NOTE: Incompatible with localization.
