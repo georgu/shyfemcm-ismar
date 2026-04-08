@@ -41,8 +41,7 @@ Kalman Filter for the SHYFEM model
  - perturbe_fem_heat           : Generates an ensemble of perturbed FEM files
                                  from a heat FEM file
  - perturbe_fem_scalar         : Generates an ensemble of perturbed FEM files
-                                 from a scalar (2D) file (use for the rain)
-                                 (TODO: extend to 3D)
+                                 from a scalar (2D/3D) file (e.g., rain)
  - make_antime_list            : Creates the antime_list.txt for time series.
  - enKF2enKS                   : Kalman Smoother from Filter output. 
                                  NOTE: Incompatible with localization.

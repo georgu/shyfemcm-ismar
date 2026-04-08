@@ -133,7 +133,7 @@ ENSMOD = \
 
 #-------------------- all the exec files
 
-EXES = main make_eof_ens_meteo enKF2enKS make_antime_list \
+EXES = main enKF2enKS make_antime_list \
 	perturbe_state perturbe_ts perturbe_fem_wind_press \
 	perturbe_fem_heat perturbe_fem_scalar
 
@@ -163,10 +163,6 @@ perturbe_fem_heat: perturbe_fem_heat.o $(SAMPOBJ)
 perturbe_fem_scalar: perturbe_fem_scalar.o $(SAMPOBJ)
 	$(LINKER) $@.o $(SAMPOBJ) \
 	$(SHYOBJENS) \
-	$(LFLAGS) $(LIBS) -o $@
-
-make_eof_ens_meteo: make_eof_ens_meteo.o m_random.o
-	$(LINKER) $@.o m_random.o $(SHYOBJENS) \
 	$(LFLAGS) $(LIBS) -o $@
 
 enKF2enKS: enKF2enKS.o 
@@ -259,7 +255,6 @@ main.o: ../../../lib/mod/mod_enkf.mod \
 		../../../lib/mod/m_set_random_seed2.mod \
 		../../../lib/mod/m_analysis.mod
 make_antime_list.o: ../../../lib/mod/iso8601.mod
-make_eof_ens_meteo.o: ../../../lib/mod/m_random.mod
 mod_anafunc.o: ../../../lib/mod/m_ensmean.mod \
 		../../../lib/mod/m_mean_preserving_rotation.mod \
 		../../../lib/mod/m_multa.mod \

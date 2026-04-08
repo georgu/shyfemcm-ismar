@@ -193,7 +193,7 @@ subroutine make_perturbations(nrens, nnlv, err_z, err_t, err_s)
         call make_2Dpert(kpert, dimk, nrens-1)
         do ne = 2, nrens
             do nl = 1, nnlv
-                weight = real(hlv(nl), dp) / real(hlv(1), dp)
+                weight = real(hlv(1), dp) / real(hlv(nl), dp)
                 tt_out(nl, :, ne) = real(tempv(nl, :) + kpert(:, ne-1) * err_t * weight, sp)
             end do
         end do
@@ -201,7 +201,7 @@ subroutine make_perturbations(nrens, nnlv, err_z, err_t, err_s)
         call make_2Dpert(kpert, dimk, nrens-1)
         do ne = 2, nrens
             do nl = 1, nnlv
-                weight = real(hlv(nl), dp) / real(hlv(1), dp)
+                weight = real(hlv(1), dp) / real(hlv(nl), dp)
                 ss_out(nl, :, ne) = real(saltv(nl, :) + kpert(:, ne-1) * err_s * weight, sp)
             end do
         end do

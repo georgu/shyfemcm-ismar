@@ -47,15 +47,16 @@ subroutine generate_ensemble_perturbations(nx, ny, nrens, &
 end subroutine generate_ensemble_perturbations
 
 !============================================================================================
-subroutine make_pert_field(nvar, ne, nrens, nx, ny, lmax, var3d, var3d_ens, &
+subroutine make_pert_field(nvar, ne, nrens, nx, ny, l, lmax, hlv, var3d, var3d_ens, &
     std_r, vmin, vmax, pmat)
 
-    use iso_fortran_env, only : dp => real64
+    use iso_fortran_env, only : dp => real64, sp => real32, error_unit
     implicit none
 
     ! --- Arguments ---
-    integer,  intent(in)    :: nvar, ne, nrens, nx, ny, lmax
+    integer,  intent(in)    :: nvar, ne, nrens, nx, ny, lmax, l
     real(dp), intent(in)    :: pmat(nx, ny, nrens)
+    real(sp), intent(in)    :: hlv(lmax)
     real(dp), intent(in)    :: var3d(nvar, nx, ny, lmax)
     real(dp), intent(out)   :: var3d_ens(nvar, nx, ny, lmax)
     real(dp), intent(in)    :: std_r, vmin, vmax
@@ -68,14 +69,14 @@ subroutine make_pert_field(nvar, ne, nrens, nx, ny, lmax, var3d, var3d_ens, &
     var3d_ens = var3d ! Initialize with background
 
     ! (Index 1)
-    pvar(:,:) = var3d(1,:,:,1) + std_r * pmat(:,:,ne)
+    pvar(:,:) = var3d(1,:,:,l) + ( std_r * pmat(:,:,ne) * real(hlv(1), dp) / real(hlv(l), dp) )
     do j = 1, ny
        do i = 1, nx
           if (pvar(i,j) < vmin) pvar(i,j) = vmin
           if (pvar(i,j) > vmax) pvar(i,j) = vmax
        end do
     end do
-    var3d_ens(1,:,:,1) = pvar
+    var3d_ens(1,:,:,l) = pvar
 
     deallocate(pvar)
 
@@ -95,7 +96,7 @@ program perturbe_fem_scalar
 
     ! --- FEM format variables ---
     integer                 :: fem_size, iformat, fem_unit, nvers, np, lmax, nvar, ntype
-    integer                 :: datetime(2), ierr, i, n
+    integer                 :: datetime(2), ierr, i, n, l
     real(dp)                :: dtime, atime, atime_old
     real(sp)                :: regpar(7) 
     integer                 :: nx, ny
@@ -171,7 +172,6 @@ program perturbe_fem_scalar
 
         call fem_file_read_params(iformat, fem_unit, dtime, nvers, np, lmax, nvar, ntype, datetime, ierr)
         if (ierr < 0) exit read_loop 
-        if (lmax > 1) error stop 'In meteo FEM files lmax must be 1.'
         
         call dts_convert_to_atime(datetime, dtime, atime) ! atime in seconds
 
@@ -197,10 +197,12 @@ program perturbe_fem_scalar
 
         ! Read Nominal Variables ---
         do i = 1, nvar
+	  do l = 1, lmax
             femdata = flag
             call fem_file_read_data(iformat, fem_unit, nvers, np, lmax, &
-                                    vstring(i), ilhkv, hd, 1, femdata, ierr)
-            var3d(i, :, :, 1) = femdata(1, :, :)
+                                    vstring(i), ilhkv, hd, l, femdata, ierr)
+            var3d(i, :, :, l) = femdata(l, :, :)
+	  end do
         end do
 
 	! Variable check
@@ -233,22 +235,26 @@ program perturbe_fem_scalar
                 ! Open member file only once at first time step
                 if (n == 1) call fem_file_write_open(trim(out_file(ne)), iformat, fid(ne))
 
+	      do l = 1, lmax
+
                 call fem_file_write_header(iformat, fid(ne), dtime, nvers, np, lmax, &
-                       nvar, ntype, 1, hlv, datetime, regpar)
+                       nvar, ntype, l, hlv, datetime, regpar)
 
                 if (ne > 1) then
                    ! Compute perturbed field for this member
-		   call make_pert_field(nvar, ne-1, nrens-1, nx, ny, lmax, var3d, var3d_ens, &
+		   call make_pert_field(nvar, ne-1, nrens-1, nx, ny, l, lmax, hlv, var3d, var3d_ens, &
                         std_r, vmin, vmax, pmat)
                 else
                       var3d_ens = var3d
                 end if
 
                 do i = 1, nvar
-                    femdata(1, :, :) = real(var3d_ens(i,:,:,1), sp)
+                    femdata(l, :, :) = real(var3d_ens(i,:,:,l), sp)
                     call fem_file_write_data(iformat, fid(ne), nvers, np, lmax, &
-                           vstring(i), ilhkv, hd, 1, femdata)
+                           vstring(i), ilhkv, hd, l, femdata)
                 end do
+
+              end do
 
             end do
 
