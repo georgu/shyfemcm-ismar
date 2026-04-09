@@ -56,69 +56,92 @@ subroutine make_geo_field(nvar, ne, nrens, nx, ny, lmax, dx_deg, dy_deg, &
     ! Arguments
     integer,  intent(in)    :: nvar, ne, nrens, nx, ny, lmax
     real(dp), intent(in)    :: dx_deg, dy_deg, y0_lat, flag, std_p_pa
-    real(dp), intent(in)    :: pmat(nx, ny, nrens)      ! Normalized noise
-    real(dp), intent(in)    :: var3d(nvar, nx, ny, lmax) 
+    real(dp), intent(in)    :: pmat(nx, ny, nrens)
+    real(dp), intent(in)    :: var3d(nvar, nx, ny, lmax)
     real(dp), intent(out)   :: var3d_ens(nvar, nx, ny, lmax)
-    
+
     ! Local variables
     integer  :: ix, iy, i_u, i_v, i_p
+    integer  :: ns_x, ns_y
     real(dp) :: lat, f_coriolis, dx_m, dy_m, dp_dx, dp_dy, w_speed
+
+    ! Constants
     real(dp), parameter :: PI = 3.141592653589793_dp
     real(dp), parameter :: R_EARTH = 6371000.0_dp
-    real(dp), parameter :: OMEGA = 7.2921e-5_dp 
-    real(dp), parameter :: RHO_AIR = 1.225_dp    
-    real(dp), parameter :: V_MAX = 75.0_dp 
+    real(dp), parameter :: OMEGA = 7.2921e-5_dp
+    real(dp), parameter :: RHO_AIR = 1.225_dp
+    real(dp), parameter :: V_MAX = 75.0_dp
+    real(dp), parameter :: FRICTION = 0.5_dp
 
-    ! Index mapping: 1=U, 2=V, 3=P
+    ! Physical smoothing scale in meters (e.g., 25 km)
+    ! This ensures the gradient is calculated over a synoptic/meso scale
+    real(dp), parameter :: SMOOTHING_SCALE = 25000.0_dp
+
     i_u = 1; i_v = 2; i_p = 3
-    
     var3d_ens = var3d
+
+    ! Metric distance for Latitude (constant)
     dy_m = R_EARTH * (dy_deg * PI / 180.0_dp)
+    ! Adaptive smoothing steps for Y
+    ns_y = max(1, nint(SMOOTHING_SCALE / dy_m))
 
     do iy = 1, ny
         lat = (y0_lat + (iy-1) * dy_deg) * PI / 180.0_dp
         f_coriolis = 2.0_dp * OMEGA * sin(lat)
         dx_m = R_EARTH * cos(lat) * (dx_deg * PI / 180.0_dp)
 
-        ! Avoid issues near equator
-        if (abs(f_coriolis) < 2.0e-5_dp) f_coriolis = 2.0e-5_dp 
+        ! Adaptive smoothing steps for X (varies with latitude)
+        ns_x = max(1, nint(SMOOTHING_SCALE / dx_m))
+
+        if (abs(f_coriolis) < 2.0e-5_dp) f_coriolis = 2.0e-5_dp
 
         do ix = 1, nx
-            ! Land mask check
             if (abs(var3d(i_p, ix, iy, 1) - flag) < 1.0e-3_dp) then
                 var3d_ens(:, ix, iy, 1) = flag
-                cycle 
+                cycle
             end if
 
             ! --- A. Pressure Perturbation ---
-            ! pmat is scaled directly by std_p_pa (Pascal)
             var3d_ens(i_p, ix, iy, 1) = var3d(i_p, ix, iy, 1) + (pmat(ix, iy, ne) * std_p_pa)
 
-            ! --- B. Gradients of the perturbation (Pa/m) ---
-            if (ix == 1) then
-                dp_dx = (pmat(ix+1, iy, ne) - pmat(ix, iy, ne)) * std_p_pa / dx_m
-            else if (ix == nx) then
-                dp_dx = (pmat(ix, iy, ne) - pmat(ix-1, iy, ne)) * std_p_pa / dx_m
+            ! --- B. Adaptive Gradient Calculation with Mask Check ---
+            ! Check X-Gradient: only if the points used for the difference are not "flag"
+            if (ix > ns_x .and. ix <= nx - ns_x) then
+                if (abs(var3d(i_p, ix+ns_x, iy, 1) - flag) > 1.0e-3_dp .and. &
+                    abs(var3d(i_p, ix-ns_x, iy, 1) - flag) > 1.0e-3_dp) then
+
+                    dp_dx = (pmat(ix+ns_x, iy, ne) - pmat(ix-ns_x, iy, ne)) * std_p_pa / (2.0_dp * ns_x * dx_m)
+                else
+                    dp_dx = 0.0_dp ! Near flag, keep original background wind gradient
+                end if
             else
-                dp_dx = (pmat(ix+1, iy, ne) - pmat(ix-1, iy, ne)) * std_p_pa / (2.0_dp * dx_m)
+                dp_dx = 0.0_dp
             end if
 
-            if (iy == 1) then
-                dp_dy = (pmat(ix, iy+1, ne) - pmat(ix, iy, ne)) * std_p_pa / dy_m
-            else if (iy == ny) then
-                dp_dy = (pmat(ix, iy, ne) - pmat(ix, iy-1, ne)) * std_p_pa / dy_m
+            ! Check Y-Gradient: only if the points used for the difference are not "flag"
+            if (iy > ns_y .and. iy <= ny - ns_y) then
+                if (abs(var3d(i_p, ix, iy+ns_y, 1) - flag) > 1.0e-3_dp .and. &
+                    abs(var3d(i_p, ix, iy-ns_y, 1) - flag) > 1.0e-3_dp) then
+
+                    dp_dy = (pmat(ix, iy+ns_y, ne) - pmat(ix, iy-ns_y, ne)) * std_p_pa / (2.0_dp * ns_y * dy_m)
+                else
+                    dp_dy = 0.0_dp
+                end if
             else
-                dp_dy = (pmat(ix, iy+1, ne) - pmat(ix, iy-1, ne)) * std_p_pa / (2.0_dp * dy_m)
+                dp_dy = 0.0_dp
             end if
 
-            ! --- C. Apply Geostrophic Balance ---
-            ! u_g = -1/(f*rho) * dP/dy  |  v_g = 1/(f*rho) * dP/dx
-            var3d_ens(i_u, ix, iy, 1) = var3d(i_u, ix, iy, 1) - (1.0_dp / (f_coriolis * RHO_AIR)) * dp_dy
-            var3d_ens(i_v, ix, iy, 1) = var3d(i_v, ix, iy, 1) + (1.0_dp / (f_coriolis * RHO_AIR)) * dp_dx
 
-            ! Wind speed capping
+            ! --- C. Geostrophic Balance with Friction ---
+            var3d_ens(i_u, ix, iy, 1) = var3d(i_u, ix, iy, 1) - (FRICTION / (f_coriolis * RHO_AIR)) * dp_dy
+            var3d_ens(i_v, ix, iy, 1) = var3d(i_v, ix, iy, 1) + (FRICTION / (f_coriolis * RHO_AIR)) * dp_dx
+
+            ! --- D. Wind Speed Capping ---
             w_speed = sqrt(var3d_ens(i_u, ix, iy, 1)**2 + var3d_ens(i_v, ix, iy, 1)**2)
-            if (w_speed > V_MAX) then
+            if (w_speed /= w_speed) then
+                var3d_ens(i_u, ix, iy, 1) = var3d(i_u, ix, iy, 1)
+                var3d_ens(i_v, ix, iy, 1) = var3d(i_v, ix, iy, 1)
+            else if (w_speed > V_MAX) then
                 var3d_ens(i_u, ix, iy, 1) = var3d_ens(i_u, ix, iy, 1) * (V_MAX / w_speed)
                 var3d_ens(i_v, ix, iy, 1) = var3d_ens(i_v, ix, iy, 1) * (V_MAX / w_speed)
             end if
@@ -128,7 +151,7 @@ end subroutine make_geo_field
 
 !============================================================================================
 subroutine make_wind_speed_pert(nvar, ne, nrens, nx, ny, lmax, &
-    pmat, var3d, var3d_ens, std_p)
+    pmat, var3d, var3d_ens, std_p, flag)
 
     use iso_fortran_env, only : dp => real64
     implicit none
@@ -138,55 +161,49 @@ subroutine make_wind_speed_pert(nvar, ne, nrens, nx, ny, lmax, &
     real(dp), intent(in)    :: pmat(nx, ny, nrens)
     real(dp), intent(in)    :: var3d(nvar, nx, ny, lmax)
     real(dp), intent(out)   :: var3d_ens(nvar, nx, ny, lmax)
-    real(dp), intent(in)    :: std_p 
+    real(dp), intent(in)    :: std_p
+    real(dp), intent(in)    :: flag ! Added land mask flag
 
     ! --- Local variables ---
-    real(dp), allocatable   :: up(:,:), vp(:,:), wp(:,:), w(:,:)
     real(dp), parameter     :: wp_max = 50.0_dp
-    real(dp), parameter     :: eps    = 1.0e-10_dp ! Small value to avoid div by zero
+    real(dp), parameter     :: eps    = 1.0e-10_dp
     integer                 :: i, j
-    real(dp)                :: ratio
+    real(dp)                :: w_orig, wp_new, ratio
 
-    ! Allocate temporary arrays
-    allocate(up(nx, ny), vp(nx, ny), wp(nx, ny), w(nx, ny))
-
-    ! Initialize ensemble with background (copies all variables/levels)
+    ! Initialize ensemble with background
     var3d_ens = var3d
 
-    ! 1. Calculate original wind speed (w) and perturbed speed (wp)
-    w(:,:)  = sqrt(var3d(1,:,:,1)**2 + var3d(2,:,:,1)**2)
-    wp(:,:) = w(:,:) + ( pmat(:,:,ne) * std_p )
-
-    ! 2. Apply clipping and calculate U/V
-    ! Using loops to handle the division by zero check safely
     do j = 1, ny
        do i = 1, nx
-          
-          ! Physical check: wp cannot be negative
-          if (wp(i,j) < 0.0_dp) wp(i,j) = 0.0_dp
-          
-          ! Upper clipping
-          if (wp(i,j) > wp_max) wp(i,j) = wp_max
 
-          ! 3. Update U and V components
-          if (w(i,j) > eps) then
-             ratio = wp(i,j) / w(i,j)
-             up(i,j) = var3d(1,i,j,1) * ratio
-             vp(i,j) = var3d(2,i,j,1) * ratio
+          ! 1. Skip land/missing data points
+          if (abs(var3d(1,i,j,1) - flag) < 1.0e-3_dp) cycle
+
+          ! 2. Calculate original wind speed
+          w_orig = sqrt(var3d(1,i,j,1)**2 + var3d(2,i,j,1)**2)
+
+          ! 3. Apply perturbation to speed
+          wp_new = w_orig + ( pmat(i,j,ne) * std_p )
+
+          ! Physical and upper clipping
+          if (wp_new < 0.0_dp) wp_new = 0.0_dp
+          if (wp_new > wp_max) wp_new = wp_max
+
+          ! 4. Update U and V components
+          if (w_orig > eps) then
+             ! Scale existing direction
+             ratio = wp_new / w_orig
+             var3d_ens(1,i,j,1) = var3d(1,i,j,1) * ratio
+             var3d_ens(2,i,j,1) = var3d(2,i,j,1) * ratio
           else
-             ! If original wind is zero, we can't scale it. 
-             ! We keep it zero or could apply a small random direction.
-             up(i,j) = 0.0_dp
-             vp(i,j) = 0.0_dp
+             ! Optional: If original wind is zero but wp_new > 0,
+             ! we could assign a random direction. Here we keep it zero.
+             var3d_ens(1,i,j,1) = 0.0_dp
+             var3d_ens(2,i,j,1) = 0.0_dp
           end if
+
        end do
     end do
-
-    ! 4. Assign back to ensemble
-    var3d_ens(1,:,:,1) = up
-    var3d_ens(2,:,:,1) = vp
-
-    deallocate(up, vp, wp, w)
 
 end subroutine make_wind_speed_pert
 
@@ -233,6 +250,8 @@ program perturbe_fem_wind_press
 	write(error_unit, '(A)') "pert_type: 1 - Pressure + Geostrophic Wind. 2 - Only wind speed."
 	write(error_unit, '(A)') "STD: error (standard deviation) for pressure (1), or wind speed (2)"
 	write(error_unit, '(A)') "Tau: Decay time (s) for the red noise"
+	write(error_unit, '(A)')
+	write(error_unit, '(A)') "Type 1 is suggested (80-100Pa). For type 2 use small values (2-3m/s)"
 	write(error_unit, '(A)')
         stop 1
     end if
@@ -376,7 +395,7 @@ program perturbe_fem_wind_press
                 if (ne > 1) then
                    ! Compute perturbed field for this member
                    call make_wind_speed_pert(nvar, ne-1, nrens-1, nx, ny, lmax, &
-			   pmat, var3d, var3d_ens, std_p)
+			   pmat, var3d, var3d_ens, std_p, real(flag, dp))
                 else
                       var3d_ens = var3d
                 end if

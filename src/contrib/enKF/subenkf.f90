@@ -195,7 +195,7 @@ subroutine random_vec(v, vdim)
   if (vdim < 1) then
      return
   else if (vdim == 1) then
-     v(1) = 0.0
+     v(1) = 0.0_dp
      return
   end if
 
@@ -204,8 +204,9 @@ subroutine random_vec(v, vdim)
   ! Compress outliers to avoid extremely large magnitudes
   do n = 1, vdim-1
      aaux = vaux(n)
-     if (abs(aaux) >= 3.0) then
-        aaux = sign(1.0, aaux) * (abs(aaux) - floor(abs(aaux)) + 1.0)
+     if (abs(aaux) >= 3.0_dp) then
+        ! Use 1.0_dp to match the kind of aaux
+        aaux = sign(1.0_dp, aaux) * (abs(aaux) - floor(abs(aaux)) + 1.0_dp)
      end if
      vaux(n) = aaux
   end do
@@ -213,7 +214,7 @@ subroutine random_vec(v, vdim)
   ! Zero mean and insert v(1)=0
   ave = sum(vaux) / real(vdim-1, dp)
   vaux = vaux - ave
-  v(1) = 0.0
+  v(1) = 0.0_dp
   v(2:vdim) = vaux
 end subroutine random_vec
 

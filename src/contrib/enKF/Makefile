@@ -19,14 +19,18 @@ include $(FEMDIR)/Rules.make
 
 #-------------------- switch from real/double-precision to real64 (real*8)
 
-ifeq ($(FORTRAN_COMPILER),GNU_GFORTRAN)
-  R8FL = -fdefault-real-8 -fdefault-double-8
-endif
-ifeq ($(FORTRAN_COMPILER),INTEL)
-  R8FL = -real-size 64 -double-size 64
-endif
-override FFLAGS += $(R8FL)
-override LFLAGS += $(R8FL)
+#ifeq ($(FORTRAN_COMPILER),GNU_GFORTRAN)
+#  R8FL = -fdefault-real-8 -fdefault-double-8
+#endif
+#ifeq ($(FORTRAN_COMPILER),INTEL)
+#  R8FL = -real-size 64 -double-size 64
+#endif
+#override FFLAGS += $(R8FL)
+#override LFLAGS += $(R8FL)
+
+# NC fllags
+NC_FLAGS := $(shell nf-config --fflags)
+NC_LIBS  := $(shell nf-config --flibs)
 
 #-------------------- run to make depends
 
@@ -135,7 +139,7 @@ ENSMOD = \
 
 EXES = main enKF2enKS make_antime_list \
 	perturbe_state perturbe_ts perturbe_fem_wind_press \
-	perturbe_fem_heat perturbe_fem_scalar
+	perturbe_fem_heat perturbe_fem_scalar fem2nc
 
 #------------------- targets
 
@@ -176,6 +180,12 @@ perturbe_state: perturbe_state.o subenkf.o $(SAMPOBJ)
 perturbe_ts: perturbe_ts.o
 	$(LINKER) $(SHYOBJ) $@.o \
 	$(LFLAGS) -o $@
+
+fem2nc: fem2nc.o
+	$(LINKER) fem2nc.o $(SHYOBJENS) $(LFLAGS) $(LIBS) $(NC_LIBS) -o $@
+
+
+
 
 #------------------- var
 
@@ -323,3 +333,6 @@ perturbe_state.o: ../../../lib/mod/basin.mod \
 		../../../lib/mod/mod_restart.mod \
 		../../../lib/mod/mod_ts.mod \
 		../../../lib/mod/shympi.mod 
+fem2nc.o: fem2nc.f90
+	$(FC) $(FFLAGS) $(NC_FLAGS) -c fem2nc.f90 -o $@
+
