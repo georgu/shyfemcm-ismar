@@ -100,13 +100,14 @@ obs_list.txt
 Each line contains:
 - a flag describing the observation type;
 - the file name.
+- x y z coordinates
+- STD
+- Rho (for local analysis and superobs)
 
 Example:
 
-0DLEV Ancona_obs_ass.dat
-0DLEV Bari_obs_ass.dat
-0DLEV Cagliari_obs_ass.dat
-0DLEV Catania_obs_ass.dat
+0DLEV Ancona_obs_ass.dat 13.49 43.63 0. 0.1 1.
+0DLEV Bari_obs_ass.dat 16.88 41.15 0. 0.1 1.
 ...
 
 Supported flags:
@@ -219,22 +220,6 @@ string-time2 value2
 
 2) Surface current fields (FEM-file):
 Bad or missing values must be flagged with -999.
-
-
-----------
-Info observation files
-----------
-For each observation file "name.ext" create a companion file named
-"name.ext.info".
-
-This file must contain one row:
-
-  x  y  z  std  rho_loc
-
-Where:
-- x, y, z = observation coordinates (same system as basin)
-- std     = observation error (standard deviation)
-- rho_loc = localisation radius (ignored if isloc = 0 in mod_para.f90)
 
 
 Parameters of the assimilation

@@ -45,6 +45,12 @@ module mod_obs_states
   type files
      character(len=5)  :: ty    ! type of file
      character(len=80) :: name  ! name of the file (path or basename)
+     real(dp)             :: x     ! x coordinate
+     real(dp)             :: y     ! y coordinate
+     real(dp)             :: z     ! z coordinate
+     real(dp)             :: std   ! observation std
+     real(dp)             :: rhol  ! radius for local analysis
+
   end type files
 
   !-------------------------------------------------------------

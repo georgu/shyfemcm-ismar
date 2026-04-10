@@ -48,332 +48,231 @@ module mod_manage_obs
 contains
 
 !======================================================================
-!  read_obs
-!  -------
-!  Two-pass logic:
-!    (1) scan to detect types & counts;
-!    (2) allocate & store; build super-obs.
-!======================================================================
-  subroutine read_obs
+subroutine read_observations
+    use iso_fortran_env, only: error_unit, dp => real64
+    use mod_obs_states 
     implicit none
 
-    integer            :: ios
+    integer            :: ios, u, n, nfile
+    integer            :: kend, kinit_loc, nobs_file
     character(len=80)  :: line
-    integer            :: n, nfile
-    integer            :: kinit, kend
-    logical            :: linit
-    integer            :: nobs
-    real(dp)   :: tobs
-    real(dp)               :: xobs, yobs, zobs
-    real(dp)               :: vobs, stdobs, rho, vmean
+    real(dp)           :: tobs, vobs, vmean
     integer            :: statobs
 
-    ! Reset type flags
-    islev  = 0
-    isvel  = 0
-    istemp = 0
-    issalt = 0
-
     ! Reset counters
-    n_0dlev  = 0; n_1dlev  = 0; n_2dlev  = 0
-    n_0dtemp = 0; n_1dtemp = 0; n_2dtemp = 0
-    n_0dsalt = 0; n_1dsalt = 0; n_2dsalt = 0
-    n_0dvel  = 0; n_2dvel  = 0
+    islev = 0; isvel = 0; istemp = 0; issalt = 0
+    n_0dlev = 0; n_0dtemp = 0; n_0dsalt = 0; n_2dvel = 0
+    nobs_tot = 0
 
-    write(*,*) 'Reading observations...'
-
-    !-------------------------------
-    ! Count lines in obsfile
-    !-------------------------------
-    open(25, file=obsfile, status='old', form='formatted', iostat=ios)
-    if (ios /= 0) error stop 'read_obs: error opening file list'
+    ! 1. Open and count entries in the main list file
+    open(newunit=u, file=obsfile, status='old', form='formatted', iostat=ios)
+    if (ios /= 0) error stop 'read_observations: error opening '//trim(obsfile)
 
     nfile = 0
     do
-      read(25, '(A)', iostat=ios) line
-      if (ios < 0) exit                ! EOF
-      if (ios > 0) error stop 'read_obs: error reading file list'
-      nfile = nfile + 1
+        read(u, '(A)', iostat=ios) line
+        if (ios < 0) exit
+        nfile = nfile + 1
     end do
-
-    rewind(25)
-    if (nfile <= 0) error stop 'read_obs: empty file list'
+    rewind(u)
 
     allocate(ofile(nfile))
+
+    ! 2. Load metadata and pre-count types (No file opening here yet)
     do n = 1, nfile
-      read(25, *, iostat=ios) ofile(n)%ty, ofile(n)%name
-      if (ios /= 0) error stop 'read_obs: malformed list entry'
+        read(u, *) ofile(n)%ty, ofile(n)%name, ofile(n)%x, ofile(n)%y, &
+                   ofile(n)%z, ofile(n)%std, ofile(n)%rhol
+        
+        select case (trim(ofile(n)%ty))
+        case ('0DLEV'); n_0dlev = n_0dlev + 1; islev = 1
+        case ('0DTEM'); n_0dtemp = n_0dtemp + 1; istemp = 1
+        case ('0DSAL'); n_0dsalt = n_0dsalt + 1; issalt = 1
+        case ('2DVEL'); n_2dvel = n_2dvel + 1; isvel = 1
+        end select
     end do
-    close(25)
+    close(u)
 
-    !-------------------------------
-    ! First pass: detect types & counts
-    !-------------------------------
-    do n = 1, nfile
-      select case (trim(ofile(n)%ty))
+    ! 3. Consistency check
+    if ((islev + isvel + istemp + issalt) > 1) error stop 'Multiple obs types'
 
-      case ('0DLEV')
-        linit = .true.;  kinit = n_0dlev
-        call read_scalar_0d('0DLEV', linit, trim(ofile(n)%name), TEPS, &
-                            kinit, kend, tobs, xobs, yobs, zobs, vobs, stdobs, vmean, statobs, rho)
-        if (kend > kinit) then
-          n_0dlev = n_0dlev + 1
-          islev   = 1
-        end if
-
-      case ('0DTEM')
-        linit = .true.;  kinit = n_0dtemp
-        call read_scalar_0d('0DTEM', linit, trim(ofile(n)%name), TEPS, &
-                            kinit, kend, tobs, xobs, yobs, zobs, vobs, stdobs, vmean, statobs, rho)
-        if (kend > kinit) then
-          n_0dtemp = n_0dtemp + 1
-          istemp   = 1
-        end if
-
-      case ('0DSAL')
-        linit = .true.;  kinit = n_0dsalt
-        call read_scalar_0d('0DSAL', linit, trim(ofile(n)%name), TEPS, &
-                            kinit, kend, tobs, xobs, yobs, zobs, vobs, stdobs, vmean, statobs, rho)
-        if (kend > kinit) then
-          n_0dsalt = n_0dsalt + 1
-          issalt   = 1
-        end if
-
-      case ('2DVEL')
-        n_2dvel = n_2dvel + 1
-        isvel   = 1
-
-      case default
-        error stop 'read_obs: Unknown file type'
-      end select
-    end do
-
-    ! Enforce single-type assimilation per cycle
-    if ((islev + isvel + istemp + issalt) > 1) then
-      write(*,*) 'islev ',  islev
-      write(*,*) 'isvel ',  isvel
-      write(*,*) 'istemp ', istemp
-      write(*,*) 'issalt ', issalt
-      error stop 'Different observation types present. Assimilate them at different times.'
-    end if
-
-    !-------------------------------
-    ! Allocate containers
-    !-------------------------------
+    ! 4. Allocation (Exact size from metadata pre-count)
     if (n_0dlev  > 0) allocate(o0dlev(n_0dlev))
     if (n_0dtemp > 0) allocate(o0dtemp(n_0dtemp))
     if (n_0dsalt > 0) allocate(o0dsalt(n_0dsalt))
     if (n_2dvel  > 0) allocate(o2dvel(n_2dvel))
 
-    !-------------------------------
-    ! Second pass: read & store
-    !-------------------------------
-    n_2dvel  = 0
-    kinit    = 0
-    nobs_tot = 0
+    ! 5. SINGLE PASS DATA READING
+    ! We reset counters to use them as current indices for the arrays
+    n_0dlev = 0; n_0dtemp = 0; n_0dsalt = 0; n_2dvel = 0
 
     do n = 1, nfile
-      select case (trim(ofile(n)%ty))
+        select case (trim(ofile(n)%ty))
+        case ('0DLEV', '0DTEM', '0DSAL')
+            ! Call the reading routine ONLY ONCE per file
+            ! kinit=0, linit=.false. means: read and return the data immediately
+            call read_scalar_0d(ofile(n)%ty, .false., trim(ofile(n)%name), TEPS, &
+                                0, kend, tobs, vobs, vmean, statobs)
+            
+            if (kend > 0) then
+                nobs_tot = nobs_tot + 1
+                select case (trim(ofile(n)%ty))
+                case ('0DLEV')
+                    n_0dlev = n_0dlev + 1
+                    call store_data(o0dlev(n_0dlev), n, tobs, vobs, statobs)
+                    call check_mean('0DLEV', vmean, ofile(n)%z, vobs)
+                case ('0DTEM')
+                    n_0dtemp = n_0dtemp + 1
+                    call store_data(o0dtemp(n_0dtemp), n, tobs, vobs, statobs)
+                case ('0DSAL')
+                    n_0dsalt = n_0dsalt + 1
+                    call store_data(o0dsalt(n_0dsalt), n, tobs, vobs, statobs)
+                end select
+            end if
 
-      case ('0DLEV')
-        linit = .false.
-        call read_scalar_0d('0DLEV', linit, trim(ofile(n)%name), TEPS, &
-                            kinit, kend, tobs, xobs, yobs, zobs, vobs, stdobs, vmean, statobs, rho)
-        if (kend > kinit) then
-          call check_mean('0DLEV',vmean,zobs,vobs)
-          o0dlev(kend)%t    = tobs
-          o0dlev(kend)%x    = xobs
-          o0dlev(kend)%y    = yobs
-          o0dlev(kend)%z    = zobs
-          o0dlev(kend)%val  = vobs
-          o0dlev(kend)%std  = stdobs
-          o0dlev(kend)%stat = statobs
-          o0dlev(kend)%id   = n
-          o0dlev(kend)%rhol = rho
-          nobs_tot = nobs_tot + 1
-        end if
-        kinit = kend
-
-      case ('0DTEM')
-        linit = .false.
-        call read_scalar_0d('0DTEM', linit, trim(ofile(n)%name), TEPS, &
-                            kinit, kend, tobs, xobs, yobs, zobs, vobs, stdobs, vmean, statobs, rho)
-        if (kend > kinit) then
-	  ! not very correct for temp
-          !call check_mean('0DTEM',vmean,zobs,vobs)
-          o0dtemp(kend)%t    = tobs
-          o0dtemp(kend)%x    = xobs
-          o0dtemp(kend)%y    = yobs
-          o0dtemp(kend)%z    = zobs
-          o0dtemp(kend)%val  = vobs
-          o0dtemp(kend)%std  = stdobs
-          o0dtemp(kend)%stat = statobs
-          o0dtemp(kend)%id   = n
-          o0dtemp(kend)%rhol = rho
-          nobs_tot = nobs_tot + 1
-        end if
-        kinit = kend
-
-      case ('0DSAL')
-        linit = .false.
-        call read_scalar_0d('0DSAL', linit, trim(ofile(n)%name), TEPS, &
-                            kinit, kend, tobs, xobs, yobs, zobs, vobs, stdobs, vmean, statobs, rho)
-        if (kend > kinit) then
-	  ! not very correct for salt
-          !call check_mean('0DSAL',vmean,zobs,vobs)
-          o0dsalt(kend)%t    = tobs
-          o0dsalt(kend)%x    = xobs
-          o0dsalt(kend)%y    = yobs
-          o0dsalt(kend)%z    = zobs
-          o0dsalt(kend)%val  = vobs
-          o0dsalt(kend)%std  = stdobs
-          o0dsalt(kend)%stat = statobs
-          o0dsalt(kend)%id   = n
-          o0dsalt(kend)%rhol = rho
-          nobs_tot = nobs_tot + 1
-        end if
-        kinit = kend
-
-      case ('2DVEL')
-        n_2dvel = n_2dvel + 1
-        call read_2dvel(trim(ofile(n)%name), n, n_2dvel, TEPS, nobs)
-        nobs_tot = nobs_tot + 2 * nobs  ! u and v
-
-      case default
-        error stop 'read_obs: Unknown file type'
-      end select
+        case ('2DVEL')
+            n_2dvel = n_2dvel + 1
+            call read_2dvel(trim(ofile(n)%name), n, n_2dvel, TEPS, nobs_file, ofile(n)%std)
+            nobs_tot = nobs_tot + 2 * nobs_file
+        end select
     end do
 
-    ! Super-observations
-    if ( SUPEROBS ) call make_super_1dlev
-    if ( SUPEROBS ) call make_super_2dvel
+contains
 
-    if (nobs_tot < 1) error stop 'No valid observations, stopping.'
-  end subroutine read_obs
+    subroutine store_data(target, idx, t, v, s)
+        type(scalar_0d), intent(out) :: target
+        integer, intent(in) :: idx, s
+        real(dp), intent(in) :: t, v
+        target%t = t; target%x = ofile(idx)%x; target%y = ofile(idx)%y
+        target%z = ofile(idx)%z; target%val = v; target%std = ofile(idx)%std
+        target%stat = s; target%id = idx; target%rhol = ofile(idx)%rhol
+    end subroutine
+    
+end subroutine read_observations
 
 !======================================================================
-!  read_scalar_0d
-!  --------------
-!======================================================================
-  subroutine read_scalar_0d(olabel, linit, filin, eps, kinit, kend, atime_obs, xv, yv, zv, vv, stdvv, &
-                            vmean, ostatusv, rho)
+    subroutine read_scalar_0d(olabel, linit, filin, eps, kinit, kend, atime_obs, vv, &
+                            vmean, ostatusv)
+    use iso_fortran_env, only: dp => real64
     use iso8601
     implicit none
-    character(len=*), intent(in)  :: olabel
-    logical,          intent(in)  :: linit
-    character(len=*), intent(in)  :: filin
-    real(dp),         intent(in)  :: eps
-    integer,          intent(in)  :: kinit
-    integer,          intent(out) :: kend
-    real(dp),         intent(out) :: atime_obs
-    real(dp),         intent(out) :: xv, yv, zv, vv, stdvv, rho
-    integer,          intent(out) :: ostatusv
-    real(dp),         intent(out) :: vmean
 
-    integer :: ios
-    real(dp)    :: x, y, z, v, stdv
-    integer :: ostatus
+    ! Arguments
+    character(len=*), intent(in)  :: olabel    ! Observation type label
+    logical,          intent(in)  :: linit     ! Keep for compatibility (not strictly needed now)
+    character(len=*), intent(in)  :: filin     ! Filename to read
+    real(dp),         intent(in)  :: eps       ! Time tolerance (assimilation window)
+    integer,          intent(in)  :: kinit     ! Initial offset (usually 0 in single-pass)
+    integer,          intent(out) :: kend      ! Number of valid observations found
+    real(dp),         intent(out) :: atime_obs ! Absolute time of the stored observation
+    real(dp),         intent(out) :: vv        ! Value of the stored observation
+    real(dp),         intent(out) :: vmean     ! Mean value of all valid obs in file
+    integer,          intent(out) :: ostatusv  ! Status of the stored observation
+
+    ! Local variables
+    integer           :: ios, u, ierr, date, time
+    integer           :: k_count
+    real(dp)          :: v, t_tmp
     character(len=80) :: dstring
-    integer :: ierr
-    integer :: date, time
-    integer :: k
-    logical :: stored
+    logical           :: stored
 
-    ! Defaults
-    xv = -999.0; yv = -999.0; zv = -999.0
-    vv = -999.0; stdvv = -999.0
+    ! Initialization
     ostatusv = -999
+    vmean    = 0.0_dp
+    vv       = 0.0_dp
+    atime_obs = 0.0_dp
+    k_count  = 0
+    stored   = .false.
 
-    ! Meta info (coordinates, std, rho)
-    open(27, file=trim(filin)//'.info', status='old', form='formatted', iostat=ios)
-    if (ios /= 0) error stop 'read_scalar_0d: error opening info file'
-    read(27, *, iostat=ios) x, y, z, stdv, rho
-    if (ios /= 0) error stop 'read_scalar_0d: malformed info file'
-    close(27)
+    ! Open the data file using a safe unit number
+    open(newunit=u, file=trim(filin), status='old', form='formatted', iostat=ios)
+    if (ios /= 0) then
+        write(*,*) 'Warning: read_scalar_0d could not open file: ', trim(filin)
+        kend = 0
+        return
+    end if
 
-    ! Time series
-    open(26, file=trim(filin), status='old', form='formatted', iostat=ios)
-    if (ios /= 0) error stop 'read_scalar_0d: error opening series file'
-
-    k = kinit
-    stored = .false.
-
-    vmean = 0.
     do
-      read(26, *, iostat=ios) dstring, v
-      if (ios < 0) exit
-      if (ios > 0) error stop 'read_scalar_0d: read error'
+      ! Read date string and value
+      read(u, *, iostat=ios) dstring, v
+      if (ios < 0) exit ! End of file
+      if (ios > 0) then
+          write(*,*) 'Error: reading data in ', trim(filin)
+          exit
+      end if
 
-      if (isnan(v)) v = OFLAG
+      ! Check for NaN (v /= v is true only if v is NaN)
+      if (v /= v) v = OFLAG
+
+      ! Convert ISO8601 string to absolute time
       call string2date(trim(dstring), date, time, ierr)
-      if (ierr /= 0) error stop 'read_scalar_0d: bad date string'
-      call dts_to_abs_time(date, time, atime_obs)
+      if (ierr /= 0) then
+          write(*,*) 'Warning: bad date string in ', trim(filin)
+          cycle
+      end if
+      call dts_to_abs_time(date, time, t_tmp)
 
-      if (abs(atime_obs - atime_an) < eps) then
-        ostatus = 0
-        call check_obs(olabel, v, v, OFLAG, ostatus)
-        k = k + 1
+      ! Check if the observation falls within the assimilation window [atime_an - eps, atime_an + eps]
+      if (abs(t_tmp - atime_an) <= eps) then
+        
+        k_count = k_count + 1
         vmean = vmean + v
-        if (.not. linit .and. .not. stored) then
-          xv = x; yv = y; zv = z
-          vv = v; stdvv = stdv
-          ostatusv = ostatus
-          stored = .true.          ! store just the first valid obs
+        
+        ! Store only the first valid observation encountered
+        if (.not. stored) then
+          vv = v
+          atime_obs = t_tmp
+          ostatusv  = 0 ! Initialize status
+          ! Check quality/bounds
+          call check_obs(olabel, vv, vv, OFLAG, ostatusv)
+          stored = .true.
         end if
       end if
     end do
+    close(u)
 
-    close(26)
-    kend = k
-    vmean = vmean / kend
+    ! Finalize outputs
+    kend = k_count
+    
+    if (k_count > 0) then
+        vmean = vmean / real(k_count, dp)
+    else
+        vmean = OFLAG
+        ostatusv = -999
+    end if
+
   end subroutine read_scalar_0d
 
 !======================================================================
-!  read_2dvel
-!  ----------
-!  Read a 2-D velocity field (u, v) from a FEM file at analysis time.
-!  Memory-safe (temporary arrays deallocated in all paths).
-!======================================================================
-  subroutine read_2dvel(filin, fid, nrec, eps, nobs)
+  subroutine read_2dvel(filin, fid, nrec, eps, nobs, ostd)
+    use iso_fortran_env, only: dp => real64, sp => real32
     implicit none
     character(len=*), intent(in)  :: filin
     integer,          intent(in)  :: fid
     integer,          intent(in)  :: nrec
-    real(dp), intent(in)  :: eps
+    real(dp),         intent(in)  :: eps, ostd
     integer,          intent(out) :: nobs
 
-    integer :: ios
-    integer :: np, iformat, iunit
-    integer :: irec, i, ii, jj
+    integer :: ios, u, i, ii, jj, ix, iy
+    integer :: np, iformat, iunit, irec
     integer :: nvers, lmax, nvar, ntype
-    real(dp) :: tt
-    integer :: datetime(2), ierr, nlvddi
-    real*4, allocatable :: hhlv(:)
-    real*4              :: regpar(7)
-    integer :: nx, ny
-    real(dp)    :: flag, dx, dy, x0, y0
-    integer, allocatable :: ilhkv(:)
-    real*4,  allocatable :: hd(:)
-    real*4,  allocatable :: idata(:,:,:)
-    character(len=50) :: string
-    integer :: ostatus
-    logical :: bdata
-    real(dp)    :: uu, vv, ostd, rho
-    integer :: ix, iy
-    real(dp) :: atime_obs
+    integer :: nlvddi, nx, ny
+    integer :: datetime(2), ierr
+    
+    real(dp) :: tt, flag, dx, dy, x0, y0, uu, vv, atime_obs
+    character(len=50)    :: string
+    integer              :: ostatus
+    logical              :: bdata
+    
+    ! Explicitly typed temporary arrays
+    real(sp),  allocatable :: hhlv(:), hd(:)
+    real(sp)               :: regpar(7)
+    integer,   allocatable :: ilhkv(:)
+    real(sp),  allocatable :: idata(:,:,:)
 
     nobs  = 0
     bdata = .false.
+    np    = 0
 
-    ! Standard deviation and rho from companion .info
-    open(27, file=trim(filin)//'.info', status='old', form='formatted', iostat=ios)
-    if (ios /= 0) error stop 'read_2dvel: error opening info file'
-    read(27, *, iostat=ios) ostd, rho
-    if (ios /= 0) error stop 'read_2dvel: malformed info file'
-    close(27)
-
-    ! Open FEM file
-    np = 0
     write(*,*) 'Opening velocity FEM file: ', trim(filin)
     call fem_file_read_open(trim(filin), np, iformat, iunit)
 
@@ -381,9 +280,9 @@ contains
     do
       irec = irec + 1
 
-      ! Headers
+      ! Read record headers
       call fem_file_read_params(iformat, iunit, tt, nvers, np, lmax, nvar, ntype, datetime, ierr)
-      if (ierr < 0) exit
+      if (ierr < 0) exit ! EOF
 
       call dts_convert_to_atime(datetime, tt, atime_obs)
 
@@ -394,72 +293,63 @@ contains
       nx = nint(regpar(1)); ny = nint(regpar(2))
       x0 = regpar(3); y0 = regpar(4)
       dx = regpar(5); dy = regpar(6)
-      flag = regpar(7)
+      flag = real(regpar(7), dp)
 
-      if (flag /= OFLAG) then
-        deallocate(hhlv, stat=ios)
-        error stop 'read_2dvel: bad flag value in header'
-      end if
-
-      ! If not the target time, skip data safely and continue
+      ! Time window check
       if (abs(atime_obs - atime_an) > eps) then
         do i = 1, nvar
           call fem_file_skip_data(iformat, iunit, nvers, np, lmax, string, ierr)
-          if (ierr /= 0) then
-            deallocate(hhlv, stat=ios)
-            error stop 'read_2dvel: error skipping data'
-          end if
         end do
-        deallocate(hhlv, stat=ios)
+        if (allocated(hhlv)) deallocate(hhlv)
         cycle
       end if
 
-      ! Matching time: proceed to read
-      deallocate(hhlv, stat=ios)
+      ! Found matching time: allocate and read
+      if (allocated(hhlv)) deallocate(hhlv)
       allocate(ilhkv(np), hd(np), idata(1, nx, ny))
+      
+      ! Allocation of the global structure for this record
       allocate(o2dvel(nrec)%x(nx,ny), o2dvel(nrec)%y(nx,ny), &
                o2dvel(nrec)%u(nx,ny), o2dvel(nrec)%v(nx,ny), &
                o2dvel(nrec)%std(nx,ny), o2dvel(nrec)%stat(nx,ny))
 
       do i = 1, nvar
-        idata = flag
+        idata = real(flag, sp)
         call fem_file_read_data(iformat, iunit, nvers, np, lmax, string, ilhkv, hd, nlvddi, idata, ierr)
         if (ierr /= 0) then
-          deallocate(ilhkv, hd, idata, stat=ios)
-          error stop 'read_2dvel: error reading data'
+          if (allocated(ilhkv)) deallocate(ilhkv, hd, idata)
+          error stop 'read_2dvel: error reading data from '//trim(filin)
         end if
+        
         select case (i)
-        case (1)
-          o2dvel(nrec)%u = idata(1,:,:)
-        case (2)
-          o2dvel(nrec)%v = idata(1,:,:)
-        case default
-          deallocate(ilhkv, hd, idata, stat=ios)
-          error stop 'read_2dvel: too many variables'
+        case (1); o2dvel(nrec)%u = real(idata(1,:,:), dp)
+        case (2); o2dvel(nrec)%v = real(idata(1,:,:), dp)
         end select
       end do
-      deallocate(ilhkv, hd, idata, stat=ios)
 
-      ! Coordinates
-      do ii = 1, nx
-        do jj = 1, ny
-          o2dvel(nrec)%x(ii,jj) = x0 + dx * real(ii-1, dp)
-          o2dvel(nrec)%y(ii,jj) = y0 + dy * real(jj-1, dp)
-        end do
+      ! Vectorized coordinate calculation (faster than nested loops)
+      do jj = 1, ny
+         o2dvel(nrec)%y(:,jj) = y0 + dy * real(jj-1, dp)
       end do
-      o2dvel(nrec)%z   = 0.0
+      do ii = 1, nx
+         o2dvel(nrec)%x(ii,:) = x0 + dx * real(ii-1, dp)
+      end do
+
+      o2dvel(nrec)%z   = 0.0_dp
       o2dvel(nrec)%nx  = nx
       o2dvel(nrec)%ny  = ny
-      o2dvel(nrec)%std = ostd   ! broadcast scalar std
+      o2dvel(nrec)%std = ostd
       o2dvel(nrec)%id  = fid
 
-      ! QC per point
+      ! Quality Control and counting
       do ix = 1, nx
         do iy = 1, ny
           uu = o2dvel(nrec)%u(ix,iy)
           vv = o2dvel(nrec)%v(ix,iy)
+          
           call check_obs('2DVEL', uu, vv, flag, ostatus)
           o2dvel(nrec)%stat(ix,iy) = ostatus
+          
           if (ostatus == 0) then
             bdata = .true.
             nobs  = nobs + 1
@@ -467,11 +357,14 @@ contains
         end do
       end do
 
-      exit   ! first matching field is enough
+      ! Cleanup and exit after first valid time match
+      if (allocated(ilhkv)) deallocate(ilhkv, hd, idata)
+      exit 
     end do
 
     close(iunit)
-    if (.not. bdata) error stop 'read_2dvel: 2DVEL file without valid data'
+    if (.not. bdata) error stop 'read_2dvel: No valid data found in '//trim(filin)
+
   end subroutine read_2dvel
 
 !======================================================================
@@ -662,7 +555,7 @@ subroutine make_super_2dvel
 end subroutine make_super_2dvel
 
 !----------------------------------------------------------------------
-!  superobs_horiz_el  (versione compatibile con find_element in real*4)
+!  superobs_horiz_el  
 !----------------------------------------------------------------------
 subroutine superobs_horiz_el(no, x, y, ostatus, val1, val2)
   use basin
@@ -676,9 +569,9 @@ subroutine superobs_horiz_el(no, x, y, ostatus, val1, val2)
   integer :: n, ie, nn, omax
   integer, allocatable :: ieobs(:)
   integer, allocatable :: oindex(:,:)
-  integer, allocatable :: nobs(:)     ! Changed to allocatable to handle memory better
+  integer, allocatable :: nobs(:)     
   real(dp) :: av1, av2
-  real(4)  :: x4, y4                  ! Consistent with find_element requirements
+  real(4)  :: x4, y4                  
 
   if (no <= 0 .or. nel <= 0) return
 

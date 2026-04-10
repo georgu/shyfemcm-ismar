@@ -59,7 +59,7 @@ program main
    !--------------------------------------------------------------------------
    ! Read and preprocess observations
    !--------------------------------------------------------------------------
-   call read_obs
+   call read_observations
 
    !--------------------------------------------------------------------------
    ! Build analysis matrices: D1, E, R, S, and innovation
@@ -68,8 +68,8 @@ program main
 
    !--------------------------------------------------------------------------
    ! Determine state dimension depending on restart layout.
-   !  - ibarcl_rst = 0 → standard state size
-   !  - ibarcl_rst ≠ 0 → larger state (baroclinic content included)
+   !  - ibarcl_rst == 0  standard state size
+   !  - ibarcl_rst /= 0  larger state (baroclinic content included)
    ! Note that the dimension of the model type is always with T/S
    !--------------------------------------------------------------------------
    if (ibarcl_rst == 0) then
