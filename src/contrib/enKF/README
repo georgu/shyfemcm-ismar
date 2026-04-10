@@ -45,6 +45,7 @@ Kalman Filter for the SHYFEM model
  - make_antime_list            : Creates the antime_list.txt for time series.
  - enKF2enKS                   : Kalman Smoother from Filter output. 
                                  NOTE: Incompatible with localization.
+ - fem2nc                      : Converts a FEM file into a NetCDF file.
 
 -------------------------------------------------------------------------------
 
