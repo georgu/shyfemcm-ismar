@@ -5,8 +5,8 @@ program fem2nc
 
     ! --- FEM Variables ---
     character(len=255) :: filename, nc_out
-    integer :: fem_unit, iformat, fem_size, nvers, np, lmax, nvar, ntype
-    integer :: datetime(2), ierr, i, l, t_idx
+    integer :: fem_unit, iformat, fem_size, nvers, np, lmax, nvar, ntype, nlvddi
+    integer :: datetime(2), ierr, i, t_idx
     real(dp) :: dtime, atime
     real(sp) :: regpar(7)
     integer :: nx, ny
@@ -37,6 +37,8 @@ program fem2nc
     ! 1. INITIAL SCAN
     call fem_file_read_open(trim(filename), fem_size, iformat, fem_unit)
     call fem_file_read_params(iformat, fem_unit, dtime, nvers, np, lmax, nvar, ntype, datetime, ierr)
+
+    nlvddi = lmax
 
     allocate(hlv(lmax))
     call fem_file_read_2header(iformat, fem_unit, ntype, lmax, hlv, regpar, ierr)
@@ -95,7 +97,10 @@ program fem2nc
     call fem_file_read_2header(iformat, fem_unit, ntype, lmax, hlv, regpar, ierr)
 
     do i = 1, nvar
-        call fem_file_read_data(iformat, fem_unit, nvers, np, lmax, vstring(i), ilhkv, hd, 1, femdata, ierr)
+        call fem_file_read_data(iformat, fem_unit, nvers, np, lmax, vstring(i), ilhkv, hd, nlvddi, femdata, ierr)
+	if (vstring(i) == "") then
+	   write(vstring(i), '(A,I0)') 'Var_', i
+	end if
         call check( nf90_def_var(ncid, trim(vstring(i)), NF90_FLOAT, active_dims(1:dim_count), data_varids(i)) )
         call check( nf90_put_att(ncid, data_varids(i), "_FillValue", flag) )
     end do
@@ -121,20 +126,20 @@ program fem2nc
         call fem_file_read_2header(iformat, fem_unit, ntype, lmax, hlv, regpar, ierr)
 
         do i = 1, nvar
-            do l = 1, lmax
-                call fem_file_read_data(iformat, fem_unit, nvers, np, lmax, vstring(i), ilhkv, hd, l, femdata, ierr)
+                call fem_file_read_data(iformat, fem_unit, nvers, np, lmax, vstring(i), ilhkv, hd, nlvddi, femdata, ierr)
 
                 dim_count = 0
                 if (nx > 1) then; dim_count = dim_count + 1; s_ptr(dim_count) = 1; c_ptr(dim_count) = nx; end if
                 if (ny > 1) then; dim_count = dim_count + 1; s_ptr(dim_count) = 1; c_ptr(dim_count) = ny; end if
-                if (lmax > 1) then; dim_count = dim_count + 1; s_ptr(dim_count) = l; c_ptr(dim_count) = 1; end if
+                if (lmax >= 1) then; dim_count = dim_count + 1; s_ptr(dim_count) = 1; c_ptr(dim_count) = lmax; end if
 
                 dim_count = dim_count + 1
                 s_ptr(dim_count) = t_idx; c_ptr(dim_count) = 1
 
-                call check( nf90_put_var(ncid, data_varids(i), femdata(l, 1:nx, 1:ny), &
+                call check( nf90_put_var(ncid, data_varids(i), real(femdata, dp), &
                             start=s_ptr(1:dim_count), count=c_ptr(1:dim_count)) )
-            end do
+                !call check( nf90_put_var(ncid, data_varids(i), real(reshape(femdata, (/ nx, ny, lmax /), order=(/ 2, 3, 1 /)), dp), &
+                !            start=s_ptr(1:dim_count), count=c_ptr(1:dim_count)) )
         end do
     end do read_loop
 

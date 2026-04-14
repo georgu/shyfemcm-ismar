@@ -95,13 +95,12 @@ program perturbe_fem_scalar
     real(dp)                          :: std_r, tau, vmin, vmax
 
     ! --- FEM format variables ---
-    integer                 :: fem_size, iformat, fem_unit, nvers, np, lmax, nvar, ntype
-    integer                 :: datetime(2), ierr, i, n, l
+    integer                 :: fem_size, iformat, fem_unit, nvers, np, lmax, nvar, ntype, nlvddi
+    integer                 :: datetime(2), ierr
     real(dp)                :: dtime, atime, atime_old
     real(sp)                :: regpar(7) 
     integer                 :: nx, ny
     real(sp)                :: x0, y0, dx, dy, flag
-    integer                 :: ne
     integer, allocatable    :: fid(:)
     character(len=255)      :: basename
 
@@ -114,6 +113,8 @@ program perturbe_fem_scalar
     real(dp), allocatable   :: var3d(:,:,:,:), var3d_ens(:,:,:,:)
     real(dp), allocatable   :: pmat(:,:,:) 
     real(dp)                :: alpha, dt_sec
+
+    integer                 :: i, j, k, l, n, ne
 
     ! CLI Arguments Parsing ---
     if (command_argument_count() /= 6) then
@@ -197,12 +198,13 @@ program perturbe_fem_scalar
 
         ! Read Nominal Variables ---
         do i = 1, nvar
-	  do l = 1, lmax
             femdata = flag
+	    nlvddi = lmax
             call fem_file_read_data(iformat, fem_unit, nvers, np, lmax, &
-                                    vstring(i), ilhkv, hd, l, femdata, ierr)
-            var3d(i, :, :, l) = femdata(l, :, :)
-	  end do
+                                    vstring(i), ilhkv, hd, nlvddi, femdata, ierr)
+	    do concurrent (l=1:lmax, j=1:nx, k=1:ny)
+               var3d(i, j, k, l) = real(femdata(l, j, k), dp)
+            end do
         end do
 
 	! Variable check
@@ -235,26 +237,24 @@ program perturbe_fem_scalar
                 ! Open member file only once at first time step
                 if (n == 1) call fem_file_write_open(trim(out_file(ne)), iformat, fid(ne))
 
-	      do l = 1, lmax
-
                 call fem_file_write_header(iformat, fid(ne), dtime, nvers, np, lmax, &
-                       nvar, ntype, l, hlv, datetime, regpar)
+                       nvar, ntype, nlvddi, hlv, datetime, regpar)
 
                 if (ne > 1) then
                    ! Compute perturbed field for this member
-		   call make_pert_field(nvar, ne-1, nrens-1, nx, ny, l, lmax, hlv, var3d, var3d_ens, &
+		   call make_pert_field(nvar, ne-1, nrens-1, nx, ny, nlvddi, lmax, hlv, var3d, var3d_ens, &
                         std_r, vmin, vmax, pmat)
                 else
                       var3d_ens = var3d
                 end if
 
                 do i = 1, nvar
-                    femdata(l, :, :) = real(var3d_ens(i,:,:,l), sp)
+	            do concurrent (l=1:lmax, j=1:nx, k=1:ny)
+                       femdata(l, j, k) = real(var3d(i, j, k, l), sp)
+                    end do
                     call fem_file_write_data(iformat, fid(ne), nvers, np, lmax, &
-                           vstring(i), ilhkv, hd, l, femdata)
+                           vstring(i), ilhkv, hd, nlvddi, femdata)
                 end do
-
-              end do
 
             end do
 
