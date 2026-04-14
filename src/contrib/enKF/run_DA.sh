@@ -100,6 +100,8 @@ create_ensemble_data() {
 perturb_forcings_interactive() {
     echo ">>> Step 4: Boundary & Forcing Perturbation"
     local base_str=$(ls *.str 2>/dev/null | head -n 1)
+    
+    # Extract filenames ONLY within valid $sections
     local files=$(awk '/\$end/ {in_sec=0} /\$[a-zA-Z0-9]+/ {in_sec=1} in_sec && /boundn|saltn|tempn|vel3dn|wind|rain|qflux|saltin|tempin/ {if (match($0, /[\047"][^\047"]+\.(dat|fem|txt)[\047"]/)) {print substr($0, RSTART+1, RLENGTH-2)}}' "$base_str" | sort -u)
 
     for f in $files; do
@@ -111,23 +113,41 @@ perturb_forcings_interactive() {
         echo "------------------------------------------------"
         echo "Detected forcing file: $full_name"
         read -p "--- [INPUT] Perturb this forcing to create ensemble variations? (y/n): " do_p
+        
         if [[ "$do_p" == "y" ]]; then
-            if [[ "$ext" == "dat" ]]; then
-                read -p "      > Time Series Perturbation (STD MIN MAX Tau_rn): " TS_STD TS_MIN TS_MAX TS_TAU
+            # --- CASE 1: WIND & PRESSURE (Data/Text files) ---
+            if [[ "$full_name" == *"wind"* || "$full_name" == *"press"* ]] && [[ "$ext" == "dat" || "$ext" == "txt" ]]; then
+                read -p "      > Wind TS Params (Format[0:u,v 1:ws,dir] Press[0:no 1:yes] STD_w STD_p Tau): " W_FMT W_PR W_STDW W_STDP W_TAU
+                bash "$ENKF_DIR/perturbe_ts_wind_press.sh" "$f" "$NRENS" "$W_FMT" "$W_PR" "$W_STDW" "$W_STDP" "$W_TAU"
+
+            # --- CASE 2: HEAT FLUX (Data/Text files) ---
+            elif [[ "$full_name" == *"heat"* || "$full_name" == *"qflux"* ]] && [[ "$ext" == "dat" || "$ext" == "txt" ]]; then
+                read -p "      > Heat TS Params (STD_Solar STD_Temp STD_Humi STD_Cloud Tau): " H_S H_A H_H H_C H_T
+                bash "$ENKF_DIR/perturbe_ts_heat.sh" "$f" "$NRENS" "$H_S" "$H_A" "$H_H" "$H_C" "$H_T"
+
+            # --- CASE 3: SIMPLE SCALAR TIME SERIES (.dat or .txt) ---
+            elif [[ "$ext" == "dat" || "$ext" == "txt" ]]; then
+                read -p "      > Simple TS Params (STD MIN MAX Tau): " TS_STD TS_MIN TS_MAX TS_TAU
                 "$ENKF_DIR/perturbe_ts" "$f" "$NRENS" "$TS_STD" "$TS_TAU" "$TS_MIN" "$TS_MAX"
-            elif [[ "$full_name" == *"wind"* || "$full_name" == *"press"* ]]; then
-                read -p "      > Wind/Pressure Params (Method[1:P+W, 2:W] STD Tau_rn): " W_TYPE W_STD W_TAU
-                "$ENKF_DIR/perturbe_fem_wind_press" "$f" "$NRENS" "$W_TYPE" "$W_STD" "$W_TAU"
-            elif [[ "$full_name" == *"heat"* || "$full_name" == *"qflux"* ]]; then
-                read -p "      > Heat Flux Params (STD_Solar STD_Temp STD_Humi STD_Cloud Tau_rn): " H_S H_A H_H H_C H_T
-                "$ENKF_DIR/perturbe_fem_heat" "$f" "$NRENS" "$H_S" "$H_A" "$H_H" "$H_C" "$H_T"
-            else
-                read -p "      > Generic Scalar Params (STD MIN MAX Tau_rn): " S_STD S_VMIN S_VMAX S_TAU
-                "$ENKF_DIR/perturbe_fem_scalar" "$f" "$NRENS" "$S_STD" "$S_VMIN" "$S_VMAX" "$S_TAU"
+
+            # --- CASE 4: FINITE ELEMENT FILES (.fem) ---
+            elif [[ "$ext" == "fem" ]]; then
+                if [[ "$full_name" == *"wind"* || "$full_name" == *"press"* ]]; then
+                    read -p "      > Wind FEM Params (Method[1:P+W, 2:W] STD Tau): " W_TYPE W_STD W_TAU
+                    "$ENKF_DIR/perturbe_fem_wind_press" "$f" "$NRENS" "$W_TYPE" "$W_STD" "$W_TAU"
+                elif [[ "$full_name" == *"heat"* || "$full_name" == *"qflux"* ]]; then
+                    read -p "      > Heat FEM Params (STD_S STD_T STD_H STD_C Tau): " H_S H_A H_H H_C H_T
+                    "$ENKF_DIR/perturbe_fem_heat" "$f" "$NRENS" "$H_S" "$H_A" "$H_H" "$H_C" "$H_T"
+                else
+                    read -p "      > Scalar FEM Params (STD MIN MAX Tau): " S_STD S_VMIN S_VMAX S_TAU
+                    "$ENKF_DIR/perturbe_fem_scalar" "$f" "$NRENS" "$S_STD" "$S_VMIN" "$S_VMAX" "$S_TAU"
+                fi
             fi
+
+            # Move results to DA directory
             mv ${name}_[0-9][0-9][0-9].${ext} "$DA_DIR/" 2>/dev/null
         else
-            echo "      - Copying original $full_name as static forcing for all members."
+            echo "      - Copying original $full_name as static forcing."
             cp "$DET_DIR/$f" "$DA_DIR/$full_name"
         fi
     done
@@ -136,17 +156,43 @@ perturb_forcings_interactive() {
 #===================
 handle_observations() {
     echo ">>> Step 5: Observations & Analysis Timeline"
+    
     if [ -f "$OBS_DIR/obs_list.txt" ]; then
         echo "Found obs_list.txt. Linking observation data files..."
         cp "$OBS_DIR/obs_list.txt" "$DA_DIR/"
         ln -sf "$OBS_DIR"/*.{dat,txt} "$DA_DIR/" 2>/dev/null
     else
-        echo "WARNING: obs_list.txt not found in $OBS_DIR. Data assimilation will not be possible."
+        echo "WARNING: obs_list.txt not found in $OBS_DIR."
+        read -p "--- [INPUT] Would you like to create it now? (yes/no): " create_obs
+        
+        if [[ "$create_obs" == "yes" ]]; then
+            echo "--- Interactive Creation of obs_list.txt ---"
+            echo "# OBS_TYPE FILENAME X Y Z STD RHO" > "$DA_DIR/obs_list.txt"
+            
+            while true; do
+                echo "Enter observation details (or type 'done' to finish):"
+                read -p "Type (e.g., 0DSAL): " obs_type
+                [[ "$obs_type" == "done" ]] && break
+                
+                read -p "Filename: " obs_file
+                read -p "X (Lon): " obs_x
+                read -p "Y (Lat): " obs_y
+                read -p "Z (Depth): " obs_z
+                read -p "STD (Std Dev): " obs_std
+                read -p "RHO (Correlation): " obs_rho
+                
+                echo "$obs_type $obs_file $obs_x $obs_y $obs_z $obs_std $obs_rho" >> "$DA_DIR/obs_list.txt"
+                echo "Row added."
+            done
+            echo "obs_list.txt created successfully in $DA_DIR."
+        else
+            echo "Data assimilation will not be possible without obs_list.txt."
+        fi
     fi
 
     if [ -f "$ENKF_DIR/make_antime_list" ] && [ -f "$DA_DIR/obs_list.txt" ]; then
         echo "Configuring the Analysis list (frequency of DA steps)..."
-	echo "Initial date: $R_DATE"
+        echo "Initial date: $R_DATE"
         read -p "--- [INPUT] Enter simulation final date (yyyy-mm-dd::HH:MM:SS): " T_END
         read -p "--- [INPUT] Enter minimum delta-time between analyses [seconds]: " T_DT
         (cd "$DA_DIR" && "$ENKF_DIR/make_antime_list" "$R_DATE" "$T_END" "$T_DT" "obs_list.txt")

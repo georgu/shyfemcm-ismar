@@ -36,16 +36,25 @@ Kalman Filter for the SHYFEM model
  - perturbe_state              : Generates an ensemble of perturbed RST files
  - perturbe_ts                 : Generates an ensemble of perturbed timeseries
                                  with one valyue and SHYFEM time notation
+ - perturbe_ts_wind_press.sh   : Generates an ensemble of perturbed timeseries
+                                 with wind/pressure files and SHYFEM time notation
+ - perturbe_ts_heat.sh         : Generates an ensemble of perturbed timeseries
+                                 with heat files and SHYFEM time notation
  - perturbe_fem_wind_press     : Generates an ensemble of perturbed FEM files
                                  from a wind&pressure FEM file
  - perturbe_fem_heat           : Generates an ensemble of perturbed FEM files
                                  from a heat FEM file
  - perturbe_fem_scalar         : Generates an ensemble of perturbed FEM files
                                  from a scalar (2D/3D) file (e.g., rain)
- - make_antime_list            : Creates the antime_list.txt for time series.
+ - make_antime_list            : Creates the antime_list.txt for time series
+                                 from obs_list.txt
  - enKF2enKS                   : Kalman Smoother from Filter output. 
                                  NOTE: Incompatible with localization.
  - fem2nc                      : Converts a FEM file into a NetCDF file.
+ - run_DA.sh                   : Interactive script that makes a DA simulation
+                                 in a new folder. You need a dir with a deterministic 
+                                 simulation made, and a folder named "observations" 
+                                 with the observations for DA
 
 -------------------------------------------------------------------------------
 
