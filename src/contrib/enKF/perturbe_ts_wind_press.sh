@@ -40,33 +40,34 @@ if [ ! -f "$filewp" ]; then
     exit 1
 fi
 
-bname=$(echo "$filewp" | cut -d "." -f 1)
-ext=$(echo "$filewp" | cut -d "." -f 2)
+fname="${filewp##*/}"
+bname="${fname%.*}"
+ext="${fname##*.}"
 
 # --- 1. Extract Wind Speed (Magnitude) for perturbation ---
 if [ "$isws" -eq "0" ]; then
     # Input is u, v components: calculate ws = sqrt(u^2 + v^2)
-    awk '{print $1, sqrt($2^2 + $3^2)}' "$filewp" > ws.txt
+    awk '{print $1, sqrt($2^2 + $3^2)}' "$filewp" > ws.dat
 else    
     # Input is already wind speed and direction
-    awk '{print $1, $2}' "$filewp" > ws.txt
+    awk '{print $1, $2}' "$filewp" > ws.dat
 fi      
 
 # Perturb the magnitude using the scalar perturbation tool
 # Limits set to 0.0 and 60.0 m/s
-"$ENKF_DIR/perturbe_ts" ws.txt "$nrens" "$STD_w" "$Tau" 0. 60.
+"$ENKF_DIR/perturbe_ts" ws.dat "$nrens" "$STD_w" "$Tau" 0. 60.
 
 # --- 2. Handle Pressure if required ---
 if [ "$ispress" -eq "1" ]; then
    # Extract column 1 (time) and 4 (pressure)
-   awk '{print $1, $4}' "$filewp" > press.txt
+   awk '{print $1, $4}' "$filewp" > press.dat
    # Perturb pressure (limits roughly 90000 to 110000 Pa)
-   "$ENKF_DIR/perturbe_ts" press.txt "$nrens" "$STD_p" "$Tau" 90000. 110000.
+   "$ENKF_DIR/perturbe_ts" press.dat "$nrens" "$STD_p" "$Tau" 90000. 110000.
 fi 
 
 # --- 3. Reconstruct Ensemble Members ---
 echo "Reconstructing $nrens ensemble members..."
-for ffile in ws_[0-9][0-9][0-9].txt; do
+for ffile in ws_[0-9][0-9][0-9].dat; do
     idx=${ffile:3:3}
     
     if [ "$isws" -eq "0" ]; then
@@ -74,30 +75,32 @@ for ffile in ws_[0-9][0-9][0-9].txt; do
         # to scale components while preserving the original direction.
         paste "$filewp" "$ffile" | awk -v ispr="$ispress" '{
             orig_ws = sqrt($2^2 + $3^2);
-            new_ws  = $5;
-            ratio = (orig_ws > 0.001) ? new_ws / orig_ws : 0;
-            
+            # Intermediate step for pressure merge
             if (ispr == "1") {
-                # Intermediate step for pressure merge
-                printf "%s %f %f ", $1, $2*ratio, $3*ratio;
+                new_ws  = $6;
+                ratio = (orig_ws > 0.001) ? new_ws / orig_ws : 0;
+                # Final format (time, u, v, p)
+                printf "%s %f %f %f\n", $1, $2*ratio, $3*ratio, $4;
             } else {
+                new_ws  = $5;
+                ratio = (orig_ws > 0.001) ? new_ws / orig_ws : 0;
                 # Final format (time, u, v)
                 printf "%s %f %f\n", $1, $2*ratio, $3*ratio;
             }
-        }' > tmp_u_v_$idx.txt
+        }' > tmp_u_v_$idx.dat
 
         if [ "$ispress" -eq "1" ]; then
             # Merge scaled u,v with perturbed pressure
-            paste tmp_u_v_$idx.txt "press_$idx.txt" | awk '{print $1, $2, $3, $5}' > "${bname}_$idx.$ext"
+            paste tmp_u_v_$idx.dat "press_$idx.dat" | awk '{print $1, $2, $3, $6}' > "${bname}_$idx.$ext"
         else
-            mv tmp_u_v_$idx.txt "${bname}_$idx.$ext"
+            mv tmp_u_v_$idx.dat "${bname}_$idx.$ext"
         fi
-        rm -f tmp_u_v_$idx.txt
+        rm -f tmp_u_v_$idx.dat
 
     else
         # CASE WS, DIR: Simply replace wind speed and keep original direction
         if [ "$ispress" -eq "1" ]; then
-            paste "$filewp" "$ffile" "press_$idx.txt" | awk '{print $1, $5, $3, $7}' > "${bname}_$idx.$ext"
+            paste "$filewp" "$ffile" "press_$idx.dat" | awk '{print $1, $6, $3, $8}' > "${bname}_$idx.$ext"
         else
             paste "$filewp" "$ffile" | awk '{print $1, $5, $3}' > "${bname}_$idx.$ext"
         fi
@@ -105,6 +108,6 @@ for ffile in ws_[0-9][0-9][0-9].txt; do
 done
 
 # --- 4. Cleanup temporary files ---
-rm -f ws.txt press.txt ws_[0-9][0-9][0-9].txt press_[0-9][0-9][0-9].txt 2>/dev/null
+rm -f ws.dat press.dat ws_[0-9][0-9][0-9].dat press_[0-9][0-9][0-9].dat 2>/dev/null
 echo "Done. Ensemble files created: ${bname}_XXX.${ext}"
 
