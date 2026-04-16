@@ -271,8 +271,14 @@ run_enkf() {
 
     [ -f "$DET_DIR/lbound.dat" ] && cp "$DET_DIR/lbound.dat" "$DA_DIR/"
     
-    echo "Setup complete. Moving to $DA_DIR to launch the simulation."
-    cd "$DA_DIR" && bash "$ENKF_DIR/enKF.sh" "$DA_METHOD" "$DA_LOC" "$DA_THREADS" "$DA_OUT"
+    read -p "--- [INPUT] Run the DA code? (y/n): " do_p
+    if [ "$do_p" == "y" ]; then
+       echo "Setup complete. Moving to $DA_DIR to launch the simulation."
+       cd "$DA_DIR" 
+       bash "$ENKF_DIR/enKF.sh" "$DA_METHOD" "$DA_LOC" "$DA_THREADS" "$DA_OUT"
+    else
+       echo "Go to the DA dir and run: $ENKF_DIR/enKF.sh $DA_METHOD $DA_LOC $DA_THREADS $DA_OUT"
+    fi
 }
 
 # Main Execution Flow
