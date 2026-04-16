@@ -47,13 +47,67 @@ subroutine generate_ensemble_perturbations(nx, ny, nrens, &
 end subroutine generate_ensemble_perturbations
 
 !============================================================================================
+subroutine generate_random_pert(nrens, nx, ny, pmat)
+    use, intrinsic :: iso_fortran_env, only: dp => real64
+    implicit none
+    
+    ! Arguments
+    integer, intent(in) :: nrens, nx, ny
+    real(dp), intent(out) :: pmat(nx, ny, nrens)
+    
+    ! Local variables
+    real(dp) :: temp_vec(nrens)
+    real(dp) :: u1, u2, r, factor, v_mean
+    integer :: i, j, k
+    real(dp), parameter :: limit = 4.0_dp ! Clipping threshold
+
+    ! 1. Generate Gaussian random vector (Mean 0, Std 1) using Box-Muller
+    k = 1
+    do while (k <= nrens)
+        do
+            call random_number(u1)
+            call random_number(u2)
+            u1 = 2.0_dp * u1 - 1.0_dp
+            u2 = 2.0_dp * u2 - 1.0_dp
+            r = u1**2 + u2**2
+            if (r > 0.0_dp .and. r < 1.0_dp) exit
+        end do
+        
+        factor = sqrt(-2.0_dp * log(r) / r)
+        temp_vec(k) = u1 * factor
+        if (k + 1 <= nrens) temp_vec(k+1) = u2 * factor
+        k = k + 2
+    end do
+
+    ! 2. Optional: Force zero mean to prevent bias in EnKF
+    v_mean = sum(temp_vec) / real(nrens, dp)
+    temp_vec = temp_vec - v_mean
+
+    ! 3. Control extreme values (Clipping)
+    where (temp_vec > limit)
+        temp_vec = limit
+    elsewhere (temp_vec < -limit)
+        temp_vec = -limit
+    end where
+
+    ! 4. Distribute vector to the matrix
+    do j = 1, ny
+        do i = 1, nx
+            pmat(i, j, :) = temp_vec
+        end do
+    end do
+
+end subroutine generate_random_pert
+
+
+!============================================================================================
 subroutine make_pert_field(nvar, ne, nrens, nx, ny, l, lmax, hlv, var3d, var3d_ens, &
     std_r, vmin, vmax, pmat)
 
-    use iso_fortran_env, only : dp => real64, sp => real32, error_unit
+    use iso_fortran_env, only : dp => real64, sp => real32
     implicit none
 
-    ! --- Arguments ---
+    ! Arguments
     integer,  intent(in)    :: nvar, ne, nrens, nx, ny, lmax, l
     real(dp), intent(in)    :: pmat(nx, ny, nrens)
     real(sp), intent(in)    :: hlv(lmax)
@@ -61,24 +115,26 @@ subroutine make_pert_field(nvar, ne, nrens, nx, ny, l, lmax, hlv, var3d, var3d_e
     real(dp), intent(out)   :: var3d_ens(nvar, nx, ny, lmax)
     real(dp), intent(in)    :: std_r, vmin, vmax
 
-    ! --- Local variables ---
-    real(dp), allocatable   :: pvar(:,:)
-    integer                 :: i, j
+    ! Local variables
+    real(dp) :: scaling_factor
 
-    allocate(pvar(nx, ny))
-    var3d_ens = var3d ! Initialize with background
+    ! 1. Initialize output with background values (entire 4D volume)
+    var3d_ens = var3d 
 
-    ! (Index 1)
-    pvar(:,:) = var3d(1,:,:,l) + ( std_r * pmat(:,:,ne) * real(hlv(1), dp) / real(hlv(l), dp) )
-    do j = 1, ny
-       do i = 1, nx
-          if (pvar(i,j) < vmin) pvar(i,j) = vmin
-          if (pvar(i,j) > vmax) pvar(i,j) = vmax
-       end do
-    end do
-    var3d_ens(1,:,:,l) = pvar
+    ! 2. Calculate vertical scaling (hyperbolic dampening: 1/z)
+    ! Protect against division by zero if hlv(l) is not yet set
+    if (hlv(l) > 0.0_sp) then
+        scaling_factor = real(hlv(1), dp) / real(hlv(l), dp)
+    else
+        scaling_factor = 1.0_dp
+    end if
 
-    deallocate(pvar)
+    ! 3. Apply perturbation to the first variable (index 1) at level l
+    ! The scaling_factor reduces the std_r as depth increases
+    var3d_ens(1,:,:,l) = var3d(1,:,:,l) + ( std_r * pmat(:,:,ne) * scaling_factor )
+
+    ! 4. Final clipping to physical range [vmin, vmax]
+    var3d_ens(1,:,:,l) = max(vmin, min(vmax, var3d_ens(1,:,:,l)))
 
 end subroutine make_pert_field
 
@@ -91,7 +147,7 @@ program perturbe_fem_scalar
     ! --- CLI and File variables ---
     character(len=255)                :: filename, arg
     character(len=255), allocatable   :: out_file(:)
-    integer                           :: nrens, dot_pos, pert_type
+    integer                           :: nrens, dot_pos, ptype
     real(dp)                          :: std_r, tau, vmin, vmax
 
     ! --- FEM format variables ---
@@ -117,12 +173,13 @@ program perturbe_fem_scalar
     integer                 :: i, j, k, l, n, ne
 
     ! CLI Arguments Parsing ---
-    if (command_argument_count() /= 6) then
+    if (command_argument_count() /= 7) then
 	write(error_unit, '(A)')
-        write(error_unit, '(A)') "Usage: ./perturbe_fem_scalar <filename> <nrens> <STD_r> <vmin> <vmax> <Tau>"
+        write(error_unit, '(A)') "Usage: ./perturbe_fem_scalar <filename> <nrens> <ptype> <STD_r> <vmin> <vmax> <Tau>"
 	write(error_unit, '(A)')
 	write(error_unit, '(A)') "filename: FEM file"
 	write(error_unit, '(A)') "nrens: number of ensemble members, control included"
+	write(error_unit, '(A)') "ptype: type of perturbation, scalar (1), 2D pseudo-Gaussian (2)"
 	write(error_unit, '(A)') "STD_r: error (standard deviation) for the scalar"
 	write(error_unit, '(A)') "vmin: minimum value for the scalar"
 	write(error_unit, '(A)') "vmax: maximum value for the scalar"
@@ -133,13 +190,11 @@ program perturbe_fem_scalar
         
     call get_command_argument(1, filename)
     call get_command_argument(2, arg); read(arg, *) nrens
-    call get_command_argument(3, arg); read(arg, *) std_r
-    call get_command_argument(4, arg); read(arg, *) vmin
-    call get_command_argument(5, arg); read(arg, *) vmax
-    call get_command_argument(6, arg); read(arg, *) tau ! Tau in seconds
-
-    ! only one for the moment
-    pert_type = 1
+    call get_command_argument(3, arg); read(arg, *) ptype
+    call get_command_argument(4, arg); read(arg, *) std_r
+    call get_command_argument(5, arg); read(arg, *) vmin
+    call get_command_argument(6, arg); read(arg, *) vmax
+    call get_command_argument(7, arg); read(arg, *) tau ! Tau in seconds
 
     dot_pos = index(filename, '.', back=.true.)
     basename = merge(filename(1:dot_pos-1), trim(filename), dot_pos > 0)
@@ -192,7 +247,7 @@ program perturbe_fem_scalar
         if (.not. allocated(var3d))     allocate(var3d(nvar, nx, ny, lmax))
         if (.not. allocated(var3d_ens)) allocate(var3d_ens(nvar, nx, ny, lmax))
         if (.not. allocated(pmat)) then
-            allocate(pmat(nx, ny, nrens))
+            allocate(pmat(nx, ny, nrens-1))
             pmat = 0.0_dp ! Zero start for AR1
         end if
 
@@ -219,9 +274,42 @@ program perturbe_fem_scalar
         end if
 
         ! Perturbation Logic ---
-        select case (pert_type)
+        select case (ptype)
 	! ------------------------------------
-        case(1) ! 2D pseudo-Gaussian field. 
+        case(1) ! Scalar. 
+            
+            if (n == 1) write(*,*) 'Scalar field'
+
+            call generate_random_pert(nrens-1, nx, ny, pmat)
+
+            do ne = 1, nrens
+
+                ! Open member file only once at first time step
+                if (n == 1) call fem_file_write_open(trim(out_file(ne)), iformat, fid(ne))
+
+                call fem_file_write_header(iformat, fid(ne), dtime, nvers, np, lmax, &
+                       nvar, ntype, nlvddi, hlv, datetime, regpar)
+
+                if (ne > 1) then
+                   ! Compute perturbed field for this member
+		   call make_pert_field(nvar, ne-1, nrens-1, nx, ny, nlvddi, lmax, hlv, var3d, var3d_ens, &
+                        std_r, vmin, vmax, pmat)
+                else
+                      var3d_ens = var3d
+                end if
+
+                do i = 1, nvar
+	            do concurrent (l=1:lmax, j=1:nx, k=1:ny)
+                       femdata(l, j, k) = real(var3d(i, j, k, l), sp)
+                    end do
+                    call fem_file_write_data(iformat, fid(ne), nvers, np, lmax, &
+                           vstring(i), ilhkv, hd, nlvddi, femdata)
+                end do
+
+            end do
+
+	! ------------------------------------
+        case(2) ! 2D pseudo-Gaussian field. 
             
             if (n == 1) write(*,*) '2D pseudo-Gaussian field. One for all variables'
 

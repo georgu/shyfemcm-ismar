@@ -227,7 +227,7 @@ program perturbe_fem_heat
         if (.not. allocated(var3d))     allocate(var3d(nvar, nx, ny, lmax))
         if (.not. allocated(var3d_ens)) allocate(var3d_ens(nvar, nx, ny, lmax))
         if (.not. allocated(pmat)) then
-            allocate(pmat(nx, ny, nrens))
+            allocate(pmat(nx, ny, nrens-1))
             pmat = 0.0_dp ! Zero start for AR1
         end if
 

@@ -84,8 +84,8 @@ perturb_forcings_interactive() {
                     read -p "      > Heat FEM Params (STD_S STD_T STD_H STD_C Tau): " H_S H_A H_H H_C H_T
                     "$ENKF_DIR/perturbe_fem_heat" "$fname" "$NRENS" "$H_S" "$H_A" "$H_H" "$H_C" "$H_T"
                 else
-                    read -p "      > Scalar FEM Params (STD MIN MAX Tau): " S_STD S_VMIN S_VMAX S_TAU
-                    "$ENKF_DIR/perturbe_fem_scalar" "$fname" "$NRENS" "$S_STD" "$S_VMIN" "$S_VMAX" "$S_TAU"
+                    read -p "      > Scalar FEM Params (STD MIN MAX Tau PType): " S_STD S_VMIN S_VMAX S_TAU S_TYP
+                    "$ENKF_DIR/perturbe_fem_scalar" "$fname" "$NRENS" "$S_TYP" "$S_STD" "$S_VMIN" "$S_VMAX" "$S_TAU"
                 fi
             fi
 
@@ -124,6 +124,7 @@ create_ensemble_data() {
             read -p "    > Vertical levels (nlv): " R_NLV
             read -p "    > Amplitude SSH/T/S (errz errt errs): " R_ERRZ R_ERRT R_ERRS
             "$ENKF_DIR/perturbe_state" "$basin_f" "$base_rst" "$R_DATE" "$R_NLV" "$NRENS" "$R_ERRZ" "$R_ERRT" "$R_ERRS"
+            rm -f $DET_DIR/newton.*
         else
             read -p "--- [INPUT] Start date (yyyy-mm-dd::HH:MM:SS): " R_DATE
             for ((i=0; i<NRENS; i++)); do cp "$base_rst" "${rst_name}_$(printf "%03d" $i).rst"; done
@@ -158,7 +159,7 @@ create_ensemble_data() {
             # Inject mandatory variables at the beginning of $para
             printf "        itanf  = \047ITANF\047  itend  = \047ITEND\047\n"
             printf "        itrst  = \047ITANF\047\n"
-            printf "        idtrst = -1\n"
+            printf "        idtrst = IDTRST\n"
             printf "        nocheck = 1\n"
             next 
         }
