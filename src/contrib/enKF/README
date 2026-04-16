@@ -21,6 +21,37 @@ Kalman Filter for the SHYFEM model
     See <http://www.gnu.org/licenses/>.
 
 -------------------------------------------------------------------------------
+ HOWTO RUN DA:
+-------------------------------------------------------------------------------
+There is a automatic script (run_DA.sh) to run DA in some minutes! You need:
+
+ - A deterministic simulation covering the period of the DA run;
+ - A folder, inside the folder of the det simulation, named "observations"
+   with all the observations that you want to assimilate.
+
+First download SHYFEMCM-ISMAR with enKF, you find it in the official Github.
+Compile SHYFEM with OpenMP (not MPI) and goes in src/contrib/enKF. Compile
+with make cleanall and make all.
+
+Then the deterministic run must have a RST file with a state at the initial
+time of the DA run. You need also at least one observation at this time. A
+.bas and a .str file must be present in this folder, as well. Avoid multiple
+str, bas or rst files in this folder. You can also prepare obs_list.txt in the
+folder observations (see below how to do it), otherwise you can do it
+interactiveley with the script. Remember also that only one type of
+observation (TEM, SAL, LEV) can be assimilated at each analysis step. You can
+stagger them in time. Also a odd number of ensemble members (even + 1 control)
+must be used.
+At this point go to the deterministic folder and run run_DA.sh. A new folder
+containing everything, named sim_DA, will be created. If this folder exists it
+will be overwritten.
+At the end of the DA run you will have RST files of the ensemble mean and std.
+You can use rst2shy to convert them in shy files.
+Other useful scripts are described below.
+The observations implemented must be timeseries in SHYFEM format .dat or .txt,
+the 2D .fem files are experimental. The forcings must be .dat .txt or .fem.
+
+-------------------------------------------------------------------------------
  SCRIPT AND UTILITY:
 -------------------------------------------------------------------------------
 
