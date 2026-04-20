@@ -7,10 +7,10 @@ subroutine generate_ensemble_perturbations(nx, ny, nrens, &
     implicit none
 
     ! Arguments
-    integer, intent(in)          :: nx, ny, nrens
-    real(dp), intent(in)         :: dx_deg, dy_deg, y0_lat
-    real(dp), intent(in)         :: rx_km, ry_km, alpha
-    real(dp), intent(inout)      :: pmat(nx, ny, nrens)   ! Persistent AR1 state
+    integer, intent(in)            :: nx, ny, nrens
+    real(dp), intent(in)           :: dx_deg, dy_deg, y0_lat
+    real(dp), intent(in)           :: rx_km, ry_km, alpha
+    real(dp), intent(inout)        :: pmat(nx, ny, nrens)   ! Persistent AR1 state
 
     ! Local variables
     real(dp) :: dx_m, dy_m, rx_m, ry_m, lat_rad
@@ -47,16 +47,18 @@ subroutine generate_ensemble_perturbations(nx, ny, nrens, &
 end subroutine generate_ensemble_perturbations
 
 !============================================================================================
-subroutine generate_random_pert(nrens, nx, ny, pmat)
+subroutine generate_random_pert(nrens, nx, ny, pmat, alpha)
     use, intrinsic :: iso_fortran_env, only: dp => real64
     implicit none
     
     ! Arguments
-    integer, intent(in) :: nrens, nx, ny
-    real(dp), intent(out) :: pmat(nx, ny, nrens)
+    integer, intent(in)           :: nrens, nx, ny
+    real(dp), intent(inout)       :: pmat(nx, ny, nrens)
+    real(dp), intent(in)          :: alpha
     
     ! Local variables
     real(dp) :: temp_vec(nrens)
+    real(dp) :: amat(nx, ny, nrens)
     real(dp) :: u1, u2, r, factor, v_mean
     integer :: i, j, k
     real(dp), parameter :: limit = 4.0_dp ! Clipping threshold
@@ -93,22 +95,28 @@ subroutine generate_random_pert(nrens, nx, ny, pmat)
     ! 4. Distribute vector to the matrix
     do j = 1, ny
         do i = 1, nx
-            pmat(i, j, :) = temp_vec
+            amat(i, j, :) = temp_vec
         end do
     end do
+
+    ! --- 3. Apply AR1 Temporal Evolution (Red Noise) ---
+    ! pmat is the noise field
+    ! pmat(t) = alpha * pmat(t-1) + sqrt(1 - alpha^2) * NewNoise
+    pmat = alpha * pmat + sqrt(1.0_dp - alpha**2) * amat
+
 
 end subroutine generate_random_pert
 
 
 !============================================================================================
-subroutine make_pert_field(nvar, ne, nrens, nx, ny, l, lmax, hlv, var3d, var3d_ens, &
+subroutine make_pert_field(nvar, ne, nrens, nx, ny, lmax, hlv, var3d, var3d_ens, &
     std_r, vmin, vmax, pmat)
 
     use iso_fortran_env, only : dp => real64, sp => real32
     implicit none
 
     ! Arguments
-    integer,  intent(in)    :: nvar, ne, nrens, nx, ny, lmax, l
+    integer,  intent(in)    :: nvar, ne, nrens, nx, ny, lmax
     real(dp), intent(in)    :: pmat(nx, ny, nrens)
     real(sp), intent(in)    :: hlv(lmax)
     real(dp), intent(in)    :: var3d(nvar, nx, ny, lmax)
@@ -117,24 +125,32 @@ subroutine make_pert_field(nvar, ne, nrens, nx, ny, l, lmax, hlv, var3d, var3d_e
 
     ! Local variables
     real(dp) :: scaling_factor
+    integer  :: l, i
 
     ! 1. Initialize output with background values (entire 4D volume)
     var3d_ens = var3d 
 
-    ! 2. Calculate vertical scaling (hyperbolic dampening: 1/z)
-    ! Protect against division by zero if hlv(l) is not yet set
-    if (hlv(l) > 0.0_sp) then
-        scaling_factor = real(hlv(1), dp) / real(hlv(l), dp)
-    else
-        scaling_factor = 1.0_dp
-    end if
+    do l = 1, lmax
 
-    ! 3. Apply perturbation to the first variable (index 1) at level l
-    ! The scaling_factor reduces the std_r as depth increases
-    var3d_ens(1,:,:,l) = var3d(1,:,:,l) + ( std_r * pmat(:,:,ne) * scaling_factor )
+       ! 2. Calculate vertical scaling (hyperbolic dampening: 1/z)
+       ! Protect against division by zero if hlv(l) is not yet set
+       if (hlv(l) > 0.0_sp) then
+           scaling_factor = real(hlv(1), dp) / real(hlv(l), dp)
+       else
+           scaling_factor = 1.0_dp
+       end if
 
-    ! 4. Final clipping to physical range [vmin, vmax]
-    var3d_ens(1,:,:,l) = max(vmin, min(vmax, var3d_ens(1,:,:,l)))
+      do i = 1, nvar  ! Only one STD for all vars!!!
+
+       ! 3. Apply perturbation to the first variable (index 1) at level l
+       ! The scaling_factor reduces the std_r as depth increases
+       var3d_ens(i,:,:,l) = var3d(i,:,:,l) + ( std_r * pmat(:,:,ne) * scaling_factor )
+
+       ! 4. Final clipping to physical range [vmin, vmax]
+       var3d_ens(i,:,:,l) = max(vmin, min(vmax, var3d_ens(i,:,:,l)))
+
+      end do
+    end do
 
 end subroutine make_pert_field
 
@@ -280,7 +296,7 @@ program perturbe_fem_scalar
             
             if (n == 1) write(*,*) 'Scalar field'
 
-            call generate_random_pert(nrens-1, nx, ny, pmat)
+            call generate_random_pert(nrens-1, nx, ny, pmat, alpha)
 
             do ne = 1, nrens
 
@@ -292,7 +308,7 @@ program perturbe_fem_scalar
 
                 if (ne > 1) then
                    ! Compute perturbed field for this member
-		   call make_pert_field(nvar, ne-1, nrens-1, nx, ny, nlvddi, lmax, hlv, var3d, var3d_ens, &
+		   call make_pert_field(nvar, ne-1, nrens-1, nx, ny, lmax, hlv, var3d, var3d_ens, &
                         std_r, vmin, vmax, pmat)
                 else
                       var3d_ens = var3d
@@ -300,7 +316,7 @@ program perturbe_fem_scalar
 
                 do i = 1, nvar
 	            do concurrent (l=1:lmax, j=1:nx, k=1:ny)
-                       femdata(l, j, k) = real(var3d(i, j, k, l), sp)
+                       femdata(l, j, k) = real(var3d_ens(i, j, k, l), sp)
                     end do
                     call fem_file_write_data(iformat, fid(ne), nvers, np, lmax, &
                            vstring(i), ilhkv, hd, nlvddi, femdata)
@@ -330,7 +346,7 @@ program perturbe_fem_scalar
 
                 if (ne > 1) then
                    ! Compute perturbed field for this member
-		   call make_pert_field(nvar, ne-1, nrens-1, nx, ny, nlvddi, lmax, hlv, var3d, var3d_ens, &
+		   call make_pert_field(nvar, ne-1, nrens-1, nx, ny, lmax, hlv, var3d, var3d_ens, &
                         std_r, vmin, vmax, pmat)
                 else
                       var3d_ens = var3d
@@ -338,7 +354,7 @@ program perturbe_fem_scalar
 
                 do i = 1, nvar
 	            do concurrent (l=1:lmax, j=1:nx, k=1:ny)
-                       femdata(l, j, k) = real(var3d(i, j, k, l), sp)
+                       femdata(l, j, k) = real(var3d_ens(i, j, k, l), sp)
                     end do
                     call fem_file_write_data(iformat, fid(ne), nvers, np, lmax, &
                            vstring(i), ilhkv, hd, nlvddi, femdata)

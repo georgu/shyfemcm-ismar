@@ -215,7 +215,8 @@ for (( na = 1; na <= nran; na++ )); do
         Check_file $filename2
 	# If not verbose, saves only the last rst for each member
 	if [ "$out_verb" -eq "1" ]; then
-		[[ "$na" -gt "1" ]] && cat $filename1 >> backKF_en$nel.rst
+		# This is not used:
+		#[[ "$na" -gt "1" ]] && cat $filename1 >> backKF_en$nel.rst
 		cat $filename2 >> analKF_en$nel.rst
 	else
 	        [[ "$na" -eq "$nran" ]] && mv -f $filename2 analKF_en$nel.rst
@@ -229,7 +230,6 @@ for (( na = 1; na <= nran; na++ )); do
    cat $filename1 >> analKF_mean.rst
    cat $filename2 >> analKF_std.rst
    rm -f $filename1 $filename2
-   #rm -f an*_en*b.inf an*_en*.log an*_en*b.str 
-   rm -f an*_en*b.inf 
+   rm -f an*_en*b.inf an*_en*.log an*_en*b.str 
 done
 echo -e "\n[SUCCESS] All files saved in the current directory."
