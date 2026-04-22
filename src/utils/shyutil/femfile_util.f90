@@ -39,6 +39,7 @@
 ! 18.05.2020    ggu     check read/write of files, flag in structure
 ! 10.07.2020    ggu     compiler warnings resolved (do not init arrays)
 ! 26.01.2024    ggu     bug fix in femutil_read_record_ff() with optional
+! 22.04.2026    ggu     better error messaging
 !
 !**************************************************************
 !**************************************************************
@@ -220,15 +221,39 @@
 
 	femutil_is_compatible = .false.
 
-	if( frec1%np /= frec2%np ) return
-	if( frec1%lmax /= frec2%lmax ) return
-	if( frec1%nvar /= frec2%nvar ) return
-	if( frec1%ntype /= frec2%ntype ) return
+	if( frec1%np /= frec2%np ) then
+	  write(6,*) 'np incompatible'
+	  return
+	end if
+	if( frec1%lmax /= frec2%lmax ) then
+	  write(6,*) 'lmax incompatible'
+	  return
+	end if
+	if( frec1%nvar /= frec2%nvar ) then
+	  write(6,*) 'nvar incompatible'
+	  return
+	end if
+	if( frec1%ntype /= frec2%ntype ) then
+	  write(6,*) 'ntype incompatible'
+	  return
+	end if
 
-	if( any(frec1%regpar/=frec2%regpar) ) return
-	if( any(frec1%hlv/=frec2%hlv) ) return
-	if( any(frec1%ilhkv/=frec2%ilhkv) ) return
-	if( any(frec1%hd/=frec2%hd) ) return
+	if( any(frec1%regpar/=frec2%regpar) ) then
+	  write(6,*) 'regpar incompatible'
+	  return
+	end if
+	if( any(frec1%hlv/=frec2%hlv) ) then
+	  write(6,*) 'hlv incompatible'
+	  return
+	end if
+	if( any(frec1%ilhkv/=frec2%ilhkv) ) then
+	  write(6,*) 'ilhkv incompatible'
+	  return
+	end if
+	if( any(frec1%hd/=frec2%hd) ) then
+	  write(6,*) 'hd incompatible'
+	  return
+	end if
 	!if( any(frec1%strings/=frec2%strings) ) return
 
 	femutil_is_compatible = .true.

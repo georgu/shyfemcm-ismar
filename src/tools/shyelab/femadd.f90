@@ -42,6 +42,7 @@
 ! 16.02.2019	ggu	changed VERS_7_5_60
 ! 27.01.2022	ggu	minor changes
 ! 16.03.2022	ggu	femadd newly written
+! 22.04.2026	ggu	some more error messages
 !
 !******************************************************************
 
@@ -255,19 +256,19 @@
 
 	stop
    95	continue
-	write(6,*) 'nvar is changing: ',nvar,nvar0
+	write(6,*) '*** nvar is changing: ',nvar,nvar0
 	stop 'error stop femadd: nvar not constant'
    96	continue
-	write(6,*) 'files are not compatible'
+	write(6,*) '*** files are not compatible'
 	stop 'error stop femadd: not compatible'
    97	continue
-	write(6,*) 'times are not compatible: ',atime0,atime
+	write(6,*) '*** times are not compatible: ',atime0,atime
 	stop 'error stop femadd: time error'
    98	continue
-	write(6,*) 'error reading record ',i,ierr
+	write(6,*) '*** error reading record ',i,ierr
 	stop 'error stop femadd: read error'
    99	continue
-	write(6,*) 'error opening file ',infile
+	write(6,*) '*** error opening file ',infile
 	stop 'error stop femadd: opening error'
         end
 

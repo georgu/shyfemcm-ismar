@@ -1,5 +1,13 @@
 #!/bin/bash
 #
+#------------------------------------------------------------------------
+#
+#    Copyright (C) 1985-2026  Georg Umgiesser
+#
+#    This file is part of SHYFEM.
+#
+#------------------------------------------------------------------------
+#
 # sets new path with shyfemcm
 #
 # "shypath"        just shows actual path
@@ -18,6 +26,11 @@ has_dot="NO"
 set_path="NO"
 debug="YES"
 debug="NO"
+
+quiet="NO"
+[ "$1" = "-quiet" ] && quiet="YES"
+[ "$1" = "-silent" ] && quiet="YES"
+[ $quiet = "YES" ] && shift
 
 #-----------------------------------------------------------
 
@@ -71,7 +84,7 @@ MakeBinDir()
   local execdir=$( dirname ${BASH_SOURCE[0]} | pwd -P )
   local dir=$execdir
 
-  echo "execdir = $execdir"
+  [ $quiet = "NO" ] && echo "execdir = $execdir"
 
   while [ -n "$dir" ]
   do
@@ -105,10 +118,12 @@ path=$( echo $newpath | tr ' ' ':' )
 
 [ $debug = "YES" ] && echo "bindir: $bindir"
 
-#echo "actdir: $actdir"
-echo "bindir: $bindir"
-echo "shyfemdir: $shyfemdir"
-echo "SHYFEMDIR: $SHYFEMDIR"
+if [ $quiet = "NO" ]; then
+  #echo "actdir: $actdir"
+  echo "bindir: $bindir"
+  echo "shyfemdir: $shyfemdir"
+  echo "SHYFEMDIR: $SHYFEMDIR"
+fi
 
 if [ $# -eq 0 ]; then
   echo "PATH: $PATH"
@@ -134,7 +149,7 @@ if [ $has_dot = "YES" ]; then
 fi
 
 if [ $set_path = "YES" ]; then
-  echo "new PATH: $path"
+  [ $quiet = "NO" ] && echo "new PATH: $path"
   export PATH=$path
   export SHYFEMDIR=$shyfemdir
 fi

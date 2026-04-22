@@ -38,6 +38,7 @@
 ! 07.11.2024    ggu     updated to new connection framework
 ! 13.11.2024    ggu     indicate other domain (not yet finished)
 ! 04.02.2025    ggu     new routine check_2id_elements() (not yet finished)
+! 22.04.2026    ggu&clc bug fix adjusting kantv (kk<1)
 !
 !*****************************************************************
 
@@ -103,13 +104,14 @@
 !-------------------------------------------------------------
 
 	do k=1,nkn
-	  if( iboundv(k) == 0 ) then
+	  if( iboundv(k) == 0 ) then			!not a boundary node
 	    kantv(:,k) = 0
-	  else if( .not. shympi_is_inner_node(k) ) then		!in other domain
+	  else if( .not. shympi_is_inner_node(k) ) then	!in other domain
 	    do i=1,2
 	      kk = kantv(i,k)
-	      id = id_node(kk)
-	      if( id /= my_id ) kantv(i,k) = 0
+	      id = -1
+	      if( kk > 0 ) id = id_node(kk)
+	      if( id /= my_id ) kantv(i,k) = 0		!node outside domain
 	    end do
 	  end if
 	end do
