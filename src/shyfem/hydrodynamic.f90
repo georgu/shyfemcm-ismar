@@ -278,6 +278,7 @@
 ! 09.05.2023    lrp     introduce top layer index variable
 ! 08.06.2023    ggu     new zeta_debug(), cleaned, call to compute_dry_elements
 ! 25.07.2024    ggu     new implementation of OMP for hydro
+! 21.04.2026    ggu     use vqv to deal with dry nodes, also in hydro_vertical()
 !
 !******************************************************************
 
@@ -287,6 +288,7 @@
 
 	use mod_depth
 	use mod_bound_dynamic
+	use mod_geom_dynamic
 	use mod_area
 	use mod_hydro_baro
 	use mod_hydro_print
@@ -314,6 +316,7 @@
 	!integer iwhat
 	real azpar,ampar
 	real dzeta(nkn)
+	real vqv(nkn)
 	double precision dtime
 
 	real getpar
@@ -352,6 +355,9 @@
 	iw=0
 	call do_close_handle(iw)
 
+	vqv = rqv
+	where( inodv == -2 ) vqv = 0.	!set to zero for dry nodes
+
 !-----------------------------------------------------------------
 ! set diffusivity
 !-----------------------------------------------------------------
@@ -382,11 +388,10 @@
 
 	  call setnod			!set info on dry nodes
 	  call set_link_info		!information on areas, islands, etc..
-	  call adjust_mass_flux		!cope with dry nodes
 
 	  call system_init		!initializes matrix
 	  call trace_point('hydro_zeta')
-	  call hydro_zeta(rqv)		!assemble system matrix for z
+	  call hydro_zeta(vqv)		!assemble system matrix for z
 	  call cpu_time_start(3)
 	  call trace_point('system_solve')
 	  call system_solve(nkn,znv)	!solves system matrix for z
@@ -1623,6 +1628,7 @@
 	real dzeta(nkn)
 ! local
 	logical debug
+	logical bdry
 	integer k,ie,ii,kk,l,lmax,lmin,ie_mpi
 	integer ilevel,jlevel
         integer ibc,ibtyp
@@ -1637,7 +1643,7 @@
 	real, allocatable :: va(:,:)
 ! statement functions
 
-	logical is_zeta_bound
+	logical is_zeta_bound,is_dry_node
 	integer ipint
 	real volnode
 
@@ -1708,6 +1714,7 @@
 	dzmax = 0.
 
 	do k=1,nkn
+	  bdry = is_dry_node(k)
 	  lmax = ilhkv(k)
 	  lmin = jlhkv(k)
 	  wlnv(lmax,k) = 0.
@@ -1724,6 +1731,7 @@
             volo = volnode(l,k,-1)
 	    dvdt = (voln-volo)/dt
 	    q = mfluxv(l,k)
+	    if( bdry ) q = 0.
 	    wdiv = vf(l,k) + q
 	    !wfold = azt * (atop*wlov(l-1,k)-abot*wlov(l,k))
 	    !wlnv(l-1,k) = wlnv(l,k) + (wdiv-dvdt+wfold)/az

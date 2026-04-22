@@ -271,6 +271,7 @@
 ! 31.05.2023    ggu     in conzstab, use ie_mpi, run over nkn_unique (bug fix)
 ! 27.09.2024    ggu     btvddebug introduced
 ! 10.11.2025    ggu     bug in massconc: only run over nkn_unique
+! 21.04.2026    ggu     use bdry to see if mfluxv should be used
 !
 !*********************************************************************
 
@@ -977,6 +978,7 @@
 	double precision cauxl(nlvddi)
 ! tvd
 	logical btvd
+	logical bdry
 	integer ic,kc,id,kdebug,ippp
 	integer ies
 	integer iext
@@ -984,6 +986,7 @@
         double precision wws
 
 ! functions
+	logical is_dry_node
 	integer ipint,ieint
 	integer ipext,ieext
 	integer ithis
@@ -1489,14 +1492,16 @@
 	do k=1,ntot
 	  ilevel = ilhkv(k)
 	  jlevel = jlhkv(k)
+	  bdry = is_dry_node(k)
 	  do l=jlevel,ilevel
             !mflux = cbound(l,k)		!mass flux has been passed
-	    cconz = cbound(l,k)		!concentration has been passed
+	    cconz = cbound(l,k)			!concentration has been passed
 	    qflux = mfluxv(l,k)
+	    if( bdry ) qflux = 0.
 	    if( qflux .lt. 0. .and. is_boundary(k) ) cconz = cn1(l,k)
 	    mflux = qflux * cconz
 
-            cn(l,k) = cn(l,k) + dt * mflux	!explicit treatment
+            cn(l,k) = cn(l,k) + dt * mflux		!explicit treatment
 
 	    loading = rload*load(l,k)
             if( loading .eq. 0. ) then

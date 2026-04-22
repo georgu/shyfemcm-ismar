@@ -44,6 +44,7 @@
 ! 27.03.2021    ggu     new option -checkval
 ! 14.04.2021    ggu     bug fix - atime was integer
 ! 05.10.2025    ggu     new routines to compute difference of rst files
+! 21.04.2026    ggu     deal with new variables written
 
 !******************************************************************
 
@@ -349,10 +350,11 @@
 	call check_real('utlnv',iu1,iu2,nlv,nel)
 	call check_real('vtlnv',iu1,iu2,nlv,nel)
 
+	call check_integer('iwetv',iu1,iu2,1,nel)
 	call check_real('zov',iu1,iu2,1,nkn)
 	call check_real('zeov',iu1,iu2,3,nel)
-	call check_real('utlov',iu1,iu2,nlv,nel)
-	call check_real('vtlov',iu1,iu2,nlv,nel)
+	!call check_real('utlov',iu1,iu2,nlv,nel)
+	!call check_real('vtlov',iu1,iu2,nlv,nel)
 
 	call check_real('hm3v',iu1,iu2,3,nel)
 
@@ -549,6 +551,7 @@
 
 	integer iunit,nvers,date,time,nkn,nel,nlv,ierr
 	integer id,ignore
+	!integer, parameter :: nvmax = 18	!this is set in mod_restart
 	double precision atime
 
         read(iunit,iostat=ierr) id,nvers,ignore
@@ -559,7 +562,7 @@
 
 	if( id /= idfrst ) stop 'error stop: not a restart file'
 	if( ignore /= 1 ) stop 'error stop: ignore /= 1'
-	if( nvers < 17 ) stop 'error stop: nvers < 17'
+	if( nvers < nvmax ) stop 'error stop: nvers < nvmax'
 
 	end
 

@@ -54,6 +54,7 @@
 ! 10.05.2024	ggu	implement no option
 ! 25.11.2024	ggu	check length of string, use nlen to set max string len
 ! 18.03.2025	ggu	more documentation
+! 19.04.2026	ggu	introduced iemax
 !
 ! notes :
 !
@@ -95,7 +96,8 @@
 
 	implicit none
 
-	integer, parameter, private :: nlen = 1024
+	integer, parameter, private :: nlen = 1024	!max length of string
+	integer, parameter, private :: iemax = 30	!max extra entries
 
 	type, private :: entry
 
@@ -128,7 +130,7 @@
 
 	integer, save, private :: ielast = 0
 	character*80, save, private :: info = ' '
-	character*80, save, private, dimension(10) :: extra = ' '
+	character*80, save, private, dimension(iemax) :: extra = ' '
 
 	character*80, save, private :: routine_name = ' '
 	character*80, save, private :: files_name = ' '
@@ -1098,7 +1100,7 @@
 	character*(*) string
 
 	ielast = ielast + 1
-	if( ielast > 10 ) stop 'error stop clo_add_extra: ielast'
+	if( ielast > iemax ) stop 'error stop clo_add_extra: ielast>iemax'
 
 	extra(ielast) = string
 

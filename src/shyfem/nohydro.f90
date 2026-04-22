@@ -51,6 +51,7 @@
 ! 13.03.2021	clr&ggu	adapted for petsc solver
 ! 23.04.2021    clr     alternative implementation to replace pragma directives
 ! 20.03.2022	ggu	upgraded to da_out
+! 21.04.2026	ggu	use vqv to deal with dry nodes
 !
 !********************************************************************
 
@@ -115,6 +116,7 @@
         use levels
         use basin
         use mod_bound_dynamic
+        use mod_geom_dynamic
         use mod_system
 
         implicit none
@@ -122,6 +124,7 @@
 ! local
         integer k,l,lmax
         integer iw,inhadj
+	real vqv(nkn)
         real aq
         real qvmax
         real getpar
@@ -132,6 +135,9 @@
 !        parameter for how to adjust u,v,eta after computation of NH pressure
         inhadj = nint(getpar('inhadj'))
 
+	vqv = rqv
+	where( inodv == -2 ) vqv = 0.	!set to zero for dry nodes
+	
 !        solve for NH pressure q
         call system_init
         call nonhydro_prepare_matrix
@@ -146,9 +152,8 @@
 	    call hydro_transports
 	    call setnod		
 	    call set_link_info
-	    call adjust_mass_flux	
             call system_init 
-            call hydro_zeta(rqv) 
+            call hydro_zeta(vqv) 
             !call system_solve_z(nkn,znv) 
             call system_solve(nkn,znv) !DWNH
             !call system_adjust_z(nkn,znv) 

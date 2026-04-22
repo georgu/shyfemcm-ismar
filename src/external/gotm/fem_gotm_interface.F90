@@ -30,6 +30,7 @@
 ! 13.03.2019	ggu	changed VERS_7_5_61
 ! 29.03.2022	ggu	eliminated compiler warnings
 ! 09.04.2022	ggu	some new routines for debug
+! 21.04.2026	ggu	init_gotm_turb() still not finished
 
 !--------------------------------------------------------------------------
 
@@ -151,7 +152,7 @@
    integer,          intent(in)        :: nlev
    integer, save		       :: icall = 0
 
-   if( icall > 0 ) return
+   !if( icall > 0 ) return		!FIXME gotm
 
    call init_tridiagonal(nlev)
 

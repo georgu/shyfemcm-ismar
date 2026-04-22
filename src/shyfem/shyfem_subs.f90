@@ -463,7 +463,7 @@
 	call trace_point('init_wave')
 	call init_wave		!waves
 	call ww3_init
-        call turb_closure	!only initializes
+        !call turb_closure	!only initializes	!FIXME gotm
 	call initsed		!sediments
         call init_bstress	!bottom shear stress
 

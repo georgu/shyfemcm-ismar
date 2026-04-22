@@ -399,7 +399,7 @@
 	  call shympi_barrier
 
 	  icall = 1
-	  return			!first time only do initialization
+	  !return	!first time only do initialization !FIXME gotm
 	end if
 
 	icall = icall + 1

@@ -115,6 +115,7 @@
 ! 10.09.2024	ggu&lrp	bug fix: do not compute mass balance on domain boundary
 ! 10.09.2024    lrp     relax check_values
 ! 08.02.2025    ggu     more info in check_* routines
+! 21.04.2026    ggu     use bdry to see if mfluxv should be used
 !
 !*************************************************************
 
@@ -707,7 +708,7 @@
 
 	implicit none
 
-	logical berror,bdebug
+	logical berror,bdebug,bdry
 	integer ie,l,ii,k,lmin,lmax,mode,ks,kss,ie_mpi
 	integer levdbg
 	real am,az,azt,dt,azpar,ampar
@@ -721,12 +722,14 @@
 	real verrvol(4)
 	real vrwarn,vrerr
 	real qinput
+	real qflux
 	character*20 aline
 	double precision vtotmax,vvv,vvm
 	real, allocatable :: vf(:,:)
 	real, allocatable :: va(:,:)
 
 	real volnode,areanode,getpar
+	logical is_dry_node
 
 	integer, save :: iuinfo = 0
 
@@ -810,13 +813,16 @@
 	  abot = 0.
 	  vvv = 0.
 	  vvm = 0.
+	  bdry = is_dry_node(k)
 	  do l=lmax,1,-1
+	    qflux = mfluxv(l,k)
+	    if( bdry ) qflux = 0.
 	    atop = va(l,k)
 	    vdiv = wlnv(l,k)*abot - wlnv(l-1,k)*atop
-	    vf(l,k) = vf(l,k) + vdiv + mfluxv(l,k)
+	    vf(l,k) = vf(l,k) + vdiv + qflux
 	    abot = atop
 	    vvv = vvv + vdiv
-	    vvm = vvm + mfluxv(l,k)
+	    vvm = vvm + qflux
 	    if( k .eq. ks ) write(77,*) 'vdiv: ',l,vf(l,k),vdiv,vvv
 	  end do
 	  vtotmax = max(vtotmax,abs(vvv))
@@ -918,13 +924,15 @@
 	   voln = 0.
 	   volo = 0.
 	   qinput = 0.
+	   bdry = is_dry_node(k)
 	   do l=1,lmax
+	     qflux = mfluxv(l,k)
+	     if( bdry ) qflux = 0.
 	     voln = voln + volnode(l,k,+1)
 	     volo = volo + volnode(l,k,-1)
-	     qinput = qinput + mfluxv(l,k)
+	     qinput = qinput + qflux
 	   end do
-	   vdiv = vf(1,k) + rqv(k)
-	   vdiv = vf(1,k) + qinput	!should be the same
+	   vdiv = vf(1,k) + qinput
 	   vdiff = voln - volo - vdiv * dt
 	   if( k .eq. ks ) write(77,*) 'vdiff: ',vdiff
 	   !if( vdiff .gt. 0.1 ) write(6,*) 'baro error: ',k,vdiff

@@ -96,26 +96,32 @@
 
    rc = 0
 
-   if( .not. allocated(au) ) allocate(au(0:N),stat=rc)
+   !if( .not. allocated(au) ) allocate(au(0:N),stat=rc)
+   allocate(au(0:N),stat=rc)
    if (rc /= 0) stop 'init_tridiagonal: Error allocating au)'
    au = 0.
 
-   if( .not. allocated(bu) ) allocate(bu(0:N),stat=rc)
+   !if( .not. allocated(bu) ) allocate(bu(0:N),stat=rc)
+   allocate(bu(0:N),stat=rc)
    if (rc /= 0) stop 'init_tridiagonal: Error allocating bu)'
    bu = 0.
 
-   if( .not. allocated(cu) ) allocate(cu(0:N),stat=rc)
+   !if( .not. allocated(cu) ) allocate(cu(0:N),stat=rc)
+   allocate(cu(0:N),stat=rc)
    if (rc /= 0) stop 'init_tridiagonal: Error allocating cu)'
    cu = 0.
 
-   if( .not. allocated(du) ) allocate(du(0:N),stat=rc)
+   !if( .not. allocated(du) ) allocate(du(0:N),stat=rc)
+   allocate(du(0:N),stat=rc)
    if (rc /= 0) stop 'init_tridiagonal: Error allocating du)'
    du = 0.
 
-   if( .not. allocated(ru) ) allocate(ru(0:N),stat=rc)
+   !if( .not. allocated(ru) ) allocate(ru(0:N),stat=rc)
+   allocate(ru(0:N),stat=rc)
    if (rc /= 0) stop 'init_tridiagonal: Error allocating ru)'
 
-   if( .not. allocated(qu) ) allocate(qu(0:N),stat=rc)
+   !if( .not. allocated(qu) ) allocate(qu(0:N),stat=rc)
+   allocate(qu(0:N),stat=rc)
    if (rc /= 0) stop 'init_tridiagonal: Error allocating qu)'
 
    return

@@ -196,6 +196,7 @@
 ! 03.12.2024    ggu     run init_flux() only for ibtyp>1
 ! 12.06.2025    clc     set dvols to 0 to avoid compiler warning
 ! 20.03.2026    ggu     changes in sp111() init and set_mass_flux() -> mode
+! 21.04.2026    ggu     eliminated adjust_mass_flux()
 !
 !***************************************************************
 
@@ -1098,6 +1099,7 @@
 	    if( lmin .gt. lmax ) goto 98
 	    if( lmin < 1 ) goto 98
 	    if( lmax > nlv ) goto 98
+	    if( lmax > ilhkv(k) ) goto 98
 
 	    dvoltot = 0.
 	    dvols = 0.
@@ -1175,7 +1177,7 @@
 
 	subroutine adjust_mass_flux
 
-! adjusts mass flux for dry nodes
+! adjusts mass flux for dry nodes - not used anymore
 
 	use mod_geom_dynamic
 	use mod_bound_dynamic
@@ -1188,6 +1190,8 @@
 
         logical iskout
         iskout(k) = inodv(k).eq.-2
+
+	stop 'error stop adjust_mass_flux: do not use...'
 
 	do k=1,nkn
 	  if( iskout(k) ) then
@@ -1797,6 +1801,26 @@
 	write(6,*) 'lmin = ',lmin
 	write(6,*) 'lmax = ',lmax
 	stop 'error stop get_discharge_3d: voltot = 0'
+	end
+
+!**********************************************************************
+
+	subroutine debug_mflux(text)
+
+! generic debug subroutine
+
+	use mod_bound_dynamic
+
+	implicit none
+
+	character*(*) text
+	integer k
+
+	return
+
+	k = 4279
+	write(666,*) 'debug_mflux: ',trim(text),k,mfluxv(1,k),rqv(k)
+
 	end
 
 !**********************************************************************

@@ -123,6 +123,8 @@ sub set_line {
     print "inverting line... area negative ($area)\n";
     $self->invert_line();
     $self->set_area();		#computes area
+    #$area = $self->get_area();
+    #print "new area... ($area)\n";
   }
   $self->set_closed();		#sets closed flag, if closed pops last point
   $self->set_convex();		#sets convex flag

@@ -80,6 +80,7 @@
 ! 20.12.2023	ggu	debugged 3d flux computation, still to be cleaned
 ! 13.03.2024	ggu	bwrite introduced to write flux divergence
 ! 16.09.2024	ggu	in flxtyp() fake inner node if one node boundary
+! 21.04.2026	ggu	use is_dry_node() to see if mfluxv should be used
 !
 ! info :
 !
@@ -304,6 +305,7 @@
 
 	integer ithis
 	real areanode,volnode
+	logical is_dry_node
 
 !---------------------------------------------------------
 ! get parameters
@@ -356,7 +358,7 @@
 
             dvdt = dvol(l)/ddt
 	    q = mfluxv(l,k)
-	    if( is_external_boundary(k) ) q = 0.
+	    if( is_external_boundary(k) .or. is_dry_node(k) ) q = 0.
 	    qw_top = area * wlnv(l-1,k)
 	    qw_bot = area * wlnv(l,k)
 	    if( l .eq. lmax ) qw_bot = 0.
