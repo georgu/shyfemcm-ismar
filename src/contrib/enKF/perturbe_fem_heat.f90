@@ -66,6 +66,7 @@ subroutine make_pert_field(nvar, ne, nrens, nx, ny, lmax, var3d, var3d_ens, &
     real(dp), parameter     :: at_max = 50.0_dp
     real(dp), parameter     :: ah_max = 100.0_dp
     real(dp), parameter     :: cc_max = 1.0_dp
+    real(dp), parameter     :: epss   = 1.0e-12_dp
     integer                 :: i, j
 
     allocate(pvar(nx, ny))
@@ -77,6 +78,7 @@ subroutine make_pert_field(nvar, ne, nrens, nx, ny, lmax, var3d, var3d_ens, &
        do i = 1, nx
           if (pvar(i,j) < 0.0_dp) pvar(i,j) = 0.0_dp
           if (pvar(i,j) > sr_max) pvar(i,j) = sr_max
+	  if (var3d(1,i,j,1) < epss) pvar(i,j) = 0.0_dp ! No solar radiation at night
        end do
     end do
     var3d_ens(1,:,:,1) = pvar

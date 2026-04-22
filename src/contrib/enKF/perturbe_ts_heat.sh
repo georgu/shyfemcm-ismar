@@ -45,6 +45,12 @@ ext="${fname##*.}"
 # Column 2: Solar Radiation (Min: 0, Max: 1200)
 awk '{print $1, $2}' "$fileheat" > sol.dat
 "$ENKF_DIR/perturbe_ts" sol.dat "$nrens" "$s_sol" "$tau" 0. 1200.
+# Correcting solar radiation at night
+echo "Correcting solar radiation at night..."
+for f in sol_*.dat; do
+    awk 'NR==FNR {mask[NR]=$1; next} {print (mask[FNR] == 0 ? 0 : $1)}' sol.dat "$f" > "fixed_$f"
+    mv "fixed_$f" $f
+done
 
 # Column 3: Air Temperature (Min: -60, Max: 50)
 awk '{print $1, $3}' "$fileheat" > temp.dat

@@ -23,7 +23,7 @@ Kalman Filter for the SHYFEM model
 -------------------------------------------------------------------------------
  HOWTO RUN DA:
 -------------------------------------------------------------------------------
-There is a automatic script (run_DA.sh) to run DA in some minutes! You need:
+There is an automatic script (run_DA.sh) to run DA in some minutes. You need:
 
  - A deterministic simulation covering the period of the DA run;
  - A folder, inside the folder of the det simulation, named "observations"
@@ -50,6 +50,9 @@ You can use rst2shy to convert them in shy files.
 Other useful scripts are described below.
 The observations implemented must be timeseries in SHYFEM format .dat or .txt,
 the 2D .fem files are experimental. The forcings must be .dat .txt or .fem.
+In the creation of the perturbations be careful with the STD and red noise. It is
+suggested a null value for rain and cloudiness. Solar radiation perturbations
+are set null when the control is null. Plot all the perturbed files for checking.
 
 -------------------------------------------------------------------------------
  SCRIPT AND UTILITY:
