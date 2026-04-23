@@ -28,26 +28,13 @@
 !
 ! revision log :
 !
-! 14.01.2015	ggu	adapted from feminf
-! 20.05.2015	ggu	use bhuman to convert to human readable time
-! 05.06.2015	ggu	iextract to extract nodal value
-! 05.11.2015	ggu	new option chform to change format
-! 04.10.2016	ggu	output flags now similar to shyelab
-! 05.10.2016	ggu	allow for expansion of regular grid
-! 11.10.2016	ggu	introduced flag for min/max/med computation
-! 31.10.2016	ggu	new flag condense (bcondense)
-! 16.05.2017	ggu&mbj	better handling of points to extract
-! 30.01.2018	ggu	written with new fem_util module
-! 22.02.2018	ggu	changed VERS_7_5_42
-! 16.02.2019	ggu	changed VERS_7_5_60
-! 27.01.2022	ggu	minor changes
-! 16.03.2022	ggu	writes also time string
+! 23.04.2026	ggu	adapted from femadd
 !
 !******************************************************************
 
 	program femcombine
 
-! combines multiple fem files into one
+! combines multiple variables of files into one
 
 	use clo
 	use fem_util

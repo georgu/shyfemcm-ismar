@@ -24,32 +24,17 @@
 !
 !--------------------------------------------------------------------------
 
-! elaborates fem files
+! elaborates and interpolates fem files
 !
 ! revision log :
 !
-! 14.01.2015	ggu	adapted from feminf
-! 20.05.2015	ggu	use bhuman to convert to human readable time
-! 05.06.2015	ggu	iextract to extract nodal value
-! 05.11.2015	ggu	new option chform to change format
-! 04.10.2016	ggu	output flags now similar to shyelab
-! 05.10.2016	ggu	allow for expansion of regular grid
-! 11.10.2016	ggu	introduced flag for min/max/med computation
-! 31.10.2016	ggu	new flag condense (bcondense)
-! 16.05.2017	ggu&mbj	better handling of points to extract
-! 30.01.2018	ggu	written with new fem_util module
-! 22.02.2018	ggu	changed VERS_7_5_42
-! 16.02.2019	ggu	changed VERS_7_5_60
-! 27.01.2022	ggu	minor changes
-! 16.03.2022	ggu	femadd newly written
-! 22.04.2026	ggu	some more error messages
-! 23.04.2026	ggu	bug fix for time extension
+! 23.04.2026	ggu	copied from femadd
 !
 !******************************************************************
 
-	program femadd
+	program femintp
 
-! adds values in different files and writes it to one file
+! interpolates to different points values in a fem file (staggered values)
 
 	use clo
 	use fem_util
@@ -65,6 +50,7 @@
 	logical bextend
 	logical bverb,bquiet,bsilent
 	logical bunform
+	logical bx,by
 	character*20 aline
 	character*80 sextend,s(2)
 	character*80 tstart,tend
@@ -80,16 +66,13 @@
 	bdebug = .true.
 	bdebug = .false.
 
-	tstart = ' '
-	tend = ' '
-
 !--------------------------------------------------------------
 ! set command line options
 !--------------------------------------------------------------
 
-	call clo_init('femadd','fem-files','1.0')
+	call clo_init('femintp','file1.fem file2.fem','1.0')
 
-	call clo_add_info('adds vars of multiple fem-files into one')
+	call clo_add_info('interpolates points in fem1 to points in fem2')
 
         call clo_add_sep('output options')
 
@@ -98,17 +81,8 @@
         call clo_add_option('quiet',.false.,'do not write time records')
 
 	call clo_add_sep('actions')
-
-	call clo_add_option('textend tstart,tend',' ' &
-     &				,'extend in time')
-	call clo_add_com('  tstart,tend are start/end time (none for none)')
-
-	call clo_add_sep('additional options')
-
-	call clo_add_option('unform',.false. &
-     &				,'write output file unformatted')
-
-        call clo_add_extra('time is YYYY-MM-DD[::hh:mm:ss]')
+        call clo_add_option('bintpx',.false.,'interpolate in x')
+        call clo_add_option('bintpy',.false.,'interpolate in y')
 
 !--------------------------------------------------------------
 ! parse command line options
@@ -124,23 +98,10 @@
 	call clo_get_option('quiet',bquiet)
 	call clo_get_option('silent',bsilent)
 
-	call clo_get_option('unform',bunform)
-
-	call clo_get_option('textend',sextend)
-	bextend = .false.
-	if( sextend /= ' ' ) then
-	  ianz = iscans(sextend,s,2)
-	  if( ianz /= 2 ) stop 'error stop: option textend needs two values'
-	  tstart = s(1)
-	  call dts_string2time(s(1),astart,ierr)
-	  if( ierr /= 0 ) stop 'error stop time_extend: error converting time'
-	  tend = s(2)
-	  call dts_string2time(s(2),aend,ierr)
-	  if( ierr /= 0 ) stop 'error stop time_extend: error converting time'
-	  bextend = .true.
-	end if
-
 	if( bsilent ) bquiet = .true.
+
+	call clo_get_option('bintpx',bx)
+	call clo_get_option('bintpy',by)
 
 !--------------------------------------------------------------
 ! set parameters
@@ -148,28 +109,22 @@
 
 	nfile = clo_number_of_files()
 
+	if( nfile < 1 ) then
+	  write(6,*) 'No file given... exiting'
+	  stop 'error stop femadd: no files'
+	else if( nfile /= 2 ) then
+	  write(6,*) 'Need exactly two files'
+	  stop 'error stop femadd: nothing to add'
+	end if
+
 	if( bdebug ) then
 	  write(6,*) nfile
 	  write(6,*) bunform
 	end if
 
-	if( .not. bquiet ) write(6,*) 'adding files: ',nfile
-
 !--------------------------------------------------------------
 ! open all files
 !--------------------------------------------------------------
-
-	if( nfile < 1 ) then
-	  write(6,*) 'No file given... exiting'
-	  stop 'error stop femadd: no files'
-	else if( bextend ) then
-	  write(6,*) 'Extending in time:'
-	  write(6,*) 'start: ',trim(tstart)
-	  write(6,*) 'end: ',trim(tend)
-	else if( nfile == 1 ) then
-	  write(6,*) 'Only one file given... exiting'
-	  stop 'error stop femadd: nothing to add'
-	end if
 
 	allocate(ffinfo(nfile))
 	allocate(finfo(nfile))
@@ -182,7 +137,6 @@
 	end do
 
 	iformat = 1
-	if( bunform ) iformat = 0
 	call femutil_open_for_write('out.fem',iformat,ffiout)
 
 !--------------------------------------------------------------
@@ -194,6 +148,10 @@
 
 	do
 
+	!------------------------------------------------------
+	! read new records from files
+	!------------------------------------------------------
+
 	nvar = 0
 	do i=1,nfile
 	  call femutil_read_record(ffinfo(i),finfo(i),ierr)
@@ -203,7 +161,7 @@
 	  call femutil_get_time(finfo(i),atime)
 	  if( i == 1 ) atime0 = atime
 	  if( atime /= atime0 ) goto 97
-	  if( .not. femutil_is_compatible(finfo(1),finfo(i)) ) goto 96
+	  !if( .not. femutil_is_compatible(finfo(1),finfo(i)) ) goto 96
 	  nvar = finfo(i)%nvar
 	  if( nvar0 == 0 ) nvar0 = nvar
 	  if( nvar /= nvar0 ) goto 95
@@ -213,27 +171,14 @@
 	nrecs = nrecs + 1
 
 	!------------------------------------------------------
-	! extend start of file
+	! interpolate data
 	!------------------------------------------------------
 
-	bextend = .false.
-	if( tstart /= ' ' .and. tstart /= 'none' ) then
-	  if( nrecs == 1 ) bextend = .true.
-	end if
+	call femutil_interpolate_recs(nfile,finfo,fout,bx,by)
 
 	!------------------------------------------------------
-	! add data and write output file
+	! write to output file
 	!------------------------------------------------------
-
-	call femutil_add_data_recs(nfile,finfo,fout)
-
-	if( bextend ) then	!extend in time (before)
-	  call time_extend(tstart,fout,fextra)
-	  call femutil_write_record(ffiout,fextra)
-	  nrecs = nrecs + 1
-          call dts_format_abs_time(astart,aline)
-	  if( .not. bquiet ) write(6,*) astart,'  ',aline
-	end if
 
         call dts_format_abs_time(atime,aline)
 	if( .not. bquiet ) write(6,*) atime,'  ',aline
@@ -241,14 +186,9 @@
 
 	end do
 
-        bextend = ( tend /= ' ' .and. tend /= 'none' )
-	if( bextend ) then	!extend in time (after)
-	  call time_extend(tend,fout,fextra)
-	  call femutil_write_record(ffiout,fextra)
-	  nrecs = nrecs + 1
-          call dts_format_abs_time(aend,aline)
-	  if( .not. bquiet ) write(6,*) aend,'  ',aline
-	end if
+!--------------------------------------------------------------
+! end of loop on files
+!--------------------------------------------------------------
 
 	if( .not. bsilent ) then
 	  write(6,*) 'total number of records treated: ',nrecs
@@ -281,35 +221,6 @@
 !*****************************************************************
 !*****************************************************************
 
-	subroutine time_extend(stime,fin,fout)
-
-	use fem_util
-
-	implicit none
-
-	character*(*) stime
-	type(femrec_type) :: fin
-	type(femrec_type) :: fout
-
-	integer ierr
-	integer date,time
-	double precision atime,dtime
-
-	!write(6,*) 'datetime: ',fin%datetime
-	!write(6,*) 'dtime: ',fin%dtime
-	!write(6,*) 'atime: ',fin%atime
-
-	fout = fin
-
-	call dts_string2time(stime,atime,ierr)
-	if( ierr /= 0 ) stop 'error stop time_extend: error converting time'
-	call dts_from_abs_time(date,time,atime)
-
-	fout%datetime = (/date,time/)
-	fout%dtime = 0.
-	fout%atime = atime
-
-	end
 
 !*****************************************************************
 

@@ -50,9 +50,17 @@ if( $ext eq "f90" ) {
 } elsif( $ext eq "txt" ) {
   treat_for_copyright();
 } elsif( $ext eq "make" ) {
+  treat_for_copyright();
+} elsif( $ext eq "o" ) {
   ignore();
 } elsif( $ext eq "NONE" ) {
-  ignore();
+  if( $file eq "Makefile" ) {
+    treat_for_copyright();
+  } elsif( $file eq "README" ) {
+    treat_for_copyright();
+  } else {
+    ignore();
+  }
 } else {
   if( $::write_on_error ) {
     print STDERR "  *** cannot yet handle extension $ext\n";
