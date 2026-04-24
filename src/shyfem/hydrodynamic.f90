@@ -668,7 +668,7 @@
 	    h11 = delta*( abn + acn )			!ASYM_OPSPLT_CH
 	    hia(n,m) = aj * (amatr(n,m) + 12.*h11)
 	  end do
-	  acu = hia(n,1)*z(1) + hia(n,2)*z(2) + hia(n,3)*z(3)
+	  acu = aj * (amatr(n,1)*z(1) + amatr(n,2)*z(2) + amatr(n,3)*z(3))
 	  andg = 4.*aj*ddt*zndg(n)
 	  !hia(n,n) = hia(n,n) + 4 * ddt * aj / tau
 	  hik(n) = acu + andg + 12.*aj*ddt*( ut*b(n) + vt*c(n) )	!ZNEW
@@ -946,8 +946,9 @@
 
 	double precision b(3),c(3)
 	double precision bpres,cpres,presx,presy
-	double precision zz,zm,zmm
+	double precision zmm
 	double precision bz,cz
+	double precision bzeq,czeq
 	double precision taux,tauy,rdist,rcomp,ruseterm
 	double precision gravx,gravy,wavex,wavey
 	double precision vis
@@ -1014,9 +1015,10 @@
 
 	bz=0.
 	cz=0.
+	bzeq=0.
+	czeq=0.
 	bpres=0.
 	cpres=0.
-	zm=0.
 	zmm=0.
 	taux=0.
 	tauy=0.
@@ -1026,20 +1028,18 @@
 	  b(ii)=ev(ii+3,ie)
 	  c(ii)=ev(ii+6,ie)
 
-	  zz = zeov(ii,ie) - zeqv(kk)	!tide
-
-          zm = zm + zz
 	  zmm = zmm + zeov(ii,ie)		!ZEONV
 
-	  bz=bz+zz*b(ii)
-	  cz=cz+zz*c(ii)
+	  bz=bz+zeov(ii,ie)*b(ii)
+	  cz=cz+zeov(ii,ie)*c(ii)
+	  bzeq=bzeq+zeqv(kk)*b(ii)
+	  czeq=czeq+zeqv(kk)*c(ii)
 	  bpres=bpres+ppv(kk)*b(ii)
 	  cpres=cpres+ppv(kk)*c(ii)
 	  taux=taux+tauxnv(kk)
 	  tauy=tauy+tauynv(kk)
 	end do
 
-	zm=zm*drittl
 	zmm=zmm*drittl
 	taux=rcomp*taux*drittl
 	tauy=rcomp*tauy*drittl
@@ -1239,8 +1239,8 @@
 	presx = rcomp * bpres			!atmospheric pressure
 	presy = rcomp * cpres
 
-	gravx = rcomp * grav*hhi*bz		!barotropic pressure
-	gravy = rcomp * grav*hhi*cz
+	gravx = rcomp * grav*hhi*((1.-am)*bz - bzeq)	!barotropic pressure
+	gravy = rcomp * grav*hhi*((1.-am)*cz - bzeq)
 
 !	------------------------------------------------------
 !	ppx/ppy is contribution on the left side of equation
@@ -1494,7 +1494,6 @@
 	real dt,azpar,ampar
 	double precision az,am,beta
 	double precision bz,cz,um,vm
-	double precision dz
 	double precision du,dv
 	double precision rfix,rcomp
 ! function
@@ -1538,9 +1537,8 @@
 	cz=0.
 	do ii=1,3
 	  kk=nen3v(ii,ie)
-	  dz = znv(kk) - zeov(ii,ie)
-	  bz = bz + dz * ev(ii+3,ie)
-	  cz = cz + dz * ev(ii+6,ie)
+	  bz = bz + znv(kk) * ev(ii+3,ie)
+	  cz = cz + znv(kk) * ev(ii+6,ie)
 	end do
 
 !	------------------------------------------------------
