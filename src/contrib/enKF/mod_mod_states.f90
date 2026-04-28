@@ -1,6 +1,6 @@
 module mod_mod_states
 
-  use iso_fortran_env, only: dp => real64
+  use iso_fortran_env, only: dp => real64, sp => real32
   use mod_init_enkf,  only: nnlv, nnkn, nnel
   implicit none
 
@@ -18,11 +18,11 @@ module mod_mod_states
 
   type states4
      ! Single-precision container (I/O or memory-saving scenarios)
-     real,    allocatable :: u(:,:)
-     real,    allocatable :: v(:,:)
-     real,    allocatable :: z(:)
-     real,    allocatable :: t(:,:)
-     real,    allocatable :: s(:,:)
+     real(sp),    allocatable :: u(:,:)
+     real(sp),    allocatable :: v(:,:)
+     real(sp),    allocatable :: z(:)
+     real(sp),    allocatable :: t(:,:)
+     real(sp),    allocatable :: s(:,:)
   end type states4
 
   type qstates
@@ -137,8 +137,8 @@ subroutine states8to4(A4, A)
   ! Convert double-precision states -> single-precision states4.
   type(states4), intent(inout) :: A4
   type(states),  intent(in)    :: A
-  A4%u = real(A%u); A4%v = real(A%v); A4%z = real(A%z)
-  A4%t = real(A%t); A4%s = real(A%s)
+  A4%u = real(A%u,sp); A4%v = real(A%v,sp); A4%z = real(A%z,sp)
+  A4%t = real(A%t,sp); A4%s = real(A%s,sp)
 end subroutine states8to4
 
 !==============================================================
