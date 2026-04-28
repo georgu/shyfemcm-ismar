@@ -290,8 +290,8 @@
 
 	  lmax = ilhv(ie)
 
-          uso = utlov(lmax,ie)
-          vso = vtlov(lmax,ie)
+          uso = utlcv(lmax,ie)
+          vso = vtlcv(lmax,ie)
 	  uv = sqrt(uso*uso+vso*vso)
 
 !         ----------------------------------------------------------

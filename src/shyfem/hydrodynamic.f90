@@ -1133,13 +1133,13 @@
 	lp = min(l+1,ilevel)
 	lm = max(l-1,jlevel)
 
-	uui = utlov(l,ie)
-	uuip = utlov(lp,ie)
-	uuim = utlov(lm,ie)
+	uui = utlcv(l,ie)
+	uuip = utlcv(lp,ie)
+	uuim = utlcv(lm,ie)
 
-	vvi = vtlov(l,ie)
-	vvip = vtlov(lp,ie)
-	vvim = vtlov(lm,ie)
+	vvi = vtlcv(l,ie)
+	vvip = vtlcv(lp,ie)
+	vvim = vtlcv(lm,ie)
         
 	hhi = hact(l)
 	hhip = hact(l+1)

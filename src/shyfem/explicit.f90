@@ -632,8 +632,8 @@
 	  lmin = jlhv(ie)
 	  do l=lmin,lmax
             h = hdeov(l,ie)
-	    ut = utlov(l,ie)
-	    vt = vtlov(l,ie)
+	    ut = utlcv(l,ie)
+	    vt = vtlcv(l,ie)
             do ii=1,3
                 k = nen3v(ii,ie)
                 b = ev(3+ii,ie)
@@ -755,8 +755,8 @@
 	    area = 12. * ev(10,ie)
             h = hdeov(l,ie)
 	    vol = area * h
-  	    ut = utlov(l,ie)
-  	    vt = vtlov(l,ie)
+	    ut = utlcv(l,ie)
+	    vt = vtlcv(l,ie)
 	    !this throws a floating point exception with PGI (PGI_ggguuu)
 	    !write(6,*) 'PGI_ggguuu adv a ',ie,l,lmax,h
 	    !write(6,*) 'PGI_ggguuu adv h = ',h

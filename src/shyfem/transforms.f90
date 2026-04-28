@@ -555,7 +555,8 @@
 
 	subroutine copy_uvz
 
-! copies u/v/z to old time step
+! for the first runge-kutta stage only: copies u/v/z to old time step
+! for all stages: copy u/v/z to the current stage
 
 	use mod_hydro_baro
 	use mod_hydro_print
@@ -564,11 +565,17 @@
 
 	implicit none
 
-	zov   = znv
-	zeov  = zenv
+        if (0 < 1) then ! stage is first !lrp:dbg
+	  zov   = znv
+	  utlov = utlnv
+	  vtlov = vtlnv
+        end if
 
-	utlov = utlnv
-	vtlov = vtlnv
+        zcv   = znv
+        utlcv = utlnv
+        vtlcv = vtlnv
+
+	zeov  = zenv
 	wlov  = wlnv
 
 	uov   = unv			!$$UVBARO

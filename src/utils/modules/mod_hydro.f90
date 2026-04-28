@@ -44,12 +44,14 @@
 	integer, private, save :: nel_hydro = 0
 	integer, private, save :: nlv_hydro = 0
 
-	real, allocatable, save :: zov(:), znv(:)
+	real, allocatable, save :: zov(:), znv(:), zcv(:)
 	real, allocatable, save :: zeov(:,:), zenv(:,:)
 	real, allocatable, save :: utlov(:,:)
 	real, allocatable, save :: utlnv(:,:)
+        real, allocatable, save :: utlcv(:,:)
 	real, allocatable, save :: vtlov(:,:)
 	real, allocatable, save :: vtlnv(:,:)
+        real, allocatable, save :: vtlcv(:,:)
 
 !==================================================================
 	contains
@@ -71,14 +73,17 @@
         if( nkn_hydro > 0 ) then
           deallocate(zov)
           deallocate(znv)
-        
+          deallocate(zcv)
+
           deallocate(zeov)
           deallocate(zenv)
 
           deallocate(utlov)
           deallocate(utlnv)
+          deallocate(utlcv)
           deallocate(vtlov)
           deallocate(vtlnv)
+          deallocate(vtlcv)
         end if
 
         nkn_hydro = nkn
@@ -89,23 +94,29 @@
 
         allocate(zov(nkn))
         allocate(znv(nkn))
+        allocate(zcv(nkn))
 
         allocate(zeov(3,nel))
         allocate(zenv(3,nel))
 
         allocate(utlov(nlv,nel))
         allocate(utlnv(nlv,nel))
+        allocate(utlcv(nlv,nel))
         allocate(vtlov(nlv,nel))
         allocate(vtlnv(nlv,nel))
+        allocate(vtlcv(nlv,nel))
 
 	zov = 0.
 	znv = 0.
+	zcv = 0.
 	zeov = 0.
 	zenv = 0.
 	utlov = 0.
 	vtlov = 0.
 	utlnv = 0.
 	vtlnv = 0.
+        utlcv = 0.
+        vtlcv = 0.
 
         end subroutine mod_hydro_init
 
