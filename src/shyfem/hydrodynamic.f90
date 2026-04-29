@@ -876,6 +876,7 @@
 !
 ! semi-implicit scheme for 3d model
 
+	use mod_rungekutta
 	use tide
 	use mod_meteo
 	use mod_waves
@@ -950,7 +951,7 @@
 	double precision bz,cz
 	double precision bzeq,czeq
 	double precision taux,tauy,rdist,rcomp,ruseterm
-	double precision gravx,gravy,wavex,wavey
+	double precision gravx,gravy,wavex,wavey,zeqx,zeqy
 	double precision vis
 	double precision uuadv,uvadv,vuadv,vvadv
 
@@ -1241,24 +1242,25 @@
 	presx = rcomp * bpres			!atmospheric pressure
 	presy = rcomp * cpres
 
-	gravx = rcomp * grav*hhi*((1.-am)*bz - bzeq)	!barotropic pressure
-	gravy = rcomp * grav*hhi*((1.-am)*cz - bzeq)
+	gravx = rcomp * grav*hhi*((1.-am)*bz)	!barotropic pressure
+	gravy = rcomp * grav*hhi*((1.-am)*cz)
+
+	zeqx  = rcomp * grav*hhi*bzeq		!tidal potential
+	zeqy  = rcomp * grav*hhi*czeq
 
 !	------------------------------------------------------
-!	ggx/ggy is contribution on the left side of equation
-!	ggx corresponds to -F^x_l in the documentation
-!	ggy corresponds to -F^y_l in the documentation
+!	momentum equation right side F^x_l and F^y_l:
+!	ggx/ggy is explicit contribution G^x_l, G^y_l
+!	llx/lly is implicit contribution L^x_l, L^y_l
 !	------------------------------------------------------
 
 	llx = aat*uui - bbt*uuip - cct*uuim - gammat*vvi  &
-     &			+ gravx + (hhi/rowass)*presx + xexpl  &
-     &  		+ wavex
+     &			+ gravx
 	lly = aat*vvi - bbt*vvip - cct*vvim + gammat*uui  &
-     &			+ gravy + (hhi/rowass)*presy + yexpl  &
-     &  		+ wavey
+     &			+ gravy
 
-	ggx = ggx + llx	!INTEL_BUG
-	ggy = ggy + lly
+	ggx = ggx + (hhi/rowass)*presx + xexpl + wavex - zeqx	!INTEL_BUG
+	ggy = ggy + (hhi/rowass)*presy + yexpl + wavey - zeqy
 
 	!below INTEL_BUG_OLD
 !	ppx = ppx + aat*uui - bbt*uuip - cct*uuim - gammat*vvi  &
@@ -1309,11 +1311,11 @@
         end if
 
 !	------------------------------------------------------
-!	set up right hand side -F^x and -F^y 
+!	set up right hand side F^x and F^y
 !	------------------------------------------------------
 
-	rvec(ju) = utlov(l,ie) - dtafix * ggx
-	rvec(jv) = vtlov(l,ie) - dtafix * ggy
+	rvec(ju) = utlov(l,ie) - dtafix * (ggx + llx)
+	rvec(jv) = vtlov(l,ie) - dtafix * (ggy + lly)
 
 !	------------------------------------------------------
 !	set up H^x and H^y
