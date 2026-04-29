@@ -22,7 +22,7 @@ FEMBIN = $(FEMDIR)/bin
 
 #--------------------	EXES	---------------------
 
-EXES = shyfem rstinf
+EXES = shyfem rstinf rst2shy
 
 #----------------------	INCLUDE	----------------------
 
@@ -290,6 +290,9 @@ shyfem: $(MODULES) $(OBJ) $(XFILES) $(LIBF) shyfem.o
 	 $(F77) $(FFLAGS) $(INCLUDE) $(LFLAGS) $^ $(LIBL) -o $@ 
 
 rstinf: $(MODULES) $(OBJ) $(XFILES) $(LIBF) rstinf.o
+	 $(F77) $(FFLAGS) $(INCLUDE) $(LFLAGS) $^ $(LIBL) -o $@ 
+
+rst2shy: $(MODULES) $(OBJ) $(XFILES) $(LIBF) rst2shy.o
 	 $(F77) $(FFLAGS) $(INCLUDE) $(LFLAGS) $^ $(LIBL) -o $@ 
 
 links:

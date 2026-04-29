@@ -56,6 +56,8 @@
 !
 ! subroutine rst_read_vertical(iunit,nvers,nkn,nel,nlv)
 !	reads arrays dealing with vertical structure
+! subroutine rst_get_vertical(nkn,nel,nlv,hlv,ilhv,ilhkv)
+!	gets vertical arrays
 !
 ! function rst_is_rst_file(file)
 !	finds out if file is a restart file
@@ -128,6 +130,7 @@
 ! 09.03.2025    ggu     call shympi_barrier after finishing restart file
 ! 15.11.2025	ggu	check compatibility of concentrations
 ! 20.03.2026	ggu	new experimental version 18
+! 29.04.2026	ggu	rst_get_vertical() re-introduced
 !
 ! notes :
 !
@@ -1298,6 +1301,45 @@
 
 	return
 	end
+
+!*******************************************************************
+
+        subroutine rst_get_vertical(nkn,nel,nlv,hlv,ilhv,ilhkv)
+
+! gets vertical arrays
+
+        use mod_restart
+
+        implicit none
+
+        integer nkn,nel,nlv
+        real hlv(nlv)
+        integer ilhv(nel)
+        integer ilhkv(nkn)
+
+        if( nkn <= 0 .or. nel <= 0 .or. nlv <= 0 ) goto 98
+
+        if( .not. allocated(hlvrst) ) then
+          stop 'error stop rst_get_vertical: hlvrst not allocated'
+        end if
+        if( nlv /= size(hlvrst) ) goto 99
+        if( nkn /= size(ilhkrst) ) goto 99
+        if( nel /= size(ilhrst) ) goto 99
+
+        hlv = hlvrst
+        ilhv = ilhrst
+        ilhkv = ilhkrst
+
+        return
+   98   continue
+        write(6,*) 'nkn,nel,nlv: ',nkn,nel,nlv
+        stop 'error stop rst_get_vertical: error in parameters'
+   99   continue
+        write(6,*) 'nkn: ',nkn,size(ilhkrst)
+        write(6,*) 'nel: ',nel,size(ilhrst)
+        write(6,*) 'nlv: ',nlv,size(hlvrst)
+        stop 'error stop rst_get_vertical: arrays not compatible'
+        end
 
 !*******************************************************************
 !*******************************************************************

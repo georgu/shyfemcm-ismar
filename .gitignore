@@ -123,6 +123,8 @@ src/tools/femutil/spline/gridr
 bin/gridr
 src/shyfem/rstinf
 bin/rstinf
+src/shyfem/rst2shy
+bin/rst2shy
 
 src/tools/shypre/shypre_noopti
 bin/shypre_noopti
