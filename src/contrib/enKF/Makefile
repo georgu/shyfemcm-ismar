@@ -61,9 +61,11 @@ SHYOBJ = \
 	$(SHYMOD)/mod_hydro.o \
 	$(SHYMOD)/mod_hydro_vel.o \
 	$(SHYMOD)/mod_ts.o \
+	$(SHYMOD)/mod_shyfem.o \
 	$(SHYSHYFEM)/outputd.o \
 	$(SHYSHYFEM)/restart.o \
 	$(SHYUTILMPI)/mod_restart.o \
+	$(SHYUTILMPI)/info_output.o \
 	$(SHYMPI)/mpi_dummy.o \
 	$(SHYMPI)/mpi_general.o \
 	$(SHYSHYFEM)/conz_common.o \
