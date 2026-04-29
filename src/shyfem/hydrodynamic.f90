@@ -1188,8 +1188,8 @@
 	if( blast ) then
 	  rfric = rfricv(ie)
 	  if( rcomp /= 1. ) rfric = rfric_max * (1.-rcomp) + rfric * rcomp
-	  aa  = aa + dt * rfric
-	  aat = aat + rfric
+	  aa  = aa  + aux * rfric
+	  aat = aat + aus * rfric
 	end if
 
 	aa  = aa + dt * ifricv(l,ie)		!internal friction for turbines
