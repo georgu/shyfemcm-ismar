@@ -190,6 +190,7 @@
 ! 08.03.2025    ggu	write compiler information
 ! 09.03.2025    ggu	write compiler profile
 ! 10.03.2025    ggu	write local commit
+! 28.04.2026    ggu	insert more timing calls
 !
 !*****************************************************************
 !
@@ -254,8 +255,8 @@
 	!integer iwhat
 	integer date,time
 	integer nthreads
-	integer*8 count1,count2,count3,count_rate,count_max
-	real time0,time1,time2,time3
+	integer*8 count1,count2,count_rate,count_max
+	real time0,time1,time_start,time_end,time_mpi
 	real dt
 	double precision timer
 	double precision mpi_t_start,mpi_t_end,parallel_start
@@ -296,13 +297,31 @@
 	integer n
 	logical rst_use_restart
 
-	call cpu_time(time1)
-	call cpu_time_init
-	call cpu_time_start(1)
 	call system_clock(count1, count_rate, count_max)
 !$      timer = omp_get_wtime() 
-
         call get_real_time(atime_start,aline_start)
+
+	call cpu_time(time_start)
+
+	call cpu_time_init(1,'total running time             :')
+	call cpu_time_init(2,'time spent in time loop        :')
+	call cpu_time_init(3,'time solving matrix            :')
+	call cpu_time_init(4,'time assembling u/v matrix     :')
+	call cpu_time_init(5,'time assembling zeta matrix    :')
+	call cpu_time_init(6,'time finalizing u/v solution   :')
+	call cpu_time_init(7,'time spent in hydrodynamics    :')
+	call cpu_time_init(8,'time spent in scalar           :')
+	call cpu_time_init(9,'time spent in hydro init       :')
+	call cpu_time_init(10,'time spent in hydro loop       :')
+	call cpu_time_init(11,'time spent in hydro final      :')
+	call cpu_time_init(12,'time spent in vertical vel     :')
+	call cpu_time_init(13,'time spent in baroclinic       :')
+	call cpu_time_init(14,'time spent in tracer           :')
+	call cpu_time_init(15,'time spent in bfm              :')
+	call cpu_time_init(16,'time spent in tracer stability :')
+	call cpu_time_init(17,'time spent in tracer loop      :')
+
+	call cpu_time_start(1)
 
 !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 !%%%%%%%%%%%%%%%%%%%%%%%%%%% code %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -325,8 +344,7 @@
 	call shympi_init(.true., mpi_init)
 	call setup_omp_parallel
 
-	call cpu_time(time3)
-	call system_clock(count3, count_rate, count_max)
+	call cpu_time(time_mpi)
         mpi_t_start = shympi_wtime()
 	call shympi_setup			!sets up partitioning of basin
 	call check_partition_quality
@@ -537,7 +555,6 @@
 	if( bdebout ) call handle_debug_output(dtime)
 
 	call test_zeta_init
-	call cpu_time_start(2)
 
 	call trace_point('finished shyfem_initialize')
 
@@ -558,6 +575,8 @@
 	double precision dtstep		!time step to run, 0: run to end
 
 	double precision dtmax		!run to this time
+
+	call cpu_time_start(2)
 
 	dtmax = dtend			!stand-alone mode
 	if( dtstep > 0. ) then
@@ -608,10 +627,14 @@
            if(bmpi_debug) call shympi_check_all(1)	!checks arrays
 
 	   call trace_point_0('hydro')
+	   call cpu_time_start(7)
 	   call hydro			!hydro
+	   call cpu_time_end(7)
 
 	   call trace_point_0('run_scalar')
+	   call cpu_time_start(8)
 	   call run_scalar
+	   call cpu_time_end(8)
 
            call turb_closure
 
@@ -665,6 +688,8 @@
 
 	end do
 
+	call cpu_time_end(2)
+
 	call trace_point_0('finished shyfem_run')
 
 	end subroutine shyfem_run
@@ -682,8 +707,8 @@
 	implicit none
 
 	integer iuinfo
-
-	call cpu_time_end(2)
+	integer itime,itmax
+	character*80 string
 
 	call trace_point('starting shyfem_finalize')
 
@@ -716,19 +741,35 @@
 	timer = timer / count_rate
 	print *,"TIME TO SOLUTION (WALL) = ",timer,my_id
 
-	call cpu_time(time2)
-	print *,"TIME TO SOLUTION (CPU)  = ",time2-time1,my_id
+	call cpu_time(time_end)
+	print *,"TIME TO SOLUTION (CPU)  = ",time_end-time_start,my_id
         print *,"TIME TO SOLUTION PARALLEL REGION (CPU) = "             &
-     &                          ,time2-time3,my_id
+     &                          ,time_end-time_mpi,my_id
 
-	call cpu_time_get(1,time0)
-	write(6,1200) 'cpu time (total):        ',time0
-	call cpu_time_get(2,time0)
-	write(6,1200) 'cpu time in time loop:   ',time0
-	call cpu_time_get(3,time1)
-	write(6,1200) 'cpu time solving matrix: ',time1
-	write(6,1200) 'cpu time no matrix:      ',time0 - time1
- 1200	format(a,f12.3)
+	call cpu_time_get_maxcpu(itmax)
+	call cpu_time_get(1,time0,string)
+	write(6,1200) trim(string),time0
+	call cpu_time_get(2,time1,string)
+	write(6,1200) trim(string),time1
+	write(6,1200) 'time spent initializing      :',time0 - time1
+	call cpu_time_get(3,time1,string)
+	write(6,1200) trim(string),time1
+	write(6,1200) 'time no matrix               :',time0 - time1
+	do itime=4,itmax
+	  call cpu_time_get(itime,time0,string)
+	  write(6,1200) trim(string),time0
+	end do
+	!call cpu_time_get(4,time0,string)
+	!write(6,1200) trim(string),time0
+	!call cpu_time_get(5,time0,string)
+	!write(6,1200) trim(string),time0
+	!call cpu_time_get(6,time0,string)
+	!write(6,1200) trim(string),time0
+	!call cpu_time_get(7,time0,string)
+	!write(6,1200) trim(string),time0
+	!call cpu_time_get(8,time0,string)
+	!write(6,1200) trim(string),time0
+ 1200	format(1x,a,f12.3)
 
 	call shympi_parallel_code(mpi_code)
 	print *,"TYPE OF MPI CODE            = ",trim(mpi_code)
@@ -1027,15 +1068,21 @@
 !!!$OMP TASKGROUP
 
 !$OMP TASK 
+	call cpu_time_start(13)
 	call barocl(1)
+	call cpu_time_end(13)
 !$OMP END TASK
 
 !$OMP TASK IF ( iconz > 0 )
+	call cpu_time_start(14)
 	call tracer_compute
+	call cpu_time_end(14)
 !$OMP END TASK
 
 !$OMP TASK IF ( ibfm > 0 )
+	call cpu_time_start(15)
 	call bfm_run
+	call cpu_time_end(15)
 !$OMP END TASK
 
 !!!$OMP END TASKGROUP	

@@ -272,6 +272,7 @@
 ! 27.09.2024    ggu     btvddebug introduced
 ! 10.11.2025    ggu     bug in massconc: only run over nkn_unique
 ! 21.04.2026    ggu     use bdry to see if mfluxv should be used
+! 28.04.2026    ggu     insert more timing calls
 !
 !*********************************************************************
 
@@ -684,9 +685,11 @@
 	call get_act_dtime(dtime)
 	call get_act_timeline(aline)
 
+	call cpu_time_start(16)
 	saux = 0.
 	call scalar_stability(dt,robs,rtauv,wsinkl,wsinkv,rkpar, &
      &					sindex,istot,saux)
+	call cpu_time_end(16)
 
 !$OMP CRITICAL
 	if(shympi_is_master()) then
@@ -727,6 +730,7 @@
 
 	call massconc(-1,cnv,nlvddi,massold)
 
+	call cpu_time_start(17)
 	do isact=1,istot
 
 	  dtstep = -((istot-isact)*dt)/istot
@@ -772,6 +776,7 @@
 
 	  if( btvddebug ) call tvd_debug_finalize
 	end do
+	call cpu_time_end(17)
 
         !if( shympi_is_parallel() .and. istot > 1 ) then
         !  write(6,*) 'cannot handle istot>1 with mpi yet'

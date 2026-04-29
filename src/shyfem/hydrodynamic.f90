@@ -279,6 +279,7 @@
 ! 08.06.2023    ggu     new zeta_debug(), cleaned, call to compute_dry_elements
 ! 25.07.2024    ggu     new implementation of OMP for hydro
 ! 21.04.2026    ggu     use vqv to deal with dry nodes, also in hydro_vertical()
+! 28.04.2026    ggu     insert more timing calls
 !
 !******************************************************************
 
@@ -334,6 +335,8 @@
 ! set parameter for hydro or non hydro 
 !-----------------------------------------------------------------
 
+	call cpu_time_start(9)
+
 	call trace_point('start_of_hydro')
 
 	call nonhydro_get_flag(bnohyd)
@@ -372,9 +375,13 @@
 	!if( boff ) write(6,*) 'hydro reading from offline...'
 	if( boff ) return
 
+	call cpu_time_end(9)
+
 !-----------------------------------------------------------------
 ! solve for hydrodynamic variables
 !-----------------------------------------------------------------
+
+	call cpu_time_start(10)
 
 	iloop = 0
 
@@ -410,6 +417,10 @@
 
 	end do
 
+	call cpu_time_end(10)
+
+	call cpu_time_start(11)
+
 	call trace_point('hydro_transports_final')
 	call hydro_transports_final	!final transports (also barotropic)
 
@@ -443,8 +454,10 @@
 	  call nonhydro_adjust
 	end if
 
+	call cpu_time_start(12)
 	call trace_point('hydro_vertical')
 	call hydro_vertical(dzeta)		!compute vertical velocities
+	call cpu_time_end(12)
 
 	if (bnohyd .or. (iwvel .eq. 1)) then
 	  call nh_handle_output(dtime)!DWNH
@@ -478,6 +491,8 @@
 	call trace_point('compute_velocities')
 	call compute_velocities
 	call trace_point('end_of_hydro')
+
+	call cpu_time_end(11)
 
 !-----------------------------------------------------------------
 ! end of routine
@@ -560,6 +575,8 @@
 !-------------------------------------------------------------
 ! initialization
 !-------------------------------------------------------------
+
+	call cpu_time_start(5)
 
 	bcolin=nint(getpar('iclin')).ne.0
 
@@ -740,6 +757,8 @@
 
 	call system_add_rhs(dt,nkn,vqv)
 
+	call cpu_time_end(5)
+
 !-------------------------------------------------------------
 ! end of routine
 !-------------------------------------------------------------
@@ -783,6 +802,8 @@
 !-------------------------------------------------------------
 ! initialize
 !-------------------------------------------------------------
+
+	call cpu_time_start(4)
 
 	ibaroc = nint(getpar('ibarcl'))		! baroclinic contributions
         vismol  = getpar('vismol')		! molecular viscosity
@@ -832,8 +853,6 @@
 	!allocate(its(0:nthreads-1))
 	!its = 0
 
-	call get_clock_time(time)
-
 !$OMP PARALLEL DO FIRSTPRIVATE(bcolin,baroc,az,am,af,at,radv       &
 !$OMP &            ,vismol,rrho0,dt) PRIVATE(ie,rmsdif,ith)  &
 !$OMP &     SHARED(nel,nchunk,its)   DEFAULT(NONE)
@@ -857,9 +876,7 @@
 ! end of loop over elements
 !-------------------------------------------------------------
 
-	call get_clock_time_diff(time,difftime)
-	atime = atime + difftime
-	!write(653,*) difftime,atime
+	call cpu_time_end(4)
 
 !-------------------------------------------------------------
 ! end of routine
@@ -1504,6 +1521,8 @@
 ! initialize
 !-------------------------------------------------------------
 
+	call cpu_time_start(6)
+
 	bcolin=nint(getpar('iclin')).ne.0	! linearized conti
 	bdebug = .false.
 
@@ -1578,6 +1597,8 @@
 !-------------------------------------------------------------
 ! end of routine
 !-------------------------------------------------------------
+
+	call cpu_time_end(6)
 
 	end
 
