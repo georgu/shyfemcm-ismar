@@ -965,8 +965,8 @@
 	double precision rvec(6*nlvdi)		!ASYM (3 systems to solve)
 	double precision rvecp(6*nlvdi)		!ASYM (3 systems to solve)
 	double precision solv(6*nlvdi)		!ASYM (3 systems to solve)
-	double precision ppx,ppy
-	double precision ppx_aux,ppy_aux
+	double precision ggx,ggy
+	double precision llx,lly
 !-----------------------------------------
 ! function
 	integer locssp
@@ -1179,11 +1179,11 @@
 !	boundary conditions for stress on surface and bottom
 !	------------------------------------------------------
 
-	ppx = 0.
-	ppy = 0.
+	ggx = 0.
+	ggy = 0.
 	if( bfirst ) then
-	  ppx = ppx - taux
-	  ppy = ppy - tauy
+	  ggx = ggx - taux
+	  ggy = ggy - tauy
 	end if
 	if( blast ) then
 	  rfric = rfricv(ie)
@@ -1245,20 +1245,20 @@
 	gravy = rcomp * grav*hhi*((1.-am)*cz - bzeq)
 
 !	------------------------------------------------------
-!	ppx/ppy is contribution on the left side of equation
-!	ppx corresponds to -F^x_l in the documentation
-!	ppy corresponds to -F^y_l in the documentation
+!	ggx/ggy is contribution on the left side of equation
+!	ggx corresponds to -F^x_l in the documentation
+!	ggy corresponds to -F^y_l in the documentation
 !	------------------------------------------------------
 
-	ppx_aux = aat*uui - bbt*uuip - cct*uuim - gammat*vvi  &
+	llx = aat*uui - bbt*uuip - cct*uuim - gammat*vvi  &
      &			+ gravx + (hhi/rowass)*presx + xexpl  &
      &  		+ wavex
-	ppy_aux = aat*vvi - bbt*vvip - cct*vvim + gammat*uui  &
+	lly = aat*vvi - bbt*vvip - cct*vvim + gammat*uui  &
      &			+ gravy + (hhi/rowass)*presy + yexpl  &
      &  		+ wavey
 
-	ppx = ppx + ppx_aux	!INTEL_BUG
-	ppy = ppy + ppy_aux
+	ggx = ggx + llx	!INTEL_BUG
+	ggy = ggy + lly
 
 	!below INTEL_BUG_OLD
 !	ppx = ppx + aat*uui - bbt*uuip - cct*uuim - gammat*vvi  &
@@ -1312,8 +1312,8 @@
 !	set up right hand side -F^x and -F^y 
 !	------------------------------------------------------
 
-	rvec(ju) = utlov(l,ie) - dtafix*ppx
-	rvec(jv) = vtlov(l,ie) - dtafix*ppy
+	rvec(ju) = utlov(l,ie) - dtafix * ggx
+	rvec(jv) = vtlov(l,ie) - dtafix * ggy
 
 !	------------------------------------------------------
 !	set up H^x and H^y
@@ -1383,7 +1383,7 @@
 	!end if
 
 !-------------------------------------------------------------
-! compute u^hat (negative sign because ppx/ppy was -F^x/-F^y)
+! compute u^hat (negative sign because ggx/ggy was -F^x/-F^y)
 !-------------------------------------------------------------
 
 	if( afix /= 0. ) then
