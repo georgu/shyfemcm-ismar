@@ -37,7 +37,7 @@
 ! 			marks boundary nodes and determines exact grade
 !  subroutine sortgr(n,iv)
 ! 			compacts array iv (throws out double numbers)
-!  subroutine compat(n,iv)
+!  subroutine compact(n,iv)
 ! 			compacts array iv (throws out double numbers)
 ! 
 !  function nextgr(k,kgr,ngrddi,ngrade,ngri)
@@ -61,6 +61,7 @@
 !  30.07.2015	ggu	changed VERS_7_1_83
 !  18.12.2018	ggu	changed VERS_7_5_52
 !  21.05.2019	ggu	changed VERS_7_5_62
+!  06.03.2026   ggu     completely restructured
 ! 
 ! ***********************************************************
 
@@ -124,7 +125,7 @@
 
 ! ***********************************************************
 
-	subroutine statgrd(text,nkn,nmax,ngrade,nbound)
+	subroutine statgrd(iu,text,nkn,nmax,ngrade,nbound)
 
 !  computes statistics on grade
 
@@ -132,18 +133,21 @@
 
 	implicit none
 
+	integer iu
 	character*(*) text
 	integer nkn,nmax
-	integer ngrade(1)
-	integer nbound(1)
+	integer ngrade(nkn)
+	integer nbound(nkn)
 
-	integer nsa(0:30)
-	integer nsi(0:30)
-	integer nsb(0:30)
+	integer nsa(0:nmax)
+	integer nsi(0:nmax)
+	integer nsb(0:nmax)
 
 	integer i,k,n,nb
 	integer naux,ndiff
 	integer nin,nbn,nto,nis
+	integer nnmin,nnmax
+	logical, save :: bvertical = .false.
 
 	do i=0,nmax
 	  nsa(i) = 0
@@ -154,9 +158,13 @@
 	nin = 0			! total number of internal nodes
 	nbn = 0			! total number of boundary nodes
 	nto = 0			! total grade
+	nnmin = nmax
+	nnmax = 0
 
 	do k=1,nkn
 	  n = ngrade(k)
+	  if( n > nnmax ) nnmax = n
+	  if( n < nnmin ) nnmin = n
 	  nb = nbound(k)	! = 1 if on boundary
 	  if( nb .eq. nbstatic ) nb = 0	!NBSTATIC
 	  nto = nto + n
@@ -181,13 +189,24 @@
 	ndiff = nto-naux	! must be divisible by 6, -6 for no island
 	nis = ndiff/6 + 1	! total number of islands
 
-	write(6,'(a,a)') 'statistics on grades: ',text
-	write(6,'(5x,a)') '  internal  boundary   islands    total grade'
-	write(6,'(5x,3i10,i15)') nin,nbn,nis,nto
-	write(6,'(3x,a)') 'grade       all  internal  boundary'
-	do i=0,nmax
-	  write(6,'(3x,i5,3i10)') i,nsa(i),nsi(i),nsb(i)
-	end do
+	if( bvertical ) then
+	  write(iu,'(a,a)') 'statistics on grades: ',text
+	  write(iu,'(5x,a)') '  internal  boundary   islands    total grade'
+	  write(iu,'(5x,3i10,i15)') nin,nbn,nis,nto
+	  write(iu,'(3x,a)') 'grade       all  internal  boundary'
+	  do i=nnmin,nnmax
+	    write(iu,'(3x,i5,3i10)') i,nsa(i),nsi(i),nsb(i)
+	  end do
+	else
+	  nsa(9) = sum(nsa(9:nnmax))
+	  nsb(9) = sum(nsb(9:nnmax))
+	  nsi(9) = sum(nsi(9:nnmax))
+	  write(iu,'(a,a)') 'statistics on grades: ',text
+	  write(iu,'(a,8i8,a)') ' grade ',(i,i=2,9),'+'
+	  write(iu,'(a,8i8)') ' total ',(nsa(i),i=2,9)
+	  write(iu,'(a,8i8)') ' bound ',(nsb(i),i=2,9)
+	  write(iu,'(a,8i8)') ' inner ',(nsi(i),i=2,9)
+	end if
 
 	if( mod(ndiff,6) .ne. 0 .and. nbn .gt. 0 ) then	!not on first call
 	  write(6,*) 'error in element layout'
@@ -211,24 +230,20 @@
 	implicit none
 
 	integer nkn,nel,ngrddi
-	integer nen3v(3,1)
-	integer ngrade(1)
-	integer nbound(1)
-	integer ngri(2*ngrddi,1)
+	integer nen3v(3,nel)
+	integer ngrade(nkn)
+	integer nbound(nkn)
+	integer ngri(2*ngrddi,nkn)
 
 	integer k,ie,ii,n,nb
 	integer i1,i2
-	integer ks,i
+	integer i
 
-	ks = 885
-	ks = 0
+	!write(6,*) 'grading nodes...'
 
-	write(6,*) 'grading nodes...'
-
-	do k=1,nkn
-	  ngrade(k) = 0
-	  nbound(k) = 0
-	end do
+	ngrade = 0
+	nbound = 0
+	ngri = 0
 
 	do ie=1,nel
 	  do ii=1,3
@@ -247,15 +262,16 @@
 	nb = 0
 	do k=1,nkn
 	  n = ngrade(k)
-	  call sortgr(n,ngri(1,k))
+	  call sortgr(ngrddi,n,ngri(1,k))	!compact ngri and compute n
 	  if( ngrade(k)/2 .ne. n ) then		!boundary node
 	    nb = nb + 1
 	    nbound(k) = 1
 	  end if
 	  ngrade(k) = n
+	  call resort_index(n,ngri(:,k))
 	end do
 
-	write(6,*) 'grading nodes done ... boundary nodes: ',nb
+	!write(6,*) 'grading nodes done ... boundary nodes: ',nb,nkn
 
 	return
    99	continue
@@ -265,25 +281,25 @@
 
 ! ***********************************************************
 
-	subroutine sortgr(n,iv)
+	subroutine sortgr(ngrddi,n,iv)
 
 !  compacts array iv (throws out double numbers)
 
 	implicit none
 
+	integer ngrddi
 	integer n
 	integer iv(n)
 
         integer ndim
-        parameter (ndim=60)
-
 	logical bnew
 	integer ib,ie,new
 	integer i
-	integer iaux(ndim)      !aux array
+	integer iaux(2*ngrddi)      !aux array
 
 !  initialize
 
+	ndim = 2*ngrddi
 	ib = ndim/2
 	ie = ib + 1
 
@@ -346,7 +362,7 @@
 
 ! ***********************************************************
 
-	subroutine compat(n,iv)
+	subroutine compact(n,iv)
 
 !  compacts array iv (throws out double numbers)
 ! 
@@ -355,7 +371,7 @@
 	implicit none
 
 	integer n
-	integer iv(1)
+	integer iv(n)
 
 	integer ivold,i,idiff,nmax
 
@@ -394,6 +410,31 @@
 	end
 
 ! ***********************************************************
+
+	subroutine resort_index(n,index)
+
+	implicit none
+
+	integer n
+	integer index(n)
+
+	integer i,imin
+	integer iaux(n)
+
+	imin = minloc(index,1)
+	if( imin == 1 ) return
+
+	do i=1,n
+	  iaux(i) = index(imin)
+	  imin = imin + 1
+	  if( imin > n ) imin = 1
+	end do
+
+	index = iaux
+
+	end
+
+! ***********************************************************
 ! ***********************************************************
 ! ***********************************************************
 
@@ -419,18 +460,19 @@
 
 	do i=1,n
 	  kn = ngri(i,k)
-	  if( kn .eq. kgr) goto 1
+	  if( kn .eq. kgr) exit
 	end do
 
-	write(6,*) k,kgr,n,ngrddi
-        call nint2ext(k,kext)
-        write(6,*) 'int/ext k: ',k,kext
-        call nint2ext(kgr,kext)
-        write(6,*) 'int/ext kgr: ',kgr,kext
-        write(6,*) (ngri(i,k),i=1,n)
-	stop 'error stop nextgr: no such node'
+	if( i > n ) then
+	  write(6,*) k,kgr,n,ngrddi
+          call nint2ext(k,kext)
+          write(6,*) 'int/ext k: ',k,kext
+          call nint2ext(kgr,kext)
+          write(6,*) 'int/ext kgr: ',kgr,kext
+          write(6,*) (ngri(i,k),i=1,n)
+	  stop 'error stop nextgr: no such node'
+	end if
 
-    1	continue
 	i = i + 1
 	if( i .gt. n ) i = 1
 	nextgr = ngri(i,k)
@@ -454,14 +496,16 @@
 	n = ngrade(k)
 
 	do i=1,n
-	  if( ngri(i,k) .eq. kold ) then
-		ngri(i,k) = knew
-		return
-	  end if
+	  if( ngri(i,k) .eq. kold ) exit
 	end do
 
-	write(6,*) k,kold,knew
-	stop 'error stop exchgr: no such node'
+	if( i > n ) then
+	  write(6,*) k,kold,knew
+	  stop 'error stop exchgr: no such node'
+	end if
+
+	ngri(i,k) = knew
+	call resort_index(n,ngri(:n,k))
 
 	end
 
@@ -496,6 +540,10 @@
 	  stop 'error stop delgr: no such node'
 	end if
 
+	ngri(n,k) = 0
+	n = n - 1
+	call resort_index(n,ngri(:n,k))
+
 	end
 
 ! **************************************************************
@@ -516,16 +564,20 @@
 	ngrade(k) = ngrade(k) + 1
 
 	do i=n,1,-1			!backwards
-	  if( ngri(i,k) .eq. kbefor ) then
-	    ngri(i+1,k) = ngri(i,k)
-	    ngri(i,k) = knew
-	    return
-	  end if
+	  if( ngri(i,k) .eq. kbefor ) exit
 	  ngri(i+1,k) = ngri(i,k)
 	end do
 
-	write(6,*) k,kbefor,knew
-	stop 'error stop insgrb: no such node'
+	if( i < 1 ) then
+	  write(6,*) k,kbefor,knew
+	  write(6,*) 'No such node : ',kbefor
+	  stop 'error stop insgrb: no such node'
+	end if
+
+	ngri(i+1,k) = ngri(i,k)
+	ngri(i,k) = knew
+	n = n + 1
+	call resort_index(n,ngri(:n,k))
 
 	end 
 
@@ -547,16 +599,19 @@
 	ngrade(k) = ngrade(k) + 1
 
 	do i=n,1,-1			!backwards
-	  if( ngri(i,k) .eq. kafter ) then
-	    ngri(i+1,k) = knew
-	    return
-	  end if
+	  if( ngri(i,k) .eq. kafter ) exit
 	  ngri(i+1,k) = ngri(i,k)
 	end do
 
-	write(6,*) 'insgr: ',k,kafter,knew
-	write(6,*) 'No such node : ',kafter
-	stop 'error stop insgr'
+	if( i < 1 ) then
+	  write(6,*) 'insgr: ',k,kafter,knew
+	  write(6,*) 'No such node : ',kafter
+	  stop 'error stop insgr'
+	end if
+
+	ngri(i+1,k) = knew
+	n = n + 1
+	call resort_index(n,ngri(:n,k))
 
 	end 
 

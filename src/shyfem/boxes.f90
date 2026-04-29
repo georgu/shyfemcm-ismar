@@ -988,6 +988,7 @@
 	use basin
 	use box
 	use shympi
+	use mod_info_output
 
 	implicit none
 
@@ -1009,7 +1010,9 @@
 	iudeb = 666
 	iudeb = 0
 
+	if( print_not_quiet_once() ) then
 	write(6,*) 'start reading boxfile... ',trim(boxfile)
+	end if
 	if( iudeb > 0 ) write(iudeb,*) 'reading boxfile'
 	open(1,file=boxfile,form='formatted',status='old',err=94)
 
@@ -1062,12 +1065,14 @@
 	!kfluxm = kfluxm - 1		!we keep last 0
 	kflux_ext = kflux
 
+	if( print_not_quiet_once() ) then
 	write(6,*) 'finished reading boxfile: ',trim(boxfile)
 	write(6,*) '  boxes    = ',nbox
 	write(6,*) '  sections = ',nsect
 	write(6,*) '  nodes    = ',kfluxm
 	write(6,*) '  sdim     = ',nscboxdim
 	write(6,*) '  ndim     = ',nfxboxdim
+	end if
 	!write(6,*) kflux(1:kfluxm)
 
 	if( iudeb == 0 ) return
@@ -1155,6 +1160,7 @@
 ! is -1 if node belongs to more than one box
 
 	use basin
+	use mod_info_output
 	!use box
 
 	implicit none
@@ -1194,7 +1200,9 @@
 	  stop 'error stop box_elab: internal error'
 	end if
 
+	if( print_verbose_once() ) then
 	write(6,*) 'box nodes: ',nb,nl,nb+nl,nkn
+	end if
 
 	end
 
@@ -1500,7 +1508,6 @@
  2000	  format(i10,e16.8,f12.4)
  2100	  format(2i10,e16.8,f12.4)
 	end do
-	write(6,*) 'total area: ',areatot
 
 	if( bw ) close(iu)
 

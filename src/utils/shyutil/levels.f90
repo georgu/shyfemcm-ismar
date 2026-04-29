@@ -166,7 +166,7 @@
 	if( nlv_levels == nl ) return
 
 	n = min(nl,nlv_levels)
-	write(6,*) 'levels_hlv_reinit: ',nl,nlv_levels,n
+	!write(6,*) 'levels_hlv_reinit: ',nl,nlv_levels,n
 
 	if( nlv_levels > 0 ) then
 	  if( nl > 0 ) then
@@ -181,7 +181,7 @@
 	  deallocate(hldv)
 	end if
 
-	write(6,*) 'levels_hlv_reinit: ',nl,nlv_levels,n
+	!write(6,*) 'levels_hlv_reinit: ',nl,nlv_levels,n
 	nlvdi = nl
 	nlv_levels = nl
 

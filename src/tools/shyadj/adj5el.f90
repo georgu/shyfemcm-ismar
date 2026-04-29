@@ -47,6 +47,8 @@
 !  18.12.2018	ggu	changed VERS_7_5_52
 !  21.05.2019	ggu	changed VERS_7_5_62
 !  23.02.2026   ggu     checks to avoid negative areas
+!  27.02.2026   ggu     some more checks
+!  06.03.2026   ggu     completely restructured
 ! 
 ! ***********************************************************
 
@@ -58,27 +60,44 @@
 !  the two elements attached to these nodes are deleted
 
 	use mod_adj_grade
+        use mod_progress_bar
 	use basin
 
 	implicit none
 
         integer k,n
+	integer itot,ielim
+	logical bok,bprog
+	real perc
 
-        write(6,*) 'eliminating grades for grade 5... '
+        bprog = bquiet .and. .not. bsilent
+        bprog = .not. bverbose .and. .not. bsilent
+
+        if( .not. bquiet ) write(6,*) 'eliminating 5 grades...'
+	if( bprog ) call progress_bar_init('elim5')
+
+	ielim = 0
+	itot = 0
 
         do k=1,nkn
+          perc = k/float(nkn)
+          if( bprog ) call progress_bar_print(k,nkn)
           n = ngrade(k)
           if( n .eq. 5 .and. nbound(k) .eq. 0 ) then
-            call elim55(k)
-	    !call chkgrd('checking in 5 grade')
-          end if
+            call elim55(k,bok)
+	    itot = itot + 1
+	    if( bok ) ielim = ielim + 1
+	  end if
         end do
+
+	if( bprog ) call progress_bar_finalize
+	if( .not. bsilent ) write(6,*) 'nodes eliminated: ',ielim,' of ',itot
 
 	end
 
 ! ***********************************************************
 
-	subroutine elim55(k)
+	subroutine elim55(k,bok)
 
 !  eliminates 5-5 connections
 
@@ -88,6 +107,7 @@
 	implicit none
 
 	integer k
+	logical bok
 
 	logical berr
         integer n,i,nc,nmax,ii,ks,nks
@@ -106,6 +126,7 @@
 	integer ifindel
 
 	berr = .false.
+	bok = .false.
 
 	if( k .gt. nkn ) return
 
@@ -167,16 +188,9 @@
 	    ng = ngrv(ip)
 	    nb = nbav(ip)
 	    naux(1:ng) = ngri(1:ng,ks)
-	    write(6,*) '5-5 before: ',ks,ng,nb
-	    write(6,*) '5-5 before: ',naux(1:ng)
 	    call check_angles(ks,ng,naux(1:n),amax,ipos)
-	    write(6,*) '5-5 amax: ',ks,amax
 	  end do
 	end if
-!        do i=1,n
-!          neibs(i) = ngri(i,k)
-!          ngneib(i) = ngrade(neibs(i))
-!        end do
 
 	ip = 0
 	do i=1,nc
@@ -188,14 +202,9 @@
 
 	call check_angles(k,n,ngav(1:n),amax,ipos)
 	if( amax > 180 ) then
-	  write(6,*) 'cannot eliminate... k angle > 180'
+	  if( bverbose ) write(6,*) 'cannot eliminate... k angle > 180: ',k
 	  return
 	end if
-
-	write(6,*) k,n,nmax,nc,ip,amax
-
-	!if( k == 2821 ) call plot_node(k)
-	if( k == 2834 ) berr = .true.
 
 !  nc gives number of occurences of this value of nmax ...
 !  ip is the pointer to the node to be exchanged
@@ -208,8 +217,14 @@
 	!if( nks /= 5 ) stop 'error stop: nks/=5'
 	call check_angles(ks,nks,ngri(:,ks),amax,ipos)
 	if( amax > 180 ) then
-	  write(6,*) 'cannot eliminate... ks angle > 180'
+	  if( bverbose ) write(6,*) 'cannot eliminate... ks angle > 180',ks
 	  return
+	end if
+
+!  now we know that we can exchange
+
+	if( bverbose ) then
+	  write(6,'(a,5i10,f8.2)') ' elim5: ',k,n,nmax,nc,ip,amax
 	end if
 
 	if( berr ) then
@@ -331,5 +346,9 @@
 	if( berr ) write(6,*) 'finished calling checkarea'
 	! should only check elements around ks -> we need element index
 
+	bok = .true.
+
 	end
+
+! ***********************************************************
 

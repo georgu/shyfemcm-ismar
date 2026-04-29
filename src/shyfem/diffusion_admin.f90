@@ -116,7 +116,7 @@
 
         gamma = alpha * bmax / istot
 
-        write(6,*) 'diffstab: ',dt,rk,rkmin,rkmax,gamma
+        !write(6,*) 'diffstab: ',dt,rk,rkmin,rkmax,gamma
 
         end
 
@@ -169,7 +169,7 @@
 
         gamma = bmax / istot
 
-        write(6,*) 'diffstab1: ',dt,bmin,bmax,gamma
+        !write(6,*) 'diffstab1: ',dt,bmin,bmax,gamma
 
         end
 
@@ -184,6 +184,7 @@
 	use mod_diff_aux
 	use evgeom
 	use basin
+	use mod_info_output
 
         implicit none
 
@@ -214,7 +215,9 @@
 	bdebug = .false.
 	wacu_max = 0.
 
+	if( print_not_quiet_once() ) then
         write(6,*) 'diffweight: computing weights'
+	end if
 
 !-----------------------------------------------------------------
 ! loop over elements
@@ -350,9 +353,11 @@
 ! end of loop over elements
 !-----------------------------------------------------------------
 
+	if( print_verbose() ) then
         write(6,*) 'diffweight: total weights changed = ', nchange
         write(6,*) 'diffweight: type of hor diffus    = ', idtype
         write(6,*) 'diffweight: maximum error         = ', wacu_max
+	end if
 
 !-----------------------------------------------------------------
 ! end of routine
@@ -491,9 +496,11 @@
 	use levels
 	use basin, only : nkn,nel,ngr,mbw
 	use shympi
+	use mod_info_output
 
         implicit none
 
+	logical bw
         character*80 file,title
         integer ie,l,lmax
         real dt
@@ -519,6 +526,8 @@
 !------------------------------------------------------------------
 
         if( icall .lt. 0 ) return
+
+	bw = print_not_quiet_once()
 
 !------------------------------------------------------------------
 ! time dependent diffusion
@@ -569,6 +578,7 @@
         if( idhtyp .eq. 1 ) then
           if( dhlen .le. 0. ) goto 99
           alpha = 1. / ( dhlen**(4./3.) )
+	  if( bw ) write(6,*) 'initializing variable area diffusion...'
         end if
 
 !       ------------------------------------------------
@@ -603,13 +613,15 @@
         if( idhtyp .ge. 2 ) then
 	  icall = 1
 	  call smagorinsky
-	  write(6,*) 'initializing smagorinski...'
+	  if( bw ) write(6,*) 'initializing smagorinski...'
 	end if
 
+	if( print_verbose() ) then
         write(6,*) 'horizontal diffusion (1): ',parmax,ahmax,dhlen
         write(6,*) 'horizontal diffusion (2): ',idhtyp,icall
         write(6,*) ' dhpar,chpar,thpar,shpar,ahpar : '
         write(6,*) dhpar,chpar,thpar,shpar,ahpar
+	end if
 
 !       ------------------------------------------------------------------
 !       checks stability

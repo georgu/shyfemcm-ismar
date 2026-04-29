@@ -30,7 +30,8 @@
 ! 30.07.2015	ggu	written
 ! 18.12.2018	ggu	changed VERS_7_5_52
 ! 21.05.2019	ggu	changed VERS_7_5_62
-! 23.02.2026   ggu     checks to avoid negative areas
+! 23.02.2026    ggu     checks to avoid negative areas
+! 06.03.2026    ggu     completely restructured
 !
 !--------------------------------------------------------------------------
 
@@ -40,13 +41,28 @@
 
 	integer, save :: ngrdi = 0
 
-	logical, save :: bdebug = .false.
-	logical, save :: bcheck = .true.
-	logical, save :: bplot_error = .true.
+	logical, save :: bverbose = .false.
+	logical, save :: bquiet = .false.
+	logical, save :: bsilent = .false.
+	logical, save :: bplot = .false.
 
-	integer, save, allocatable :: ngrade(:)
-	integer, save, allocatable :: nbound(:)
-	integer, save, allocatable :: ngri(:,:)
+	logical, save :: bdebug = .false.
+	logical, save :: bcheck = .false.
+	logical, save :: bcheck_all = .false.	!checks grade index thorougly
+	logical, save :: bplot_error = .true.	!plots vicinity on error
+
+	integer, save :: iugrade = 6		!unit to write grade stats
+
+	integer, save :: nsmooth = 50
+	real, save :: asmooth = 0.01
+
+	integer, save, allocatable :: ngrade(:)	!grade of node
+	integer, save, allocatable :: nbound(:)	!is boundary node (1)
+	integer, save, allocatable :: ngri(:,:)	!grid index on nodes
+
+	integer, save, allocatable :: ngrade_aux(:)	!grade of node
+	integer, save, allocatable :: nbound_aux(:)	!is boundary node (1)
+	integer, save, allocatable :: ngri_aux(:,:)	!grid index on nodes
 
 !===================================================================
 	contains
@@ -61,6 +77,10 @@
 	allocate(ngrade(nkn))
 	allocate(nbound(nkn))
 	allocate(ngri(2*ngr,nkn))
+
+	allocate(ngrade_aux(nkn))
+	allocate(nbound_aux(nkn))
+	allocate(ngri_aux(2*ngr,nkn))
 
 	end subroutine mod_adj_grade_init
 

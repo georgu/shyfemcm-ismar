@@ -92,6 +92,7 @@
 ! 10.04.2022	ggu	ie_mpi and double in uvint (compiler issue with INTEL)
 ! 09.05.2023    lrp     introduce top layer index variable
 ! 05.06.2023    lrp     introduce z-star
+! 20.03.2026    ggu     new routines compute_derived_variables() and uvint_old()
 !
 !****************************************************************************
 
@@ -143,11 +144,11 @@
 	end
 
 !******************************************************************
-!
+
 	subroutine uvtop0
-!
+
 ! transforms barotropic transports to nodal velocities
-!
+
 	use mod_geom_dynamic
 	use mod_depth
 	use mod_hydro_baro
@@ -167,13 +168,13 @@
 ! function
 	real getpar
 	integer iround
-!
+
 	bcolin=iround(getpar('iclin')).ne.0
-!
+
 	up0v = 0.
 	vp0v = 0.
 	vv   = 0.
-!
+
 	do ie_mpi=1,nel
 	  ie = ip_sort_elem(ie_mpi)
 	  if( iwegv(ie) /= 0 ) cycle
@@ -280,11 +281,11 @@
 	end
 
 !******************************************************************
-!
+
 	subroutine prtouv
-!
+
 ! transforms nodal values to element values (velocities)
-!
+
 	use mod_geom_dynamic
 	use mod_hydro_print
 	use mod_hydro_vel
@@ -296,9 +297,9 @@
 	integer ie,l,k,ii
 	integer lmin,lmax
 	real u,v
-!
+
 ! baroclinic part
-!
+
 	do ie=1,nel
 	 if( iwegv(ie) .eq. 0 ) then
 	  lmax = ilhv(ie)
@@ -319,24 +320,24 @@
 	    vlnv(:,ie)=0.
 	 end if
 	end do
-!
+
 ! vertical velocities -> from layer average to interface values
-!
+
 	wlnv(nlv,:) = 0.
 	do l=nlv-1,0,-1
 	  wlnv(l,:)=2.*wprv(l+1,:)-wlnv(l+1,:)
 	end do
 	wlnv(0,:) = 0.
-!
+
 	return
 	end
-!
+
 !*****************************************************************
-!
+
 	subroutine uvint
-!
+
 ! computation of barotropic part of transports
-!
+
 	use mod_hydro_baro
 	use mod_hydro
 	use levels
@@ -347,7 +348,7 @@
 
 	integer ie,l,ie_mpi
 	double precision u,v	!needed for bit2bit compatibility with INTEL
-!
+
 	do ie_mpi=1,nel
 	  ie = ip_sort_elem(ie_mpi)
 	  u=0.
@@ -359,10 +360,42 @@
 	  unv(ie)=u
 	  vnv(ie)=v
 	end do
-!
+
 	return
 	end
-!
+
+!*****************************************************************
+
+	subroutine uvint_old
+
+! computation of barotropic part of transports
+
+	use mod_hydro_baro
+	use mod_hydro
+	use levels
+	use basin, only : nkn,nel,ngr,mbw
+	use shympi
+
+	implicit none
+
+	integer ie,l,ie_mpi
+	double precision u,v	!needed for bit2bit compatibility with INTEL
+
+	do ie_mpi=1,nel
+	  ie = ip_sort_elem(ie_mpi)
+	  u=0.
+	  v=0.
+	  do l=jlhv(ie),ilhv(ie)
+	    u=u+utlov(l,ie)
+	    v=v+vtlov(l,ie)
+	  end do
+	  uov(ie)=u
+	  vov(ie)=v
+	end do
+
+	return
+	end
+
 !*****************************************************************
 
 	subroutine check_volume
@@ -433,7 +466,7 @@
 	end
 
 !*****************************************************************
-!
+
 	subroutine baro2l
 
 ! distribute barotropic velocities onto layers (only in dry elements)
@@ -552,7 +585,7 @@
 
 	subroutine make_prvel
 
-! makes print velocities and xv from new level arrays
+! makes print velocities (and xv) from new level arrays
 
 	use basin
 	use shympi
@@ -562,9 +595,6 @@
 	call uvtopr	!computes uprv,vprv,wprv
 	call uvtop0	!computes up0v,vp0v
 	call setxv	!sets xv from up0v,vp0v,znv
-
-	!call shympi_comment('exchanging uprv, vprv, up0v, vp0v')
-	!call shympi_barrier
 
 	end
 
@@ -577,8 +607,49 @@
 	implicit none
 
 	call ttov			!velocities ulnv/vlnv
-	call uvint			!barotropic transports unv/vnv
 	call make_prvel			!nodal values uprv/vprv/wprv/up0v/vp0v
+
+	end
+
+!******************************************************************
+
+	subroutine compute_derived_variables
+
+! computes a lot of things for old time level
+
+	use basin
+	use mod_hydro
+	use mod_hydro_baro
+
+	implicit none
+
+	call ttov			!velocities ulnv/vlnv
+	call make_prvel			!nodal values uprv/vprv/wprv/up0v/vp0v
+	call uvint			!barotropic transports unv/vnv
+
+	end
+
+!******************************************************************
+
+	subroutine compute_old_derived_variables
+
+! computes a lot of things for old time level
+
+	use basin
+	use mod_hydro
+	use mod_hydro_vel
+	use mod_layer_thickness
+
+	implicit none
+
+        ulov = 0.
+        vlov = 0.
+        where( hdeov > 0. )
+          ulov = utlov / hdeov
+          vlov = vtlov / hdeov
+        end where
+
+	call uvint_old			!old barotropic transports uov/vov
 
 	end
 

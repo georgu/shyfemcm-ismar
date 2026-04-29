@@ -278,6 +278,8 @@
 ! 09.05.2023    lrp     introduce top layer index variable
 ! 08.06.2023    ggu     new zeta_debug(), cleaned, call to compute_dry_elements
 ! 25.07.2024    ggu     new implementation of OMP for hydro
+! 21.04.2026    ggu     use vqv to deal with dry nodes, also in hydro_vertical()
+! 28.04.2026    ggu     insert more timing calls
 !
 !******************************************************************
 
@@ -287,11 +289,13 @@
 
 	use mod_depth
 	use mod_bound_dynamic
+	use mod_geom_dynamic
 	use mod_area
 	use mod_hydro_baro
 	use mod_hydro_print
 	use mod_hydro_vel
 	use mod_hydro
+	use mod_shyfem
 	use levels, only : nlvdi,nlv
 	!use basin, only : nkn,nel,ngr,mbw
 	use basin
@@ -302,16 +306,18 @@
 
 	implicit none
 
-	logical boff,bdebout
+	logical boff
 	logical bzcorr
-	integer i,l,k,ie,ier,ii
+	integer i,l,ie,ier,ii
+	!integer i,l,k,ie,ier,ii
 	integer nrand
 	integer iw,iwa,iloop
 	integer nmat
 	integer kspecial
-	integer iwhat
+	!integer iwhat
 	real azpar,ampar
 	real dzeta(nkn)
+	real vqv(nkn)
 	double precision dtime
 
 	real getpar
@@ -322,13 +328,14 @@
 
         integer iwvel !DWNH
 	kspecial = 0
-	bdebout = .false.
 
 	if( nint(getpar('ihydro')) <= 0 ) return	!only for debug
 
 !-----------------------------------------------------------------
 ! set parameter for hydro or non hydro 
 !-----------------------------------------------------------------
+
+	call cpu_time_start(9)
 
 	call trace_point('start_of_hydro')
 
@@ -351,6 +358,9 @@
 	iw=0
 	call do_close_handle(iw)
 
+	vqv = rqv
+	where( inodv == -2 ) vqv = 0.	!set to zero for dry nodes
+
 !-----------------------------------------------------------------
 ! set diffusivity
 !-----------------------------------------------------------------
@@ -365,9 +375,13 @@
 	!if( boff ) write(6,*) 'hydro reading from offline...'
 	if( boff ) return
 
+	call cpu_time_end(9)
+
 !-----------------------------------------------------------------
 ! solve for hydrodynamic variables
 !-----------------------------------------------------------------
+
+	call cpu_time_start(10)
 
 	iloop = 0
 
@@ -381,11 +395,10 @@
 
 	  call setnod			!set info on dry nodes
 	  call set_link_info		!information on areas, islands, etc..
-	  call adjust_mass_flux		!cope with dry nodes
 
 	  call system_init		!initializes matrix
 	  call trace_point('hydro_zeta')
-	  call hydro_zeta(rqv)		!assemble system matrix for z
+	  call hydro_zeta(vqv)		!assemble system matrix for z
 	  call cpu_time_start(3)
 	  call trace_point('system_solve')
 	  call system_solve(nkn,znv)	!solves system matrix for z
@@ -403,6 +416,10 @@
 	  if( iw == 0 ) exit
 
 	end do
+
+	call cpu_time_end(10)
+
+	call cpu_time_start(11)
 
 	call trace_point('hydro_transports_final')
 	call hydro_transports_final	!final transports (also barotropic)
@@ -423,7 +440,7 @@
 	call baro2l 			!sets transports in dry areas
 
 	call trace_point('make_new_depth')
-	call make_new_depth
+	call make_new_layer_depth
 	call check_volume		!checks for negative volume 
 	call trace_point('arper')
         call arper
@@ -437,8 +454,10 @@
 	  call nonhydro_adjust
 	end if
 
+	call cpu_time_start(12)
 	call trace_point('hydro_vertical')
 	call hydro_vertical(dzeta)		!compute vertical velocities
+	call cpu_time_end(12)
 
 	if (bnohyd .or. (iwvel .eq. 1)) then
 	  call nh_handle_output(dtime)!DWNH
@@ -453,7 +472,7 @@
 	if( bzcorr ) then
 	  call correct_zeta(dzeta)
           call setzev     !znv -> zenv
-	  call make_new_depth
+	  call make_new_layer_depth
 	  call hydro_vertical(dzeta)		!$$VERVEL
 	end if
 
@@ -472,6 +491,8 @@
 	call trace_point('compute_velocities')
 	call compute_velocities
 	call trace_point('end_of_hydro')
+
+	call cpu_time_end(11)
 
 !-----------------------------------------------------------------
 ! end of routine
@@ -527,19 +548,6 @@
 	real azpar,ampar
 	real dt
 
-	!real az,am,af
-	!real zm
-	!real ht
-	!real amatr(3,3)
-	!real delta,h11,hh999
-	!real z(3)
-	!real andg,zndg(3)
-	!real b(3),c(3)
-	!real acu
-	!real uold,vold
-	!real ut,vt,uhat,vhat
-	!real dbb,dbc,dcb,dcc,abn,acn
-
 	double precision aj,rw,ddt
 	double precision amatr(3,3)
 	double precision delta,h11,hh999
@@ -567,6 +575,8 @@
 !-------------------------------------------------------------
 ! initialization
 !-------------------------------------------------------------
+
+	call cpu_time_start(5)
 
 	bcolin=nint(getpar('iclin')).ne.0
 
@@ -747,6 +757,8 @@
 
 	call system_add_rhs(dt,nkn,vqv)
 
+	call cpu_time_end(5)
+
 !-------------------------------------------------------------
 ! end of routine
 !-------------------------------------------------------------
@@ -790,6 +802,8 @@
 !-------------------------------------------------------------
 ! initialize
 !-------------------------------------------------------------
+
+	call cpu_time_start(4)
 
 	ibaroc = nint(getpar('ibarcl'))		! baroclinic contributions
         vismol  = getpar('vismol')		! molecular viscosity
@@ -839,8 +853,6 @@
 	!allocate(its(0:nthreads-1))
 	!its = 0
 
-	call get_clock_time(time)
-
 !$OMP PARALLEL DO FIRSTPRIVATE(bcolin,baroc,az,am,af,at,radv       &
 !$OMP &            ,vismol,rrho0,dt) PRIVATE(ie,rmsdif,ith)  &
 !$OMP &     SHARED(nel,nchunk,its)   DEFAULT(NONE)
@@ -864,9 +876,7 @@
 ! end of loop over elements
 !-------------------------------------------------------------
 
-	call get_clock_time_diff(time,difftime)
-	atime = atime + difftime
-	!write(653,*) difftime,atime
+	call cpu_time_end(4)
 
 !-------------------------------------------------------------
 ! end of routine
@@ -1511,6 +1521,8 @@
 ! initialize
 !-------------------------------------------------------------
 
+	call cpu_time_start(6)
+
 	bcolin=nint(getpar('iclin')).ne.0	! linearized conti
 	bdebug = .false.
 
@@ -1586,6 +1598,8 @@
 ! end of routine
 !-------------------------------------------------------------
 
+	call cpu_time_end(6)
+
 	end
 
 !******************************************************************
@@ -1635,6 +1649,7 @@
 	real dzeta(nkn)
 ! local
 	logical debug
+	logical bdry
 	integer k,ie,ii,kk,l,lmax,lmin,ie_mpi
 	integer ilevel,jlevel
         integer ibc,ibtyp
@@ -1649,7 +1664,7 @@
 	real, allocatable :: va(:,:)
 ! statement functions
 
-	logical is_zeta_bound
+	logical is_zeta_bound,is_dry_node
 	integer ipint
 	real volnode
 
@@ -1720,6 +1735,7 @@
 	dzmax = 0.
 
 	do k=1,nkn
+	  bdry = is_dry_node(k)
 	  lmax = ilhkv(k)
 	  lmin = jlhkv(k)
 	  wlnv(lmax,k) = 0.
@@ -1736,6 +1752,7 @@
             volo = volnode(l,k,-1)
 	    dvdt = (voln-volo)/dt
 	    q = mfluxv(l,k)
+	    if( bdry ) q = 0.
 	    wdiv = vf(l,k) + q
 	    !wfold = azt * (atop*wlov(l-1,k)-abot*wlov(l,k))
 	    !wlnv(l-1,k) = wlnv(l,k) + (wdiv-dvdt+wfold)/az

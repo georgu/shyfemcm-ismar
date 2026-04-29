@@ -182,6 +182,7 @@
         use mod_hydro_print  
 	use heat_const
 	use meteo_forcing_module, only : iatm
+	use mod_info_output
 
 	implicit none
 
@@ -326,9 +327,11 @@
 	  if( icall < 0 ) return
 
 !$OMP CRITICAL
+	  if( print_verbose_once() ) then
 	  write(6,*) 'qflux3d routines are active'
 	  write(6,*) 'qflux3d: bqflux,bheat,bice: ',bqflux,bheat,bice
 	  write(6,*) 'qflux3d: iheat,hdecay,botabs: ',iheat,hdecay,botabs  
+	  end if
 !$OMP END CRITICAL
 
 	  allocate(dtw(nkn))
@@ -343,8 +346,10 @@
 	  bwind = itdrag .eq. 4
           if ( bwind ) then   
             if ( iheat .eq. 6 .or. iheat .eq. 8 ) then   
+	      if( print_verbose_once() ) then
               write(6,*) 'itdrag = ',itdrag
               write(6,*) 'iheat = ',iheat
+	      end if
             else
               write(6,*) 'Erroneous value for itdrag = ',itdrag
               write(6,*) 'Use itdrag = 4 only with iheat = 6 or 8'

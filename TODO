@@ -64,3 +64,13 @@ Untracked files:
 	fem3d/queue.f
 	fem3d/subcolor.f
 
+01.04.2026
+
+	still to be done for output
+		qfluxinit / qflux3d
+		generation of bas	veniceLagoon georg02.str
+		
+	done everything until veniceLagoon
+
+	in restart simulation check if href=0.23 is working
+

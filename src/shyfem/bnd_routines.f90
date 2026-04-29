@@ -195,6 +195,8 @@
 ! 13.11.2024    ggu     marked old code with INTEL_BUG_OLD
 ! 03.12.2024    ggu     run init_flux() only for ibtyp>1
 ! 12.06.2025    clc     set dvols to 0 to avoid compiler warning
+! 20.03.2026    ggu     changes in sp111() init and set_mass_flux() -> mode
+! 21.04.2026    ggu     eliminated adjust_mass_flux()
 !
 !***************************************************************
 
@@ -208,6 +210,7 @@
 	use mod_bound_geom
 	use mod_bnd_aux
 	use mod_bound_dynamic
+	use mod_info_output
 	use levels, only : nlvdi,nlv
 	use basin, only : nkn,nel,ngr,mbw
 	use intp_fem_file
@@ -333,8 +336,10 @@
 	    intpol = 2
 	    if( ibtyp .eq. 1 ) intpol = 4
 	  end if
+	  if( print_verbose_once() ) then
 	  write(6,'(a,3i5)') 'opening boundary file: (ibc,ibtyp,intpol) ' &
      &				,ibc,ibtyp,intpol
+	  end if
           call iff_init(dtime0,zfile,nvar,nk,0,intpol &
      &                          ,nodes,vconst,id)
 	  if( ibtyp .eq. 0 ) then
@@ -350,8 +355,10 @@
 	  end if
 	  call iff_set_description(id,ibc,auxname)
 	  ids(ibc) = id
+	  if( print_verbose_once() ) then
 	  write(6,'(a,2i5,4a)') ' boundary file opened: ' &
      &			,ibc,id,' ',auxname,' ',trim(zfile)
+	  end if
 	end do
 
 	!call iff_print_info(ids(1))
@@ -397,7 +404,9 @@
 
 	zconst = shympi_max(zconst)	!choose highest value
 
+	if( print_not_quiet_once() ) then
 	write(6,*) 'zconst = ',zconst,flag,zflag
+	end if
 
 	if( zconst == flag .or. zconst == zflag ) then
 	  stop 'error stop sp111: error in zconst'
@@ -415,28 +424,11 @@
 	call setznv		!adjusts znv
 
 	call set_area		!initializes area	!bugfix MPI_SET_AREA
-	call initialize_layer_depth
-
-	call init_uvt		!initializes utlnv, vtlnv
 	call init_z0		!initializes surface and bottom roughness
-
-	!call uvint
-	call init_uv		!computes velocities
-	call copy_uvz		!copies to old time level
-	call copy_depth		!copies layer thickness
 
 !	-----------------------------------------------------
 !       finish
 !	-----------------------------------------------------
-
-! next only for radiation condition
-!
-!        write(78,*) 46728645,1
-!        write(78,*) 50,0
-!        write(78,*) 0,50,-0.01,0.01
-!        write(79,*) 46728645,1
-!        write(79,*) 50,0
-!        write(79,*) 0,50,-0.01,0.01
 
 	return
 
@@ -1066,8 +1058,8 @@
 ! initialize arrays and parameter
 !------------------------------------------------------------------
 
+	mode = +1		!new time step
 	mode = -1		!old time step
-	mode = +1		!old time step
 
 	ksext = 39140		!goro debug
 	ksext = 861		!vistula debug
@@ -1107,6 +1099,7 @@
 	    if( lmin .gt. lmax ) goto 98
 	    if( lmin < 1 ) goto 98
 	    if( lmax > nlv ) goto 98
+	    if( lmax > ilhkv(k) ) goto 98
 
 	    dvoltot = 0.
 	    dvols = 0.
@@ -1184,7 +1177,7 @@
 
 	subroutine adjust_mass_flux
 
-! adjusts mass flux for dry nodes
+! adjusts mass flux for dry nodes - not used anymore
 
 	use mod_geom_dynamic
 	use mod_bound_dynamic
@@ -1197,6 +1190,8 @@
 
         logical iskout
         iskout(k) = inodv(k).eq.-2
+
+	stop 'error stop adjust_mass_flux: do not use...'
 
 	do k=1,nkn
 	  if( iskout(k) ) then
@@ -1806,6 +1801,26 @@
 	write(6,*) 'lmin = ',lmin
 	write(6,*) 'lmax = ',lmax
 	stop 'error stop get_discharge_3d: voltot = 0'
+	end
+
+!**********************************************************************
+
+	subroutine debug_mflux(text)
+
+! generic debug subroutine
+
+	use mod_bound_dynamic
+
+	implicit none
+
+	character*(*) text
+	integer k
+
+	return
+
+	k = 4279
+	write(666,*) 'debug_mflux: ',trim(text),k,mfluxv(1,k),rqv(k)
+
 	end
 
 !**********************************************************************

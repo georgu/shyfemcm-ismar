@@ -34,6 +34,7 @@ FFLAGS += $(INCLUDE)
 MOD  = \
 
 OBJ  = \
+	info_output.o \
 	topo_update.o \
 	bnd_admin.o \
 	depth_util.o \
@@ -43,7 +44,6 @@ OBJ  = \
 	coordinates.o \
 	io_off.o \
 	trace_point.o \
-	info_output.o \
 	mod_restart.o \
 
 OBSOLETE = \

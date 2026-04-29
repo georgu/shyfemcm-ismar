@@ -75,7 +75,7 @@
 !       returns volume of node k on level l
 ! function areanode(l,k)
 !       returns area of node k on level l
-! subroutine setdepth(levdim,hdkn,hden,zenv,area)
+! subroutine setlayerdepth(levdim,hdkn,hden,zenv,area)
 !       sets up depth array for nodes
 ! function scalcont(mode,scal)
 !       computes content of scalar in total domain
@@ -91,10 +91,10 @@
 ! 29.11.2006	ggu	in copydepth do not set to 0 old depths
 ! 07.11.2008	ggu	new helper routine make_new_depth()
 ! 23.03.2010	ggu	changed v6.1.1
-! 16.12.2010	ggu	setdepth() changed for sigma levels
+! 16.12.2010	ggu	setlayerdepth() changed for sigma levels
 ! 25.10.2011	ggu	hlhv eliminated
 ! 04.11.2011	ggu	adapted for hybrid coordinates
-! 08.11.2011	dbf&ggu	bug in setdepth(): 1 -> l
+! 08.11.2011	dbf&ggu	bug in setlayerdepth(): 1 -> l
 ! 11.11.2011	ggu	error message for negative last layer
 ! 22.11.2011	ggu	changed VERS_6_1_37
 ! 09.12.2011	ggu	changed VERS_6_1_38
@@ -117,7 +117,7 @@
 ! 05.11.2015	ggu	changed VERS_7_3_12
 ! 18.12.2015	ggu	changed VERS_7_3_17
 ! 05.12.2017	ggu	changed VERS_7_5_39
-! 03.02.2019	ggu	in setdepth check for zero layer thickness
+! 03.02.2019	ggu	in setlayerdepth check for zero layer thickness
 ! 14.02.2019	ggu	changed VERS_7_5_56
 ! 16.02.2019	ggu	changed VERS_7_5_60
 ! 01.04.2021	ggu	dimension check in dep3dnod()
@@ -131,6 +131,7 @@
 ! 10.05.2024    ggu     new routine check_int_ext_params()
 ! 01.12.2024    ggu     in masscont() and scalcont() do not exchange
 ! 05.02.2025    ggu     new routine scalar_mass()
+! 19.03.2026    ggu     all routines dealing with layer use _layer_
 !
 !****************************************************************
 
@@ -800,10 +801,12 @@
 	end
 
 !***********************************************************
+!***********************************************************
+!***********************************************************
 
-	subroutine copydepth(levdim,hdkn,hdko,hden,hdeo)
+	subroutine copylayerdepth(levdim,hdkn,hdko,hden,hdeo)
 
-! sets up depth array for nodes
+! copies layer depths from new to old
 
 	use basin, only : nkn,nel,ngr,mbw
 
@@ -820,14 +823,12 @@
 	do k=1,nkn
 	  do l=1,levdim
 	    hdko(l,k) = hdkn(l,k)
-	    !hdkn(l,k) = 0.
 	  end do
 	end do
 
 	do ie=1,nel
 	  do l=1,levdim
 	    hdeo(l,ie) = hden(l,ie)
-	    !hden(l,ie) = 0.
 	  end do
 	end do
 
@@ -835,16 +836,16 @@
 
 !***********************************************************
 
-	subroutine copy_depth
+	subroutine copy_layer_depth
 
-! shell (helper) for copydepth
+! shell (helper) for copylayerdepth
 
 	use mod_layer_thickness
 	use levels, only : nlvdi,nlv
 
 	implicit none
 
-	call copydepth(nlvdi,hdknv,hdkov,hdenv,hdeov)
+	call copylayerdepth(nlvdi,hdknv,hdkov,hdenv,hdeov)
 
 	end
 
@@ -852,18 +853,20 @@
 
 	subroutine initialize_layer_depth
 
+! initializes layer depth
+
 	implicit none
 
-	call make_new_depth
-	call copy_depth
+	call make_new_layer_depth
+	call make_old_layer_depth
 
 	end
 
 !***********************************************************
 
-	subroutine make_new_depth
+	subroutine make_new_layer_depth
 
-! shell (helper) for setdepth
+! shell (helper) for setlayerdepth
 
 	use mod_layer_thickness
 	use mod_area
@@ -872,15 +875,15 @@
 
 	implicit none
 
-	call setdepth(nlvdi,hdknv,hdenv,zenv,areakv)
+	call setlayerdepth(nlvdi,hdknv,hdenv,zenv,areakv)
 
 	end
 
 !***********************************************************
 
-	subroutine make_old_depth
+	subroutine make_old_layer_depth
 
-! shell (helper) for setdepth
+! shell (helper) for setlayerdepth
 
 	use mod_layer_thickness
 	use mod_area
@@ -889,13 +892,13 @@
 
 	implicit none
 
-	call setdepth(nlvdi,hdkov,hdeov,zeov,areakv)
+	call setlayerdepth(nlvdi,hdkov,hdeov,zeov,areakv)
 
 	end
 
 !***********************************************************
 
-	subroutine check_diff_depth
+	subroutine check_diff_layer_depth
 
 ! checks differences between old and new depth values (debug)
 
@@ -927,7 +930,7 @@
 	  
 !***********************************************************
 
-	subroutine setdepth(levdim,hdkn,hden,zenv,area)
+	subroutine setlayerdepth(levdim,hdkn,hden,zenv,area)
 
 ! sets up depth array for nodes
 
@@ -1062,7 +1065,7 @@
 	    !    write(6,*) 'hlv: ',hlv
 	    !    write(6,*) 'hldv: ',hldv
 	    !    write(6,*) 'hdkn: ',hdkn(:,k)
-	    !    stop 'error stop setdepth: no volume in node'
+	    !    stop 'error stop setlayerdepth: no volume in node'
 	    !  end if
 	    !end do
 
@@ -1120,7 +1123,7 @@
 	      call check_set_unit(666)
 	      call check_elem(ie)
 	      call check_nodes_in_elem(ie)
-	      stop 'error stop setdepth: no layer in element'
+	      stop 'error stop setlayerdepth: no layer in element'
 	    end if
 	  end do
 
@@ -1161,7 +1164,7 @@
 	      call check_set_unit(666)
 	      call check_node(k)
 	      call check_elems_around_node(k)
-	      stop 'error stop setdepth: no layer in node'
+	      stop 'error stop setlayerdepth: no layer in node'
 	    end if
 	  end do
 	end do
@@ -1193,7 +1196,7 @@
 	write(6,*) 'hm3v  ',(hm3v(ii,ie),ii=1,3)
 	write(6,*) 'hlv   ',(hlv(l),l=1,levdim)
 	write(6,*) 'hldv  ',(hldv(l),l=1,levdim)
-	stop 'error stop setdepth: last layer negative'
+	stop 'error stop setlayerdepth: last layer negative'
 	end
 
 !***********************************************************

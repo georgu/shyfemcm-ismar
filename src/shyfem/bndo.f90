@@ -215,6 +215,7 @@
 	use mod_geom
 	use basin
 	use shympi
+	use mod_info_output
 
 	implicit none
 
@@ -459,9 +460,14 @@
 	  end if
 	end do
 
-	if( berror ) stop 'error stop bndo_init'
+	if( berror ) stop 'error stop bndo_init: errors found'
 
-	write(6,*) 'finished setting up bndo_init, nbndo = ',nbndo
+	if( print_verbose() ) then
+	write(6,*) 'setting up bndo_init: nbndo = ',nbndo,' my_id = ',my_id
+	end if
+	if( print_not_quiet_once() ) then
+	write(6,*) 'finished setting up bndo_init'
+	end if
 
 !----------------------------------------------------------
 ! end of routine

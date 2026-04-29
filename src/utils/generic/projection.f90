@@ -1475,7 +1475,7 @@
         real, intent(inout)  :: xc(n),yc(n)	! cartesian coordinates
         real, intent(inout)  :: xg(n),yg(n)	! geographical coordinates
 
-        write(6,*) 'using projection = ',proj
+        !write(6,*) 'using projection = ',proj
 
         select case ( mode )
           case ( 1 )        		!cart to geo

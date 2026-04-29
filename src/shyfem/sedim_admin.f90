@@ -3920,7 +3920,7 @@
 
 	call setweg(3,iw)
         call set_area
-        call setdepth(nlvdi,hdknv,hdenv,zenv,areakv)
+        call make_new_layer_depth
 
 !       ------------------------------------------------------------------
 !       Set up velocity

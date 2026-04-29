@@ -47,9 +47,13 @@ my $oldtype = 0;
 #-------------------------------------------------
 
 while (<>){
- if ($_=~/\$Nodes/){			# Reads nodes
-  my $totnodes=<>; chomp($totnodes);
-  for (my $k=0; $k < $totnodes; $k++) {
+ if ($_=~/\$MeshFormat/){		# Reads version
+   my $versline=<>;
+   my @v = split(" ",$versline);
+   $::version = $v[0];
+ } elsif ($_=~/\$Nodes/){			# Reads nodes
+  $::totnodes=<>; chomp($::totnodes);
+  for (my $k=0; $k < $::totnodes; $k++) {
  	my $line=<>; chomp($line);
 	$line =~ s/^\s*//;
  	my @lline=split(' ',$line);
@@ -70,13 +74,14 @@ while (<>){
    	$grid->insert_node(\@ntem);
    }
  } elsif ($_=~/\$Elements/){		# Reads elements
-   my $totel=<>; chomp($totel);
+   $::totelems=<>; chomp($::totelems);
    my $iie = 0;
    my $iil = 0;
-   for (my $ie=0; $ie < $totel; $ie++) {
+   for (my $ie=0; $ie < $::totelems; $ie++) {
  	my $line=<>; chomp($line);
 	$line =~ s/^\s*//;
  	my @lline=split(' ',$line);
+	my $nlline = @lline;
  	#Change if it is not in anticlockwise sense:
  	#print "2 $iie 0 3 $lline[0] $lline[2] $lline[1]\n";
  	#print "2 $iie 0 3 $lline[0] $lline[1] $lline[2]\n";
@@ -96,6 +101,7 @@ while (<>){
           $ntem[5] = $lline[5];
           $grid->insert_line(\@ntem);
         } elsif ($etype eq 2) {		#element 3 points
+	  my $instart = $nlline - 3;	#this is the place where nodes start
  	  $type++ if ($lline[4] ne $oldtype);
  	  $oldtype = $lline[4];
  	  $iie=$iie+1;
@@ -104,9 +110,9 @@ while (<>){
           #$ntem[2] = $type;
           $ntem[2] = 0;
           $ntem[3] = 3;
-          $ntem[4] = $lline[4];
-          $ntem[5] = $lline[5];
-          $ntem[6] = $lline[6];
+          $ntem[4] = $lline[$instart];
+          $ntem[5] = $lline[$instart+1];
+          $ntem[6] = $lline[$instart+2];
           $grid->insert_elem(\@ntem);
         } elsif ($::ignore) {		#unknown element
 	} else {
@@ -121,12 +127,17 @@ while (<>){
    }
  }
 }
+
+print STDERR "gmsh version $::version\n";
+print STDERR "total nodes: $::totnodes\n";
+print STDERR "total elems: $::totelems\n";
+
 #-------------------------------------------------
 # Write grid to fle gsmh_msh.grd
 #-------------------------------------------------
 
 $grid->delete_unused();			#delete unused node
-$grid->writegrd("gsmh_msh.grd");
+$grid->writegrd("gmsh_msh.grd");
 
 #--------------------------------------
 #--------------------------------------

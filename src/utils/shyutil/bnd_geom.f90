@@ -151,7 +151,7 @@
 	allocate(irv_aux(nrb))
 	irv_aux(1:nrb) = irv(1:nrb)
 
-	write(6,*) 'mod_bound_geom_reinit: ',nkn,nrb,nrb_bound_geom
+	!write(6,*) 'mod_bound_geom_reinit: ',nkn,nrb,nrb_bound_geom
 
 	nrb_bound_geom = 0
 	deallocate(irv)

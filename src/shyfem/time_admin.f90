@@ -134,6 +134,22 @@
 
 	subroutine print_time
 
+	use mod_info_output
+
+	implicit none
+
+	if( is_silent() ) then
+	  call print_time_progress
+	else
+	  call print_time_date
+	end if
+
+	end
+
+!**********************************************************************
+
+	subroutine estimate_iterations
+
 ! prints time after time step
 
 	use shympi
@@ -225,7 +241,44 @@
         nits = nit2
         if( naver .gt. 0 ) nits = ( 1*nit1 + (naver-1)*nit2 ) / naver
 
-	icall = icall + 1
+	end
+
+!********************************************************************
+
+	subroutine print_time_date
+
+	use shympi
+	use femtime
+
+	implicit none
+
+	double precision dtime,atime,ddt
+	integer i,idtfrac
+	real perc
+	character*20 aline
+	character*9 frac
+	character*4 atext
+
+	logical dts_has_date
+	integer, save :: icall = 0
+	integer, save :: isplit = 0
+	integer, save :: iuinfo = 0
+	real cpu_time_new
+	real, save :: cpu_time_old = 0.
+	real, parameter :: cpu_time_max = 1.	!max seconds before flush
+
+	double precision dgetpar
+
+	if( icall .eq. 0 ) then
+          isplit = nint(dgetpar('itsplt'))
+	  call cpu_time(cpu_time_old)
+          call getinfo(iuinfo)  !unit number of info file
+	end if
+
+	call estimate_iterations
+
+        ddt = dt_act
+        dtime = t_act
 
 !---------------------------------------------------------------
 ! write to terminal
@@ -236,20 +289,23 @@
 	if( dts_has_date() ) then
 	  atime = atime0 + dtime
 	  atext = 'date'
-	  call dts_format_abs_time(atime,dline)
+	  call dts_format_abs_time(atime,aline)
 	else
 	  atime = dtime
 	  atext = 'time'
-	  write(dline,'(f20.4)') dtime
+	  write(aline,'(f20.4)') dtime
 	end if
+
+        perc = (100.*(dtime-dtanf))/(dtend-dtanf)
+	idtfrac = nint(1./ddt)
 
 	if( mod(icall,50) .eq. 0 ) write(6,1004) atext
 
 	  if( isplit == 3 .or. idtorig == 0 ) then
-            write(6,1009) dline,dtime,ddt,niter,nits,perc
+            write(6,1009) aline,dtime,ddt,niter,nits,perc
 	  else if( idtfrac == 0 ) then
-	    inttime = nint(dtime)
-            write(6,1008) dline,dtime,idt,niter,nits,perc
+	    !inttime = nint(dtime)
+            write(6,1008) aline,dtime,idt,niter,nits,perc
 	  else
 	    frac = ' '
 	    write(frac,'(i9)') idtfrac
@@ -257,7 +313,7 @@
 	      if( frac(i:i) == ' ' ) exit
 	    end do
 	    frac(i-1:i) = '1/'
-            write(6,1006) dline,frac,niter,nits,perc
+            write(6,1006) aline,frac,niter,nits,perc
 	  end if
 
 !---------------------------------------------------------------
@@ -270,6 +326,8 @@
 	  flush(6)
 	  if( iuinfo > 0 ) flush(iuinfo)
 	end if
+
+	icall = icall + 1
 
 !---------------------------------------------------------------
 ! end of routine
@@ -285,6 +343,31 @@
 
 !********************************************************************
 
+	subroutine print_time_progress
+
+	use femtime
+	use mod_progress_bar
+
+	implicit none
+
+	integer, save :: icall = 0
+
+	if( icall == 0 ) then
+	  call progress_bar_init('Progress: ')
+	end if
+
+	icall = icall + 1
+
+	call progress_bar_print(niter,nits)
+
+	if( niter == nits ) then
+	  call progress_bar_finalize
+	end if
+
+	end
+
+!********************************************************************
+
 	subroutine print_end_time	!FIXME
 
 ! prints stats after last time step
@@ -296,8 +379,9 @@
 
 	if( .not. shympi_is_master() ) return
 
-	write(6,*) 'program stop at time = ',aline_act
-	write(6,*) 'total iterations = ',niter
+	write(6,*) 'program stop at time = ',aline_act // &
+     &			'   total iterations = ',niter
+	!write(6,*) 'total iterations = ',niter
 
 	end
 

@@ -212,28 +212,32 @@
 ! sets up modules
 
 	use befor_after
+	use mod_info_output
 
 	implicit none
+
+	logical bw
 
 	!call flxini
 	!call volini
 
-	write(6,*) 'cstsetup: setting up modules'
+	bw = print_not_quiet_once()
+
+	if( bw ) write(6,*) 'cstsetup: setting up modules'
 	call modules(M_SETUP)
-	write(6,*) 'cstsetup: finished setting up modules'
+	if( bw ) write(6,*) 'cstsetup: finished setting up modules'
 
 	end
 
 !********************************************************************
 
-	subroutine cstfile(strfile,bquiet,bsilent)
+	subroutine cstfile(strfile)
 
 ! reads files (str and bas)
 
 	implicit none
 
 	character*(*) strfile
-	logical bquiet,bsilent
 
 	integer nstr,nbas
 	character*80 basnam
@@ -267,7 +271,7 @@
 !------------------------------------------------------------
 
         call getfnm('basnam',basnam)
-	call handle_basin_read(basnam,bquiet,bsilent)
+	call handle_basin_read(basnam)
 
 !------------------------------------------------------------
 ! end of routine
@@ -277,14 +281,14 @@
 
 !********************************************************************
 
-	subroutine handle_basin_read(basnam,bquiet,bsilent)
+	subroutine handle_basin_read(basnam)
 
 	use basin
+	use mod_info_output
 
 	implicit none
 
 	character*(*) basnam
-	logical bquiet,bsilent
 
 	logical breadgrd
 	logical bwrite
@@ -294,7 +298,7 @@
 	character*80 grid_file,basin_file
 	logical filex
 
-	bwrite = ( .not. bsilent )
+	bwrite = print_not_quiet_once()
 
 	if( bwrite ) write(6,*) 'reading basin: ',trim(basnam)
 
@@ -333,7 +337,7 @@
 	
 	if( breadgrd ) then		!read grd and produce bas file
 	  if( bwrite ) write(6,*) 'reading grid file: ',trim(grid_file)
-	  call handle_grid_read(grid_file,bquiet,bsilent)
+	  call handle_grid_read(grid_file)
 	  call sleep(1)
 	end if
 
@@ -349,15 +353,17 @@
 
 !********************************************************************
 
-	subroutine handle_grid_read(grid_file,bquiet,bsilent)
+	subroutine handle_grid_read(grid_file)
+
+	use mod_info_output
 
 	implicit none
 
 	character*(*) grid_file
-	logical bquiet,bsilent
 
-	logical bauto,binfo
+	logical bauto,blinfo
 	logical bopti,bnepart,brenumber
+	logical bquiet,bsilent
 	integer ibasin
 	real eps_area
 	character*80 grdpart
@@ -374,11 +380,11 @@
 	
 	eps_area = 0.
 	bauto = .true.
-	binfo = .false.
+	blinfo = .false.
 	bnepart = .false.
 	grdpart = ' '
 
-	if( .not. bquiet ) then
+	if( print_not_quiet_once() ) then
 	  if( bopti ) then
 	    write(6,*) 'reading grd file with optimzation: ',trim(grid_file)
 	  else
@@ -386,7 +392,10 @@
 	  end if
 	end if
 
-	call shypre_sub(grid_file,bquiet,bsilent,bauto,binfo &
+	bquiet = is_quiet()
+	bsilent = is_silent()
+
+	call shypre_sub(grid_file,bquiet,bsilent,bauto,blinfo &
      &                          ,bopti,brenumber,bnepart,eps_area,grdpart)
 
 	end

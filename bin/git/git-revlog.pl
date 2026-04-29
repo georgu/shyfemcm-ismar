@@ -1,5 +1,13 @@
 #!/usr/bin/perl -sw
 #
+#------------------------------------------------------------------------
+#
+#    Copyright (C) 1985-2026  Georg Umgiesser
+#
+#    This file is part of SHYFEM.
+#
+#------------------------------------------------------------------------
+#
 # reads revision log of file and returns lines after compare_date
 # 
 # checks if dates are in increasing order
@@ -22,6 +30,7 @@ my $file = $ARGV[0];
 
 my $ext = $file;
 $ext =~ s/^.*\.//;
+$ext = "NONE" if $ext eq $file;
 
 if( $::debug ) {
   print STDERR "file: $file\n";
@@ -34,8 +43,24 @@ if( $ext eq "f90" ) {
   treat_f90();
 } elsif( $ext eq "f" ) {
   treat_f90();
+} elsif( $ext eq "sh" ) {
+  treat_for_copyright();
+} elsif( $ext eq "pl" ) {
+  treat_for_copyright();
+} elsif( $ext eq "txt" ) {
+  treat_for_copyright();
 } elsif( $ext eq "make" ) {
+  treat_for_copyright();
+} elsif( $ext eq "o" ) {
   ignore();
+} elsif( $ext eq "NONE" ) {
+  if( $file eq "Makefile" ) {
+    treat_for_copyright();
+  } elsif( $file eq "README" ) {
+    treat_for_copyright();
+  } else {
+    ignore();
+  }
 } else {
   if( $::write_on_error ) {
     print STDERR "  *** cannot yet handle extension $ext\n";
@@ -101,19 +126,38 @@ sub treat_f90
     if( $::write_on_error ) {
       print STDERR "  *** some dates were out of order\n";
     }
-    exit 7
+    exit 7;
   }
   if( $::has_copyright == 0 ) {
     if( $::write_on_error ) {
       print STDERR "  *** no copyright found\n";
     }
-    exit 9
+    exit 9;
   }
   if( $revs == 0 ) {
     if( $::write_on_error ) {
       print STDERR "  *** no revision log found\n";
     }
-    exit 5
+    exit 5;
+  }
+
+  exit 0;
+}
+
+sub treat_for_copyright
+{
+
+  while(<>) {
+    chomp;
+    check_header();
+    last if $::out_of_header;		# we are out of header
+    check_copyright();
+  }
+  if( $::has_copyright == 0 ) {
+    if( $::write_on_error ) {
+      print STDERR "  *** no copyright found\n";
+    }
+    exit 9;
   }
 }
 
@@ -150,6 +194,7 @@ sub check_header
 {
   return if /^\s*$/;
   return if /^\s*[!cC]/;
+  return if /^\s*[#]/;
 
   $::out_of_header = 1;
 }

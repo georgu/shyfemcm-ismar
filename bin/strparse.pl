@@ -145,6 +145,7 @@ if( $::h or $::help ) {
     $val = "(unknown)" unless $val;
     #print "$::value = $val\n";
     print "$val\n";
+    time_str($str);
   }
 } elsif( $::collect ) {
   if( $::collect eq "1" ) {
@@ -762,6 +763,43 @@ sub show_sect {
 	}
     }
   }
+}
+
+sub time_str {
+
+  # find time format of STR file
+
+  my ($str) = @_;
+
+  my $itanf = show_value($str,'itanf');
+  my $itend = show_value($str,'itend');
+
+  if( $itanf =~ /^\'/ ) {
+    $::str_time_format = 'absolute'
+  } else {
+    $::str_time_format = 'relative'
+  }
+  if( $itend =~ /^\'/ ) {
+    if( $::str_time_format eq 'relative' ) {
+      print STDERR "itanf,itend: $itanf,$itend\n";
+      die "*** mixed str_time_format... cannot handle";
+    }
+  } else {
+    if( $::str_time_format eq 'absolute' ) {
+      print STDERR "itanf,itend: $itanf,$itend\n";
+      die "*** mixed str_time_format... cannot handle";
+    }
+  }
+      
+  print STDERR "itanf,itend: $itanf,$itend time_format: $::str_time_format\n";
+}
+
+sub time_file {
+
+  # find time format of input file
+
+  my ($file) = @_;
+
 }
 
 sub zip_files {

@@ -112,10 +112,11 @@
         use tide
         use basin
         use coordinates, only : iproj
+	use mod_info_output
 
         implicit none
 
-        integer  	 :: isphe      !if = 1  coordinates are in spherical system
+        integer  	 :: isphe      !if = 1  coordinates are spherical
         double precision :: dgetpar
 
         zeqv = 0.
@@ -140,7 +141,9 @@
             stop 'error stop tidefini: no lat/lon coordinates'
         end if
 
-        write(6,*) 'Tidal potential activated'
+	if( print_not_quiet_once() ) then
+          write(6,*) 'Tidal potential activated'
+	end if
 
         end subroutine tidefini
 

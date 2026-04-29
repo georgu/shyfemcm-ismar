@@ -1,7 +1,7 @@
 
 !--------------------------------------------------------------------------
 !
-!    Copyright (C) 2015-2016,2019  Georg Umgiesser
+!    Copyright (C) 2026  Georg Umgiesser
 !
 !    This file is part of SHYFEM.
 !
@@ -25,57 +25,27 @@
 
 ! revision log :
 !
-! 10.07.2015	ggu	changed VERS_7_1_50
-! 28.04.2016	ggu	changed VERS_7_5_9
-! 16.02.2019	ggu	changed VERS_7_5_60
-! 21.05.2019	ggu	changed VERS_7_5_62
+! 20.03.2025	ggu	copied from shyfem_sub.f90
 
 !**************************************************************************
 
-	module mod_hydro_baro
+!==================================================================
+	module mod_shyfem
+!==================================================================
 
 	implicit none
 
-	integer, private, save :: nel_hydro_baro = 0
+        logical, save :: bdebug_shyfem	= .false.
+        logical, save :: bdebout	= .false.
+        logical, save :: bmpirun	= .false.
 
-	real, allocatable, save :: uov(:), vov(:)
-	real, allocatable, save :: unv(:), vnv(:)
+        logical, save :: bverbose	= .false.
+        logical, save :: bquiet		= .false.
+        logical, save :: bsilent	= .false.
 
-	contains
+        logical, save :: bfirst		= .true.
 
-!************************************************************
+!==================================================================
+        end module mod_shyfem
+!==================================================================
 
-        subroutine mod_hydro_baro_init(nel)
-
-        integer nel
-
-        if( nel == nel_hydro_baro ) return
-
-        if( nel_hydro_baro > 0 ) then
-          deallocate(uov)
-          deallocate(vov)
-
-          deallocate(unv)
-          deallocate(vnv)
-        end if
-
-        nel_hydro_baro = nel
-
-        if( nel == 0 ) return
-
-        allocate(uov(nel))
-        allocate(vov(nel))
-
-        allocate(unv(nel))
-        allocate(vnv(nel))
-
-	uov = 0.
-	vov = 0.
-	unv = 0.
-	vnv = 0.
-
-        end subroutine mod_hydro_baro_init
-
-!************************************************************
-
-        end module mod_hydro_baro

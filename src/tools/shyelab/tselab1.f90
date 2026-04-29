@@ -65,6 +65,7 @@
 	real ffact,foff
 	integer ierr
 	integer nfile
+	integer itime
 	integer nrec,i,ich,nrecs,iv
 	integer date,time,it
 	integer datetime(2)
@@ -74,6 +75,7 @@
 	character*80 varline
 	integer,allocatable :: ivars(:)
 	character*80,allocatable :: strings(:)
+	character*10 :: tformat
 	real,allocatable :: data(:)
 	real,allocatable :: adata(:)
 	real,allocatable :: facts(:)
@@ -149,10 +151,20 @@
 
 	strings = ' '
 	call parse_varline(varline,nvar,strings,ivars)
+	call ts_get_time_info(infile,itime)	!absolute or relative time?
+	if( itime == 0 ) then
+	  tformat = 'relative'
+	else if( itime == 1 ) then
+	  tformat = 'absolute'
+	else
+	  write(6,*) 'cannot determine time format: ',itime
+	  stop 'error stop tselab: time format'
+	end if
 
 	if( .not. bquiet ) then
-	  write(6,*) 'file name : ',trim(infile)
-	  write(6,*) 'columns   : ',nvar
+	  write(6,*) 'file name   : ',trim(infile)
+	  write(6,*) 'columns     : ',nvar
+	  write(6,*) 'time format : ',trim(tformat)
 	  if( datetime(1) > 0 ) then
 	    write(6,*) 'datetime  : ',datetime
 	  else if( atime0e > 0 ) then
@@ -227,8 +239,6 @@
 !--------------------------------------------------------------
 
 	close(iunit)
-
-	!call ts_get_time_info(infile,itime)	!is time relative or absolute?
 
 	if( binfo ) return
 

@@ -229,6 +229,8 @@
 	integer i
 	integer, save :: ndim = 0
 	integer, save :: iu = 444
+	integer, save :: ndump = 500
+	integer :: strive
 	character*40, save :: dump = 'dump.txt'
 
 	if( ndim == 0 ) then
@@ -240,21 +242,23 @@
 
 	call read_data_record1(nt,ntot)
 
+	strive = ntot / ndump
+
 	write(6,*) 'dumping data record for ',trim(text),' to ',trim(dump)
 
 	write(iu,*) 'time = ',dtime
 	write(iu,*) 'var  = ',trim(text)
 
 	if( nt == 1 ) then			!integer
-	  do i=1,ntot
+	  do i=1,ntot,strive
 	    write(iu,*) i,ival1(i)
 	  end do
 	else if( nt == 2 ) then			!real
-	  do i=1,ntot
+	  do i=1,ntot,strive
 	    write(iu,*) i,rval1(i)
 	  end do
 	else if( nt == 3 ) then			!double
-	  do i=1,ntot
+	  do i=1,ntot,strive
 	    write(iu,*) i,dval1(i)
 	  end do
 	else
@@ -376,12 +380,6 @@
 	  write(6,*) 'file 2: ',trim(name_two)
 	end if
 
-	if( bbalance ) then
-	  call read_header(1,nipv,nipev,ipv,ipev)
-	  call read_header(2,nipv,nipev,ipv,ipev)
-	  call time_balance
-	end if
-
 	idiff_tot = 0
 	idiff_rec = 0
 	rdiff_max = 0
@@ -389,6 +387,12 @@
 	ntime = 0
 	nipv = 0
 	nipev = 0
+
+	if( bbalance ) then
+	  call read_header(1,nipv,nipev,ipv,ipev)
+	  call read_header(2,nipv,nipev,ipv,ipev)
+	  call time_balance
+	end if
 
 	do while(.true.)	!read next time record
 
@@ -553,7 +557,7 @@
 
 	irec = irec + 1
 
-	if( .not. bquiet ) then
+	if( .not. bsilent ) then
 	  write(6,*) 'irec = ',irec,'  time = ',dtime
 	end if
 
@@ -879,8 +883,10 @@
 	text1 = textk
 	if( belem ) text1 = texte
 
-	write(6,*) 'differences found reading ',trim(text)
-	write(6,*) trim(text1) // trim(text2)
+	if( .not. bquiet ) then
+	  write(6,*) 'differences found reading ',trim(text)
+	  write(6,*) trim(text1) // trim(text2)
+	end if
 
 	ierr = 0
 	maxdif = 0.
@@ -898,9 +904,13 @@
 	  i = index(j)
 	  iv = 1 + mod((i-1),nv)
 	  ih = 1 + (i-1)/nv
-	  write(6,1000) 'diff: ',i,ih,iv,ipvv(ih),val1(i),val2(i)
+	  if( .not. bquiet ) then
+	    write(6,1000) 'diff: ',i,ih,iv,ipvv(ih),val1(i),val2(i)
+	  end if
 	end do
-	write(6,*) 'maximum difference: ',maxdif
+	if( .not. bquiet ) then
+	  write(6,*) 'maximum difference: ',maxdif
+	end if
 
  1000	format(a,4i8,2f18.6)
 	end
@@ -945,8 +955,10 @@
 	text1 = textk
 	if( belem ) text1 = texte
 
-	write(6,*) 'differences found reading ',trim(text)
-	write(6,*) trim(text1) // trim(text2)
+	if( .not. bquiet ) then
+	  write(6,*) 'differences found reading ',trim(text)
+	  write(6,*) trim(text1) // trim(text2)
+	end if
 
 	ierr = 0
 	maxdif = 0.
@@ -964,9 +976,13 @@
 	  i = index(j)
 	  iv = 1 + mod((i-1),nv)
 	  ih = 1 + (i-1)/nv
-	  write(6,1000) 'diff: ',i,ih,iv,ipvv(ih),val1(i),val2(i)
+	  if( .not. bquiet ) then
+	    write(6,1000) 'diff: ',i,ih,iv,ipvv(ih),val1(i),val2(i)
+	  end if
 	end do
-	write(6,*) 'maximum difference: ',maxdif
+	if( .not. bquiet ) then
+	  write(6,*) 'maximum difference: ',maxdif
+	end if
 
  1000	format(a,4i8,2f18.6)
 	end
@@ -1012,8 +1028,10 @@
 	text1 = textk
 	if( belem ) text1 = texte
 
-	write(6,*) 'differences found reading ',trim(text)
-	write(6,*) trim(text1) // trim(text2)
+	if( .not. bquiet ) then
+	  write(6,*) 'differences found reading ',trim(text)
+	  write(6,*) trim(text1) // trim(text2)
+	end if
 	if( iu > 0 ) write(iu,*) trim(text1) // trim(text2)
 
 	do i=1,nh*nv
@@ -1024,7 +1042,9 @@
 	  else if( val1(i) /= val2(i) ) then
 	    ierr = ierr + 1
 	    if( imax > 0 .and. ierr > imax ) cycle
-	    write(6,1000) 'diff: ',i,ih,iv,ipvv(ih),val1(i),val2(i)
+	    if( .not. bquiet ) then
+	      write(6,1000) 'diff: ',i,ih,iv,ipvv(ih),val1(i),val2(i)
+	    end if
 	  end if
 	end do
 
@@ -1040,6 +1060,8 @@
 
 ! finds first time record equal in both files
 
+	use mod_shympi_debug
+
 	implicit none
 
 	integer iu,nrec
@@ -1050,8 +1072,11 @@
 	call peek_time_record(2,dtime2,ierr2)
 	if( ierr1 /= 0 .or. ierr2 /= 0 ) goto 99
 
+	!write(6,*) 'balance: ',dtime1, dtime2
 	if( dtime1 == dtime2 ) then	!same time in initial record
-	  write(6,*) 'time_balance: starting time found ',dtime1
+	  if( .not. bsilent ) then
+	    write(6,*) 'time_balance: starting time found ',dtime1
+	  end if
 	  return
 	else if( dtime1 < dtime2 ) then
 	  iu = 1
@@ -1239,21 +1264,22 @@
 	logical bignore
 
 	blcheck = .true.
+	!return
 
 	if( ntime > 2 ) return		!only do for first data record
 
 	bignore = .false.
 
-	if( trim(text) == 'zov' ) bignore = .true.
-	if( trim(text) == 'zeov' ) bignore = .true.
-	if( trim(text) == 'hdkov' ) bignore = .true.
-	if( trim(text) == 'hdeov' ) bignore = .true.
+	!if( trim(text) == 'zov' ) bignore = .true.
+	!if( trim(text) == 'zeov' ) bignore = .true.
+	!if( trim(text) == 'hdkov' ) bignore = .true.
+	!if( trim(text) == 'hdeov' ) bignore = .true.
 	if( trim(text) == 'utlov' ) bignore = .true.
 	if( trim(text) == 'vtlov' ) bignore = .true.
 	if( trim(text) == 'uov' ) bignore = .true.
 	if( trim(text) == 'vov' ) bignore = .true.
 	if( trim(text) == 'wlov' ) bignore = .true.
-	if( trim(text) == 'mfluxv' ) bignore = .true.
+	!if( trim(text) == 'mfluxv' ) bignore = .true.
 	if( trim(text) == 'fxv' ) bignore = .true.
 	if( trim(text) == 'fyv' ) bignore = .true.
 

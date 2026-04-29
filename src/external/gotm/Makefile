@@ -43,6 +43,7 @@ fem_gotm_interface.F90
 #------------------------------------------------------------
 
 EXTRA_MOD =		\
+fem_output.o		\
 tridiagonal.o		\
 eqstate.o		\
 util.o

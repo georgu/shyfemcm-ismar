@@ -1683,7 +1683,8 @@
 
 	if( newstring == ' ' ) return
 
-	write(6,*) 'using string: ',trim(newstring)
+	!write(6,*) 'using string: ',trim(newstring)
+
 	ia = 1
 	ics = 0
 	do

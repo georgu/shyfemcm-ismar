@@ -63,6 +63,7 @@
 ! 28.05.2020	ggu	some more changes in constructing link structure
 ! 13.04.2022	ggu	new call to make_links (ibound)
 ! 07.11.2024	ggu	new framework for connection
+! 22.04.2026	ggu	make clear that errors can be ignored
 !
 !*****************************************************************
 
@@ -111,6 +112,7 @@
 	if( ierr > 0 ) then
 	  if( .not. allocated(kerror) ) allocate(kerror(ierr))
 	  call connect_errors(ierr,kerror)
+	  write(6,*) '(errors can be ignored)'
 	end if
  
         call connect_get_grade(ngr_local)

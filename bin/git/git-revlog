@@ -8,7 +8,13 @@ GetExtension()
 {
   local file=$1
   local extension="${file##*.}"
+  [ $extension = $file ] && extension="NONE"
   echo $extension
+}
+
+ErrorOption()
+{
+  echo "*** no such option: $1"
 }
 
 Usage()
@@ -20,9 +26,9 @@ FullUsage()
 {
   Usage
   echo "    checks revision log"
-  echo "    with no files given checks revision log of changed files"
   echo "    options:"
   echo "       -h|-help      this info"
+  echo "       -modified     check modified files"
   echo "       -nowrite      writes file name only in case of error"
   echo "       -date cdate   uses this date for comparing revlog"
 }
@@ -31,14 +37,16 @@ FullUsage()
 # set command line options
 #-----------------------------------------------
 
-write_file="YES"
 cdate=""
+show_file="YES"
+check_modified="NO"
 
 while [ -n "$1" ]
 do
    case $1 in
         -date)          cdate=$2; shift;;
-        -nowrite)       write_file="NO";;
+        -nowrite)       show_file="NO";;
+        -modified)      check_modified="YES";;
         -h|-help)       FullUsage; exit 0;;
         -*)             ErrorOption $1; exit 1;;
         *)              break;;
@@ -46,7 +54,9 @@ do
    shift
 done
 
-if [ $# -eq 0 ]; then
+if [ $check_modified = "YES" ]; then
+  :
+elif [ $# -eq 0 ]; then
   Usage
   exit 0
 fi
@@ -75,7 +85,7 @@ errors=0
 #-----------------------------------------------
 
 mode="unknown"
-if [ $# -eq 0 ]; then
+if [ $check_modified = "YES" ]; then
   files=$( git status | grep modified: | sed -E 's/^\s*modified:\s*//' )
   mode="git"
   last=$( git-tags | tail -1 | cut -d " " -f 2 )
@@ -101,7 +111,7 @@ fi
 for file in $files
 do
   ext=$( GetExtension $file )
-  [ $write_file = "YES" ] && echo "$file - $ext"
+  [ $show_file = "YES" ] && echo "$file - $ext"
   $bindir/git-revlog.pl $option -compare_date=$last $file
   status=$?
   #echo "status = $status"
@@ -111,7 +121,7 @@ do
     echo "  ${red}$file: cannot handle extension $ext${normal}"
     ext_error=$(( ext_error + 1 ))
   elif [ $status -eq 5 ]; then
-    echo "  ${cyan}$file: no revision log found${normal}"
+    echo "  ${cyan}$file: no update to revision log found${normal}"
     norev_count=$(( norev_count + 1 ))
   elif [ $status -eq 7 ]; then
     echo "  ${red}$file: some dates were out of order${normal}"
@@ -130,7 +140,7 @@ fi
 
 if [ $norev_count -gt 0 ]; then
   errors=$(( errors + 1 ))
-  echo "${cyan}some files had no revison log: $norev_count${normal}"
+  echo "${cyan}some files had no update to revison log: $norev_count${normal}"
 fi
 if [ $ext_error -gt 0 ]; then
   errors=$(( errors + 1 ))
@@ -149,7 +159,7 @@ if [ $errors -gt 0 ]; then
   echo "${red}some errors have been found${normal}"
   exit 1
 else
-  [ $write_file = "YES" ] && echo "${green}successful completion${normal}"
+  [ $show_file = "YES" ] && echo "${green}successful completion${normal}"
   #echo "${green}successful completion${normal}"
   exit 0
 fi

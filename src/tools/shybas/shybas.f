@@ -80,6 +80,7 @@ c 21.11.2024    ggu     renamed call to some routines
 c 18.06.2025    ggu     new option -comparebas and routine bascompare_bas()
 c 20.02.2026    ggu     better information for option -quality
 c 23.02.2026    ggu     finished option -quality
+c 19.04.2026    ggu     for info compute distmin,distmax,distaver
 c
 c todo :
 c
@@ -527,12 +528,13 @@ c writes statistics on basin
 	real dxmax,dymax
 	real h
         real xx,yy,dx,dy
-        real dist,distmin
+        real dist,distmin,distmax
 	logical bflag
 	real dtot,dptot
 	real hk
 	real, parameter :: hflag = -999.
-        integer i,k1,k2,km1,km2
+        integer i,k1,k2,kmin1,kmin2,kmax1,kmax2
+	double precision distaver
 
 	real area_elem
 
@@ -702,11 +704,16 @@ c-----------------------------------------------------------------
         !distmin = (xmax-xmin)**2 + (ymax-ymin)**2
 	call compute_distance(xmin,ymin,xmax,ymax,dx,dy)
         distmin = 2.*(dx**2+dy**2)
-        km1 = 0
-        km2 = 0
+        distmax = 2.*(dx**2+dy**2)
+	distaver = 0
+        kmin1 = 0
+        kmin2 = 0
+        kmax1 = 0
+        kmax2 = 0
 
 	if( bnomin ) then
 	  distmin = 0.
+	  distmax = 0.
 	else
 	  do ie=1,nel
 	    do ii=1,3
@@ -716,14 +723,25 @@ c-----------------------------------------------------------------
 	      call compute_distance(xgv(k1),ygv(k1),xgv(k2),ygv(k2),dx,dy)
               dist = dx**2 + dy**2
               if( dist .lt. distmin ) then
-                km1 = k1
-                km2 = k2
+                kmin1 = k1
+                kmin2 = k2
                 distmin = dist
               end if
+              if( dist .gt. distmax ) then
+                kmax1 = k1
+                kmax2 = k2
+                distmax = dist
+              end if
+	      distaver = distaver + dist
 	    end do
 	  end do
           distmin = sqrt(distmin)
-	  write(6,*) 'min node distance:      ',distmin,ipv(km1),ipv(km2)
+          distmax = sqrt(distmax)
+	  distaver = distaver / (3*nel)
+          distaver = sqrt(distaver)
+	  write(6,*) 'min node distance: ',distmin,ipv(kmin1),ipv(kmin2)
+	  write(6,*) 'max node distance: ',distmax,ipv(kmax1),ipv(kmax2)
+	  write(6,*) 'average distance:  ',distaver
 	end if
 
 c-----------------------------------------------------------------

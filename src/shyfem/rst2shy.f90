@@ -43,7 +43,6 @@
 	use mod_ts
 	use mod_hydro
 	use mod_geom_dynamic
-	use mod_trace_point
 
 	implicit none
 
@@ -84,8 +83,6 @@
 	call basin_read(basfile)
 	call shympi_init(.false.)               !call after basin has been read
 
-	call set_trace_point(.false.)
-
 !-------------------------------------------------------------------
 ! read first record and params
 !-------------------------------------------------------------------
@@ -115,7 +112,6 @@
 
 	call levels_init(nknr,nelr,nlvr)
 	nlv = nlvr
-	nlv_global = nlvr
 	call rst_get_vertical(nkn,nel,nlv,hlv,ilhv,ilhkv)
 	call shympi_set_hlv(nlv,hlv)
 

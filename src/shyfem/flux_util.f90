@@ -373,6 +373,7 @@
 ! tests structure iflux(3,1) for one section
 
 	use shympi
+	use mod_info_output
 
 	implicit none
 
@@ -407,7 +408,9 @@
 	!write(6,*) 'format: ',trim(format)
 	call shympi_syncronize
 	if( nt > 0 ) then
+	  if( print_verbose() ) then
 	  write(6,format) 'flxtst: ',my_id,ns,n,ids
+	  end if
 	end if
 	call shympi_syncronize
 

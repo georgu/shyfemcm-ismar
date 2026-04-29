@@ -51,6 +51,7 @@
 !  12.10.2015	ggu	changed VERS_7_3_3
 !  18.12.2018	ggu	changed VERS_7_5_52
 !  21.05.2019	ggu	changed VERS_7_5_62
+!  06.03.2026   ggu     completely restructured
 ! 
 ! ***********************************************************
 
@@ -69,7 +70,7 @@
 	call mima(xgv,nkn,xmin,xmax)
 	call mima(ygv,nkn,ymin,ymax)
 
-	write(6,*) 'start plotting basin...'
+	if( bverbose ) write(6,*) 'start plotting basin...'
 
 	call qstart
 
@@ -100,7 +101,7 @@
 
 	call qend
 
-	write(6,*) 'finished plotting basin...'
+	if( bverbose ) write(6,*) 'finished plotting basin...'
 
 	end
 

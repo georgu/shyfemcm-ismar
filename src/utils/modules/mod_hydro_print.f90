@@ -95,6 +95,14 @@
 
 	allocate(xv(3,nkn))
 
+	uprv = 0.
+	vprv = 0.
+	upro = 0.
+	vpro = 0.
+	wprv = 0.
+	up0v = 0.
+	vp0v = 0.
+
         end subroutine mod_hydro_print_init
 
 !============================================================

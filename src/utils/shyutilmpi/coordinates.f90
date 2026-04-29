@@ -52,6 +52,8 @@
         module coordinates
 !==================================================================
 
+	use mod_info_output
+
         implicit none
 
         integer, private, save  :: nkn_proj = 0
@@ -137,10 +139,13 @@
         xcartv = xgv
         ycartv = ygv
 
+	if( print_not_quiet_once() ) then
         write(6,*) 'start of proj_cart2geo'
         write(6,*) 'mode  = ',mode
         write(6,*) 'iproj = ',iproj
+	end if
 
+	if( print_verbose() ) then
 	write(6,*) 'xgv:'
         write(6,1000) (xgv(i),i=1,5)
         write(6,1000) (ygv(i),i=1,5)
@@ -150,8 +155,11 @@
 	write(6,*) 'xcartv:'
         write(6,1000) (xcartv(i),i=1,5)
         write(6,1000) (ycartv(i),i=1,5)
+	end if
 
+	if( print_not_quiet_once() ) then
         write(6,*) 'end of proj_cart2geo'
+	end if
 
 	return
 1000	format(5g14.6)
@@ -181,7 +189,7 @@
 	xmax = shympi_max(xgv)
 	ymax = shympi_max(ygv)
 
-	write(6,*) 'min/max: ',xmin,ymin,xmax,ymax
+!	here we should exchange these values...
 
         c_phi  = 0.5*(ymax-ymin)
         c_lat0 = 0.5*(ymax-ymin)
@@ -197,10 +205,14 @@
         xgeov = xgv
         ygeov = ygv
 
+	if( print_not_quiet_once() ) then
         write(6,*) 'start of proj_geo2cart'
         write(6,*) 'mode  = ',mode
         write(6,*) 'iproj = ',iproj
+	end if
 
+	if( print_verbose() ) then
+	write(6,*) 'min/max: ',xmin,ymin,xmax,ymax
 	write(6,*) 'xgv:'
         write(6,1000) (xgv(i),i=1,5)
         write(6,1000) (ygv(i),i=1,5)
@@ -210,8 +222,11 @@
 	write(6,*) 'xcartv:'
         write(6,1000) (xcartv(i),i=1,5)
         write(6,1000) (ycartv(i),i=1,5)
+	end if
 
+	if( print_not_quiet_once() ) then
         write(6,*) 'end of proj_geo2cart'
+	end if
 
 	return
 1000	format(5g14.6)
@@ -285,21 +300,26 @@
 
         implicit none
 
+        logical 	:: bw
         logical 	:: bspheric
         logical 	:: is_spherical
 	real		:: getpar
 
+	bw = print_not_quiet_once()
+
         bspheric = is_spherical()
         iproj = nint(getpar('iproj'))
 
+	if( bw ) then
         write(6,*) 'start of handle_projection'
 	write(6,*) 'bspheric,iproj: ',bspheric,iproj
+	end if
 
         if( bspheric ) then	!lat/lon -> cartesian
-	  write(6,*) 'coordinates are cartesian'
+	  if( bw ) write(6,*) 'coordinates are cartesian'
           call proj_geo2cart
         else			!cartesian -> lat/lon
-	  write(6,*) 'coordinates are geographical'
+	  if( bw ) write(6,*) 'coordinates are geographical'
           call proj_cart2geo
         end if
 
@@ -315,7 +335,7 @@
 	call shympi_check_2d_node(xcartv,'xcartv')
 	call shympi_check_2d_node(ycartv,'ycartv')
 
-        write(6,*) 'end of handle_projection'
+        !write(6,*) 'end of handle_projection'
 
         end subroutine handle_projection
 

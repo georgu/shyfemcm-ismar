@@ -33,6 +33,7 @@
 !
 ! 08.03.2025    ggu     extract module for restart routines
 ! 19.06.2025    ggu     updated
+! 20.03.2026    ggu     new version 18
 !
 ! notes :
 !
@@ -64,6 +65,7 @@
 ! 15	write gotm arrays
 ! 16	adapted for mpi
 ! 17	write bfm restart
+! 18	write zov, zeov, iwetv
 !
 !*********************************************************************
 
@@ -80,7 +82,7 @@
 
 	integer, save :: idfrst = 749652	!id for restart file
 
-	integer, save :: nvmax = 17		!last version of file
+	integer, save :: nvmax = 18		!last version of file
 	integer, parameter :: nidmax = 9
 
 	integer, save :: id_hydro_rst = 1	!1		hydro

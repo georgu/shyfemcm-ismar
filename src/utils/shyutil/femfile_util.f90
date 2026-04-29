@@ -39,6 +39,8 @@
 ! 18.05.2020    ggu     check read/write of files, flag in structure
 ! 10.07.2020    ggu     compiler warnings resolved (do not init arrays)
 ! 26.01.2024    ggu     bug fix in femutil_read_record_ff() with optional
+! 22.04.2026    ggu     better error messaging
+! 23.04.2026    ggu     new routine femutil_interpolate_recs()
 !
 !**************************************************************
 !**************************************************************
@@ -53,6 +55,12 @@
 	integer, parameter, private  :: nvers0 = 3	!highest version of fem
 
 	real, parameter, private  :: flag_fem = -999.
+
+!------------------------------------------------------------------
+! femfile_type	info on file, no info on content
+! femrec_type	info on content of file
+! fem_type	combining both information above
+!------------------------------------------------------------------
 
 	type :: femfile_type
 	  integer :: iunit = 0
@@ -83,6 +91,8 @@
 	  type(femfile_type) :: femfile
 	  type(femrec_type)  :: femrec
 	end type fem_type
+
+!------------------------------------------------------------------
 
         INTERFACE femutil_get_time
         MODULE PROCEDURE femutil_get_time_rec,femutil_get_time_fem
@@ -220,15 +230,39 @@
 
 	femutil_is_compatible = .false.
 
-	if( frec1%np /= frec2%np ) return
-	if( frec1%lmax /= frec2%lmax ) return
-	if( frec1%nvar /= frec2%nvar ) return
-	if( frec1%ntype /= frec2%ntype ) return
+	if( frec1%np /= frec2%np ) then
+	  write(6,*) 'np incompatible'
+	  return
+	end if
+	if( frec1%lmax /= frec2%lmax ) then
+	  write(6,*) 'lmax incompatible'
+	  return
+	end if
+	if( frec1%nvar /= frec2%nvar ) then
+	  write(6,*) 'nvar incompatible'
+	  return
+	end if
+	if( frec1%ntype /= frec2%ntype ) then
+	  write(6,*) 'ntype incompatible'
+	  return
+	end if
 
-	if( any(frec1%regpar/=frec2%regpar) ) return
-	if( any(frec1%hlv/=frec2%hlv) ) return
-	if( any(frec1%ilhkv/=frec2%ilhkv) ) return
-	if( any(frec1%hd/=frec2%hd) ) return
+	if( any(frec1%regpar/=frec2%regpar) ) then
+	  write(6,*) 'regpar incompatible'
+	  return
+	end if
+	if( any(frec1%hlv/=frec2%hlv) ) then
+	  write(6,*) 'hlv incompatible'
+	  return
+	end if
+	if( any(frec1%ilhkv/=frec2%ilhkv) ) then
+	  write(6,*) 'ilhkv incompatible'
+	  return
+	end if
+	if( any(frec1%hd/=frec2%hd) ) then
+	  write(6,*) 'hd incompatible'
+	  return
+	end if
 	!if( any(frec1%strings/=frec2%strings) ) return
 
 	femutil_is_compatible = .true.
@@ -705,12 +739,12 @@
 	integer i,nvar,lmax,np
 	real, parameter :: flag = -999.
 
-	fout = frec(1)
+	fout = frec(1)		!here we copy from input file to output file
 	nvar = fout%nvar
 	lmax = fout%lmax
 	np   = fout%np
 
-	deallocate(fout%data)
+	if( allocated(fout%data) ) deallocate(fout%data)
 	allocate(fout%data(lmax,np,nvar))
 	fout%data = 0.
 
@@ -718,11 +752,78 @@
 	  where( frec(i)%data /= flag )
 	    fout%data = fout%data + frec(i)%data
 	  end where
-	  !write(6,*) i,frec(i)%data(1,1,1),frec(i)%data(lmax,np,nvar)
 	end do
-	!write(6,*) i,fout%data(1,1,1),fout%data(lmax,np,nvar)
 
 	where( frec(1)%data == flag )
+	  fout%data = flag
+	end where
+
+	end subroutine
+
+!******************************************************************
+
+	subroutine femutil_interpolate_recs(nfile,frec,fout,bx,by)
+
+	implicit none
+
+	integer nfile
+	type(femrec_type) :: frec(nfile)
+	type(femrec_type) :: fout
+	logical bx,by
+
+	integer i,nvar,lmax,np
+	integer iv,l,nx,ny,ix,iy
+	real, parameter :: flag = -999.
+	real, allocatable :: vals(:)
+	real, allocatable :: valreg(:,:)
+	real, allocatable :: valnreg(:,:)
+	type(femrec_type) :: fin
+
+	fout = frec(1)		!here we copy from input file to output file
+	fin = frec(2)		!here are the values we have to interpolate
+	nvar = fout%nvar
+	lmax = fout%lmax
+	np   = fout%np
+
+	if( allocated(fout%data) ) deallocate(fout%data)
+	allocate(fout%data(lmax,np,nvar))
+	fout%data = 0.
+	fout%data = fin%data
+	fout%strings = fin%strings
+
+	allocate(vals(np))
+	nx = fout%regpar(1)
+	ny = fout%regpar(2)
+	allocate(valreg(nx,ny))
+	allocate(valnreg(nx,ny))
+
+	do iv=1,nvar
+	  do l=1,lmax
+	    vals(:) = fout%data(l,:,iv)
+	    call copy_to_reg(np,vals,nx,ny,valreg)
+
+	    if( bx ) then
+	      do iy=1,ny
+	        do ix=nx,2,-1
+	          valreg(ix,iy) = 0.5 * ( valreg(ix-1,iy) + valreg(ix,iy) )
+	        end do
+	      end do
+	    end if
+
+	    if( by ) then
+	      do ix=1,nx
+	        do iy=ny,2,-1
+	          valreg(ix,iy) = 0.5 * ( valreg(ix,iy-1) + valreg(ix,iy) )
+	        end do
+	      end do
+	    end if
+
+	    call copy_to_lin(np,vals,nx,ny,valreg)
+	    fout%data(l,:,iv) = vals(:)
+	  end do
+	end do
+
+	where( frec(2)%data == flag )
 	  fout%data = flag
 	end where
 
@@ -731,6 +832,52 @@
 !==================================================================
 	end module fem_util
 !==================================================================
+
+	subroutine copy_to_reg(np,vals,nx,ny,valreg)
+
+	implicit none
+
+	integer np,nx,ny
+	real vals(np)
+	real valreg(nx,ny)
+
+	integer ix,iy,n
+
+	n = 0
+	do iy=1,ny
+	  do ix=1,nx
+	    n = n + 1
+	    valreg(ix,iy) = vals(n)
+	  end do
+	end do
+
+	if( n /= np ) stop 'error stop copy_to_reg: n /= np'
+
+	end subroutine
+
+!******************************************************************
+
+	subroutine copy_to_lin(np,vals,nx,ny,valreg)
+
+	implicit none
+
+	integer np,nx,ny
+	real vals(np)
+	real valreg(nx,ny)
+
+	integer ix,iy,n
+
+	n = 0
+	do iy=1,ny
+	  do ix=1,nx
+	    n = n + 1
+	    vals(n) = valreg(ix,iy)
+	  end do
+	end do
+
+	if( n /= np ) stop 'error stop copy_to_lin: n /= np'
+
+	end subroutine
 
 !------------------------------------------------------------------
 ! utility routines

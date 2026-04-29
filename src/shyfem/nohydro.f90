@@ -51,6 +51,7 @@
 ! 13.03.2021	clr&ggu	adapted for petsc solver
 ! 23.04.2021    clr     alternative implementation to replace pragma directives
 ! 20.03.2022	ggu	upgraded to da_out
+! 21.04.2026	ggu	use vqv to deal with dry nodes
 !
 !********************************************************************
 
@@ -115,6 +116,7 @@
         use levels
         use basin
         use mod_bound_dynamic
+        use mod_geom_dynamic
         use mod_system
 
         implicit none
@@ -122,6 +124,7 @@
 ! local
         integer k,l,lmax
         integer iw,inhadj
+	real vqv(nkn)
         real aq
         real qvmax
         real getpar
@@ -132,6 +135,9 @@
 !        parameter for how to adjust u,v,eta after computation of NH pressure
         inhadj = nint(getpar('inhadj'))
 
+	vqv = rqv
+	where( inodv == -2 ) vqv = 0.	!set to zero for dry nodes
+	
 !        solve for NH pressure q
         call system_init
         call nonhydro_prepare_matrix
@@ -146,9 +152,8 @@
 	    call hydro_transports
 	    call setnod		
 	    call set_link_info
-	    call adjust_mass_flux	
             call system_init 
-            call hydro_zeta(rqv) 
+            call hydro_zeta(vqv) 
             !call system_solve_z(nkn,znv) 
             call system_solve(nkn,znv) !DWNH
             !call system_adjust_z(nkn,znv) 
@@ -166,7 +171,7 @@
         call setzev 
         call setuvd 
 	call baro2l
-  	call make_new_depth 
+  	call make_new_layer_depth 
 	call check_volume
 
 !        Finally adjust NH pressure q
@@ -178,7 +183,7 @@
             qvmax=max(qvmax,abs(qpnv(l,k)))
           end do
         enddo
-        write(6,*) 'qmax=',qvmax
+        !write(6,*) 'qmax=',qvmax
 
 	end
 
@@ -513,7 +518,7 @@
           wlnv(lmax,k) = 0.0                    
         end do
 
-        write(6,*) 'wmax=',wvmax
+        !write(6,*) 'wmax=',wvmax
 
 !--------------------------------------------------------
 ! end of routine
@@ -611,7 +616,6 @@
 
 	real pvar(nlvdi,nkn)
 
- 
 	integer kn(3)
 	integer ie,i,j,j1,j2,n,m,kk,l,k
 	integer lmax
@@ -876,7 +880,6 @@
 
 	use levels
 
-
 	implicit none
 
 	double precision da_out(4)
@@ -975,6 +978,7 @@
 !   qdist:   0   0  1/4 2/4 3/4  1   1   1   ...
 
 	use basin
+	use mod_info_output
 
 	implicit none
 
@@ -1032,7 +1036,10 @@
 ! make distance
 !-----------------------------------------------------------------
 
+	if( print_not_quiet_once() ) then
         write(6,*) 'Making distance qdist'
+	end if
+
         call mkdist_new(nkn,idist,qdist)
 
 !-----------------------------------------------------------------

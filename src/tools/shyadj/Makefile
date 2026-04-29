@@ -146,13 +146,17 @@ strip:
 ../../../lib/mod/mod_adj_grade.mod: mod_adj_grade.o
 ../../../lib/mod/mod_adj_static.mod: mod_adj_grade.o
 adj4el.o: ../../../lib/mod/basin.mod \
-		../../../lib/mod/mod_adj_grade.mod 
+		../../../lib/mod/mod_adj_grade.mod \
+		../../../lib/mod/mod_progress_bar.mod 
 adj575.o: ../../../lib/mod/basin.mod \
-		../../../lib/mod/mod_adj_grade.mod 
+		../../../lib/mod/mod_adj_grade.mod \
+		../../../lib/mod/mod_progress_bar.mod 
 adj5el.o: ../../../lib/mod/basin.mod \
-		../../../lib/mod/mod_adj_grade.mod 
+		../../../lib/mod/mod_adj_grade.mod \
+		../../../lib/mod/mod_progress_bar.mod 
 adj7el.o: ../../../lib/mod/basin.mod \
-		../../../lib/mod/mod_adj_grade.mod 
+		../../../lib/mod/mod_adj_grade.mod \
+		../../../lib/mod/mod_progress_bar.mod 
 adjgrd.o: ../../../lib/mod/mod_adj_static.mod
 adjneu.o: ../../../lib/mod/basin.mod \
 		../../../lib/mod/mod_adj_grade.mod \
@@ -161,7 +165,9 @@ adjplo.o: ../../../lib/mod/basin.mod \
 		../../../lib/mod/mod_adj_grade.mod 
 adjvar.o: ../../../lib/mod/basin.mod \
 		../../../lib/mod/mod_adj_grade.mod \
-		../../../lib/mod/mod_adj_static.mod 
+		../../../lib/mod/mod_adj_static.mod \
+		../../../lib/mod/mod_progress_bar.mod \
+		../../../lib/mod/mod_sort.mod 
 shyadj.o: ../../../lib/mod/basin.mod ../../../lib/mod/clo.mod \
 		../../../lib/mod/mod_adj_grade.mod \
 		../../../lib/mod/mod_depth.mod 

@@ -117,7 +117,7 @@
 !------------------------------------------------------------------
 
 	if( bcheck ) then			!can be deleted later
-	 write(6,*) 'checking node list...'
+	 !write(6,*) 'checking node list...'
 	 do k=1,nkn
 	  call get_nodes_around(k,ngr,n,nodes)
 	  n = n + 1

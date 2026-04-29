@@ -47,6 +47,7 @@
 !  13.03.2019	ggu	changed VERS_7_5_61
 !  21.05.2019	ggu	changed VERS_7_5_62
 !  23.02.2026   ggu     checks to avoid negative areas
+!  06.03.2026   ggu     completely restructured
 ! 
 ! ***********************************************************
 
@@ -55,30 +56,51 @@
 !  eliminates high grades
 
 	use mod_adj_grade
+	use mod_progress_bar
 	use basin
 
 	implicit none
 
 	integer nmax
 
+	logical bprog,bok
         integer k,n
+	integer itot,ielim
+	real perc
+	character*5 string
 
 	if( nmax < 7 ) return
+	string = 'elim7'
+	if( nmax == 8 ) string = 'elim8'
 
-        write(6,*) 'eliminating grades for grades higher ... ',nmax
+	bprog = bquiet .and. .not. bsilent
+        bprog = .not. bverbose .and. .not. bsilent
+
+        if( .not. bquiet ) write(6,*) 'eliminating grades higher than ',nmax
+        if( bprog ) call progress_bar_init(string)
+
+	itot = 0
+	ielim = 0
 
         do k=1,nkn
+          perc = k/float(nkn)
+          if( bprog ) call progress_bar_print(k,nkn)
           n = ngrade(k)
           if( n .ge. nmax .and. nbound(k) .eq. 0 ) then
-            call elim77(k)
+            call elim78(k,bok)
+	    itot = itot + 1
+	    if( bok ) ielim = ielim + 1
           end if
         end do
+
+	if( bprog ) call progress_bar_finalize
+	if( .not. bsilent ) write(6,*) 'nodes eliminated: ',ielim,' of ',itot
 
 	end
 
 ! ***********************************************************
 
-	subroutine elim77(k)
+	subroutine elim78(k,bok)
 
 !  eliminates high grades by switching diagonal
 
@@ -88,6 +110,7 @@
 	implicit none
 
 	integer k
+	logical bok
 
         integer n,i,nc,nmax,nb,ii
 	integer ie1,ie2
@@ -103,6 +126,8 @@
 	real rangle
 
 	if( k .gt. nkn ) return
+
+	bok = .false.
 
 !  make circular list
 
@@ -141,7 +166,7 @@
 
 	  nb = nbav(i-1) + nbav(i+1)
 
-	  if( bdebug) write(6,*) '   ',n,nt,np,nn,nb
+	  if( bdebug ) write(6,*) '   ',n,nt,np,nn,nb
 
 	  nval = n+nt - (np+nn)
 	  if( nt .le. 5 ) nval = 0
@@ -150,7 +175,7 @@
 	  a2 = rangle(ngav(i-1),ngav(i),ngav(i+1))
 	  if( nval .gt. nmax ) then
 	    if( a1 .le. 180. .or. a2 .le. 180. ) then
-	      write(6,*) '****** not convex ',k,ngav(i),a1,a2
+	      if( bverbose ) write(6,*) '****** not convex ',k,ngav(i),a1,a2
 	    else
 	      nc = 1
 	      ip = i
@@ -161,11 +186,13 @@
 	  end if
 	end do
 
-	if( nmax .ge. 3 ) write(6,*) k,n,nmax,nc,ip
-
 !  we decide to take the first choice
 
-	if( nmax .ge. 3 ) then
+	if( nmax .lt. 3 ) return
+
+	bok = .true.
+
+	if( bverbose ) write(6,*) 'elim78: ',k,n,nmax,nc,ip
 
 	ie1 = ifindel(k,ngav(ip),ngav(ip+1))
 	ie2 = ifindel(k,ngav(ip-1),ngav(ip))
@@ -202,8 +229,6 @@
 	  call prgr(ngav(ip-1),ngrdi,ngrade,ngri)
 	  call prgr(ngav(ip+1),ngrdi,ngrade,ngri)
 	  call plosno(k)
-	end if
-
 	end if
 
 	end

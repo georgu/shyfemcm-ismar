@@ -221,6 +221,7 @@
 	use close
 	use basin
 	use shympi
+	use mod_info_output
 
 	implicit none
 
@@ -251,10 +252,12 @@
 	if( binit ) return			!already initialized
 	binit = .true.
 
-	write(6,*) 'initializing closing sections ',my_id
-
 	iclose = nint(getpar('iclose'))
         if(iclose.le.0) return          !no closing enabled
+
+	if( print_not_quiet_once() ) then
+	write(6,*) 'initializing closing sections'
+	end if
 
 	nbc = nbnds()
 	call makehkv_minmax(hkv,0)		!get average depths
@@ -392,7 +395,9 @@
 
 	end do
 
+	if( print_verbose() ) then
 	write(6,*) 'finished initializing closing sections ',nclose,my_id
+	end if
 
 	call shympi_barrier
 	!call check_dist		!checks and plots	!FIXME
@@ -1056,6 +1061,7 @@
 
 	use close
 	use shympi
+	use mod_info_output
 
 	implicit none
 
@@ -1083,8 +1089,10 @@
 	bstop = .false.
 	bout = .false.
 
-	write(6,*) 'checking all sections: ',my_id
-	if(bw) write(iu,*) 'checking all sections: ',my_id
+	if( print_verbose() ) then
+	write(6,*) 'checking all closing sections: ',my_id
+	end if
+	if(bw) write(iu,*) 'checking all closing sections: ',my_id
 
 	nsc = nclose
 	nbc = nbnds()
@@ -1226,10 +1234,12 @@
 	   call flush(iu)
         end do
 
-        if(bstop) stop 'error stop : ckclos'
+        if(bstop) stop 'error stop ckclos: errors found'
 
-	write(6,*) 'finished checking all sections: ',my_id
-	if(bw) write(iu,*) 'finished checking all sections: ',my_id
+	if( print_verbose() ) then
+	write(6,*) 'finished checking all closing sections: ',my_id
+	end if
+	if(bw) write(iu,*) 'finished checking all closing sections: ',my_id
 	if(bw) call flush(iu)
 
 	end

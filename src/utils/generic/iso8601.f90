@@ -38,6 +38,7 @@
 ! 21.10.2021	ggu	allow for short version of date: YYYY-M-D
 ! 07.02.2024	ggu	bug fix for YYYY-M-D (bless)
 ! 01.10.2025	ggu	new routine complete_date()
+! 22.04.2026	ggu	bug fix for YYYY-M-DD (bless more)
 !
 ! notes :
 !
@@ -68,7 +69,7 @@
 	module iso8601
 !=====================================================================
 
-	logical, private, parameter :: bdebug = .true.
+	logical, private, save :: bdebug_iso8601 = .true.
 
         INTERFACE string2date
         MODULE PROCEDURE string2datetime,string2date_and_time
@@ -122,9 +123,15 @@
 	  ia = ichar(ll(10:10))
 	  if( ia.lt.ia0.or.ia.gt.ia9 ) nl = 9		!no digit
         else if( bless ) then
-          read(ll(1:8) ,'(i4,1x,i1,1x,i1)',iostat=ios) dt(1:3)
-	  if( ios /= 0 ) goto 9
-	  nl = 8
+	  if( is_digit(ll(9:9)) ) then
+            read(ll(1:9) ,'(i4,1x,i1,1x,i2)',iostat=ios) dt(1:3)
+	    if( ios /= 0 ) goto 9
+	    nl = 9
+	  else
+            read(ll(1:8) ,'(i4,1x,i1,1x,i1)',iostat=ios) dt(1:3)
+	    if( ios /= 0 ) goto 9
+	    nl = 8
+	  end if
 	  !ia = ichar(ll(9:9))
 	  !if( ia.lt.ia0.or.ia.gt.ia9 ) nl = 8		!no digit
 	else						!try basic
@@ -205,7 +212,7 @@
 	ierr = 0
 	return
     9   continue
-        if( bdebug ) then
+        if( bdebug_iso8601 ) then
           write(6,*) '*** cannot parse date: ',ierr,trim(string)
           write(6,*) '    format should be YYYY-MM-DD::hh:mm:ss'
           write(6,*) '    or iso8601 format YYYY-MM-DDThh:mm:ss'
@@ -217,7 +224,42 @@
 
 !*********************************************************************
 
+	function is_digit(c)
+
+	implicit none
+
+	logical is_digit
+	character*1 c
+
+        integer, parameter :: ia0 = ichar('0')
+        integer, parameter :: ia9 = ichar('9')
+
+	integer ia
+
+	ia = ichar(c)
+
+	is_digit = .true.
+	if( ia.lt.ia0 .or. ia.gt.ia9 ) is_digit = .false.
+
+	end function
+
+!*********************************************************************
+
+	subroutine set_iso8601_debug(bdebug)
+	
+	implicit none
+
+	logical bdebug
+
+	bdebug_iso8601 = bdebug
+
+	end subroutine
+
+!*********************************************************************
+
 	subroutine parse_time(time,dt,nl)
+
+	implicit none
 
 	character*(*) time
 	integer dt(8)
@@ -258,6 +300,8 @@
 !*********************************************************************
 
 	subroutine dt2string(dt,string)
+
+	implicit none
 
 	integer dt(8)		!year,month,day,hour,min,sec,msec,tz (return)
 	character*(*) string	!date string
@@ -326,7 +370,7 @@
         dt(4) = iaux / 100
         dt(5) = iaux - dt(4) * 100
 
-	if( .not. bdebug ) return
+	if( .not. bdebug_iso8601 ) return
 
 	if( date /= 10000*dt(1) + 100*dt(2) + dt(3) ) then
 	  write(6,*) date,dt(1:3)
@@ -511,6 +555,7 @@
 	call test_iso8601_check('20170423T1230')
 	call test_iso8601_check('20170423T123045')
 
+	write(6,*) 'test_iso8601_check with errors'
 	call test_iso8601_check('2017-04-23T12:30:4')
 	call test_iso8601_check('2017-04-23T12:3')
 	call test_iso8601_check('2017-04-23T1230')
@@ -518,11 +563,19 @@
 	call test_iso8601_check('2017-04-23T12:30:45.3')
 	call test_iso8601_check('2017-04-23T12:30:45+01')
 
+	write(6,*) 'test_iso8601_check without errors'
 	call test_iso8601_check('2017-04-23 0:0:0')
 	call test_iso8601_check('2017-04-23 00:30:00')
 	call test_iso8601_check('2017-04-23 00:30:00UTC')
 	call test_iso8601_check('2017-04-23 00:30:00 UTC')
 	call test_iso8601_check('2017-04-23T12:30:45Z')
+
+	call test_iso8601_check('2017-04-03')
+	call test_iso8601_check('2017-4-03')
+	call test_iso8601_check('2017-4-3')
+	call test_iso8601_check('2017-4-3::12')
+	call test_iso8601_check('2017-4-3T12')
+	call test_iso8601_check('2017-4-3 12')
 
 	write(6,*) 'test_complete_check'
 	call test_complete_check('17','2017-01-01::00:00:00')
@@ -549,6 +602,8 @@
 	character*(*) string
 
 	integer ierr,dt(8)
+
+	call set_iso8601_debug(.false.)		!do not write debug messages
 
 	call string2dt(string,dt,ierr)
 	write(6,'(9i5,2a)') ierr,dt,'  ',trim(string)

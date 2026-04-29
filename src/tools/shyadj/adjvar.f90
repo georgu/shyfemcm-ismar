@@ -50,6 +50,8 @@
 !  18.12.2018	ggu	changed VERS_7_5_52
 !  21.05.2019	ggu	changed VERS_7_5_62
 !  23.02.2026   ggu     checks to avoid negative areas
+!  27.02.2026   ggu     checks grade index for not unique nodes
+!  06.03.2026   ggu     completely restructured
 ! 
 ! **************************************************************
 
@@ -58,6 +60,7 @@
 !  smoothing of internal nodes
 
 	use mod_adj_grade
+	use mod_progress_bar
 	use basin
 
 	implicit none
@@ -65,16 +68,21 @@
 	integer npass
 	real omega
 
+	logical bprog
 	integer n,k,ie,ii,nks,ipos
-	integer nos,nb
+	integer nos,nb,ns
 	integer ic(nkn)
 	real dx(nkn)
 	real dy(nkn)
 	real xm,ym
 	real amax
+	real perc
 	integer nosmooth(nkn)
 
-	write(6,*) 'smoothing grid '
+	if( .not. bquiet ) write(6,*) 'smoothing grid '
+
+        bprog = bquiet .and. .not. bsilent
+        if( bprog ) call progress_bar_init('smoothing')
 
 	nosmooth = 0
 	do k=1,nkn
@@ -84,14 +92,18 @@
 	end do
 	nos = count(nosmooth==1)
 	nb = count(nbound/=0)
-	write(6,*) 'cannot smooth nodes: ',nos,nb,nkn
+	ns = nkn - nos - nb
+	if( .not. bquiet ) then
+	  write(6,*) 'cannot smooth nodes: ',nos+nb,' of ',nkn
+	end if
 
 	call checkarea(0,'before smoothing')
 
+
 	do n=1,npass
 
-	  !if( mod(n,10) .eq. 0 ) write(6,*) 'smoothing... pass ',n
-	  if( mod(n,1) .eq. 0 ) write(6,*) 'smoothing... pass ',n
+	  perc = n/float(npass)
+	  if( bprog ) call progress_bar_print(n,npass)
 
 !  initialize
 
@@ -136,7 +148,10 @@
 
 	end do
 
-	write(6,*) 'smoothing finished - passes ',npass
+	if( bprog ) call progress_bar_finalize
+	if( .not. bsilent ) then
+	  write(6,*) 'smoothing passes ',npass,' nodes ',ns,' of ',nkn
+	end if
 	call checkarea(0,'after smoothing')
 
 	end
@@ -187,12 +202,13 @@
 	logical bstop,bverb
 	integer n,k,ie,ii,kk,i,ke
 	integer i1,i2,k1,k2
-        integer nb
+        integer nb,ic
 
 	integer nextgr
 
-	bverb = .true.
-	bverb = .false.
+	if( .not. bcheck ) return
+
+	bverb = bverbose
 
 	bstop = .false.
 
@@ -200,7 +216,7 @@
 !  check element index for unknown nodes
 ! --------------------------------------------------
 
-	if( text .ne. ' ' ) write(6,*) 'chkgrd: '//trim(text)
+	if( bverb .and. text .ne. ' ' ) write(6,*) 'chkgrd: '//trim(text)
 
         if( bverb ) write(6,*) 'checking for unknown nodes ...'
 
@@ -216,8 +232,9 @@
 
 	if( bstop ) then
 		call wr0grd
+		write(6,*) 'chkgrd: '//trim(text)
 		write(6,*) 'nkn,nel: ',nkn,nel
-		stop 'error stop chkgrd (1)'
+		stop 'error stop chkgrd (1): unknown nodes'
 	end if
 
 ! --------------------------------------------------
@@ -236,8 +253,9 @@
 
 	if( bstop ) then
 		call wr0grd
+		write(6,*) 'chkgrd: '//trim(text)
 		write(6,*) 'nkn,nel: ',nkn,nel
-		stop 'error stop chkgrd (2)'
+		stop 'error stop chkgrd (2): strange grades'
 	end if
 
 ! --------------------------------------------------
@@ -259,8 +277,35 @@
 
 	if( bstop ) then
 		call wr0grd
+		write(6,*) 'chkgrd: '//trim(text)
 		write(6,*) 'nkn,nel: ',nkn,nel
-		stop 'error stop chkgrd (3)'
+		stop 'error stop chkgrd (3): unknown nodes in grade index'
+	end if
+
+! --------------------------------------------------
+!  check grade index for not unique nodes
+! --------------------------------------------------
+
+        if( bverb ) write(6,*) 'checking grade index for nodes ...'
+
+	do k=1,nkn
+	  n = ngrade(k)
+	  do i=1,n
+	    kk = ngri(i,k)
+	    ic = count(kk==ngri(i+1:n,k))
+	    if( ic > 0 ) then
+		bstop =.true.
+		write(6,*) 'chkgrd (7): ',k,n,i,kk
+		write(6,*) 'chkgrd nodes: ',ngri(1:n,k)
+	    end if
+	  end do
+	end do
+
+	if( bstop ) then
+		call wr0grd
+		write(6,*) 'chkgrd: '//trim(text)
+		write(6,*) 'nkn,nel: ',nkn,nel
+		stop 'error stop chkgrd (7): not unique nodes'
 	end if
 
 ! --------------------------------------------------
@@ -287,8 +332,9 @@
 
 	if( bstop ) then
 		call wr0grd
+		write(6,*) 'chkgrd: '//trim(text)
 		write(6,*) 'nkn,nel: ',nkn,nel
-		stop 'error stop chkgrd (4)'
+		stop 'error stop chkgrd (4): inconsistency of grade index'
 	end if
 
 ! --------------------------------------------------
@@ -329,8 +375,9 @@
 
 	if( bstop ) then
 		call wr0grd
+		write(6,*) 'chkgrd: '//trim(text)
 		write(6,*) 'nkn,nel: ',nkn,nel
-		stop 'error stop chkgrd (5)'
+		stop 'error stop chkgrd (5): inconsistency in grades'
 	end if
 
 ! --------------------------------------------------
@@ -340,11 +387,37 @@
 	call checkarea(0,text)
 
 ! --------------------------------------------------
+!  compare total - computes new grade index and compares
+! --------------------------------------------------
+
+	if( bcheck_all ) then
+	  !write(6,*) 'checking all...'
+	  call mkbound(nkn,nel,ngrdi,nen3v,ngrade_aux,nbound_aux,ngri_aux)
+	  do k=1,nkn
+	    if( ngrade(k) /= ngrade_aux(k) ) goto 99
+	    if( nbound(k) /= nbound_aux(k) ) goto 99
+	    if( any(ngri(:,k) /= ngri_aux(:,k)) ) goto 99
+	  end do
+	end if
+
+! --------------------------------------------------
 !  end of routine
 ! --------------------------------------------------
 
         if( bverb ) write(6,*) 'check ok ...'
 
+	return
+   99	continue
+	write(6,*) 'chkgrd: '//trim(text)
+	write(6,*) 'inconsistency in grade index of node ',k,ngr
+	write(6,*) 'nkn,nel: ',nkn,nel
+	write(6,*) 'ngrade: ',ngrade(k),ngrade_aux(k)
+	write(6,*) 'nbound: ',nbound(k),nbound_aux(k)
+	write(6,*) 'ngri: '
+	write(6,*) ngri(:,k)
+	write(6,*) 'ngri_aux: '
+	write(6,*) ngri_aux(:,k)
+	stop 'error stop chkgrd: inconsistency'
 	end
 
 ! *******************************************************
@@ -420,12 +493,14 @@
 	    if( k /= 0 ) write(6,*) 'error while handling node ',k
 	    call wr0grd
 	    write(6,*) 'nkn,nel: ',nkn,nel
-	    stop 'error stop checkarea'
+	    stop 'error stop checkarea: negative area'
 	end if
 
 	end
 
-! *******************************************************
+! ****************************************************************
+! ****************************************************************
+! ****************************************************************
 
 	subroutine elem_info(ie)
 
@@ -507,7 +582,7 @@
 
 	subroutine make_unique(n,list)
 
-	use mod_sort
+	use mod_sort 
 
 	implicit none
 
@@ -577,6 +652,26 @@
 
 	n = 1
 	list(1) = kk
+	call plot_nodes(n,list)
+
+	end
+
+! ****************************************************************
+
+	subroutine plot_node_with_neibors(kk)
+
+	use mod_adj_grade
+
+	implicit none
+
+	integer kk
+
+	integer n
+	integer list(ngrdi)
+
+	n = ngrade(kk)
+	list(1:n) = ngri(1:n,kk)
+
 	call plot_nodes(n,list)
 
 	end
@@ -837,6 +932,52 @@
         ieext = ipev(ieint)
 
         end
+
+! ************************************************************
+
+	subroutine plot_nodes_with_grade(ng)
+
+! plots nodes with grade == ng
+!
+! plots circa nmax nodes
+
+	use mod_adj_grade
+	use basin
+
+        implicit none
+
+	integer ng
+
+	integer ntot,n,nstride,ib
+	integer k
+	integer, save :: nmax = 10
+
+	ntot = 0
+	do k=1,nkn
+	  n = ngrade(k)
+	  ib = nbound(k)
+	  if( n == ng .and. ib == 0 ) ntot = ntot + 1
+	end do
+
+	nstride = ntot / nmax		!plot circa nmax nodes
+	if( nstride == 0 ) nstride = 1
+
+	write(6,*) 'plotting nodes with grade ',ng,ntot,nstride
+
+	ntot = 0
+	do k=1,nkn
+	  n = ngrade(k)
+	  ib = nbound(k)
+	  if( n == ng .and. ib == 0 ) then
+	    ntot = ntot + 1
+	    if( mod(ntot,nstride) == 0 ) then
+	      write(6,*) 'plot node: ',ntot,k,n
+	      call plot_node_with_neibors(k)
+	    end if
+	  end if
+	end do
+
+	end
 
 ! ************************************************************
 

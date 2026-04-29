@@ -1089,6 +1089,8 @@
 
 ! checks nudiging values (debug)
 
+	use mod_info_output
+
 	implicit none
 
 	double precision dtime
@@ -1102,11 +1104,16 @@
 
 	integer, save :: iu = 6
 
+	if( print_not_quiet_once() ) then
 	write(iu,*) 'checking nudge values at time ',dtime
+	end if
+
+	if( print_verbose() ) then
 	write(iu,*) 'tobs: ',minval(tobsv),maxval(tobsv)
 	write(iu,*) 'sobs: ',minval(sobsv),maxval(sobsv)
 	write(iu,*) 'ttau: ',minval(ttauv),maxval(ttauv)
 	write(iu,*) 'stau: ',minval(stauv),maxval(stauv)
+	end if
 
 	end
 
@@ -1149,6 +1156,7 @@
 ! initialization of T/S from file
 
 	use shympi
+	use mod_info_output
 
 	implicit none
 
@@ -1167,25 +1175,27 @@
 	call getfnm('saltin',saltf)
 
 	if( tempf .ne. ' ' ) then
+	  if( print_not_quiet_once() ) then
           write(6,'(a)') 'initializing temperature from file ' &
      &                        //trim(tempf)
+	  end if
 	  string = 'temp init'
 	  call ts_open(string,tempf,dtime,nkn,nlv,id)
           call ts_next_record(dtime,id,nlvddi,nkn,nlv,tempv)
 	  call ts_file_close(id)
 	  call shympi_exchange_3d_node(tempv)
-          write(6,*) 'temperature initialized from file ',trim(tempf)
 	end if
 
 	if( saltf .ne. ' ' ) then
+	  if( print_not_quiet_once() ) then
           write(6,'(a)') 'initializing salinity from file ' &
      &                        //trim(saltf)
+	  end if
 	  string = 'salt init'
 	  call ts_open(string,saltf,dtime,nkn,nlv,id)
           call ts_next_record(dtime,id,nlvddi,nkn,nlv,saltv)
 	  call ts_file_close(id)
 	  call shympi_exchange_3d_node(saltv)
-          write(6,*) 'salinity initialized from file ',trim(saltf)
 	end if
 
 	end

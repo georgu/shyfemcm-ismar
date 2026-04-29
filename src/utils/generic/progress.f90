@@ -32,6 +32,7 @@
 ! revision log :
 !
 ! 26.01.2026    ggu     implemented from the internet
+! 06.03.2026    ggu     calls simplified
 
 !********************************************************************
 
@@ -41,9 +42,28 @@
 
 	implicit none
 
+	private
+
 	integer, save :: lmax  = 0
 	character*80, save :: pfull = ' '
 	character*80, save :: pact
+	character*80, save :: gstring
+
+	! call progress_bar_init(string)
+	! call pprogress_bar_print(string,progress)
+	! call pprogress_bar_print(progress)
+	! call pprogress_bar_print(nact,nmax)
+	! call progress_bar_finalize
+
+	public :: progress_bar_init
+	public :: progress_bar_print
+	public :: progress_bar_finalize
+
+        INTERFACE progress_bar_print
+        MODULE PROCEDURE          progress_bar_print_string &
+     &                          , progress_bar_print_prog &
+     &                          , progress_bar_print_int
+        END INTERFACE
 
 !====================================================================
 	contains
@@ -61,8 +81,9 @@
 
 	pfull = ' '
 	pfull = repeat('|',lmax)
+	gstring = string
 
-	end
+	end subroutine progress_bar_init
 
 !********************************************************************
 
@@ -74,11 +95,11 @@
 
 	write(6,*)
 
-	end
+	end subroutine progress_bar_finalize
 
 !********************************************************************
 
-	subroutine progress_bar_print(string,progress) 
+	subroutine progress_bar_print_string(string,progress) 
 
 ! print progress bar
 
@@ -95,12 +116,45 @@
 	pact(1:lpad) = pfull(1:lpad)
     
 	write(6,'(a, a, f5.1, a2)', advance="no") & 
-     &	        char(13), string//' ', progress*100, '% '
+     &	        char(13), trim(string)//' ', progress*100, '% '
 	write(6, "(A)", advance="no") "["
 	write(6, "(A)", advance="no")  pact(1:lmax)
 	write(6, "(A)", advance="no") "]"
     
-	end subroutine progress_bar_print
+	end subroutine progress_bar_print_string
+
+!********************************************************************
+
+	subroutine progress_bar_print_prog(progress) 
+
+! print progress bar
+
+	implicit none
+
+	real, intent(in) :: progress	!progress [0-1]
+
+	call progress_bar_print_string(gstring,progress)
+
+	end subroutine progress_bar_print_prog
+
+!********************************************************************
+
+	subroutine progress_bar_print_int(nact,nmax) 
+
+! print progress bar
+
+	implicit none
+
+	integer, intent(in) :: nact	!actual count
+	integer, intent(in) :: nmax	!max count
+
+	real progress
+
+	progress = float(nact)/float(nmax)
+
+	call progress_bar_print_string(gstring,progress)
+
+	end subroutine progress_bar_print_int
 
 !====================================================================
 	end module mod_progress_bar

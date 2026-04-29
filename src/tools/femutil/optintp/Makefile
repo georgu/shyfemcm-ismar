@@ -65,7 +65,7 @@ optintp: $(ALL) $(LIBF) optintp.o
 
 cleanall: clean cleanzip cleangrd
 
-clean: cleanobj cleanexe cleanvar cleantex cleanlinks
+clean: cleanobj cleanexe cleanvar cleantex cleanlinks cleanfem
 
 cleanobj:
 	-rm -f *.o
@@ -82,6 +82,9 @@ cleanexe:
 
 cleantex:
 	-rm -f *.dvi *.aux
+
+cleanfem:
+	-rm -f *.fem
 
 cleanvar:
 	-rm -f a.out core

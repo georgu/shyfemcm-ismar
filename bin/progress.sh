@@ -6,13 +6,19 @@
 #
 #------------------------------------------------------------------
 
+stringProgressBar="Progress: "
+
 function ProgressBar {
 
     # Process data
 
+    [ "$2" = "0" ] && return
+    [ "$1" -gt "$2" ] && return
+
     let _progress=(${1}*100/${2}*100)/100
     let _done=(${_progress}*4)/10
     let _left=40-$_done
+    local _string="$stringProgressBar"
 
     # Build progressbar string lengths
 
@@ -23,7 +29,31 @@ function ProgressBar {
     # 1.2.1 Output example:                           
     # 1.2.1.1 Progress : [########################################] 100%
 
-    printf "\rProgress : [${_fill// /\#}${_empty// /-}] ${_progress}%%"
+    printf "\r${_string} [${_fill// /\#}${_empty// /-}] ${_progress}%%"
+}
+
+function initProgressBar {
+
+    stringProgressBar=$1
+}
+
+function finalizeProgressBar_with_nl {
+
+  finalizeProgressBar
+  echo ""
+}
+
+function finalizeProgressBar {
+
+    let _progress=100
+    let _done=40
+    let _left=0
+    local _string="$stringProgressBar"
+
+    _fill=$(printf "%${_done}s")
+    _empty=$(printf "%${_left}s")
+
+    printf "\r${_string} [${_fill// /\#}${_empty// /-}] ${_progress}%%"
 }
 
 #------------------------------------------------------------------
@@ -33,12 +63,15 @@ test_progress()
   _start=1
   _end=100
 
+  initProgressBar "my_string"
+
   for number in $(seq ${_start} ${_end})
   do
     sleep 0.1
     ProgressBar ${number} ${_end}
   done
-  printf '\nFinished!\n'
+  finalizeProgressBar
+  printf ' Finished!\n'
 }
 
 #------------------------------------------------------------------

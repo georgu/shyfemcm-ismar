@@ -106,9 +106,11 @@
 	use basin, only : nkn,nel,ngr,mbw
 	use para
 	use shympi
+	use mod_info_output
 
 	implicit none
 
+	logical bw
 	integer nvar,nbc,nintp,i,id,idc,iage
 	integer levdbg
 	integer n
@@ -126,6 +128,8 @@
 
 	if( iconz < 0 ) return
 
+	bw = print_not_quiet_once()
+
         if( iconz == 0 ) then
           iconz=nint(getpar('iconz'))
           if( iconz <= 0 ) iconz = -1
@@ -135,12 +139,12 @@
 
 	  call tracer_accum_init
 
-          write(6,*) 'tracer initialized: ',iconz,nkn,nlvdi
+          if( bw ) write(6,*) 'tracer initialized: ',iconz
 
           iage=nint(getpar('iage'))
 	  if( iage > 0 ) then
 	    bage = .true.
-            write(6,*) 'age computation has been initialized'
+            if( bw ) write(6,*) 'age computation has been initialized'
 	  end if
         end if
 
@@ -179,17 +183,19 @@
 	!if( n == 1 ) tauv(:) = contau
 
 	if( idecay == 0 ) then 
-	  write(6,*) 'no decay for tracer used'
+	  if( bw ) write(6,*) 'no decay for tracer used'
 	else if( idecay < 0 .or. idecay > 2 ) then 
 	  write(6,*) 'no such option for decay: idecay = ',idecay
 	  stop 'error stop tracer_init: no such option'
 	else
+	  if( bw ) then
 	  write(6,*) 'decay for tracer used'
           write(6,*) 'idecay = ',idecay
 	  write(6,*) '0 none   1 exp   2 chapra'
 	  if( idecay == 1 ) then
-	    write(6,*) 'decay parameter used: tauv ='
+	    write(6,*) 'decay parameter(s) used: tauv ='
             write(6,*) tauv
+	  end if
 	  end if
 	end if  
 
@@ -215,9 +221,8 @@
           if( shympi_is_master() ) call getinfo(iuinfo)
         end if
 
-	
-	binfo = levdbg > 0
-	binfo = .true.
+	bcinfo = levdbg > 0
+	bcinfo = .true.
 
         nbc = nbnds()
         allocate(idconz(nbc))
@@ -394,7 +399,7 @@
 ! info and accumulate
 !-------------------------------------------------------------
 
-	if( binfo ) call massconc(+1,cnv,nlvdi,massv(1))
+	if( bcinfo ) call massconc(+1,cnv,nlvdi,massv(1))
 
 	call tracer_accum_accum(dt)
 
@@ -438,7 +443,7 @@
 	nvar = iconz
 	call get_act_dtime(dtime)
 	call get_timestep(dt)
-	blinfo = binfo
+	blinfo = bcinfo
 
 	call bnds_read_new(what,idconz,dtime)
 
@@ -592,7 +597,7 @@
 	   end if
 	  end if
 
-          if( binfo ) then
+          if( bcinfo ) then
 	    ctot = massv(1)
             call conmima(nlvdi,cnv,cmin,cmax)
 	    cmin = shympi_min(cmin)
@@ -603,7 +608,7 @@
  2021         format(a,a20,2f10.4,e14.6)
 	    end if
           end if
-        else if( iconz > 1 .and. binfo ) then
+        else if( iconz > 1 .and. bcinfo ) then
           ctot = sum(massv)
           !write(6,*) massv
           if( .not. allocated(caux) ) allocate(caux(nlvdi,nkn))

@@ -52,6 +52,8 @@
 !  21.05.2019	ggu	changed VERS_7_5_62
 !  14.02.2022	ggu	set all depth values to flag
 !  23.02.2026   ggu     checks to avoid negative areas
+!  27.02.2026   ggu     write more information to terminal
+!  06.03.2026   ggu     completely restructured
 ! 
 !  notes :
 ! 
@@ -72,13 +74,11 @@
 	integer kspecial
 	integer nlidim,nlndim
 	integer k
-	integer ner,nc
+	integer nc
 	integer nco,nknh,nli
 	integer nk,ne,nl,nne,nnl
-	integer nsmooth
-	real asmooth
 	real, parameter :: flag = -999.
-	logical bstop, bplot
+	logical bstop
 	character*80 file
 
 	real, allocatable :: dx(:),dy(:)
@@ -87,30 +87,33 @@
 	integer, allocatable :: ipaux(:)
 	integer, allocatable :: iaux(:)
 	real, allocatable :: raux(:)
+
 ! ------------------------------------------------------- end declaration
+
+!---------------------------------------------------------------
+! set some parameters
+!---------------------------------------------------------------
 
 	kspecial = 0		!set to 0 for no debug
 
 	file = ' '
-	ner = 6
 	bstop = .false.
 
-! -------------------------------------------------------------------
+!---------------------------------------------------------------
+! parse command line
+!---------------------------------------------------------------
 
-	call shyfem_copyright('shyadj - regularize finite element grids')
+        call shyadj_init(file)
 
-! -------------------------------------------------------------------
+!---------------------------------------------------------------
+! read grid file with nodes and elements
+!---------------------------------------------------------------
 
-!  parse command line
-
-        call shyadj_init(file,bplot,nsmooth,asmooth)
-
-!  read grid file with nodes and elements
-
+	call grd_set_write(.false.)
 	call grd_read(file)
 	call grd_get_params(nk,ne,nl,nne,nnl)
 
-	write(6,'(a,5i7)') 'grid parameters: ',nk,ne,nl
+	if ( .not. bsilent ) write(6,'(a,5i7)') ' grid parameters: ',nk,ne,nl
 	if( nk .le. 0 ) stop
 
 	call grd_to_basin
@@ -120,7 +123,9 @@
 	allocate(ipaux(nkn),iaux(nel))
 	allocate(raux(nel))
 
-!  save depth information in elements to nodes
+!---------------------------------------------------------------
+! save depth information in elements to nodes
+!---------------------------------------------------------------
 
 	call mod_depth_init(nkn,nel)
 	call grd_get_depth(nk,ne,hkv,hev)
@@ -135,148 +140,181 @@
 	  call hev2hkv
 	end if
 
-!  determine grade
+!---------------------------------------------------------------
+! determine grade and boundary nodes
+!---------------------------------------------------------------
 
-	call maxgrd(nkn,nel,nen3v,ngr)
-
-	write(6,*) 'maximum grade: ',ngr
-	call mod_adj_grade_init(nkn,ngr)
-
-	call setgrd(nkn,nel,nen3v,ngrade)
+	call maxgrd(nkn,nel,nen3v,ngr)	  !determines ngr (on bnd 1 too low)
+	if( .not. bquiet ) write(6,*) 'maximum grade: ',ngr
+	call mod_adj_grade_init(nkn,ngr)  !allocates global arrays
+	call setgrd(nkn,nel,nen3v,ngrade) !sets ngrade (still wrong on bnd)
 
 	call stats('first call')
 
-!  make boundary nodes (flag nbound)
+! make boundary nodes (flag nbound)
 
 	call mkbound(nkn,nel,ngrdi,nen3v,ngrade,nbound,ngri)
         call mkstatic(nkn,ianv,nbound)
+        if( bverbose ) write(6,*) 'grading nodes done'
 	call stats('boundary nodes')
 
 	call node_info(kspecial)
 
-!  plot grade
+!---------------------------------------------------------------
+! initialize plot
+!---------------------------------------------------------------
 
-	if( bplot ) call qopen
-
-	if( bplot ) call plobas
+	if( bplot ) then
+	  call qopen
+	  call plobas
+	end if
 
         !call smooth_grid(nsmooth,asmooth)	!only for debug
 
+!---------------------------------------------------------------
+! first cycle
+!---------------------------------------------------------------
+
 !  eliminate 4- grades
 
-        write(6,*) '================================='
-        write(6,*) 'first cycle...'
-        write(6,*) '================================='
+	if( .not. bsilent ) then
+          write(6,*) '================================='
+          write(6,*) 'first cycle...'
+          write(6,*) '================================='
+	end if
 
-        write(6,*) 'start eliminating nodes ...'
-
-	call chkgrd('checking original grid')
+	call chkgrd('first cycle - checking before low')
 	call elimlow
+	call chkgrd('first cycle - checking after low')
+
 	if( bplot ) call plobas
 	call stats('first cycle - 4- grades')
 	call node_info(kspecial)
 
 !  eliminate 8+ grades
 
-	call chkgrd('checking before 8+')
+	call chkgrd('first cycle - checking before 8+')
 	call elimhigh(8)
+	call chkgrd('first cycle - checking after 8+')
+
 	if( bplot ) call plobas
 	call stats('first cycle - 8+ grades')
-
-	call chkgrd('checking after 8+')
 	call node_info(kspecial)
 
 !  eliminate 7+ grades
 
-	call chkgrd('checking before 7+')
+	call chkgrd('first cycle - checking before 7+')
 	call elimhigh(7)
+	call chkgrd('first cycle - checking after 7+')
+
 	if( bplot ) call plobas
 	call stats('first cycle - 7+ grades')
-
-	call chkgrd('checking after 7+')
 	call node_info(kspecial)
 
 !  smoothing
 
 	!call write_grid('new_nosmooth.grd')
 
+	call chkgrd('first cycle - checking before smoothing')
         call smooth_grid(nsmooth,asmooth)
+	call chkgrd('first cycle - checking after sdmoothing')
+
 	if( bplot ) call plobas
 	call node_info(kspecial)
 
 	!call write_grid('new_smooth1.grd')
 
-!  again ...
+!---------------------------------------------------------------
+! second cycle
+!---------------------------------------------------------------
 
-        write(6,*) '================================='
-        write(6,*) 'second cycle...'
-        write(6,*) '================================='
+	if( .not. bsilent ) then
+          write(6,*) '================================='
+          write(6,*) 'second cycle...'
+          write(6,*) '================================='
+	end if
 
-	call chkgrd('start of second cycle')
+	call chkgrd('second cycle - before low/high')
         call elimlow
 	call elimhigh(8)
 	call elimhigh(7)
+	call chkgrd('second cycle - after low/high')
+
 	if( bplot ) call plobas
 	call stats('second cycle - after elimhigh')
 	call node_info(kspecial)
 
 !  eliminate 5-5 grades
 
-	!call write_grid('new_help.grd')
-
-	call chkgrd('checking before 5-5')
+	call chkgrd('second cycle - checking before 5-5')
 	call elim_5_5
+	call chkgrd('second cycle - checking after 5-5')
+
 	if( bplot ) call plobas
 	call stats('second cycle - 5-5 grades')
-
-	call chkgrd('checking after 5-5')
 	call node_info(kspecial)
 
 !  eliminate 5-7-5 grades
 
-	call write_grid('new_help1.grd')
-
+	call chkgrd('second cycle - checking before 5-7-5')
 	call elim_5_7_5
-	!call write_grid('new_help2.grd')
+	call chkgrd('second cycle - checking after 5-7-5')
+
 	if( bplot ) call plobas
 	call stats('second cycle - 5-7-5 grades')
-	call chkgrd('checking after 5-7-5')
 	call node_info(kspecial)
 
-!  one more time
+!---------------------------------------------------------------
+! third cycle
+!---------------------------------------------------------------
 
-        write(6,*) '================================='
-        write(6,*) 'third cycle...'
-        write(6,*) '================================='
+	if( .not. bsilent ) then
+          write(6,*) '================================='
+          write(6,*) 'third cycle...'
+          write(6,*) '================================='
+	end if
 
-	!call write_grid('cycle3_start.grd')
-
-	call chkgrd('start of thrid cycle')
+	call chkgrd('third cycle - checking before high, 5-5, 5-7-5')
 	call elimhigh(8)
         call elimhigh(7)
         call elim_5_5
         call elim_5_7_5
+	call chkgrd('third cycle - checking after high, 5-5, 5-7-5')
+
+	if( bplot ) call plobas
         call stats('thrid cycle - end')
-	call chkgrd('checking after high, 5-5, 5-7-5')
 	call node_info(kspecial)
 
-!  smoothing
+!---------------------------------------------------------------
+! final smoothing
+!---------------------------------------------------------------
 
 	call write_grid('final_before_smoothing.grd')
 
-        write(6,*) '================================='
-        write(6,*) 'final smoothing...'
-        write(6,*) '================================='
+	if( .not. bsilent ) then
+          write(6,*) '================================='
+          write(6,*) 'final smoothing...'
+          write(6,*) '================================='
+	end if
 
+	call chkgrd('final - checking before smoothing')
         call smooth_grid(nsmooth,asmooth)
+	call chkgrd('final - checking after smoothing')
+
 	if( bplot ) call plobas
 	call node_info(kspecial)
 
-!  write to grd file
+!---------------------------------------------------------------
+! write to grd file
+!---------------------------------------------------------------
 
-        write(6,*) '================================='
-        write(6,*) 'writing to grid...'
-        write(6,*) '================================='
+	if( .not. bsilent ) then
+          write(6,*) '================================='
+          write(6,*) 'writing to grid...'
+          write(6,*) '================================='
+	end if
+
+	!call plot_nodes_with_grade(4)
 
 	call chkgrd('final check')
         call stats('final solution')
@@ -285,12 +323,19 @@
 	hev = flag
 	hkv = flag
 	hm3v = flag
-	call write_grid('adjust.grd')
+	call write_grid('adjust_final.grd')
 
 	call qclose	!this is safe to call
 
-	write(6,*) 'Successful completion.'// &
-     &			' Output has been written to adjust.grd'
+	if( .not. bsilent ) then
+	  write(6,*) 'Successful completion.'// &
+     &			' Output has been written to adjust_final.grd'
+	  if( bplot ) write(6,*) 'plot of basin has been written to plot.ps'
+	end if
+
+!---------------------------------------------------------------
+! end of routine
+!---------------------------------------------------------------
 
 	stop
    97	continue
@@ -349,7 +394,7 @@
 
 	character*(*) text
 
-	call statgrd(text,nkn,ngr,ngrade,nbound)
+	call statgrd(iugrade,text,nkn,ngr,ngrade,nbound)
 
 	end
 
@@ -363,36 +408,61 @@
 	implicit none
 
 	integer k,kext,n
+	integer itot,ntot,nmax
+	integer igr(ngrdi)
 
-	write(6,*) 'Listing nodes with not fixable grades...'
-
+	igr = 0
         do k=1,nkn
           if( nbound(k) .ne. 0 ) cycle
           n = ngrade(k)
-          if( n < 5 .or. n > 7) then
+	  igr(n) = igr(n) + 1
+        end do
+
+	ntot = igr(3) + igr(4)
+	do n=ngrdi,8,-1
+	  if( ntot > 50 ) exit
+	  ntot = ntot + igr(n)
+	end do
+	nmax = n
+
+	if( bverbose ) then
+	  write(6,*) 'Listing nodes with not fixable grades: ',ntot
+	  write(6,*) 'only nodes are shown with grades < 5 and > ',nmax
+	end if
+
+	itot = 0
+        do k=1,nkn
+          if( nbound(k) .ne. 0 ) cycle
+          n = ngrade(k)
+          if( n < 5 .or. n > 7 ) itot = itot + 1
+          if( n < 5 .or. n > nmax ) then
 	    call nint2ext(k,kext)
-	    write(6,*) 'node ',k,' (extern ',kext,') with grade ',n
+	    if( bverbose ) then
+	      write(6,*) 'node ',k,' (extern ',kext,') with grade ',n
+	    end if
           end if
         end do
+
+	if( .not. bquiet ) then
+	  write(6,*) 'there are nodes with non fixable grades: ',itot
+	end if
 
 	end
 
 ! ***********************************************************
 
-        subroutine shyadj_init(grdfile,bplot,nsmooth,asmooth)
+        subroutine shyadj_init(grdfile)
 
         use clo
+	use mod_adj_grade
 
         implicit none
 
         character*(*) grdfile
-        logical bplot
-	integer nsmooth
-	real asmooth
 
 	integer n
 	real f(2)
-	character*80 line
+	character*80 sline
 
 	integer iscanf
 
@@ -400,8 +470,14 @@
 
         call clo_add_info('regolarize grd file')
 
+        call clo_add_option('verbose',.false.,'be verbose')
+        call clo_add_option('quiet',.false.,'be quiet')
+        call clo_add_option('silent',.false.,'be silent')
+
         call clo_add_option('smooth params',' ','smoothing options')
         call clo_add_option('plot',.false.,'create plot of grades')
+        call clo_add_option('check',.false.,'checks consistency of grid')
+        call clo_add_option('check_all',.false.,'more checks on consistency')
 
         call clo_add_sep('additional information')
         call clo_add_com('  params is nsmooth[,asmooth]')
@@ -411,17 +487,27 @@
 
         call clo_parse_options
 
-        call clo_get_option('smooth',line)
+        call clo_get_option('verbose',bverbose)
+        call clo_get_option('quiet',bquiet)
+        call clo_get_option('silent',bsilent)
+        call clo_get_option('smooth',sline)
         call clo_get_option('plot',bplot)
+        call clo_get_option('check',bcheck)
+        call clo_get_option('check_all',bcheck_all)
+
+	if( bsilent ) bquiet = .true.
+	if( bquiet ) bverbose = .false.
+
+	if( bquiet ) iugrade = 66
+
+	if( bcheck_all ) bcheck = .true.
 
         call clo_check_files(1)
         call clo_get_file(1,grdfile)
 
-	nsmooth = 50
-	asmooth = 0.01
-	n = iscanf(line,f,2)
+	n = iscanf(sline,f,2)
 	if( n < 0 .or. n > 2 ) then
-	  write(6,*) 'error in smoothing parameters: ',trim(line)
+	  write(6,*) 'error in smoothing parameters: ',trim(sline)
 	else if( n == 0 ) then
 	  !use default
 	else if( n == 1 ) then
@@ -431,7 +517,14 @@
 	  asmooth = f(2)
 	end if
 
-	write(6,*) 'using smoothing parameters: ',nsmooth,asmooth
+        call shyfem_set_short_copyright(bquiet)
+        if( .not. bsilent ) then
+	  call shyfem_copyright('shyadj - regularize finite element grids')
+        end if
+
+	if( .not. bsilent ) then
+	  write(6,*) 'using smoothing parameters: ',nsmooth,asmooth
+	end if
 
         end
 

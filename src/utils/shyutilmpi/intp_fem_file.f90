@@ -672,6 +672,8 @@
 ! if called with dtime==-1 does not populate records
 ! this means that iff_populate_records must be called manually
 
+	use mod_info_output
+
 	double precision dtime	!initial time
 	character*(*) file	!file name
 	integer nvar		!expected number of variables (might change)
@@ -692,7 +694,7 @@
 	integer id0,ibc
 	character*80 varline
 	logical breg
-	logical bok
+	logical bok,bverb
 	logical bts,bfem,bnofile,bfile,berror,bnosuchfile,boperr
 	logical, parameter :: bdebug = .false.
 	type(info), pointer :: p
@@ -728,7 +730,8 @@
 
 	nvar_orig = nvar
 
-	call iff_get_file_info(file,.true.,np,nvar_read,ntype,iformat)
+	bverb = print_verbose_once()
+	call iff_get_file_info(file,bverb,np,nvar_read,ntype,iformat)
 
 	bnofile = iformat == iform_none			!no file given
 	bfile = .not. bnofile				!file has been given
@@ -862,7 +865,7 @@
 	if( iunit == 0 ) goto 90
 	pinfo(id)%iunit = iunit
 
-	write(6,*) 'file opened: ',id,trim(file)
+	if( bverb ) write(6,*) 'file opened: ',id,trim(file)
 
 	!---------------------------------------------------------
 	! populate data base
@@ -1034,7 +1037,8 @@
 
 	if( nvar > 0 ) then
 	  if( bverb ) then
-	    write(6,'(a,i2,a)') 'file is fem file (format=',iformat,   '): '//trim(file)
+	    write(6,'(a,i2,a)') 'file is fem file (format=',iformat &
+     &			,'): '//trim(file)
 	    !write(6,*) file(1:il)
 	  end if
 	else

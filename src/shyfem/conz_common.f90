@@ -80,7 +80,7 @@
         integer, save :: iprogr = 0
         integer, save :: idecay = 0
 
-        logical, save :: binfo = .true.
+        logical, save :: bcinfo = .true.
 
         real, save :: cref,rkpar,difmol
 

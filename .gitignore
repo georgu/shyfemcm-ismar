@@ -93,6 +93,8 @@ src/tools/shyelab/list_strings
 bin/list_strings
 src/tools/shyelab/femcombine
 bin/femcombine
+src/tools/shyelab/femintp
+bin/femintp
 src/tools/shyelab/femadd
 bin/femadd
 src/tools/shyelab/femdate
@@ -123,6 +125,8 @@ src/tools/femutil/spline/gridr
 bin/gridr
 src/shyfem/rstinf
 bin/rstinf
+src/shyfem/rst2shy
+bin/rst2shy
 
 src/tools/shypre/shypre_noopti
 bin/shypre_noopti

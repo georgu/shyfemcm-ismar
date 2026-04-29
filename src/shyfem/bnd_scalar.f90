@@ -82,6 +82,7 @@
 
 	use intp_fem_file
 	use shympi
+	use mod_info_output
 
 	implicit none
 
@@ -140,7 +141,12 @@
 	    aconst = val
 	  end if
 
-          write(6,'(a)') 'preparing boundary conditions for '//what
+	  
+	  if( print_verbose_once() ) then
+            write(6,'(a,i6)') 'preparing boundary conditions for ' &
+     &				//trim(what)//' ibc = ',ibc
+	  end if
+
           call iff_init(dtime0,file,nvar,nk,nlv,nintp,nodes,aconst,id)
 	  if( nvar /= nvar_orig ) goto 99
 	  call iff_set_description(id,ibc,what)

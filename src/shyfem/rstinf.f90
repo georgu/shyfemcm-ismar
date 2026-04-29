@@ -44,7 +44,7 @@
 ! 27.03.2021    ggu     new option -checkval
 ! 14.04.2021    ggu     bug fix - atime was integer
 ! 05.10.2025    ggu     new routines to compute difference of rst files
-! 12.03.2026    ggu     check file existance before opening in open_for_read()
+! 21.04.2026    ggu     deal with new variables written
 
 !******************************************************************
 
@@ -356,6 +356,12 @@
 	call check_real('utlnv',iu1,iu2,nlv,nel)
 	call check_real('vtlnv',iu1,iu2,nlv,nel)
 
+	call check_integer('iwetv',iu1,iu2,1,nel)
+	call check_real('zov',iu1,iu2,1,nkn)
+	call check_real('zeov',iu1,iu2,3,nel)
+	!call check_real('utlov',iu1,iu2,nlv,nel)
+	!call check_real('vtlov',iu1,iu2,nlv,nel)
+
 	call check_real('hm3v',iu1,iu2,3,nel)
 
 	call get_integer('ibarcl',iu1,iu2,ival)
@@ -551,6 +557,7 @@
 
 	integer iunit,nvers,date,time,nkn,nel,nlv,ierr
 	integer id,ignore
+	!integer, parameter :: nvmax = 18	!this is set in mod_restart
 	double precision atime
 
         read(iunit,iostat=ierr) id,nvers,ignore
@@ -561,7 +568,7 @@
 
 	if( id /= idfrst ) stop 'error stop: not a restart file'
 	if( ignore /= 1 ) stop 'error stop: ignore /= 1'
-	if( nvers < 17 ) stop 'error stop: nvers < 17'
+	if( nvers < nvmax ) stop 'error stop: nvers < nvmax'
 
 	end
 
@@ -580,6 +587,7 @@
 	integer date1,time1,nkn1,nel1,nlv1
 	integer date2,time2,nkn2,nel2,nlv2
 	double precision atime1,atime2
+	character*20 aline
 
 	call read_header(iu1,nvers1,date1,time1,atime1,nkn1,nel1,nlv1,ierr)
 	if( ierr /= 0 ) return
@@ -604,6 +612,10 @@
    99	continue
 	write(6,*) nvers1,date1,time1,atime1,nkn1,nel1,nlv1
 	write(6,*) nvers2,date2,time2,atime2,nkn2,nel2,nlv2
+	call dts_format_abs_time(atime1,aline)
+	write(6,*) 'date of record of file 1: ',aline
+	call dts_format_abs_time(atime2,aline)
+	write(6,*) 'date of record of file 2: ',aline
 	stop 'error stop: error comparing header'
 	end
 

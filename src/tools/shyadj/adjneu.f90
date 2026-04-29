@@ -34,6 +34,7 @@
 !  18.12.2018	ggu	changed VERS_7_5_52
 !  21.05.2019	ggu	changed VERS_7_5_62
 !  23.02.2026   ggu     checks to avoid negative areas
+!  06.03.2026   ggu     completely restructured
 ! 
 !  description :
 ! 
@@ -139,16 +140,19 @@
 	integer ie,ii,n,kk,i
 
 	do ie=1,nel
-	 do ii=1,3
-	  if( nen3v(ii,ie) .eq. k ) nen3v(ii,ie) = knew
-	 end do
+	  do ii=1,3
+	    if( nen3v(ii,ie) .eq. k ) nen3v(ii,ie) = knew
+	  end do
 	end do
 
 	do kk=1,nkn
-	 n = ngrade(kk)
-	 do i=1,n
-	  if( ngri(i,kk) .eq. k ) ngri(i,kk) = knew
-	 end do
+	  n = ngrade(kk)
+	  do i=1,n
+	    if( ngri(i,kk) .eq. k ) then
+	      ngri(i,kk) = knew
+	      call resort_index(n,ngri(:n,kk))
+	    end if
+	  end do
 	end do
 
 	end
@@ -191,23 +195,23 @@
 	end if
 
 	do ie=1,nel
-	 do ii=1,3
-	  if( nen3v(ii,ie) .eq. kold ) nen3v(ii,ie) = knew
-	 end do
+	  do ii=1,3
+	    if( nen3v(ii,ie) .eq. kold ) nen3v(ii,ie) = knew
+	  end do
 	end do
 
 	ngrade(knew) = ngrade(kold)
 	nbound(knew) = nbound(kold)
-	n = ngrade(kold)
-	do i = 1,n
-	  ngri(i,knew) = ngri(i,kold)
-	end do
+	ngri(:,knew) = ngri(:,kold)
 
 	do kk=1,nkn
-	 n = ngrade(kk)
-	 do i=1,n
-	  if( ngri(i,kk) .eq. kold ) ngri(i,kk) = knew
-	 end do
+	  n = ngrade(kk)
+	  do i=1,n
+	    if( ngri(i,kk) .eq. kold ) then
+	      ngri(i,kk) = knew
+	      call resort_index(n,ngri(:n,kk))
+	    end if
+	  end do
 	end do
 
 	end

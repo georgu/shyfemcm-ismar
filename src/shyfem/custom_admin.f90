@@ -2041,7 +2041,7 @@
 	  zenv = 0.
 	end if
 
-	call make_new_depth
+	call make_new_layer_depth
 
 !--------------------------------------------------------------
 ! set velocities and transports
@@ -4369,7 +4369,7 @@
 	      znv(k) = z
 	    end do
 	    call setzev
-	    call make_new_depth
+	    call make_new_layer_depth
           end if
 
           if( bconzinit ) then

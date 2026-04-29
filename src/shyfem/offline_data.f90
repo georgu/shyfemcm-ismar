@@ -95,6 +95,7 @@
 	use basin, only : nkn,nel,ngr,mbw
 	use mod_offline
 	use shympi
+	use mod_info_output
 
 	implicit none
 
@@ -113,7 +114,7 @@
 
 	if( icall .lt. 0 ) return
 
-	bwrite = shympi_is_master()
+	bwrite = print_not_quiet_once()
 
 !-------------------------------------------------------------
 ! initialize
@@ -351,7 +352,7 @@
 
 	if( bhydro ) then
 	  call copy_uvz
-	  call copy_depth
+	  call copy_layer_depth
 	end if
 
 !	---------------------------------------------------------
@@ -386,7 +387,7 @@
 !	---------------------------------------------------------
 
 	if( bhydro ) then
-	  call make_new_depth
+	  call make_new_layer_depth
 	  call uvint
           call ttov
           call make_prvel

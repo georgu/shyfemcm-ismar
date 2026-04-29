@@ -49,6 +49,7 @@
 ! 15.01.2025	ggu	check also if coordinate is without dimension
 ! 24.04.2025	ggu	new routine ncnames_get_dim_coord_info()
 ! 17.06.2025	ggu	deal with description == 'unknown'
+! 22.04.2026	ggu	new vertical coordinate height_2
 !
 ! notes :
 !
@@ -909,6 +910,7 @@
 	call ncnames_add_dim('z','depth')
 	call ncnames_add_dim('z','deptht')
 	call ncnames_add_dim('z','height')
+	call ncnames_add_dim('z','height_2')
 	call ncnames_add_dim('z','st_ocean')
 	call ncnames_add_dim('z','s_rho')
 

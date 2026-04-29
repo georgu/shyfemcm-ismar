@@ -70,6 +70,8 @@
         module extra
 !==================================================================
 
+	use mod_info_output
+
         implicit none
 
         integer, save :: knausm = 0
@@ -221,6 +223,8 @@
 
         if(knausm.le.0) return
 
+	if( print_not_quiet() ) then
+
         write(6,*)
         write(6,*) 'extra section : ',knausm
 	do i=1,knausm
@@ -228,6 +232,8 @@
           write(6,*) i,k,'  ',trim(chext(i))
 	end do
         write(6,*)
+
+	end if
 
 	end
 

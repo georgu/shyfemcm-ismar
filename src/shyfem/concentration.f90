@@ -271,6 +271,8 @@
 ! 31.05.2023    ggu     in conzstab, use ie_mpi, run over nkn_unique (bug fix)
 ! 27.09.2024    ggu     btvddebug introduced
 ! 10.11.2025    ggu     bug in massconc: only run over nkn_unique
+! 21.04.2026    ggu     use bdry to see if mfluxv should be used
+! 28.04.2026    ggu     insert more timing calls
 !
 !*********************************************************************
 
@@ -683,9 +685,11 @@
 	call get_act_dtime(dtime)
 	call get_act_timeline(aline)
 
+	call cpu_time_start(16)
 	saux = 0.
 	call scalar_stability(dt,robs,rtauv,wsinkl,wsinkv,rkpar, &
      &					sindex,istot,saux)
+	call cpu_time_end(16)
 
 !$OMP CRITICAL
 	if(shympi_is_master()) then
@@ -726,6 +730,7 @@
 
 	call massconc(-1,cnv,nlvddi,massold)
 
+	call cpu_time_start(17)
 	do isact=1,istot
 
 	  dtstep = -((istot-isact)*dt)/istot
@@ -771,6 +776,7 @@
 
 	  if( btvddebug ) call tvd_debug_finalize
 	end do
+	call cpu_time_end(17)
 
         !if( shympi_is_parallel() .and. istot > 1 ) then
         !  write(6,*) 'cannot handle istot>1 with mpi yet'
@@ -977,6 +983,7 @@
 	double precision cauxl(nlvddi)
 ! tvd
 	logical btvd
+	logical bdry
 	integer ic,kc,id,kdebug,ippp
 	integer ies
 	integer iext
@@ -984,6 +991,7 @@
         double precision wws
 
 ! functions
+	logical is_dry_node
 	integer ipint,ieint
 	integer ipext,ieext
 	integer ithis
@@ -1489,14 +1497,16 @@
 	do k=1,ntot
 	  ilevel = ilhkv(k)
 	  jlevel = jlhkv(k)
+	  bdry = is_dry_node(k)
 	  do l=jlevel,ilevel
             !mflux = cbound(l,k)		!mass flux has been passed
-	    cconz = cbound(l,k)		!concentration has been passed
+	    cconz = cbound(l,k)			!concentration has been passed
 	    qflux = mfluxv(l,k)
+	    if( bdry ) qflux = 0.
 	    if( qflux .lt. 0. .and. is_boundary(k) ) cconz = cn1(l,k)
 	    mflux = qflux * cconz
 
-            cn(l,k) = cn(l,k) + dt * mflux	!explicit treatment
+            cn(l,k) = cn(l,k) + dt * mflux		!explicit treatment
 
 	    loading = rload*load(l,k)
             if( loading .eq. 0. ) then
@@ -2398,6 +2408,7 @@
 
 	use levels
 	use basin
+	use mod_info_output
 
 	implicit none
 
@@ -2456,6 +2467,7 @@
 	  if( climit1 /= flag ) bclimit1 = .true.
 	  if( bclimit0 .and. bclimit1 .and. climit0 > climit1 ) goto 99
 	  
+	  if( print_verbose() ) then
 	  write(6,*) 'limiting scalars has been set up'
 	  if( btlimit0 ) write(6,*) 'limiting min temp: ',tlimit0
 	  if( btlimit1 ) write(6,*) 'limiting max temp: ',tlimit1
@@ -2463,6 +2475,7 @@
 	  if( bslimit1 ) write(6,*) 'limiting max salt: ',slimit1
 	  if( bclimit0 ) write(6,*) 'limiting min conz: ',climit0
 	  if( bclimit1 ) write(6,*) 'limiting max conz: ',climit1
+	  end if
 	end if
 
 	if( what == 'temp' ) then

@@ -59,6 +59,7 @@
 ! 13.03.2019	ggu	changed VERS_7_5_61
 ! 09.05.2023    lrp     introduce top layer index variable
 ! 24.09.2024    ggu     introduced tvd mpi (bmpi)
+! 21.04.2026    ggu     use bdry to see if mfluxv should be used
 !
 !**************************************************************
 
@@ -791,6 +792,7 @@
 	double precision,dimension(nlvddi),intent(inout) :: clow
 	double precision,dimension(nlvddi),intent(inout) :: chigh
 
+	logical :: bdry
 	integer :: l,ilevel,jlevel,lstart,i,ii,ie,n,ibase
 	double precision :: mflux,qflux,cconz
 	double precision :: loading,aux,cload
@@ -801,6 +803,8 @@
 	logical, save :: bdebug = .false.
 	character*80 aline
 
+	logical :: is_dry_node
+
 ! ----------------------------------------------------------------
 !  debug code
 ! ----------------------------------------------------------------
@@ -808,6 +812,8 @@
 ! ----------------------------------------------------------------
 !  handle boundary (flux) conditions
 ! ----------------------------------------------------------------
+
+	  bdry = is_dry_node(k)
 
       	  ilevel = ilhkv(k)
           jlevel = jlhkv(k)
@@ -817,6 +823,7 @@
             !mflux = cbound(l,k)		!mass flux has been passed
 	    cconz = cbound(l,k)			!concentration has been passed
 	    qflux = mfluxv(l,k)
+	    if( bdry ) qflux = 0.
 	    if( qflux .lt. 0. .and. is_boundary(k) ) cconz = cn1(l,k)
 	    mflux = qflux * cconz
 

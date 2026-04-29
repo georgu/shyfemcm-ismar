@@ -49,6 +49,7 @@
 ! 21.11.2024    ggu     call check routines with bdebug, less error messages
 ! 23.11.2024    ggu     ignore errors in connectivity
 ! 30.11.2024    ggu     renamed check_color() to check_part_color()
+! 22.04.2026    ggu     documentation integrated
 !
 !****************************************************************
 
@@ -661,17 +662,18 @@
 	    if( kerr > 0 ) then
 	      write(6,*) 'errors found: ',kerr
 	      write(6,'(a)') '    ierr    kint    kext    icol' // &
-     &			 '               x               y'
+     &			 '                   x                   y'
 	    end if
 	    do i=1,kerr
 	      k = kerror(i)
 	      kext = ipv(k)
 	      write(6,1000) i,k,kext,icolor_new(k),xgv(k),ygv(k)
- 1000	      format(4i8,2f16.8)
+ 1000	      format(4i8,2f20.8)
 	      if( bwritegrd ) then
 	        call write_partition_grd(icolor_new,kext)
 	      end if
 	    end do
+	    if( kerr > 0 ) write(6,*) '(errors can be ignored)'
 	  end if
 	  !if( kerr > 0 ) berror = .true.
 

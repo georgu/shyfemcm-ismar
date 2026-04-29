@@ -88,6 +88,7 @@
 
 	use mod_system
 	use mod_system_global
+	use mod_info_output
 	use levels
 	use basin
 	use shympi
@@ -96,10 +97,17 @@
 
 	call shympi_barrier
 
+	if( print_verbose() ) then
         write(6,*) '----------------------------------------'
         write(6,*) 'initializing matrix inversion routines'
         write(6,*) 'using Sparskit routines ',my_id,nkn
         write(6,*) '----------------------------------------'
+	else if( print_regular() ) then
+        write(6,*) '----------------------------------------'
+        write(6,*) 'initializing matrix inversion routines'
+        write(6,*) 'using Sparskit routines '
+        write(6,*) '----------------------------------------'
+	end if
 
         call mod_system_init(nkn,nel,ngr,mbw,nlv,l_matrix)
 	call mod_system_insert_elem_index(nel,nen3v,l_matrix)
@@ -197,6 +205,7 @@
 
 	use mod_system
 	use mod_system_global
+	use mod_info_output
 	use shympi
 
 	implicit none
@@ -292,7 +301,7 @@
 ! end of routine
 !---------------------------------------------------------------
 
-	if( shympi_is_master() ) then
+	if( print_verbose() ) then
 	  write(6,*) 'finished routine system_setup_global_z'
 	end if
 
