@@ -1004,6 +1004,8 @@
 	mbb=2
 	if(ngl.eq.2) mbb=1
 	b2d = (ngl == 2)
+        afix=1-iuvfix(ie)       	!chao dbf
+        dtafix = dt * afix
 
 !-------------------------------------------------------------
 ! compute barotropic terms (wind, atmospheric pressure, water level
@@ -1048,8 +1050,8 @@
 ! coriolis parameter
 !-------------------------------------------------------------
 
-	gammat=fcorv(ie)*ruseterm
-        gamma=af*dt*gammat
+	gammat=(1.-af)*fcorv(ie)*ruseterm
+        gamma=af*dt*fcorv(ie)*ruseterm
 
 !-------------------------------------------------------------
 ! reset vertical system 
@@ -1163,7 +1165,7 @@
 !	aus = afact * alev(l)
 !	aux = dt * at * aus
 
-	aus = 1.
+	aus = 1.-at
 	aux = dt * at
 
 	aa  = aux * rhact(l) * ( rhm + rhp )
@@ -1310,8 +1312,8 @@
 !	set up right hand side -F^x and -F^y 
 !	------------------------------------------------------
 
-	rvec(ju) = ppx
-	rvec(jv) = ppy
+	rvec(ju) = utlov(l,ie) - dtafix*ppx
+	rvec(jv) = vtlov(l,ie) - dtafix*ppy
 
 !	------------------------------------------------------
 !	set up H^x and H^y
@@ -1384,14 +1386,11 @@
 ! compute u^hat (negative sign because ppx/ppy was -F^x/-F^y)
 !-------------------------------------------------------------
 
-        afix=1-iuvfix(ie)       !chao dbf
-
 	if( afix /= 0. ) then
-	  dtafix = dt * afix
 	  !ierr = ieee_handler( 'set', 'exception', SIGFPE_IGNORE )
 	  do l=jlevel,ilevel
-	    utlnv(l,ie) = utlov(l,ie) - dtafix * rvec(2*l-1)
-	    vtlnv(l,ie) = vtlov(l,ie) - dtafix * rvec(2*l)
+	    utlnv(l,ie) = rvec(2*l-1)
+	    vtlnv(l,ie) = rvec(2*l)
 	  end do
 	  !ierr = ieee_handler( 'set', 'exception', SIGFPE_ABORT )
 	end if
