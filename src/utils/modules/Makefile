@@ -48,6 +48,7 @@ MOD  = \
 	mod_nohyd.o \
 	mod_nudging.o \
 	mod_roughness.o \
+	mod_rungekutta.o \
 	mod_sedim.o \
 	mod_sinking.o \
 	mod_system_matrix.o \
@@ -182,6 +183,7 @@ zip:	cleanall
 ../../../lib/mod/mod_nohyd.mod: mod_nohyd.o
 ../../../lib/mod/mod_nudging.mod: mod_nudging.o
 ../../../lib/mod/mod_roughness.mod: mod_roughness.o
+../../../lib/mod/mod_rungekutta.mod: mod_rungekutta.o
 ../../../lib/mod/mod_sediment.mod: mod_sedim.o
 ../../../lib/mod/mod_sediment_para.mod: mod_sedim.o
 ../../../lib/mod/mod_shyfem.mod: mod_shyfem.o

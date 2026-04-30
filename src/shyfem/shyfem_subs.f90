@@ -948,6 +948,7 @@
 	use mod_hydro_print
 	use mod_hydro_vel
 	use mod_hydro
+	use mod_rungekutta
 	use levels, only : nlvdi,nlv
 	use basin, only : nkn,nel,ngr,mbw
 	use mod_info_output
@@ -957,6 +958,8 @@
 	integer nlvddi
 
 	nlvddi = nlvdi
+
+	call mod_rungekutta_init(111,nkn,nel,nlvddi)
 
 	call mod_hydro_init(nkn,nel,nlvddi)
 	call mod_hydro_vel_init(nkn,nel,nlvddi)

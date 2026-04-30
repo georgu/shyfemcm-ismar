@@ -761,15 +761,13 @@
 	integer ith
 	integer chunk,nt
 	integer ibaroc
-	integer ilin,itlin
 	integer num_threads,myid,el_do,rest_do,init_do,end_do
 	integer nchunk,nthreads
 	integer, allocatable :: its(:)
 	real time,difftime
 	real, save :: atime = 0
 	logical bcolin,baroc
-	real az,am,af,at,av,azpar,ampar
-	real rlin,radv
+	real av
 	real vismol,rrho0
 	real dt
 
@@ -787,23 +785,8 @@
 	ibaroc = nint(getpar('ibarcl'))		! baroclinic contributions
         vismol  = getpar('vismol')		! molecular viscosity
 	bcolin = nint(getpar('iclin')).ne.0	! linearized conti
-	itlin = nint(getpar('itlin'))		! advection scheme
-	ilin = nint(getpar('ilin'))		! non-linear terms?
-	rlin = getpar('rlin')			! non-linear strength?
 
 	baroc = ibaroc .eq. 1 .or. ibaroc .eq. 2
-
-	call getazam(azpar,ampar)
-	az=azpar			! weighting in continuity
-	am=ampar			! weighting in momentum
-	af=getpar('afpar')		! weighting of coriolis term
-	at=getpar('atpar')		! weighting of vertical viscosity
-	av=getpar('avpar')		! weighting of advective terms
-
-	radv = 0.
-	if( ilin .eq. 0 .and. itlin .eq. 0 ) then	!need non-lin terms
-	  radv = rlin * av	!strength * implicit factor
-	end if
 
 	call get_timestep(dt)
     
@@ -834,14 +817,14 @@
 
 	call get_clock_time(time)
 
-!$OMP PARALLEL DO FIRSTPRIVATE(bcolin,baroc,az,am,af,at,radv       &
+!$OMP PARALLEL DO FIRSTPRIVATE(bcolin,baroc       &
 !$OMP &            ,vismol,rrho0,dt) PRIVATE(ie,rmsdif,ith)  &
 !$OMP &     SHARED(nel,nchunk,its)   DEFAULT(NONE)
 
  	  do ie=1,nel
 	    !call openmp_get_thread_num(ith)
 	    !its(ith) = its(ith) + 1
-	    call hydro_intern(ie,bcolin,baroc,az,am,af,at,radv &
+	    call hydro_intern(ie,bcolin,baroc &
      &			,vismol,rrho0,dt,rmsdif)
 	    if( rmsdif > 1.D-10 ) then
 	      write(6,*) 'rmsdif: ',rmsdif
@@ -869,7 +852,7 @@
 
 !******************************************************************
 
-	subroutine hydro_intern(ie,bcolin,baroc,az,am,af,at,radv &
+	subroutine hydro_intern(ie,bcolin,baroc &
      &			,vismol,rrho0,dt,rmsdif)
 
 ! assembles vertical system matrix
@@ -900,8 +883,6 @@
 
 	integer ie
 	logical bcolin,baroc
-	real az,am,af,at
-	real radv			!non-linear implicit contribution
 	real vismol,rrho0
 	real dt
 	double precision rmsdif
@@ -936,10 +917,10 @@
 	real rfric
 	real aust
 	real fact                       !$$BCHAO - not used
-        real rhp,rhm,aus
+        real rhp,rhm
 	real hzg,gcz
         real xmin,xmax
-        real xadv,yadv,fm,uc,vc,f,um,vm,up,vp
+        real fm,uc,vc,f,um,vm,up,vp
 	real rraux,cdf,dtafix
 	real ss
 	logical b2d
@@ -953,7 +934,6 @@
 	double precision taux,tauy,rdist,rcomp,ruseterm
 	double precision gravx,gravy,wavex,wavey,zeqx,zeqy
 	double precision vis
-	double precision uuadv,uvadv,vuadv,vvadv
 
 !-----------------------------------------
 	real hact(0:nlvdi+1)
@@ -968,6 +948,7 @@
 	double precision solv(6*nlvdi)		!ASYM (3 systems to solve)
 	double precision ggx,ggy
 	double precision llx,lly
+        double precision ssx,ssy
 !-----------------------------------------
 ! function
 	integer locssp
@@ -1051,8 +1032,8 @@
 ! coriolis parameter
 !-------------------------------------------------------------
 
-	gammat=(1.-af)*fcorv(ie)*ruseterm
-        gamma=af*dt*fcorv(ie)*ruseterm
+	gammat=fcorv(ie)*ruseterm
+        gamma=dt*a_irk(1,2) * fcorv(ie)*ruseterm
 
 !-------------------------------------------------------------
 ! reset vertical system 
@@ -1163,18 +1144,14 @@
 	  end if
 	end if
         
-!	aus = afact * alev(l)
-!	aux = dt * at * aus
-
-	aus = 1.-at
-	aux = dt * at
+	aux = dt * a_srk(1,2)
 
 	aa  = aux * rhact(l) * ( rhm + rhp )
-	aat = aus * rhact(l) * ( rhm + rhp )
+	aat = rhact(l) * ( rhm + rhp )
 	bb  = aux * rhact(l+1) * rhp
-	bbt = aus * rhact(l+1) * rhp
+	bbt = rhact(l+1) * rhp
 	cc  = aux * rhact(l-1) * rhm
-	cct = aus * rhact(l-1) * rhm
+	cct = rhact(l-1) * rhm
 
 !	------------------------------------------------------
 !	boundary conditions for stress on surface and bottom
@@ -1190,44 +1167,11 @@
 	  rfric = rfricv(ie)
 	  if( rcomp /= 1. ) rfric = rfric_max * (1.-rcomp) + rfric * rcomp
 	  aa  = aa  + aux * rfric
-	  aat = aat + aus * rfric
+	  aat = aat + rfric
 	end if
 
 	aa  = aa + dt * ifricv(l,ie)		!internal friction for turbines
 	aat = aat + ifricv(l,ie)
-
-!	------------------------------------------------------
-!	implicit advective contribution
-!	------------------------------------------------------
-
-	uuadv = 0.
-	uvadv = 0.
-	vuadv = 0.
-	vvadv = 0.
-
-	aux = dt * radv * ruseterm	!implicit contribution
-
-	if( aux .gt. 0. ) then		!implict treatment of non-linear terms
-
-	uc = uui/hhi
-	vc = vvi/hhi
-
-	do ii=1,3
-          k = nen3v(ii,ie)
-          up = momentxv(l,k) / hhi
-          vp = momentyv(l,k) / hhi
-          f = uui * b(ii) + vvi * c(ii)
-          if( f .lt. 0. ) then    !flux out of node => into element
-	    uuadv = uuadv + aux*b(ii)*( up - uc )
-	    uvadv = uvadv + aux*c(ii)*( up - uc )
-	    vuadv = vuadv + aux*b(ii)*( vp - vc )
-	    vvadv = vvadv + aux*c(ii)*( vp - vc )
-            !xadv = xadv + f * ( up - uc )
-            !yadv = yadv + f * ( vp - vc )
-          end if
-	end do
-
-	end if
 
 !	------------------------------------------------------
 !	explicit contribution (non-linear, baroclinic, diffusion)
@@ -1242,8 +1186,8 @@
 	presx = rcomp * bpres			!atmospheric pressure
 	presy = rcomp * cpres
 
-	gravx = rcomp * grav*hhi*((1.-am)*bz)	!barotropic pressure
-	gravy = rcomp * grav*hhi*((1.-am)*cz)
+	gravx = rcomp * grav*hhi*bz		!barotropic pressure
+	gravy = rcomp * grav*hhi*cz
 
 	zeqx  = rcomp * grav*hhi*bzeq		!tidal potential
 	zeqy  = rcomp * grav*hhi*czeq
@@ -1252,12 +1196,14 @@
 !	momentum equation right side F^x_l and F^y_l:
 !	ggx/ggy is explicit contribution G^x_l, G^y_l
 !	llx/lly is implicit contribution L^x_l, L^y_l
+!	ssx/ssy is stiffly implicit contribution S^x_l, S^y_l
 !	------------------------------------------------------
 
-	llx = aat*uui - bbt*uuip - cct*uuim - gammat*vvi  &
-     &			+ gravx
-	lly = aat*vvi - bbt*vvip - cct*vvim + gammat*uui  &
-     &			+ gravy
+	ssx = aat*uui - bbt*uuip - cct*uuim
+	ssy = aat*vvi - bbt*vvip - cct*vvim
+
+        llx = - gammat*vvi + gravx
+	lly = + gammat*uui + gravy
 
 	ggx = ggx + (hhi/rowass)*presx + xexpl + wavex - zeqx	!INTEL_BUG
 	ggy = ggy + (hhi/rowass)*presy + yexpl + wavey - zeqy
@@ -1278,23 +1224,23 @@
 	jv=l+l
 	ju=jv-1
 
-	rmat(locssp(ju,ju,ngl,mbb)) = 1. + aa + uuadv
-	rmat(locssp(jv,jv,ngl,mbb)) = 1. + aa + vvadv
-	rmat(locssp(jv,ju,ngl,mbb)) =  gamma  + vuadv
-	rmat(locssp(ju,jv,ngl,mbb)) = -gamma  + uvadv
+	rmat(locssp(ju,ju,ngl,mbb)) = 1. + aa
+	rmat(locssp(jv,jv,ngl,mbb)) = 1. + aa
+	rmat(locssp(jv,ju,ngl,mbb)) =  gamma
+	rmat(locssp(ju,jv,ngl,mbb)) = -gamma
 
 	if( b2d ) then
-	  s2dmat(0,ju) = 1. + aa + uuadv
-	  s2dmat(0,jv) = 1. + aa + vvadv
-	  s2dmat(-1,jv) =  gamma  + vuadv
-	  s2dmat(+1,ju) = -gamma  + uvadv
+	  s2dmat(0,ju) = 1. + aa
+	  s2dmat(0,jv) = 1. + aa
+	  s2dmat(-1,jv) =  gamma
+	  s2dmat(+1,ju) = -gamma
 	  !s2dmat(-1,jv) = -gamma  + vuadv
 	  !s2dmat(+1,ju) =  gamma  + uvadv
 	else
-	  smat(0,ju) = 1. + aa + uuadv
-	  smat(0,jv) = 1. + aa + vvadv
-	  smat(-1,jv) =  gamma  + vuadv
-	  smat(+1,ju) = -gamma  + uvadv
+	  smat(0,ju) = 1. + aa
+	  smat(0,jv) = 1. + aa
+	  smat(-1,jv) =  gamma
+	  smat(+1,ju) = -gamma
 	end if
 
 	if(.not.blast) then
@@ -1314,8 +1260,10 @@
 !	set up right hand side F^x and F^y
 !	------------------------------------------------------
 
-	rvec(ju) = utlov(l,ie) - dtafix * (ggx + llx)
-	rvec(jv) = vtlov(l,ie) - dtafix * (ggy + lly)
+	rvec(ju) = utlov(l,ie) - dtafix*( &
+     &	             a_erk(1,1)*ggx + a_irk(1,1)*llx + a_srk(1,1)*ssx )
+	rvec(jv) = vtlov(l,ie) - dtafix*( &
+     &               a_erk(1,1)*ggy + a_irk(1,1)*lly + a_srk(1,1)*ssy )
 
 !	------------------------------------------------------
 !	set up H^x and H^y
@@ -1474,6 +1422,7 @@
 
 ! post processing of time step
 
+	use mod_rungekutta
 	use mod_internal
 	use mod_depth
 	use mod_hydro_baro
@@ -1492,8 +1441,8 @@
 	integer ilevel,jlevel
 	integer ju,jv
         integer afix            !chao dbf
-	real dt,azpar,ampar
-	double precision az,am,beta
+	real dt
+	double precision beta
 	double precision bz,cz,um,vm
 	double precision du,dv
 	double precision rfix,rcomp
@@ -1508,11 +1457,8 @@
 	bdebug = .false.
 
 	call get_timestep(dt)
-	call getazam(azpar,ampar)
-	az=azpar
-	am=ampar
 
-	beta = dt * grav * am 
+	beta = dt * grav * a_irk(1,2)
 
 !-------------------------------------------------------------
 ! start loop on elements
