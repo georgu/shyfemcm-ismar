@@ -314,7 +314,6 @@
 	integer nmat
 	integer kspecial
 	!integer iwhat
-	real azpar,ampar
 	real dzeta(nkn)
 	real vqv(nkn)
 	double precision dtime
@@ -339,14 +338,6 @@
 	call nonhydro_get_flag(bnohyd)
         iwvel = nint(getpar('iwvel')) !DWNH
 	call get_act_dtime(dtime)
-
-	azpar = getpar('azpar')
-	ampar = getpar('ampar')
-	if( azpar == 0. .and. ampar == 1. ) then
-	  call system_set_explicit
-	else if( azpar == 1. .and. ampar == 0. ) then
-	  call system_set_explicit
-	end if
 
 !-----------------------------------------------------------------
 ! dry areas
@@ -499,6 +490,7 @@
 !
 ! semi-implicit scheme for 3d model
 
+	use mod_rungekutta
 	use mod_nudging
 	use mod_internal
 	use mod_geom_dynamic
@@ -530,7 +522,6 @@
 	integer ju,jv
         integer nel_loop
 
-	real azpar,ampar
 	real dt
 
 	double precision aj,rw,ddt
@@ -539,7 +530,6 @@
 	double precision z(3)
 	double precision andg,zndg(3)
 	double precision zm
-	double precision az,am,af
 	double precision b(3),c(3)
 	double precision acu
 	double precision uold,vold
@@ -563,10 +553,6 @@
 
 	bcolin=nint(getpar('iclin')).ne.0
 
-	call getazam(azpar,ampar)
-	az=azpar
-	am=ampar
-	af=getpar('afpar')
 	call get_timestep(dt)
 	ddt = dt
 
@@ -619,7 +605,7 @@
 	aj=ev(10,ie)
         afix=1-iuvfix(ie)      !chao dbf
 
-        delta=ddt*ddt*az*am*grav*afix         !ASYM_OPSPLT        !chao dbf
+        delta=ddt*ddt*a_irk(1,2)*a_irk(1,2)*grav*afix         !ASYM_OPSPLT        !chao dbf
 
 !	------------------------------------------------------
 !	compute contribution from H^x and H^y
@@ -648,14 +634,14 @@
 	vhat = 0.
 
 	do l=jlevel,ilevel
-	  uold = uold + utlov(l,ie)
-	  vold = vold + vtlov(l,ie)
+	  uold = uold + utlcv(l,ie)
+	  vold = vold + vtlcv(l,ie)
 	  uhat = uhat + utlnv(l,ie)
 	  vhat = vhat + vtlnv(l,ie)
 	end do
 
-	ut = az * uhat + (1.-az) * uold
-	vt = az * vhat + (1.-az) * vold
+	ut = a_irk(1,2) * uhat + a_irk(1,1) * uold
+	vt = a_irk(1,2) * vhat + a_irk(1,1) * vold
 
 !	------------------------------------------------------
 !	set element matrix and RHS
@@ -767,7 +753,6 @@
 	real time,difftime
 	real, save :: atime = 0
 	logical bcolin,baroc
-	real av
 	real vismol,rrho0
 	real dt
 
@@ -1257,7 +1242,7 @@
         end if
 
 !	------------------------------------------------------
-!	set up right hand side F^x and F^y
+!	set up current stage right hand side F^x and F^y
 !	------------------------------------------------------
 
 	rvec(ju) = utlov(l,ie) - dtafix*( &
@@ -1556,6 +1541,7 @@
 ! wlnv (dvol)   aux array for volume difference
 ! vv            aux array for area
 
+	use mod_rungekutta
 	use mod_bound_geom
 	use mod_geom_dynamic
 	use mod_bound_dynamic
@@ -1580,7 +1566,6 @@
 	integer kext,kint
 	real aj,wbot,wdiv,ff,atop,abot,wfold
 	real b,c
-	real am,az,azt,azpar,ampar
 	real ffn,ffo
 	real volo,voln,dt,dvdt,q
 	real dzmax,dz
@@ -1602,10 +1587,6 @@
 
 ! initialize
 
-	call getazam(azpar,ampar)
-	az=azpar
-	am=ampar
-	azt = 1. - az
 	call get_timestep(dt)
 
 	allocate(vf(nlvdi,nkn),va(nlvdi,nkn))
@@ -1629,8 +1610,8 @@
 		b = ev(ii+3,ie)
 		c = ev(ii+6,ie)
 		ffn = utlnv(l,ie)*b + vtlnv(l,ie)*c
-		ffo = utlov(l,ie)*b + vtlov(l,ie)*c
-		ff = ffn * az + ffo * azt
+		ffo = utlcv(l,ie)*b + vtlcv(l,ie)*c
+		ff = ffn * a_irk(1,2) + ffo * a_irk(1,1)
 		!ff = ffn
 		vf(l,kk) = vf(l,kk) + 3. * aj * ff
 		va(l,kk) = va(l,kk) + aj
