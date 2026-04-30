@@ -60,6 +60,7 @@
 ! 09.05.2023    lrp     introduce top layer index variable
 ! 24.09.2024    ggu     introduced tvd mpi (bmpi)
 ! 21.04.2026    ggu     use bdry to see if mfluxv should be used
+! 29.04.2026    ggu     timing calls inserted
 !
 !**************************************************************
 
@@ -227,7 +228,9 @@
 	end if
 
 	btvd2 = itvd == 2
+        call cpu_time_start(22)
 	if( btvd2 ) call tvd_mpi_run(cn1)
+        call cpu_time_end(22)
 
         cn=0.
 	co=cn1
@@ -246,15 +249,16 @@
 	!write(6,*) subset_el
 	!write(6,*) sum(subset_el),nkn,nel
 
-      do i=1,subset_num 	! loop over indipendent subset
+        call cpu_time_start(20)
+        do i=1,subset_num 	! loop over indipendent subset
        
-!$     nchunk = subset_el(i) / ( nthreads * 10 )
-       nchunk = max(nchunk,1)
-       !write(6,*) i,subset_el(i),nchunk,nthreads
+!$      nchunk = subset_el(i) / ( nthreads * 10 )
+        nchunk = max(nchunk,1)
+        !write(6,*) i,subset_el(i),nchunk,nthreads
 
 !$OMP TASKWAIT 
 !!!$OMP TASKGROUP 
-       do jel=1,subset_el(i),nchunk
+        do jel=1,subset_el(i),nchunk
 
 !$OMP TASK &
 !$OMP& DEFAULT(NONE) &
@@ -268,8 +272,8 @@
 !$OMP& SHARED(subset_num,indipendent_subset) &
 !$OMP& SHARED(difhv,cbound,gradxv,gradyv,cobs,rtauv,load,difv,wsinkv)
 
-       do j=jel,jel+nchunk-1 	! loop over elements in subset
-		if(j .le. subset_el(i)) then
+          do j=jel,jel+nchunk-1 	! loop over elements in subset
+	    if(j .le. subset_el(i)) then
 	        ie = indipendent_subset(j,i)
 	        !print *,i,ie
                 call conz3d_element(ie,cdiag,clow,chigh,cn,cn1 &
@@ -283,64 +287,54 @@
      &			,az,ad,aa,azt,adt,aat,an,ant &
      &			,rso,rsn,rsot,rsnt &
      &			,nlvddi,nlev)
-		end if
-	end do ! end loop over el in subset
+	    end if
+	  end do ! end loop over el in subset
 !$OMP END TASK
-      end do
+        end do
 
 !!!$OMP END TASKGROUP       
 !$OMP TASKWAIT       
 
-       end do ! end loop over subset
+	
+        end do ! end loop over subset
+        call cpu_time_end(20)
        
-       if( shympi_partition_on_elements() ) then
-         !call shympi_comment('shympi_elem: exchange scalar')
-         call shympi_exchange_and_sum_3d_nodes(cn)
-         call shympi_exchange_and_sum_3d_nodes(cdiag)
-         call shympi_exchange_and_sum_3d_nodes(clow)
-         call shympi_exchange_and_sum_3d_nodes(chigh)
-       end if
+        if( shympi_partition_on_elements() ) then
+          !call shympi_comment('shympi_elem: exchange scalar')
+          call shympi_exchange_and_sum_3d_nodes(cn)
+          call shympi_exchange_and_sum_3d_nodes(cdiag)
+          call shympi_exchange_and_sum_3d_nodes(clow)
+          call shympi_exchange_and_sum_3d_nodes(chigh)
+        end if
 
-       ntot = nkn
-       if( shympi_partition_on_nodes() ) ntot = nkn_unique
-!$     nchunk = ntot / ( nthreads * 10 )
-       nchunk = max(nchunk,1)
+        ntot = nkn
+        if( shympi_partition_on_nodes() ) ntot = nkn_unique
+!$      nchunk = ntot / ( nthreads * 10 )
+        nchunk = max(nchunk,1)
 
 !$OMP TASKWAIT
 !!!$OMP TASKGROUP
-       do knod=1,ntot,nchunk
+        call cpu_time_start(21)
+        do knod=1,ntot,nchunk
 !$OMP TASK FIRSTPRIVATE(knod) PRIVATE(k) DEFAULT(NONE)      &
 !$OMP& SHARED(cn,cdiag,clow,chigh,cn1,cbound,load,nchunk,   &
 !$OMP&           rload,ad,aa,dt,nlvddi,ntot)
-	 do k=knod,knod+nchunk-1
-	 if(k .le. ntot) then
-	   call conz3d_nodes(k,cn,cdiag(:,k),clow(:,k),chigh(:,k), &
+	  do k=knod,knod+nchunk-1
+	    if(k .le. ntot) then
+	      call conz3d_nodes(k,cn,cdiag(:,k),clow(:,k),chigh(:,k), &
      &                          cn1,cbound,load,rload, &
      &                          ad,aa,dt,nlvddi)
-         endif
-         enddo
+            end if
+          end do
 !$OMP END TASK 	      
 	end do
+        call cpu_time_end(21)
 
 !!!$OMP END TASKGROUP
 !$OMP TASKWAIT       
 
 	cn1 = real(cn)		!here happens INTEL_BUG
 	
-	if (bdebug ) then
-	  iudb = 990 + my_id
-	  ks = 2314
-	  k = ipint(ks)
-	  call get_act_dtime(dtime)
-	  if( k > 0 .and. dtime == 1500. ) then
-	    lmax = ilhkv(k)
-	    write(iudb,*) 'after: ',dtime,ipext(k)
-	    do l=1,lmax
-	      write(iudb,*) l,cn(l,k),cn1(l,k)
-	    end do
-	  end if
-	end if
-
 	DEALLOCATE(cn)
 	DEALLOCATE(co)
 	DEALLOCATE(cdiag)

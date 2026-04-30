@@ -142,8 +142,9 @@
 
 	character*20, save :: aline_act
 
-	integer, parameter :: ncpu = 20
+	integer, parameter :: ncpu = 30
 	integer, save :: maxcpu = 0
+	integer, save :: maxshow = 0
 	double precision, save :: cputime(ncpu)
 	double precision, save :: acutime(ncpu)
 	character*80, save     :: cpustring(ncpu)
@@ -583,6 +584,7 @@
 	integer itmax
 
 	itmax = maxcpu
+	if( maxshow > 0 ) itmax = maxshow
 
         end
 

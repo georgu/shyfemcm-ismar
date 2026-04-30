@@ -642,6 +642,7 @@
 ! initialization
 !-------------------------------------------------------------
 
+	call cpu_time_start(16)
 	call getaz(azpar)
 	adpar=getpar('adpar')
 	aapar=getpar('aapar')
@@ -652,6 +653,7 @@
 	btvd1 = itvd .eq. 1
 	btvd2 = itvd .eq. 2
 	btvddebug = .true.
+	btvddebug = .false.
 	btvddebug = btvddebug .and. btvd2
 
 	allocate(saux(nlvddi,nkn))
@@ -684,12 +686,13 @@
 	call get_timestep(dt)
 	call get_act_dtime(dtime)
 	call get_act_timeline(aline)
-
 	call cpu_time_start(16)
+
+	call cpu_time_start(17)
 	saux = 0.
 	call scalar_stability(dt,robs,rtauv,wsinkl,wsinkv,rkpar, &
      &					sindex,istot,saux)
-	call cpu_time_end(16)
+	call cpu_time_end(17)
 
 !$OMP CRITICAL
 	if(shympi_is_master()) then
@@ -728,15 +731,19 @@
 ! transport and diffusion
 !-------------------------------------------------------------
 
+	call cpu_time_start(19)
 	call massconc(-1,cnv,nlvddi,massold)
+	call cpu_time_end(19)
 
-	call cpu_time_start(17)
+	call cpu_time_start(18)
 	do isact=1,istot
 
 	  dtstep = -((istot-isact)*dt)/istot
 	  dtime_act = dtime + dtstep		!why is dtstep negative?
 
+	  call cpu_time_start(23)
 	  call make_scal_flux(what,isact,rcv,cnv,sbflux,sbconz,ssurface)
+	  call cpu_time_end(23)
 	  !call check_scal_flux(what,cnv,sbconz)
 
 	  if( what /= 'temp' ) then
@@ -750,6 +757,7 @@
 	  if( btvd1 ) call tvd_grad_3d(cnv,gradxv,gradyv,saux,nlvddi)
 	  if( btvddebug ) call tvd_debug_initialize(dtime_act,what,isact)
 
+	  call cpu_time_start(24)
           !call conz3d_orig( &
           call conz3d_omp(       &
      &           cnv &
@@ -765,7 +773,9 @@
      &          ,istot,isact &
      &          ,nlvddi,nlv &
      &               )
+	  call cpu_time_end(24)
 
+	  call cpu_time_start(25)
 	  call assert_min_max_property(cnv,saux,sbconz,gradxv,gradyv,eps)
 
 	  call limit_scalar(what,dtstep,cnv)
@@ -773,10 +783,11 @@
           call shympi_exchange_3d_node(cnv)
           call bndo_setbc(what,nlvddi,cnv,rcv,uprv,vprv)
           call shympi_exchange_3d_node(cnv)
+	  call cpu_time_end(25)
 
 	  if( btvddebug ) call tvd_debug_finalize
 	end do
-	call cpu_time_end(17)
+	call cpu_time_end(18)
 
         !if( shympi_is_parallel() .and. istot > 1 ) then
         !  write(6,*) 'cannot handle istot>1 with mpi yet'
@@ -791,7 +802,9 @@
 !-------------------------------------------------------------
 
 	if( levdbg > 2 ) then
+	  call cpu_time_start(19)
 	  call massconc(+1,cnv,nlvddi,mass)
+	  call cpu_time_end(19)
 	  massdiff = mass - massold
 !$OMP CRITICAL
           if(shympi_is_master())then
