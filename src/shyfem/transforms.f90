@@ -553,7 +553,7 @@
 
 !******************************************************************
 
-	subroutine copy_uvz
+	subroutine copy_uvz(curr_stage)
 
 ! for the first runge-kutta stage only: copies u/v/z to old time step
 ! for all stages: copy u/v/z to the current stage
@@ -565,7 +565,9 @@
 
 	implicit none
 
-        if (0 < 1) then ! stage is first !lrp:dbg
+	integer curr_stage
+
+        if (curr_stage == 1) then ! stage is first
 	  zov   = znv
 	  utlov = utlnv
 	  vtlov = vtlnv
@@ -666,6 +668,7 @@
 
 ! initializes uvz values from zenv, utlnv, vtlnv, hdenv
 
+	use mod_rungekutta, only : a_erk,a_irk
 	use basin
 
 	implicit none
@@ -674,7 +677,10 @@
 	real dzeta(nkn)
 
 	if( .not. rst_use_restart(5) ) then
-	  call hydro_vertical(dzeta)	!vertical velocities
+	  call hydro_vertical(1,     &
+     &			      a_erk(1,:), &
+     &			      a_irk(1,:), &
+     &			      dzeta)	!vertical velocities !lrp-imex:check
 	end if
 
 	call compute_velocities

@@ -552,12 +552,15 @@
 	use mod_shyfem
 	use mod_shyfem_intern
 	use mod_info_output
+	use mod_rungekutta, only : n_rkstages,a_erk,a_irk,a_srk
 
 	implicit none
 
 	double precision dtstep		!time step to run, 0: run to end
 
 	double precision dtmax		!run to this time
+
+	integer kstage			!runge-kutta stage
 
 	dtmax = dtend			!stand-alone mode
 	if( dtstep > 0. ) then
@@ -589,31 +592,36 @@
            call get_timestep(dt)
 	   call get_act_dtime(dtime)
 
-	   call trace_point_0('do_befor')
-	   call do_befor
+	   do kstage=1,n_rkstages       !runge-kutta current stage
+	     call trace_point_0('do_befor')
+	     call do_befor
 
-	   call trace_point_0('before copy')
-	   call copy_uvz		!copies new to old time level
-	   call nonhydro_copy   	!copies non hydrostatic pressure terms
-	   call copy_layer_depth	!copies layer depth to old
-	   call trace_point_0('after copy')
+	     call trace_point_0('before copy')
+	     call copy_uvz(kstage)	!copies new to old time level
+	     call nonhydro_copy   	!copies non hydrostatic pressure terms
+	     call copy_layer_depth	!copies layer depth to old
+	     call trace_point_0('after copy')
 
-	   call handle_offline(2)	!read from offline file
-	   call trace_point_0('before sp111')
-	   call sp111(2)		!boundary conditions
-	   call trace_point_0('after sp111')
-           call read_wwm		!wwm wave model
-	   call trace_point_0('after wwm')
+	     call handle_offline(2)	!read from offline file
+	     call trace_point_0('before sp111')
+	     call sp111(2)		!boundary conditions
+	     call trace_point_0('after sp111')
+             call read_wwm		!wwm wave model
+	     call trace_point_0('after wwm')
 	   
-           if(bmpi_debug) call shympi_check_all(1)	!checks arrays
+             if(bmpi_debug) call shympi_check_all(1)	!checks arrays
 
-	   call trace_point_0('hydro')
-	   call hydro			!hydro
+	     call trace_point_0('hydro')
+	     call hydro(kstage,          &
+     &			a_erk(kstage,:), &
+     &			a_irk(kstage,:), &
+     &			a_srk(kstage,:))!hydro
 
-	   call trace_point_0('run_scalar')
-	   call run_scalar
+	     call trace_point_0('run_scalar')
+	     call run_scalar
+	   end do			!all additional modules are not resolved with runge-kutta
 
-           call turb_closure
+           call turb_closure		!turbulence model
 
            call parwaves                !parametric wave model
            call sedi                    !sediment transport
