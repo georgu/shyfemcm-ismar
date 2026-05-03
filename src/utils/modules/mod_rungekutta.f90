@@ -44,10 +44,12 @@
 
 	integer, save :: n_rkstages = 0		    !number of (non-trivial) stages
 
-        double precision, allocatable, save :: zrk_reg(:,:)     !register vectors for continuity
-        double precision, allocatable, save :: uverk_reg(:,:,:) !register vectors for explicit momentum
-        double precision, allocatable, save :: uvirk_reg(:,:,:) !register vectors for implicit momentum
-        double precision, allocatable, save :: uvsrk_reg(:,:,:) !register vectors for stiffly implicit momentum
+        double precision, allocatable, save :: uverk_reg(:,:,:) !register vector for explicit momentum
+        double precision, allocatable, save :: uvirk_reg(:,:,:) !register vector for implicit momentum
+        double precision, allocatable, save :: uvsrk_reg(:,:,:) !register vector for stiffly implicit momentum
+        double precision, allocatable, save :: urk_reg(:,:,:)   !register vector for u-transport
+        double precision, allocatable, save :: vrk_reg(:,:,:)   !register vector for v-transport
+        double precision, allocatable, save :: wrk_reg(:,:,:)   !register vector for w-velocity
 
 !==========================================================================
         contains
@@ -75,10 +77,13 @@
           deallocate(b_srk)
           deallocate(c_rk)
 
-          deallocate(zrk_reg)
           deallocate(uverk_reg)
           deallocate(uvirk_reg)
           deallocate(uvsrk_reg)
+
+          deallocate(urk_reg)
+          deallocate(vrk_reg)
+          deallocate(wrk_reg)
         end if
 
         n_rkstages = 1
@@ -138,15 +143,21 @@
 	c_rk(1)  = 1.
 
         if ( n_rkstages > 1 ) then
-          allocate(zrk_reg(nkn,1))
           allocate(uverk_reg(2*nlv,nel,n_rkstages-1))
           allocate(uvirk_reg(2*nlv,nel,n_rkstages-1))
           allocate(uvsrk_reg(2*nlv,nel,n_rkstages-1))
 
-          zrk_reg = 0.
+          allocate(urk_reg(nlv,nel,n_rkstages-1))
+          allocate(vrk_reg(nlv,nel,n_rkstages-1))
+          allocate(wrk_reg(0:nlv,nkn,n_rkstages-1))
+
           uverk_reg = 0.
           uvirk_reg = 0.
           uvsrk_reg = 0.
+
+          urk_reg = 0.
+          vrk_reg = 0.
+          wrk_reg = 0.
         end if
 
 

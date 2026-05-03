@@ -516,6 +516,7 @@
         integer afix            !chao dbf
 	logical bcolin
 	logical bdebug
+	integer jstage
 	integer ie,i,j,j1,j2,n,m,kk,l,k,ie_mpi
 	integer ngl
 	integer ilevel,jlevel
@@ -625,7 +626,7 @@
 	end do
 
 !	------------------------------------------------------
-!	compute barotropic transport
+!	barotropic mass flux contribution at current stage
 !	------------------------------------------------------
 
 	uold = 0.
@@ -642,6 +643,17 @@
 
 	ut = a_irk(1,2) * uhat + a_irk(1,1) * uold
 	vt = a_irk(1,2) * vhat + a_irk(1,1) * vold
+
+!	------------------------------------------------------
+!	barotropic mass flux contribution at previous stages
+!	------------------------------------------------------
+
+	do jstage=1,0 !loop on previous stages current_stage-1,1!lrp:rk-dbg
+	  do l=jlevel,ilevel
+	    ut = ut + a_irk(1,jstage) * urk_reg(l,ie,jstage)
+	    vt = vt + a_irk(1,jstage) * vrk_reg(l,ie,jstage)
+	  end do
+	end do
 
 !	------------------------------------------------------
 !	set element matrix and RHS
@@ -886,6 +898,7 @@
 	logical debug,bdebug
         logical bdebggu
 	integer kn(3)
+        integer jstage
 	integer kk,ii,l,ju,jv,ierr
 	integer ngl,mbb
 	integer ilevel,jlevel,ier,ilevmin
@@ -1251,6 +1264,34 @@
      &               a_erk(1,1)*ggy + a_irk(1,1)*lly + a_srk(1,1)*ssy )
 
 !	------------------------------------------------------
+!	set up previous stage right hand side F^x and F^y
+!	------------------------------------------------------
+
+	do jstage=1,0 !loop on previous stages current_stage-1,1!lrp:rk-dbg
+          rvec(ju) = rvec(ju) - dtafix*( &
+     &                 a_erk(1,jstage) * uverk_reg(ju,ie,jstage) + &
+     &                 a_irk(1,jstage) * uvirk_reg(ju,ie,jstage) + &
+     &                 a_srk(1,jstage) * uvsrk_reg(ju,ie,jstage) )
+	  rvec(jv) = rvec(jv) - dtafix*( &
+     &                 a_erk(1,jstage) * uverk_reg(jv,ie,jstage) + &
+     &                 a_irk(1,jstage) * uvirk_reg(jv,ie,jstage) + &
+     &                 a_srk(1,jstage) * uvsrk_reg(jv,ie,jstage) )
+        end do
+
+!	------------------------------------------------------
+!	save current stage right hand side F^x and F^y
+!	------------------------------------------------------
+
+        if (0 > 1) then !if (not last stage)
+          uverk_reg(ju,ie,1) = ggx
+          uverk_reg(jv,ie,1) = ggy
+          uvirk_reg(ju,ie,1) = llx
+          uvirk_reg(jv,ie,1) = lly
+          uvsrk_reg(ju,ie,1) = ssx
+          uvsrk_reg(jv,ie,1) = ssy
+        end if
+
+!	------------------------------------------------------
 !	set up H^x and H^y
 !	------------------------------------------------------
 
@@ -1503,6 +1544,15 @@
 	unv(ie) = um
 	vnv(ie) = vm
 
+!	------------------------------------------------------
+!	save current stage transports
+!	------------------------------------------------------
+
+        if (0 > 1) then !if (not last stage)
+          urk_reg(:,:,1) = utlnv
+          vrk_reg(:,:,1) = vtlnv
+	end if
+
 	end do
 
 !-------------------------------------------------------------
@@ -1560,13 +1610,14 @@
 ! local
 	logical debug
 	logical bdry
+	integer jstage
 	integer k,ie,ii,kk,l,lmax,lmin,ie_mpi
 	integer ilevel,jlevel
         integer ibc,ibtyp
 	integer kext,kint
-	real aj,wbot,wdiv,ff,atop,abot,wfold
+	real aj,wbot,wdiv,ff,atop,abot,wfold,wlpv
 	real b,c
-	real ffn,ffo
+	real ffn,ffo,ffp
 	real volo,voln,dt,dvdt,q
 	real dzmax,dz
 	real, allocatable :: vf(:,:)
@@ -1593,17 +1644,21 @@
 	vf = 0.
 	va = 0.
 
-! compute difference of velocities for each layer
+!	------------------------------------------------------
+!	Layerwise mass flux at current and previous stages
+!	------------------------------------------------------
 !
 ! f(ii) > 0 ==> flux into node ii
 ! aj * ff -> [m**3/s]     ( ff -> [m/s]   aj -> [m**2]    b,c -> [1/m] )
 
 	do ie_mpi=1,nel
-         ie = ip_sort_elem(ie_mpi)
-	 !if( isein(ie) ) then		!FIXME
+
+          ie = ip_sort_elem(ie_mpi)
+	  !if( isein(ie) ) then		!FIXME
 	  aj=4.*ev(10,ie)		!area of triangle / 3
 	  ilevel = ilhv(ie)
 	  jlevel = jlhv(ie)
+
 	  do l=jlevel,ilevel
 	    do ii=1,3
 		kk=nen3v(ii,ie)
@@ -1612,12 +1667,17 @@
 		ffn = utlnv(l,ie)*b + vtlnv(l,ie)*c
 		ffo = utlcv(l,ie)*b + vtlcv(l,ie)*c
 		ff = ffn * a_irk(1,2) + ffo * a_irk(1,1)
+		do jstage=1,0 !loop on previous stages current_stage-1,1!lrp:rk-dbg
+		  ffp = urk_reg(l,ie,jstage)*b + vrk_reg(l,ie,jstage)*c
+		  ff = ff + ffp * a_irk(1,jstage)
+		end do
 		!ff = ffn
 		vf(l,kk) = vf(l,kk) + 3. * aj * ff
 		va(l,kk) = va(l,kk) + aj
 	    end do
 	  end do
-	 !end if
+
+	  !end if
 	end do
 
 	if( shympi_partition_on_elements() ) then
@@ -1626,6 +1686,10 @@
           call shympi_exchange_and_sum_3d_nodes(va)
 	end if
 
+!	------------------------------------------------------
+!	Finalize vertical velocity
+!	------------------------------------------------------
+!
 ! from vel difference get absolute velocity (w_bottom = 0)
 !	-> wlnv(nlv,k) is already in place !
 !	-> wlnv(nlv,k) = 0 + wlnv(nlv,k)
@@ -1659,9 +1723,13 @@
 	    q = mfluxv(l,k)
 	    if( bdry ) q = 0.
 	    wdiv = vf(l,k) + q
+	    wlpv = 0.
+	    do jstage=1,0 !loop on previous stages current_stage-1,1!lrp:rk-dbg
+	      wlpv = wlpv + a_erk(1,jstage) * (wrk_reg(l-1,k,jstage)-wrk_reg(l,k,jstage))
+	    end do
 	    !wfold = azt * (atop*wlov(l-1,k)-abot*wlov(l,k))
 	    !wlnv(l-1,k) = wlnv(l,k) + (wdiv-dvdt+wfold)/az
-	    wlnv(l-1,k) = wlnv(l,k) + wdiv - dvdt
+	    wlnv(l-1,k) = wlnv(l,k) + 1./a_erk(1,1) * (wdiv - dvdt - wlpv)
 	    abot = atop
 	    if( debug ) then
 		write(670,*) k,l
@@ -1691,9 +1759,10 @@
 	  end do
 	end do
 
-! set w to zero at open boundary nodes (new 14.08.1998)
-!
-! FIXME	-> only for ibtyp = 1,2 !!!!
+!	------------------------------------------------------
+!	set w to zero at open boundary nodes
+! 	FIXME	-> only for ibtyp = 1,2 !!!!
+!	------------------------------------------------------
 
 	do k=1,nkn
           !if( is_external_boundary(k) ) then	!bug fix 10.03.2010
@@ -1709,6 +1778,14 @@
 	  !call shympi_comment('exchanging wlnv')
           call shympi_exchange_3d0_node(wlnv)
 	  !call shympi_barrier
+	end if
+
+!	------------------------------------------------------
+!	save current stage w-velocity
+!	------------------------------------------------------
+
+        if (0 > 1) then !if (not last stage)
+          wrk_reg(:,:,1) = wlnv
 	end if
 
 	end
