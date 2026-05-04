@@ -93,6 +93,7 @@
 ! 16.02.2019	ggu	changed VERS_7_5_60
 ! 13.03.2019	ggu	changed VERS_7_5_61
 ! 29.03.2022	ggu	icall was not initialized
+! 04.05.2026	ggu	get actual time with get_act_dtime()
 !
 ! Notes :
 !
@@ -666,7 +667,6 @@
 !        print *, nlv, nlvdi,  nstate, nsstate
 !        print *, noslay,  ndiagvar
 !        print *, noutput, nsoutput,nconst, nsconst
-!        print *, t_act
 !        stop
 
 
@@ -1151,7 +1151,7 @@
       if( bcheck ) call check_var('BEFORE advection',it,ulogbio,e,es)
 
 
-      tdouble = t_act
+      call get_act_dtime(tdouble)
       call bnds_read_new(what,idbio,tdouble)
 
 !$OMP PARALLEL PRIVATE(i)

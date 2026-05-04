@@ -26,6 +26,7 @@
 ! revision log :
 !
 ! 28.04.2026	lrp	written from scratch
+! 04.05.2026	ggu	new routine get_rungekutta_crk()
 
 !==========================================================================
 	module mod_rungekutta

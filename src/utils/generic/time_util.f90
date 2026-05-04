@@ -121,6 +121,7 @@
 ! 03.04.2020	ggu	new routine get_real_time()
 ! 18.05.2022	ggu	new routines cpu_time_*()
 ! 24.10.2025	ggu	new routine is_time_absolute()
+! 04.05.2026	ggu	new routine set_act_dtime()
 !
 !**********************************************************************
 !**********************************************************************
@@ -202,7 +203,7 @@
 
         subroutine set_act_dtime(crk)
 
-! sets actual time levels given crk
+! sets actual time level and timeline given crk
 
 	use femtime
 
