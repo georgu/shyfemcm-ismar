@@ -163,6 +163,19 @@
 
         end subroutine mod_rungekutta_init
 
+!**************************************************************************
+
+	subroutine get_rungekutta_crk(kstage,crk)
+
+! returns c_rk for desired stage
+
+	integer, intent(in) :: kstage
+	real, intent(out) :: crk
+
+	crk = c_rk(kstage)
+	
+	end subroutine get_rungekutta_crk
+
 !==========================================================================
         end module mod_rungekutta
 !==========================================================================

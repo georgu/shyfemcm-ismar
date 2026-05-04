@@ -808,6 +808,7 @@
 
 	dt_act = dt
 	t_act = dtime
+	t_new = dtime
 	idt = dt
 	!it = t_act
 

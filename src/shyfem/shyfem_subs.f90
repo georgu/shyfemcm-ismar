@@ -552,7 +552,8 @@
 	use mod_shyfem
 	use mod_shyfem_intern
 	use mod_info_output
-	use mod_rungekutta, only : n_rkstages,a_erk,a_irk,a_srk
+	use mod_rungekutta, only : n_rkstages,a_erk,a_irk,a_srk &
+     &					,get_rungekutta_crk
 
 	implicit none
 
@@ -561,6 +562,7 @@
 	double precision dtmax		!run to this time
 
 	integer kstage			!runge-kutta stage
+	real crk
 
 	dtmax = dtend			!stand-alone mode
 	if( dtstep > 0. ) then
@@ -590,9 +592,12 @@
 	   call trace_point_0('set_timestep')
            call set_timestep(dtmax)		!sets dt and t_act
            call get_timestep(dt)
-	   call get_act_dtime(dtime)
 
 	   do kstage=1,n_rkstages       !runge-kutta current stage
+	     call get_rungekutta_crk(kstage,crk)
+             call set_act_dtime(crk)
+	     call get_act_dtime(dtime)
+
 	     call trace_point_0('do_befor')
 	     call do_befor
 
