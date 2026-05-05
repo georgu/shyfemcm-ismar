@@ -165,6 +165,7 @@
 ! 11.11.2025    ggu     general assimilation of T/S
 ! 28.01.2026    ggu     new routine ts_nudge_check()
 ! 30.01.2026    ggu     fixed bug in nudging (with tau given as parameter)
+! 05.05.2026    ggu     some more info messages
 !
 ! notes :
 !
@@ -382,9 +383,15 @@
                 nvar = 1
                 cdef(1) = 0.
 		what = 'temp'
+		if( print_not_quiet_once() ) then
+		  write(6,*) 'opening boundary file for ',trim(what)
+		end if
 		call bnds_init_new(what,dtime0,nintp,nvar,nkn,nlv &
      &					,cdef,idtemp)
 		what = 'salt'
+		if( print_not_quiet_once() ) then
+		  write(6,*) 'opening boundary file for ',trim(what)
+		end if
 		call bnds_init_new(what,dtime0,nintp,nvar,nkn,nlv &
      &					,cdef,idsalt)
 
