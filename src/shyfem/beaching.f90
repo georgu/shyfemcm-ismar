@@ -528,10 +528,8 @@
 	! 2: curonian lagoon
 	! 3: reed belt
 
-	beach_rates(1) = 0.2
 	beach_rates(2) = 0.2
 	beach_rates(3) = 0.4
-	burry_rates(1) = 0.1
 	burry_rates(2) = 0.1
 	burry_rates(3) = 0.2
 
