@@ -166,16 +166,22 @@
 
 !**************************************************************************
 
-	subroutine get_rungekutta_crk(kstage,crk)
+	subroutine get_rungekutta_weights(kstage,crk,aerk,airk,asrk)
 
 ! returns c_rk for desired stage
 
 	integer, intent(in) :: kstage
 	real, intent(out) :: crk
+	real, dimension(n_rkstages), intent(out) :: aerk
+	real, dimension(n_rkstages+1), intent(out) :: airk
+	real, dimension(n_rkstages+1), intent(out) :: asrk
 
-	crk = c_rk(kstage)
-	
-	end subroutine get_rungekutta_crk
+	crk  = c_rk(kstage)
+	aerk = a_erk(kstage,:)
+	airk = a_irk(kstage,:)
+	asrk = a_srk(kstage,:)
+
+	end subroutine get_rungekutta_weights
 
 !==========================================================================
         end module mod_rungekutta

@@ -553,8 +553,7 @@
 	use mod_shyfem
 	use mod_shyfem_intern
 	use mod_info_output
-	use mod_rungekutta, only : n_rkstages,a_erk,a_irk,a_srk &
-     &					,get_rungekutta_crk
+	use mod_rungekutta, only : n_rkstages,get_rungekutta_weights
 
 	implicit none
 
@@ -563,7 +562,10 @@
 	double precision dtmax		!run to this time
 
 	integer kstage			!runge-kutta stage
-	real crk
+	real crk			!runge-kutta weights
+	real aerk(n_rkstages)
+	real airk(n_rkstages+1)
+	real asrk(n_rkstages+1)
 
 	dtmax = dtend			!stand-alone mode
 	if( dtstep > 0. ) then
@@ -595,7 +597,11 @@
            call get_timestep(dt)
 
 	   do kstage=1,n_rkstages       !runge-kutta current stage
-	     call get_rungekutta_crk(kstage,crk)
+	     call get_rungekutta_weights(kstage, &
+     &	     				 crk,   &
+     &	     				 aerk,  &
+     &	     				 airk,  &
+     &	     				 asrk)
              call set_act_dtime(crk)
 	     call get_act_dtime(dtime)
 
@@ -618,10 +624,7 @@
              if(bmpi_debug) call shympi_check_all(1)	!checks arrays
 
 	     call trace_point_0('hydro')
-	     call hydro(kstage,          &
-     &			a_erk(kstage,:), &
-     &			a_irk(kstage,:), &
-     &			a_srk(kstage,:))!hydro
+	     call hydro(kstage,aerk,airk,asrk)!hydro
 
 	     call trace_point_0('run_scalar')
 	     call run_scalar
