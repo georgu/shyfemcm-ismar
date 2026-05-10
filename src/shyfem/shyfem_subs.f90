@@ -974,7 +974,7 @@
 
 	nlvddi = nlvdi
 
-	call mod_rungekutta_init(111,nkn,nel,nlvddi)
+	call mod_rungekutta_init(nkn,nel,nlvddi)
 
 	call mod_hydro_init(nkn,nel,nlvddi)
 	call mod_hydro_vel_init(nkn,nel,nlvddi)

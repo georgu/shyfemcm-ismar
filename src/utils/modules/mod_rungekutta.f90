@@ -56,46 +56,21 @@
         contains
 !==========================================================================
 
-	subroutine mod_rungekutta_init(rk_triplet,nkn,nel,nlv)
+	subroutine mod_rungekutta_init(nkn,nel,nlv)
 
-	integer rk_triplet
         integer nkn, nel, nlv
 
+	integer rk_triplet
 	double precision am,at,az,af,av
 	real getpar
 
-        if( rk_triplet .ne. 111 ) then
+	rk_triplet = 111
+
+        if( rk_triplet .ne. 111 .and.  &
+     &      rk_triplet .ne. 222 ) then
           write(6,*) 'runge-kutta triplet: ', rk_triplet
           stop 'error stop mod_rungekutta_init: incompatible params'
         end if
-
-	if( n_rkstages > 0 ) then
-          deallocate(a_erk)
-          deallocate(a_irk)
-          deallocate(a_srk)
-          deallocate(b_erk)
-          deallocate(b_irk)
-          deallocate(b_srk)
-          deallocate(c_rk)
-
-          deallocate(uverk_reg)
-          deallocate(uvirk_reg)
-          deallocate(uvsrk_reg)
-
-          deallocate(urk_reg)
-          deallocate(vrk_reg)
-          deallocate(wrk_reg)
-        end if
-
-        n_rkstages = 1
-        
-        allocate (a_erk(n_rkstages,n_rkstages))
-        allocate (a_irk(n_rkstages,n_rkstages+1))
-        allocate (a_srk(n_rkstages,n_rkstages+1))
-        allocate (b_erk(n_rkstages+1))
-        allocate (b_irk(n_rkstages+1))
-        allocate (b_srk(n_rkstages+1))
-        allocate (c_rk(n_rkstages))
 
 	am=getpar('ampar')
 	at=getpar('atpar')
@@ -124,24 +99,98 @@
           stop 'error stop mod_rungekutta_init: incompatible params'
         end if
 
-	a_erk(1,1) = 1.
+	if( n_rkstages > 0 ) then
+          deallocate(a_erk)
+          deallocate(a_irk)
+          deallocate(a_srk)
+          deallocate(b_erk)
+          deallocate(b_irk)
+          deallocate(b_srk)
+          deallocate(c_rk)
 
-	a_irk(1,1) = 1.-am
-	a_irk(1,2) = am
+          deallocate(uverk_reg)
+          deallocate(uvirk_reg)
+          deallocate(uvsrk_reg)
 
-	a_srk(1,1) = 1.-at
-	a_srk(1,2) = at
+          deallocate(urk_reg)
+          deallocate(vrk_reg)
+          deallocate(wrk_reg)
+        end if
 
-	b_erk(1)  = 1.
-	b_erk(2)  = 0.
+	if (rk_triplet == 111) then
+          n_rkstages = 1
 
-	b_irk(1)  = 1.-am
-	b_irk(2)  = am
+          allocate (a_erk(n_rkstages,n_rkstages))
+          allocate (a_irk(n_rkstages,n_rkstages+1))
+          allocate (a_srk(n_rkstages,n_rkstages+1))
+          allocate (b_erk(n_rkstages+1))
+          allocate (b_irk(n_rkstages+1))
+          allocate (b_srk(n_rkstages+1))
+          allocate (c_rk(n_rkstages))
 
-	b_srk(1)  = 1.-at
-	b_srk(2)  = at
+	  a_erk(1,1) = 1.
 
-	c_rk(1)  = 1.
+	  a_irk(1,1) = 1.-am
+	  a_irk(1,2) = am
+
+	  a_srk(1,1) = 1.-at
+	  a_srk(1,2) = at
+
+	  b_erk(1)  = 1.
+	  b_erk(2)  = 0.
+
+	  b_irk(1)  = 1.-am
+	  b_irk(2)  = am
+
+	  b_srk(1)  = 1.-at
+	  b_srk(2)  = at
+
+	  c_rk(1)  = 1.
+	else if (rk_triplet == 222) then
+          n_rkstages = 2
+
+          allocate (a_erk(n_rkstages,n_rkstages))
+          allocate (a_irk(n_rkstages,n_rkstages+1))
+          allocate (a_srk(n_rkstages,n_rkstages+1))
+          allocate (b_erk(n_rkstages+1))
+          allocate (b_irk(n_rkstages+1))
+          allocate (b_srk(n_rkstages+1))
+          allocate (c_rk(n_rkstages))
+
+	  a_erk(1,1) = am
+	  a_erk(1,2) = 0.
+	  a_erk(2,1) = 1.-1./(2.*am)
+	  a_erk(2,2) = 1./(2.*am)
+
+	  a_irk(1,1) = 0.
+	  a_irk(1,2) = am
+	  a_irk(1,3) = 0.
+	  a_irk(2,1) = 0.
+	  a_irk(2,2) = 1-am
+	  a_irk(2,3) = am
+
+	  a_srk(1,1) = 0.
+	  a_srk(1,2) = am
+	  a_srk(1,3) = 0.
+	  a_srk(2,1) = 0.
+	  a_srk(2,2) = 1-am
+	  a_srk(2,3) = am
+
+	  b_erk(1)  = 1.-1./(2.*am)
+	  b_erk(2)  = 1./(2.*am)
+	  b_erk(3)  = 0.
+
+	  b_irk(1)  = 0.
+	  b_irk(2)  = 1.-am
+	  b_irk(3)  = am
+
+	  b_srk(1)  = 0.
+	  b_srk(2)  = 1.-am
+	  b_srk(3)  = am
+
+	  c_rk(1)  = am
+	  c_rk(2)  = 1.
+	end if
 
         if ( n_rkstages > 1 ) then
           allocate(uverk_reg(2*nlv,nel,n_rkstages-1))
