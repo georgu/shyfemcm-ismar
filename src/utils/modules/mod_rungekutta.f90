@@ -64,7 +64,11 @@
 	double precision am,at,az,af,av
 	real getpar
 
-	rk_triplet = 111
+	!The ImEx triplet $(s, \sigma, p)$ identifies a scheme where:
+	!1/ $s$ is the number of non-trivial stages of the implicit scheme,
+	!2/ $\sigma$ is the number of non-trivial stages of the explicit scheme
+	!3/ $p$ is the combined order of accuracy.
+	rk_triplet = nint(getpar('rkscheme'))
 
         if( rk_triplet .ne. 111 .and.  &
      &      rk_triplet .ne. 222 ) then
@@ -117,6 +121,12 @@
           deallocate(wrk_reg)
         end if
 
+	!The classical ARK(1,1,1) method of Ascher,Ruuth&Spiteri:
+	!It is composed of the pair theta−method and Forward Euler.
+	!The theta-method uses a coefficient $am$ read from file.
+	!Notice that for vertical viscous terms uses a different coefficient
+	! $at$, so that an L-stable Backward Euler is used, by default with
+	!weight $at=1$.
 	if (rk_triplet == 111) then
           n_rkstages = 1
 
@@ -146,7 +156,20 @@
 	  b_srk(2)  = at
 
 	  c_rk(1)  = 1.
+
+	!The classical ARK(2,2,2) method of Ascher,Ruuth&Spiteri:
+	!It is composed of the pair second order DIRK22 and its
+	!explicit companion scheme ERK22. The same implicit scheme
+	!is used for all the stiff terms.
 	else if (rk_triplet == 222) then
+	  if( at .ne. am ) then
+            write(6,*) 'You are using with rk_triplet=222:'
+            write(6,*) 'atpar: ', at
+            write(6,*) 'ampar: ', am
+            write(6,*) 'ampar and atpar must be equal for this scheme.'
+            stop 'error stop mod_rungekutta_init: incompatible params'
+          end if
+
           n_rkstages = 2
 
           allocate (a_erk(n_rkstages,n_rkstages))

@@ -650,6 +650,28 @@
 	call addpar('idtmin',1.)
 	call addpar('tfact',0.)		!still to comment FIXME
 
+! The next parameter choose the Additive Runge-Kutta (ARK) time integrator which
+! is identified by the triplet $(s, \sigma, p)$ as in (Ascher,Ruuth&Spiteri,1997):
+! $s$ is the number of non-trivial stages of the implicit scheme,
+! $\sigma$ is the number of non-trivial stages of the explicit scheme and
+! $p$ is the combined order of accuracy.
+!
+! |rkscheme|	The Runge-Kutta triplet (Default 111):
+!		\begin{description}
+!		\item[111] the classical ARK(1,1,1) method of
+!		(Ascher,Ruuth&Spiteri,1997). It is composed of the pair
+!		theta−method for the implicit terms and Forward Euler for the
+!		explicit terms. Different weighting levels
+!		can be tuned with the parameters |ampar| and |atpar|, defined
+!		in the next paragraph.
+!		The default choice corresponds to a Cranck-Nicholson scheme
+!		|ampar=0.5| for the the acoustic wave and Coriolis term and an
+!		L-stable Backward Euler scheme |atpar=1.0| for the vertical
+!		viscous terms.
+
+	call addpar('rkscheme',111.)		!type of runge-kutta scheme
+
+
 ! These parameters define the weighting of time level in the 
 ! semi-implicit algorithm. With these parameters the damping
 ! of gravity or Rossby waves can be controlled. Only modify them if
