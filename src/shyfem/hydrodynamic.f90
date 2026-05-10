@@ -552,7 +552,6 @@
 	double precision delta,h11,hh999
 	double precision z(3)
 	double precision andg,zndg(3)
-	double precision zm
 	double precision b(3),c(3)
 	double precision acu
 	double precision uold,vold
@@ -604,25 +603,15 @@
 !	compute level gradient
 !	------------------------------------------------------
 
-	zm=0.
 	do i=1,3
 		kk=nen3v(i,ie)
 		kn(i)=kk
 		b(i)=ev(i+3,ie)
 		c(i)=ev(i+6,ie)
-		!z(i)=zov(kk)
-		z(i)=zeov(i,ie)		!ZEONV
+		z(i)=zov(kk)
+		!z(i)=zeov(i,ie)		!ZEONV
 		zndg(i) = andgzv(kk)	!nudging
-		zm=zm+z(i)
 	end do
-
-	zm=zm*drittl
-
-	!if(bcolin) then
-	!	ht=hev(ie)
-	!else
-	!	ht=hev(ie)+zm
-	!end if
 
 	ilevel=ilhv(ie)
 	jlevel=jlhv(ie)
