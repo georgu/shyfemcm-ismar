@@ -545,7 +545,7 @@
 	integer ju,jv
         integer nel_loop
 
-	real dt,a_ll
+	real dt,a_ll,c_l
 
 	double precision aj,rw,ddt
 	double precision amatr(3,3)
@@ -746,9 +746,17 @@
 
 !-------------------------------------------------------------
 ! Add additional flux boundary condition values to the rhs vector
+! Notice that we treat flux bc with a simple implicit scheme
+! which is first-order accurate. Enough, given the uncertainty
+! associated with bc data
 !-------------------------------------------------------------
 
-	call system_add_rhs(dt,nkn,vqv)
+	c_l = 0.
+	do jstage=1,curr_stage+1
+	  c_l = c_l + coeff_irk(jstage)
+	end do
+
+	call system_add_rhs(dt*c_l,nkn,vqv)
 
 !-------------------------------------------------------------
 ! end of routine
