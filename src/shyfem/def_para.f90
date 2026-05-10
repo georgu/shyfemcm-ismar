@@ -672,8 +672,8 @@
 	call addpar('rkscheme',111.)		!type of runge-kutta scheme
 
 
-! These parameters define the weighting of time level in the 
-! semi-implicit algorithm. With these parameters the damping
+! These parameters define the weighting of time level in the
+! ImEx algorithm |rkscheme=111|. With these parameters the damping
 ! of gravity or Rossby waves can be controlled. Only modify them if
 ! you know what you are doing.
 !
@@ -707,6 +707,15 @@
 	call addpar('atpar',1.0)	!time weighting for vertical viscosity
 	call addpar('adpar',1.0)	!time weighting for vertical diffusion
 	call addpar('aapar',1.0)	!time weighting for vertical advection
+
+! This parameter define the time level of the first stage in the
+! ImEx algorithm |rkscheme=222|. The scheme is stiffly accurate
+! for the default value.
+!
+! |gapar|	Weighting of the first stage level for the Runge-Kutta scheme
+!		|rkscheme=222|. (Default $\frac{2-sqrt{2}}{2}$)
+
+	call addpar('gapar',0.292893219)!free parameter for |rkscheme=222|
 
 !c------------------------------------------------------------------------
 

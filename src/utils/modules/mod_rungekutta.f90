@@ -61,7 +61,7 @@
         integer nkn, nel, nlv
 
 	integer rk_triplet
-	double precision am,at,az,af,av
+	double precision am,at,az,af,av,gamma
 	real getpar
 
 	!The ImEx triplet $(s, \sigma, p)$ identifies a scheme where:
@@ -73,33 +73,6 @@
         if( rk_triplet .ne. 111 .and.  &
      &      rk_triplet .ne. 222 ) then
           write(6,*) 'runge-kutta triplet: ', rk_triplet
-          stop 'error stop mod_rungekutta_init: incompatible params'
-        end if
-
-	am=getpar('ampar')
-	at=getpar('atpar')
-
-	az = getpar('azpar')
-	if( az .ne. am ) then
-          write(6,*) 'You are using an obsolete configuration with:'
-          write(6,*) 'azpar: ', az
-          write(6,*) 'ampar: ', am
-          write(6,*) 'ampar and azpar must be equal.'
-          stop 'error stop mod_rungekutta_init: incompatible params'
-        end if
-        af = getpar('afpar')
-	if( af .ne. am ) then
-          write(6,*) 'You are using an obsolete configuration with:'
-          write(6,*) 'afpar: ', af
-          write(6,*) 'ampar: ', am
-          write(6,*) 'afpar and azpar must be equal.'
-          stop 'error stop mod_rungekutta_init: incompatible params'
-        end if
-        av = getpar('avpar')
-	if( av .ne. 0. ) then
-          write(6,*) 'You are using an obsolete configuration with:'
-          write(6,*) 'avpar: ', av
-          write(6,*) 'avpar must be zero.'
           stop 'error stop mod_rungekutta_init: incompatible params'
         end if
 
@@ -128,6 +101,33 @@
 	! $at$, so that an L-stable Backward Euler is used, by default with
 	!weight $at=1$.
 	if (rk_triplet == 111) then
+	  am=getpar('ampar')
+	  at=getpar('atpar')
+
+	  az = getpar('azpar')
+	  if( az .ne. am ) then
+            write(6,*) 'You are using an obsolete configuration with:'
+            write(6,*) 'azpar: ', az
+            write(6,*) 'ampar: ', am
+            write(6,*) 'ampar and azpar must be equal.'
+            stop 'error stop mod_rungekutta_init: incompatible params'
+          end if
+          af = getpar('afpar')
+	  if( af .ne. am ) then
+            write(6,*) 'You are using an obsolete configuration with:'
+            write(6,*) 'afpar: ', af
+            write(6,*) 'ampar: ', am
+            write(6,*) 'afpar and azpar must be equal.'
+            stop 'error stop mod_rungekutta_init: incompatible params'
+          end if
+          av = getpar('avpar')
+	  if( av .ne. 0. ) then
+            write(6,*) 'You are using an obsolete configuration with:'
+            write(6,*) 'avpar: ', av
+            write(6,*) 'avpar must be zero.'
+            stop 'error stop mod_rungekutta_init: incompatible params'
+          end if
+
           n_rkstages = 1
 
           allocate (a_erk(n_rkstages,n_rkstages))
@@ -162,11 +162,13 @@
 	!explicit companion scheme ERK22. The same implicit scheme
 	!is used for all the stiff terms.
 	else if (rk_triplet == 222) then
-	  if( at .ne. am ) then
-            write(6,*) 'You are using with rk_triplet=222:'
-            write(6,*) 'atpar: ', at
-            write(6,*) 'ampar: ', am
-            write(6,*) 'ampar and atpar must be equal for this scheme.'
+	  gamma=getpar('gapar')
+	  if( gamma <= 0. .or. gamma >= 1. ) then
+            write(6,*) 'You are using th rkscheme=222 with:'
+            write(6,*) 'gapar: ', gamma
+	    write(6,*) 'this parameter is not allowed'
+	    write(6,*) 'Please use'
+	    write(6,*) '  gapar>0 and ga<1'
             stop 'error stop mod_rungekutta_init: incompatible params'
           end if
 
@@ -180,38 +182,38 @@
           allocate (b_srk(n_rkstages+1))
           allocate (c_rk(n_rkstages))
 
-	  a_erk(1,1) = am
+	  a_erk(1,1) = gamma
 	  a_erk(1,2) = 0.
-	  a_erk(2,1) = 1.-1./(2.*am)
-	  a_erk(2,2) = 1./(2.*am)
+	  a_erk(2,1) = 1.-1./(2.*gamma)
+	  a_erk(2,2) = 1./(2.*gamma)
 
 	  a_irk(1,1) = 0.
-	  a_irk(1,2) = am
+	  a_irk(1,2) = gamma
 	  a_irk(1,3) = 0.
 	  a_irk(2,1) = 0.
-	  a_irk(2,2) = 1-am
-	  a_irk(2,3) = am
+	  a_irk(2,2) = 1.-gamma
+	  a_irk(2,3) = gamma
 
 	  a_srk(1,1) = 0.
-	  a_srk(1,2) = am
+	  a_srk(1,2) = gamma
 	  a_srk(1,3) = 0.
 	  a_srk(2,1) = 0.
-	  a_srk(2,2) = 1-am
-	  a_srk(2,3) = am
+	  a_srk(2,2) = 1.-gamma
+	  a_srk(2,3) = gamma
 
-	  b_erk(1)  = 1.-1./(2.*am)
-	  b_erk(2)  = 1./(2.*am)
+	  b_erk(1)  = 1.-1./(2.*gamma)
+	  b_erk(2)  = 1./(2.*gamma)
 	  b_erk(3)  = 0.
 
 	  b_irk(1)  = 0.
-	  b_irk(2)  = 1.-am
-	  b_irk(3)  = am
+	  b_irk(2)  = 1.-gamma
+	  b_irk(3)  = gamma
 
 	  b_srk(1)  = 0.
-	  b_srk(2)  = 1.-am
-	  b_srk(3)  = am
+	  b_srk(2)  = 1.-gamma
+	  b_srk(3)  = gamma
 
-	  c_rk(1)  = am
+	  c_rk(1)  = gamma
 	  c_rk(2)  = 1.
 	end if
 
