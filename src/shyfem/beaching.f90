@@ -38,8 +38,8 @@
 	module mod_beaching
 !==============================================================
 
-	logical, save :: bbeach = .true.
-	logical, save :: bbeach_debug = .true.
+	logical, save :: bbeach = .false.
+	logical, save :: bbeach_debug = .false.
 	integer, save :: iudbg = 889
 
 	integer, save, allocatable :: beach_node(:)
