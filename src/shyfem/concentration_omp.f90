@@ -61,6 +61,7 @@
 ! 24.09.2024    ggu     introduced tvd mpi (bmpi)
 ! 21.04.2026    ggu     use bdry to see if mfluxv should be used
 ! 29.04.2026    ggu     timing calls inserted
+! 08.05.2026    ggu     debug code (also passing debug vals to other routines)
 !
 !**************************************************************
 
@@ -794,14 +795,30 @@
 	double precision, parameter :: d_tiny = tiny(1.d+0)
 	double precision, parameter :: r_tiny = tiny(1.)
       
+	integer kext
+	integer, save :: iudbg = 876
 	logical, save :: bdebug = .false.
-	character*80 aline
+	character*80 aline,what
+	integer isact,istot
+	real dt_total
+	double precision caux_flux,caux_volold,caux_volnew
+	double precision caux_conzold,caux_conznew
+	double precision dtime_act
 
 	logical :: is_dry_node
 
 ! ----------------------------------------------------------------
 !  debug code
 ! ----------------------------------------------------------------
+
+	kext = ipv(k)
+	bdebug = ( kext == 4279 )
+	bdebug = .false.
+
+	if( bdebug ) then
+	  call get_conz_debug(what,isact,istot,dtime_act)
+	  call get_timestep(dt_total)
+	end if
 
 ! ----------------------------------------------------------------
 !  handle boundary (flux) conditions
@@ -814,19 +831,41 @@
 
 	  do l=jlevel,ilevel
 
-            !mflux = cbound(l,k)		!mass flux has been passed
-	    cconz = cbound(l,k)			!concentration has been passed
 	    qflux = mfluxv(l,k)
 	    if( bdry ) qflux = 0.
+	    cconz = cbound(l,k)			!concentration has been passed
 	    if( qflux .lt. 0. .and. is_boundary(k) ) cconz = cn1(l,k)
 	    mflux = qflux * cconz
+
+	if( bdebug .and. what == 'temp' ) then
+	  call get_timeline(dtime_act,aline)
+	  write(iudbg,*) '-------------------------'
+	  write(iudbg,*) trim(what)
+	  write(iudbg,*) trim(aline)
+	  write(iudbg,*) isact,istot,dt,dt_total
+	  write(iudbg,*) kext,ilevel
+	  write(iudbg,*) bdry
+	  write(iudbg,*) cconz,qflux,mflux
+	  caux_flux = dt * mflux
+	  caux_volold = cn(l,k)
+	  caux_volnew = caux_volold + caux_flux
+	  caux_conzold = caux_volold/cdiag(l)
+	  caux_conznew = caux_volnew/cdiag(l)
+	  if( caux_flux > cdiag(l) ) then
+	    write(iudbg,*) caux_flux, cdiag(l),' *** flux error'
+	  else
+	    write(iudbg,*) caux_flux, cdiag(l),' ok'
+	  end if
+	  write(iudbg,*) caux_conzold,caux_conznew
+	  write(iudbg,*) '-------------------------'
+	end if
 
             cn(l,k) = cn(l,k) + dt * mflux	!explicit treatment
 
 	    loading = rload*load(l,k)
-            if( loading == 0 ) then			!no loading
+            if( loading == 0 ) then		!no loading
               !nothing
-            else if ( loading < 0.d0 ) then		!excess deposition
+            else if ( loading < 0.d0 ) then	!excess deposition
 	      cload = 0.
 	      if( cn(l,k) > 0. ) then
                 cload = - dt * loading
@@ -838,18 +877,9 @@
               loading = -cload / dt
               if( rload > 0. ) load(l,k) = loading / rload
               cn(l,k) = cn(l,k) + dt*loading
-            else					!erosion
+            else				!erosion
               cn(l,k) = cn(l,k) + dt*loading
             end if
-
-	    if( bdebug ) then
-	     if( mflux /= 0. .or. loading /= 0. ) then
-	      call get_act_timeline(aline)
-	      write(666,*) trim(aline),l,k
-	      write(666,*) cconz,qflux,mflux
-	      write(666,*) rload,loading
-	     end if
-	    end if
 
 	  end do
 
@@ -958,6 +988,58 @@
         write(iunit,*) '------------------------------------'
 
         end
+
+!*****************************************************************
+!*****************************************************************
+!*****************************************************************
+!passing parameters from calling subroutine
+!*****************************************************************
+!*****************************************************************
+!*****************************************************************
+
+	module conz_debug
+
+	implicit none
+
+	character*80, save :: what_debug
+	integer, save :: isact_debug,istot_debug
+	double precision, save :: dtime_act_debug
+
+	end module conz_debug
+
+	subroutine set_conz_debug(what,isact,istot,dtime_act)
+
+	use conz_debug
+
+	implicit none
+
+	character*(*) what
+	integer isact,istot
+	double precision dtime_act
+
+	what_debug = what
+	isact_debug = isact
+	istot_debug = istot
+	dtime_act_debug = dtime_act
+
+	end
+
+	subroutine get_conz_debug(what,isact,istot,dtime_act)
+
+	use conz_debug
+
+	implicit none
+
+	character*(*) what
+	integer isact,istot
+	double precision dtime_act
+
+	what = what_debug
+	isact = isact_debug
+	istot = istot_debug
+	dtime_act = dtime_act_debug
+
+	end
 
 !*****************************************************************
 

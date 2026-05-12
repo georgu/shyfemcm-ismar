@@ -238,6 +238,7 @@
 	real saux(nlvdi,nkn)
 
 	real azpar
+	character*20 aline
 
 !----------------------------------------------------------------
 ! compute stability index
@@ -253,6 +254,10 @@
 
 	rindex = dt * rindex
 	istot = 1 + rindex
+
+        !call get_act_timeline(aline)
+        !write(578,*) trim(aline),rindex,istot
+        !write(iuinfo,*) 'stability_scalar: ',istot,sindex,stabind
 
 !----------------------------------------------------------------
 ! end of routine
