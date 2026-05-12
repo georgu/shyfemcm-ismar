@@ -934,8 +934,6 @@
 	lmax = nz1
 	if( ndd == 2 ) lmax = 1
 
-	!write(6,*) 'ggu: ',ndd,nz,lmax,level
-
 	if( iformat == 0 ) then
 	  iunit = ifileo(30,'out.fem','unform','new')
 	else

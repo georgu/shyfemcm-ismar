@@ -119,6 +119,7 @@
 ! 06.11.2025    ggu     introduced boriginal
 ! 07.11.2025    ggu     set time array out of iff_space_interpolate()
 ! 10.11.2025    ggu     introduced iuout, better info writing
+! 08.05.2026    ggu     new routine iff_ts_has_data()
 !
 !****************************************************************
 !
@@ -3145,17 +3146,19 @@
 
         subroutine iff_ts_init(dtime,file,nintp,nvar,id)
 
+! intiaializes time series file for reading and interpolation
+
 	use intp_fem_file
 
 ! opens and inititializes file
 
         implicit none
 
-	double precision dtime
+	double precision dtime	!initial time needed
         character*(*) file      !file name
         integer nintp           !grade of interpolation (2=linear,4=cubic)
         integer nvar            !how many vars (columns) to read/interpolate
-	integer id
+	integer id		!file id (return)
 
 	integer date
 	integer nv
@@ -3188,15 +3191,40 @@
 
 !****************************************************************
 
-        subroutine iff_ts_intp(id,dtime,values)
+	function iff_ts_has_data(id,dtime)
+
+! checks if time series file has data for time dtime
 
 	use intp_fem_file
 
 	implicit none
 
-	integer id
-	double precision dtime
-        real values(*)            !interpolated values
+	logical iff_ts_has_data		!true if file has the data
+	integer id			!file id
+	double precision dtime		!time for which data is needed
+
+	double precision dtime2
+
+	iff_ts_has_data = .true.
+        if( iff_must_read(id,dtime) ) then
+	  iff_ts_has_data = iff_peek_next_record(id,dtime2)
+	end if
+
+	end
+
+!****************************************************************
+
+        subroutine iff_ts_intp(id,dtime,values)
+
+! interpolates values in file to time dtime
+
+	use intp_fem_file
+
+	implicit none
+
+	integer id			!file id
+	double precision dtime		!time for which data is needed
+        real values(*)            	!interpolated values (return)
 
 	real valaux(1,1)
 	integer ldim,ndim,ivar,nvar,nsize
@@ -3227,6 +3255,8 @@
 !****************************************************************
 
         subroutine iff_ts_intp1(id,dtime,value)
+
+! interpolates value in file to time dtime (simple version, only on value)
 
 	use intp_fem_file
 

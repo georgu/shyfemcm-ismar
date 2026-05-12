@@ -759,10 +759,11 @@
 	write(6,1200) trim(string),time0
 	call cpu_time_get(2,time1,string)
 	write(6,1200) trim(string),time1
-	write(6,1200) 'time spent initializing      :',time0 - time1
+	write(6,1200) 'time spent initializing         :',time0 - time1
 	call cpu_time_get(3,time1,string)
 	write(6,1200) trim(string),time1
-	write(6,1200) 'time no matrix               :',time0 - time1
+	write(6,1200) 'time no matrix                  :',time0 - time1
+	itmax = 8				!only show most important one
 	do itime=4,itmax
 	  call cpu_time_get(itime,time0,string)
 	  write(6,1200) trim(string),time0

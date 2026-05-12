@@ -125,6 +125,8 @@ src/shyfem/rstinf
 bin/rstinf
 src/shyfem/rst2shy
 bin/rst2shy
+src/shyfem/heat_test
+bin/heat_test
 
 src/tools/shypre/shypre_noopti
 bin/shypre_noopti
