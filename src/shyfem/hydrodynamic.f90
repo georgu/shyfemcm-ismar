@@ -1586,16 +1586,16 @@
 	unv(ie) = um
 	vnv(ie) = vm
 
+	end do
+
 !	------------------------------------------------------
 !	save current stage transports
 !	------------------------------------------------------
 
         if (curr_stage .ne. n_rkstages) then !if (not last stage)
-          urk_reg(:,:,curr_stage) = utlnv
-          vrk_reg(:,:,curr_stage) = vtlnv
+          urk_reg(:,:,curr_stage) = utlcv
+          vrk_reg(:,:,curr_stage) = vtlcv
 	end if
-
-	end do
 
 !-------------------------------------------------------------
 ! end of routine
