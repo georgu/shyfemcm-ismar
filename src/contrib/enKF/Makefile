@@ -62,6 +62,7 @@ SHYOBJ = \
 	$(SHYMOD)/mod_hydro_vel.o \
 	$(SHYMOD)/mod_ts.o \
 	$(SHYMOD)/mod_shyfem.o \
+	$(SHYMOD)/mod_layer_thickness.o \
 	$(SHYSHYFEM)/outputd.o \
 	$(SHYSHYFEM)/restart.o \
 	$(SHYUTILMPI)/mod_restart.o \

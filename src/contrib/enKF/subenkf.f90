@@ -94,20 +94,64 @@ subroutine rst_read(rstname, atimea)
 end subroutine rst_read
 
 !----------------------------------------------------------------------
-! Write a minimalist restart record at time atimea.
+! Write a restart record at time atimea.
 !----------------------------------------------------------------------
 subroutine rst_write(rstname, atimea)
   use iso_fortran_env, only : dp => real64
+  use basin, only : nel, nkn
+  use levels, only : nlv
+  use mod_hydro
+  use mod_hydro_vel
+  use mod_layer_thickness
   implicit none
   character(len=*), intent(in) :: rstname
   real(dp),        intent(in) :: atimea
   integer :: ios
 
+  call mod_layer_thickness_init(nkn,nel,nlv)
+
+  call setzev_enkf
+
+  zov = znv
+  utlov = utlnv
+  vtlov = vtlnv
+  zeov = zenv
+
   open(34, file=trim(rstname), form='unformatted', status='replace', action='write', iostat=ios)
   if (ios /= 0) error stop 'rst_write: error opening restart for write'
   call rst_write_record(atimea, 34)
   close(34)
+
 end subroutine rst_write
+
+!----------------------------------------------------------------------
+! Duplicate of setzev with some modifications
+!----------------------------------------------------------------------
+subroutine setzev_enkf
+
+  use mod_geom_dynamic
+  use mod_hydro
+  use basin
+
+  implicit none
+
+! local
+  integer ie,ii
+
+  iwetv = 0
+
+  do ie=1,nel
+      do ii=1,3
+        zenv(ii,ie)=znv(nen3v(ii,ie))
+        if ((zenv(ii,ie) + hm3v(ii,ie)) < 0.05) then
+	  iwegv(ie) = iwegv(ie) + 1
+	  zenv(ii,ie) = 0.02 - hm3v(ii,ie)
+          znv(nen3v(ii,ie)) = zenv(ii,ie)
+	end if
+      end do
+  end do
+
+end subroutine setzev_enkf
 
 !----------------------------------------------------------------------
 ! Find the nearest node (ik) of triangle element ie to point (x,y).
@@ -136,35 +180,6 @@ subroutine find_node(x, y, ie, ik)
   end do
   ik = ikmin
 end subroutine find_node
-
-!----------------------------------------------------------------------
-! Set layer thickness proxy zenv from znv, ensuring minimum water depth.
-!----------------------------------------------------------------------
-subroutine layer_thick(nelem)
-  use mod_hydro
-  use basin
-  implicit none
-  integer, intent(in) :: nelem
-  integer :: ie, ii, k
-  real*4 :: z, h
-  real*4 :: zmin
-
-  zmin = 0.01
-
-  do ie = 1, nelem
-     do ii = 1, 3
-        k = nen3v(ii, ie)
-        zenv(ii, ie) = znv(k)
-        z = zenv(ii, ie)
-        h = hm3v(ii, ie)
-        if (z + h < zmin) then
-           write(*,*) 'Warning: small layer thickness. Correcting: ', z, zmin
-           z = zmin
-           zenv(ii, ie) = z
-        end if
-     end do
-  end do
-end subroutine layer_thick
 
 !----------------------------------------------------------------------
 ! Convert INTEGER to zero-padded 5-char string: "00000" .. "99999".

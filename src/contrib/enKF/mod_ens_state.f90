@@ -247,8 +247,6 @@ subroutine bc_val_check_correct()
 end subroutine bc_val_check_correct
 !=======================================================================
 
-
-
 !=======================================================================
 ! Read boundary condition file (two-stage read)
 ! icall==0 → read number of BC nodes
@@ -280,8 +278,6 @@ subroutine read_bc_file(icall, bcfile, nbc, bcid, bcrho)
 
 end subroutine read_bc_file
 !=======================================================================
-
-
 
 !=======================================================================
 ! Compute weight for boundary damping based on distance from BC node.
@@ -338,8 +334,6 @@ subroutine bc_correction(stype, id, nbc, bcid, bcrho, w)
 
 end subroutine bc_correction
 !=======================================================================
-
-
 
 !=======================================================================
 ! Check a single scalar:
@@ -566,8 +560,6 @@ subroutine push_state(A4)
 end subroutine push_state
 !=======================================================================
 
-
-
 !=======================================================================
 ! pull_state(A4)
 !
@@ -596,11 +588,8 @@ subroutine pull_state(A4)
       saltv = 0.0
    end if
 
-   !call layer_thick(nnel)
 end subroutine pull_state
 !=======================================================================
-
-
 
 !=======================================================================
 ! Conversion routines between ensemble of states and matrices
