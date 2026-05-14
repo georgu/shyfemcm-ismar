@@ -44,8 +44,8 @@
 	integer, private, save :: nel_hydro = 0
 	integer, private, save :: nlv_hydro = 0
 
-	real, allocatable, save :: zov(:), znv(:), zcv(:)
-	real, allocatable, save :: zeov(:,:), zenv(:,:)
+	real, allocatable, save :: zov(:), znv(:)
+	real, allocatable, save :: zeov(:,:), zenv(:,:), zecv(:,:)
 	real, allocatable, save :: utlov(:,:)
 	real, allocatable, save :: utlnv(:,:)
         real, allocatable, save :: utlcv(:,:)
@@ -73,10 +73,10 @@
         if( nkn_hydro > 0 ) then
           deallocate(zov)
           deallocate(znv)
-          deallocate(zcv)
 
           deallocate(zeov)
           deallocate(zenv)
+          deallocate(zecv)
 
           deallocate(utlov)
           deallocate(utlnv)
@@ -94,10 +94,10 @@
 
         allocate(zov(nkn))
         allocate(znv(nkn))
-        allocate(zcv(nkn))
 
         allocate(zeov(3,nel))
         allocate(zenv(3,nel))
+        allocate(zecv(3,nel))
 
         allocate(utlov(nlv,nel))
         allocate(utlnv(nlv,nel))
@@ -108,9 +108,9 @@
 
 	zov = 0.
 	znv = 0.
-	zcv = 0.
 	zeov = 0.
 	zenv = 0.
+	zecv = 0.
 	utlov = 0.
 	vtlov = 0.
 	utlnv = 0.

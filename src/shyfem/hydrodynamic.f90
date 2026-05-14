@@ -608,8 +608,8 @@
 		kn(i)=kk
 		b(i)=ev(i+3,ie)
 		c(i)=ev(i+6,ie)
-		z(i)=zov(kk)
-		!z(i)=zeov(i,ie)		!ZEONV
+		!z(i)=zov(kk)
+		z(i)=zeov(i,ie)		!ZEONV
 		zndg(i) = andgzv(kk)	!nudging
 	end do
 
@@ -1048,10 +1048,10 @@
 	  b(ii)=ev(ii+3,ie)
 	  c(ii)=ev(ii+6,ie)
 
-	  zmm = zmm + zeov(ii,ie)		!ZEONV
+	  zmm = zmm + zecv(ii,ie)		!ZEONV
 
-	  bz=bz+zeov(ii,ie)*b(ii)
-	  cz=cz+zeov(ii,ie)*c(ii)
+	  bz=bz+zecv(ii,ie)*b(ii)
+	  cz=cz+zecv(ii,ie)*c(ii)
 	  bzeq=bzeq+zeqv(kk)*b(ii)
 	  czeq=czeq+zeqv(kk)*c(ii)
 	  bpres=bpres+ppv(kk)*b(ii)

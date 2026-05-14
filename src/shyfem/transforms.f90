@@ -568,16 +568,16 @@
 	integer curr_stage
 
         if (curr_stage == 1) then !stage is first
-	  zov   = znv
+	  zeov  = zenv
 	  utlov = utlnv
 	  vtlov = vtlnv
         end if
 
-        zcv   = znv		  !update of current stage prognostic vars
+        zecv   = zenv		  !update of current stage prognostic vars
         utlcv = utlnv
         vtlcv = vtlnv
 
-	zeov  = zenv		  !update of current stage diagnostic vars
+	zov   = znv		  !update of current stage diagnostic vars
 	wlov  = wlnv
 
 	uov   = unv			!$$UVBARO
