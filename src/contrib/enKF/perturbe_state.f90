@@ -264,19 +264,15 @@ end subroutine write_states
 ! Write a restart record at time atimea.
 subroutine rst_write_rec(atimea, iunit)
   use iso_fortran_env, only : dp => real64
-  use basin, only : nel, nkn
-  use levels, only : nlv
   use mod_hydro
   use mod_hydro_vel
-  use mod_layer_thickness
   implicit none
   integer, intent(in) :: iunit
   real(dp),        intent(in) :: atimea
   integer :: ios
 
-  call mod_layer_thickness_init(nkn,nel,nlv)
-
-  call setzev_enkf
+  !call mod_layer_thickness_init(nkn,nel,nlv)
+  !call setzev_enkf
 
   zov = znv
   utlov = utlnv
