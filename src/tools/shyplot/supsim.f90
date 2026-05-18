@@ -146,6 +146,7 @@
 !  01.02.2023	ggu	use real area in plobox()
 !  08.03.2025	ggu	plot nodal code
 !  13.10.2025	ggu	introduced bintp
+!  18.05.2026	ggu	bug fix for regular plot
 ! 
 !  notes :
 ! 
@@ -1118,14 +1119,14 @@
 	integer ivel			!what to plot
         character*(*) title		!title for annotation
 	logical bregdata		!is data on regular grid?
-	logical bintp			!if regular interpolate on fem grid
+	logical bintp			!date is on fem grid
 
 	real uvmod(nkn)
 
 	logical boverl,bnode,bbound,bnorm
         logical bspecial,bhasbasin
 	logical bdebug
-	logical bregplot
+	logical bregplot		!want regular plot
 	logical bvel,btrans,bwind,bwave,bvelok
         character*80 anoline
         character*80 spcvel
@@ -1160,6 +1161,8 @@
 
 	real getpar,getcol
 	integer getlev
+
+	!write(6,*) 'start of plovect: ',bregdata,bintp,ivel
 
 ! ------------------------------------------------------------------
 !  set up parameters
@@ -1236,7 +1239,6 @@
 	else				!see if we have to plot regular
 	  call prepare_regular(nx,ny,bregplot)
 	end if
-	!if( bregplot ) write(6,*) 'plot on regular grid: ',bregdata,bregplot
 
 ! ------------------------------------------------------------------
 !  prepare for velocity or transport
@@ -1315,10 +1317,13 @@
 	    uvnode(1:np) = reshape(ureg(:,:),(/nx*ny/))
 	    vvnode(1:np) = reshape(vreg(:,:),(/nx*ny/))
 	  end if
-	else if( bregplot ) then
+	else if( bregplot ) then	!want regular plot
+	  call getgeo(x0,y0,dx,dy,flag)
 	  np = nx*ny
 	  call av2amk(bwater,uvnode,ureg,nx,ny)
 	  call av2amk(bwater,vvnode,vreg,nx,ny)
+	else
+	  np = nkn
 	end if
 
 ! ------------------------------------------------------------------
@@ -1355,10 +1360,12 @@
 	  if( bverb ) write(6,*) 'overlay color... ',pmin,pmax
           call qcomm('Plotting overlay')
           !call isoline(uvover,np,0.,2)
-	  if( bintp ) then	!values have been interpolated onto fem grid
+	  !if( bintp ) then	!values have been interpolated onto fem grid
+	  if( .not. bregplot ) then	!values are on fem grid
             call qcomm('Plotting interpolated regular grid')
             call isoline(uvover,np,0.,2)
 	  else
+	    call mod_hydro_get_regpar(regpar)	!regular data description
             call qcomm('Plotting regular grid')
             call isoreg(uvover,np,regpar,0.,2)
 	  end if
@@ -2540,6 +2547,7 @@
 
 	real x0,y0,dx,dy,flag
 	real xmin,ymin,xmax,ymax
+	real regpar(7)
 
 	nx = 0
 	ny = 0
@@ -2550,6 +2558,20 @@
 	call getbas(xmin,ymin,xmax,ymax)
 	nx = nint((xmax-xmin)/dx)
 	ny = nint((ymax-ymin)/dy)
+
+	x0 = xmin
+	y0 = ymin
+	call setgeo(x0,y0,dx,dy,flag)
+
+	call mod_hydro_get_regpar(regpar)	!regular data description
+	regpar(1) = nx
+	regpar(2) = ny
+	regpar(3) = x0
+	regpar(4) = y0
+	regpar(5) = dx
+	regpar(6) = dy
+	regpar(7) = flag
+	call mod_hydro_set_regpar(regpar)	!regular data description
 
 	call mod_hydro_plot_regular_init(nx,ny)	!nx,ny may be changed here
 
