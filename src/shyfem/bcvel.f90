@@ -168,6 +168,8 @@
 
 	end do
 
+	write(6,*) 'bclfix_ini has been initialized'
+
 !------------------------------------------------------------------
 ! debug output
 !------------------------------------------------------------------
@@ -296,6 +298,8 @@
           alpha = ddtime/tramp
           if( alpha .gt. 1. ) alpha = 1.
         end if
+
+	!write(6,*) 'nudging velocities with tramp ',tramp,alpha
 
 !------------------------------------------------------------------
 ! nudge or fix velocities in elements
