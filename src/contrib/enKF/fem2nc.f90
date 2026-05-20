@@ -5,8 +5,8 @@ program fem2nc
 
     ! --- FEM Variables ---
     character(len=255) :: filename, nc_out
-    integer :: fem_unit, iformat, fem_size, nvers, np, lmax, nvar, ntype, nlvddi
-    integer :: datetime(2), ierr, i, t_idx
+    integer :: fem_unit, iformat, nvers, np, lmax, nvar, ntype, nlvddi
+    integer :: datetime(2), ierr, t_idx
     real(dp) :: dtime, atime, offset_1970
     real(sp) :: regpar(7)
     integer :: nx, ny
@@ -16,6 +16,7 @@ program fem2nc
     ! --- Allocatable arrays ---
     real(sp), allocatable :: hlv(:), femdata(:,:,:), hd(:)
     character(len=50), allocatable :: vstring(:)
+    character(len=50) :: vvstring
     integer, allocatable :: ilhkv(:)
 
     ! --- NetCDF IDs ---
@@ -25,6 +26,7 @@ program fem2nc
 
     integer :: active_dims(4), dim_count, s_ptr(4), c_ptr(4)
     real(sp), allocatable :: x_coords(:), y_coords(:)
+    integer :: i, ii
 
     if (command_argument_count() /= 2) then
         write(error_unit, '(A)') "Usage: ./fem2nc <input_file.fem> <output_file.nc>"
@@ -42,7 +44,8 @@ program fem2nc
     call dts_convert_to_atime(datetime, 0.0_dp, offset_1970)
 
     ! --- 2. INITIAL SCAN ---
-    call fem_file_read_open(trim(filename), fem_size, iformat, fem_unit)
+    np = 0
+    call fem_file_read_open(trim(filename), np, iformat, fem_unit)
     call fem_file_read_params(iformat, fem_unit, dtime, nvers, np, lmax, nvar, ntype, datetime, ierr)
     if (ierr < 0) error stop 'Error: Cannot read FEM file.'
 
@@ -103,7 +106,17 @@ program fem2nc
     nlvddi = lmax
     do i = 1, nvar
         call fem_file_read_data(iformat, fem_unit, nvers, np, lmax, vstring(i), ilhkv, hd, nlvddi, femdata, ierr)
-        if (vstring(i) == "") write(vstring(i), '(A,I0)') 'Var_', i
+
+	! String correction
+	vvstring = vstring(i)
+        if (vvstring == "") write(vvstring, '(A,I0)') 'Var_', i
+	do ii = 1,len_trim(vvstring)
+         if (vvstring(ii:ii) == " ") then
+            vvstring(ii:ii) = "_"
+         end if
+        end do
+	vstring(i) = vvstring
+
         call check( nf90_def_var(ncid, trim(vstring(i)), NF90_FLOAT, active_dims(1:dim_count), data_varids(i)) )
         call check( nf90_put_att(ncid, data_varids(i), "_FillValue", flag) )
     end do
@@ -122,6 +135,8 @@ program fem2nc
 
         t_idx = t_idx + 1
         call dts_convert_to_atime(datetime, dtime, atime)
+
+	write(*,*) "Processing record: ", t_idx, atime
         
         ! Shift using the dynamically calculated offset and round
         atime = anint(atime, kind=dp) - offset_1970
@@ -139,11 +154,12 @@ program fem2nc
 
             call check( nf90_put_var(ncid, data_varids(i), femdata, start=s_ptr(1:dim_count), count=c_ptr(1:dim_count)) )
         end do
+	if (t_idx == 100) exit
     end do read_loop
 
     call check( nf90_close(ncid) )
     close(fem_unit)
-    write(*,*) "Success! NetCDF created with auto-time correction."
+    write(*,*) "Success! NetCDF created."
 
 contains
     subroutine check(status)
