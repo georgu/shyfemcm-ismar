@@ -5,6 +5,8 @@ program fem2nc
 
     ! --- FEM Variables ---
     character(len=255) :: filename, nc_out
+    character(len=10) :: lnrec
+    integer :: nrec
     integer :: fem_unit, iformat, nvers, np, lmax, nvar, ntype, nlvddi
     integer :: datetime(2), ierr, t_idx
     real(dp) :: dtime, atime, offset_1970
@@ -28,13 +30,17 @@ program fem2nc
     real(sp), allocatable :: x_coords(:), y_coords(:)
     integer :: i, ii
 
-    if (command_argument_count() /= 2) then
-        write(error_unit, '(A)') "Usage: ./fem2nc <input_file.fem> <output_file.nc>"
+    if (command_argument_count() /= 3) then
+        write(error_unit, '(A)') "Usage: ./fem2nc <input_file.fem> <output_file.nc> <nrec>"
+        write(error_unit, '(A)') "nrec: number of records (all = -1)"
         stop 1
     end if
 
     call get_command_argument(1, filename)
     call get_command_argument(2, nc_out)
+    call get_command_argument(3, lnrec)
+
+    read(lnrec, *) nrec
 
     ! --- 1. DYNAMIC OFFSET CALCULATION ---
     ! exact seconds for 1970-01-01
@@ -154,7 +160,9 @@ program fem2nc
 
             call check( nf90_put_var(ncid, data_varids(i), femdata, start=s_ptr(1:dim_count), count=c_ptr(1:dim_count)) )
         end do
-	if (t_idx == 100) exit
+
+	if ((nrec /= -1).and.(t_idx == nrec)) exit
+
     end do read_loop
 
     call check( nf90_close(ncid) )
