@@ -44,6 +44,7 @@ c 08.06.2022	ggu	save external nodes in basboxgrd for grd_write_item()
 c 16.06.2022	ggu	write coloring errors to grd files
 c 13.07.2022	ggu	forgot setting listold(0,:)
 c 20.12.2024	ggu	general read for index file
+c 22.05.2026	ggu	new routines for regularizing edges and connectivity
 c
 c****************************************************************
 
@@ -638,6 +639,9 @@ c sets up box index
 	  write(6,*) ia,nboxes(ia),nblink(ia)
 	end do
 
+	call handle_regularize_edges
+	stop
+
 	return
    98	continue
 	write(6,*) 'too many boundary nodes in box ',ia
@@ -659,14 +663,16 @@ c*******************************************************************
 
 c checks if all boxes are connected
 
-	use mod_geom
 	use basin
+	use mod_geom
 
 	implicit none
 
 	integer ie,k,ii
 	integer i,j,nc,ic,nt,nnocol,icerror
-	integer icol,ierr,icolmax
+	integer ijmin,ijmax
+	integer icol,icolmax
+	integer ierr,ierr_swap
 	integer nmin,nmax
 	integer icolor(nel)
 	integer icon(nel)
@@ -703,22 +709,42 @@ c checks if all boxes are connected
 
 ! list(1,i)	area code
 ! list(2,i)	total number of elements
-! list(3,i)	one element index
+! list(3,i)	start element index
 
 	if( ierr > 0 ) then	!here error treatment for not connected areas
 	 do i=1,ic
 	  icol = list(1,i)
 	  do j=i+1,ic
 	    if( list(1,j) == icol ) then
+	        if( list(2,i) > list(2,j) ) then
+		  ijmax = i
+		  ijmin = j
+		else
+		  ijmax = j
+		  ijmin = i
+		end if
+		ie = list(3,ijmin)
+		nc = list(2,ijmin)
+		ierr_swap = 1
+		if( nc == 1 ) then
+		  write(6,*) 'single element found that is not connected'
+		  write(6,*) 'trying to swap color for single element'
+		  call exchange_one_element(ie,ierr_swap)
+		  if( ierr_swap == 0 ) then
+		    write(6,*) 'successfully swapping for single element'
+		  else
+		    write(6,*) 'could not automatically resolve connections'
+		  end if
+		end if
+		if( ierr_swap == 0 ) cycle
 		icerror = icerror + 1
+		write(6,*) '==================================='
 		write(6,*) 'not connected area found ',icol
 	        write(6,*) 'area            elements'
      +		// '   elem number (int)'
      +		// '   elem number (ext)'
-		write(6,1123) list(:,i),ieext(list(3,i))
-		write(6,1123) list(:,j),ieext(list(3,j))
-	        ie = list(3,i)
-	        if( list(2,i) > list(2,j) ) ie = list(3,j)
+		write(6,1123) list(:,ijmax),ieext(list(3,ijmax))
+		write(6,1123) list(:,ijmin),ieext(list(3,ijmin))
 	        write(6,*) 'not connected area contains element (int/ext)'
      +			,ie,ieext(ie)
 	        write(6,*) 'coordinates of element are: '
@@ -727,10 +753,13 @@ c checks if all boxes are connected
 		  write(6,*) ii,ipext(k),xgv(k),ygv(k)
 		end do
 	        call write_grd_error(icerror,list(3,i),list(3,j))
+		write(6,*) '==================================='
 	    end if
 	  end do
 	 end do
 	end if
+
+	stop 'forced stop in check_box_connection'
 
 	nnocol = count( icon == 0 )
 	if( nnocol > 0 ) goto 96
@@ -772,6 +801,8 @@ c checks if all boxes are connected
 	  write(6,*) 'There were errors: ',icerror
 	  write(6,*) 'files are in error_*.grd'
 	  stop 'error stop check_box_connection: errors'
+	else
+	  write(6,*) 'all areas are connected'
 	end if
 
  1123	format(i5,3i20)
@@ -800,8 +831,8 @@ c colors only elements with same area code
 c uses this area code to color the elements
 c area code 0 is not allowed !!!!
 
-	use mod_geom
 	use basin
+	use mod_geom
 
 	implicit none
 
@@ -811,7 +842,7 @@ c area code 0 is not allowed !!!!
 	integer nc		!total number of elements colored (return)
 
 	integer ip,ien,ii,ie
-	integer list(nel)
+	integer list(nel)	!stack to hold still to color elements
 
 	nc = 0
 	ip = 1
@@ -843,6 +874,140 @@ c area code 0 is not allowed !!!!
    99	continue
 	write(6,*) ip,ie,ien,icol,icon(ien)
 	stop 'error stop color_box_area: internal error (1)'
+	end
+
+!*******************************************************************
+
+	subroutine check_element_connection(iecheck,ierr)
+
+! checks if color of element is unique (connected)
+
+	use basin
+
+	implicit none
+
+	integer iecheck		!check this element
+	integer ierr		!error code: 0 if ok, else not connected
+
+	integer icol,nc,ie
+	integer icon(nel)
+
+	icon = 0
+	call color_box_area(iecheck,icon,icol,nc)
+	
+	ierr = 1
+	do ie=1,nel
+	  if( iarv(ie) == icol .and. icon(ie) == 0 ) return	!not connected
+	end do
+
+	ierr = 0
+
+	end
+
+!*******************************************************************
+
+	subroutine exchange_one_element(ie,ierr)
+
+	use basin
+	use mod_geom
+
+	implicit none
+
+	integer ie
+	integer ierr
+
+	logical bw
+	integer ii,i
+	integer icol,ii_start,icol_new,iii,ien,icoln
+	integer ie_start,ie_try,ii_aux
+	integer iens(3)
+	integer icols(3)
+
+	ierr = 1	!fake error
+
+	icol = iarv(ie)
+
+!	--------------------------------------
+!	find colors of neigboring elements
+!	--------------------------------------
+
+	icols = 0
+	do ii=1,3
+	  iens(ii) = ieltv(ii,ie)
+	  if( iens(ii) > 0 ) icols(ii) = iarv(iens(ii))
+	end do
+
+	if( any(icols==icol) ) goto 99	!this would mean it is connected
+
+!	--------------------------------------
+!	find element with predominant color and start from this one
+!	--------------------------------------
+
+	if( icols(1) == icols(2) ) then
+	  ii_start = 1
+	else if( icols(1) == icols(3) ) then
+	  ii_start = 1
+	else if( icols(2) == icols(3) ) then
+	  ii_start = 2
+	else					!all colors are different
+	  ii_start = 1
+	end if
+
+!	--------------------------------------
+!	loop over colors of element and neighbors
+!	--------------------------------------
+
+	!ii_aux = mod(ii_start+2,3)
+	ii_start = ii_start - 1
+	if( ii_start == 0 ) ii_start = 3
+	!if( ii_aux /= ii_start ) stop 'ii_aux/=ii_start: internal error'
+
+	ierr = 0
+
+	bw = ( icol == 33 )
+
+	if( bw ) then
+	  write(6,*) '======================================='
+	  write(6,*) 'swapping color icol: ',icol
+	  write(6,*) '======================================='
+	  do ii=1,3
+	    write(6,*) ii,iens(ii),icols(ii)
+	  end do
+	end if
+
+	do ii=1,3
+	  ii_start = 1 + mod(ii_start,3)
+	  icol_new = icols(ii_start)
+	  if( bw ) write(6,*) 'ii,ii_start,icol: ',ii,ii_start,icol_new
+	  if( icol_new /= 0 ) then
+	    iarv(ie) = icol_new
+	    if( bw ) write(6,*) 'trying color: ',icol_new
+	    call check_element_connection(ie,ierr)
+	    if( bw ) write(6,*) 'old area: ',0,icol,ierr
+	    if( ierr /= 0 ) cycle	!old elem still not connected
+	    do iii=1,3			!now check the surrounding areas
+	      ien = iens(iii)
+	      icoln = icols(iii)
+	      if( ien == 0 ) cycle
+	      call check_element_connection(ien,ierr)
+	      if( bw ) write(6,*) 'new area: ',iii,icoln,ierr
+	      if( ierr /= 0 ) exit	!area not connected
+	    end do
+	  end if
+	  if( ierr == 0 ) exit		!this color works
+	end do
+
+	if( ierr == 0 ) then
+	  write(6,*) 'switching color works: ',icol,icol_new
+	else
+	  iarv(ie) = icol		!set back old color
+	  write(6,*) 'cannot automatically reconnect area...'
+	end if
+
+	return
+   99	continue
+	write(6,*) 'area is connected: ',ie,ipev(ie)
+	stop 'error stop exchange_one_element: internal error (1)'
 	end
 
 !*******************************************************************
@@ -1484,6 +1649,105 @@ c area code 0 is not allowed !!!!
 	  !write(6,*) 'line: ',ia,is,ie
 	end do
 	write(iu,'(10i8)') line_nodes(1:1)	!close line
+
+	end
+
+!*****************************************************************
+!*****************************************************************
+!*****************************************************************
+
+	subroutine handle_regularize_edges
+
+	implicit none
+
+	integer itot_start,itot_end
+	character*80 file
+
+	call regularize_edges(itot_start)
+	call regularize_edges(itot_end)
+	write(6,*) 'regularizing elements before/after: '
+     &		,itot_start,itot_end
+	call check_box_connection
+
+	file = 'newboxes.grd'
+	write(6,*) 'writing files with new boxes: ',trim(file)
+	call write_grd_from bas(file)
+
+	end
+
+!*****************************************************************
+
+	subroutine regularize_edges(itot)
+
+	use basin
+	use mod_geom
+
+	implicit none
+
+	integer ie,ia,ic,ii,ien
+	integer ian,ians(3)
+	integer ii1,ii2,ii3
+	integer itot
+
+	itot = 0
+
+	do ie=1,nel
+	  ia = iarv(ie)
+	  ians = -1
+	  do ii=1,3
+	    ien = ieltv(ii,ie)
+	    if( ien <= 0 ) cycle		! boundary
+	    ians(ii) = iarv(ien)
+	  end do
+	  ic = count( ians == ia )
+	  if( ic == 0 ) goto 99			! error - cannot be 0
+	  if( ic > 1 ) cycle			! more than one of same color
+	  ii1 = findloc(ians,ia,1)
+	  if( ii1 == 0 ) goto 99		! error - cannot be 0
+	  ii2 = 1 + mod(ii1,3)
+	  ii3 = 1 + mod(ii2,3)
+	  if( ians(ii2) /= ians(ii3) ) cycle	! other colors are different
+	  ian = ians(ii2)
+	  if( ian == -1 ) cycle			! do not handle boundaries
+	  !write(6,*) 'regularize: ',ia,ians
+	  iarv(ie) = ian
+	  itot = itot + 1
+	end do
+
+	return
+   99	continue
+	write(6,*) 'error in element ie ',ie,ipev(ie)
+	write(6,*) 'color: ',ia
+	write(6,*) 'color of neigbors: ',ians
+	stop 'error stop straigthen_edges: color error'
+	end
+
+!*****************************************************************
+
+	subroutine write_grd_from bas(file)
+
+	use basin
+
+	implicit none
+
+	character*80 file
+
+	integer inext(nkn)
+	integer intype(nkn)
+	integer ieext(nel)
+	integer ietype(nel)
+	character*80 text
+
+	text = 'regularized'
+
+        inext = ipv
+        ieext = ipev
+
+	intype = 0
+	ietype = iarv
+
+	call write_grd_file(file,text,nkn,nel,xgv,ygv,nen3v
+     +                  ,inext,ieext,intype,ietype)
 
 	end
 

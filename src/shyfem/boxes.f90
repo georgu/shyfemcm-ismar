@@ -3065,6 +3065,7 @@
 	bdebug = .false.
 	bdebug = .true.
 	bcheck = .true.
+	bcheck = .false.
 	bw = ( my_id == 0 )
 	bcheck = bcheck .and. bw
 
