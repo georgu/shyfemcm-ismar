@@ -1059,10 +1059,18 @@
 
 	call addpar('dhpar',0.)		!diffusion parameter
 
-! The next parameters deal with the control of the scalar transport 
-! and diffusion equation. You have possibility to prescribe the tvd scheme
-! desired and to limit the Courant number.
-!
+! The next parameters deal with the discretization of nonlinear advection
+! terms. For the momentum equation you only have first order upwind flux,
+! and you can choose between two discretizations: upwinding by node or
+! by face. For scalar, you have the possibility to prescribe the tvd
+! scheme desired and to limit the Courant number.
+
+! |imtvd|	Type of the horizontal advection scheme used for 
+!		momentum equation. You can choose between
+!		two upwind schemes. With 0 you have the default SHYFEM
+!		advection scheme where upwinding is introduced by node.
+!		With 1 you have standard numerical flux by face.
+!		(Default 0)
 ! |itvd|	Type of the horizontal advection scheme used for 
 !		the transport and diffusion
 !		equation. Normally an upwind scheme is used (0), but setting
@@ -1082,8 +1090,9 @@
 !		(marginal stability). You can set |rstol| to a smaller value 
 !		if you think there are stability problems. (Default 1)
 
-	call addpar('itvd',0.)		!horizontal TVD scheme?
-	call addpar('itvdv',0.)		!vertical TVD scheme?
+	call addpar('imtvd',0.)		!momentum horizontal scheme
+	call addpar('itvd',0.)		!scalar horizontal TVD scheme?
+	call addpar('itvdv',0.)		!scalar vertical TVD scheme?
 	call addpar('rstol',1.)		!limit time step to this Courant number
 
 !c------------------------------------------------------------------------
