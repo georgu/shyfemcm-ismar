@@ -413,8 +413,12 @@
 	!call setznv		! -> change znv since zenv has changed
 	zov = znv
 	zeov = zenv
-	utlov = utlnv
-	vtlov = vtlnv
+	utlov = 0
+	utlnv = 0
+	vtlov = 0
+	vtlnv = 0
+	!utlov = utlnv
+	!vtlov = vtlnv
 	wlov = 0
 	wlnv = 0
 
