@@ -45,6 +45,7 @@ c 16.06.2022	ggu	write coloring errors to grd files
 c 13.07.2022	ggu	forgot setting listold(0,:)
 c 20.12.2024	ggu	general read for index file
 c 22.05.2026	ggu	new routines for regularizing edges and connectivity
+c 27.05.2026	ggu	finalized swapping elements to resolve non-connectivity
 c
 c****************************************************************
 
@@ -634,10 +635,11 @@ c sets up box index
 	end do
 
 	write(6,*) 'box info:'
-	write(6,*) ' box number    elements   bnd-nodes'
-	do ia=1,nbox
-	  write(6,*) ia,nboxes(ia),nblink(ia)
-	end do
+	!write(6,*) ' box number    elements   bnd-nodes'
+	!do ia=1,nbox
+	!  write(6,*) ia,nboxes(ia),nblink(ia)
+	!end do
+	call write_box_info(nbox,nboxes)
 
 	call handle_regularize_edges
 	stop
@@ -669,7 +671,7 @@ c checks if all boxes are connected
 	implicit none
 
 	integer ie,k,ii
-	integer i,j,nc,ic,nt,nnocol,icerror
+	integer i,j,nc,ic,nt,nnocol,icerror,icn,ico,ntot
 	integer ijmin,ijmax
 	integer icol,icolmax
 	integer ierr,ierr_swap
@@ -725,13 +727,14 @@ c checks if all boxes are connected
 		end if
 		ie = list(3,ijmin)
 		nc = list(2,ijmin)
+		ico = list(1,ijmin)
 		ierr_swap = 1
 		if( nc == 1 ) then
-		  write(6,*) 'single element found that is not connected'
-		  write(6,*) 'trying to swap color for single element'
+		  write(6,*) 'single not connected element found: ',ico
 		  call exchange_one_element(ie,ierr_swap)
 		  if( ierr_swap == 0 ) then
-		    write(6,*) 'successfully swapping for single element'
+		    icn = iarv(ie)
+		    write(6,*) 'swapping colors works ',ico,' -> ',icn
 		  else
 		    write(6,*) 'could not automatically resolve connections'
 		  end if
@@ -758,8 +761,6 @@ c checks if all boxes are connected
 	  end do
 	 end do
 	end if
-
-	stop 'forced stop in check_box_connection'
 
 	nnocol = count( icon == 0 )
 	if( nnocol > 0 ) goto 96
@@ -790,16 +791,17 @@ c checks if all boxes are connected
 	write(6,*) 
 
 	if( ierr /= 0 ) then
-	  write(6,*) 'box number and number of elements: '
-	  do icol=1,ic
-	    write(6,*) icol,icolor(icol)
-	  end do
+	  call write_box_info(ic,icolor)
 	end if
 
 	if( nel .ne. nt ) goto 98
+
+	call write_grd_from bas('swapboxes.grd')
+
 	if( ierr .gt. 0 ) then
-	  write(6,*) 'There were errors: ',icerror
+	  write(6,*) 'There are non connected areas: ',icerror
 	  write(6,*) 'files are in error_*.grd'
+	  write(6,*) 'new boxes are in swapboxes.grd'
 	  stop 'error stop check_box_connection: errors'
 	else
 	  write(6,*) 'all areas are connected'
@@ -895,12 +897,18 @@ c area code 0 is not allowed !!!!
 	icon = 0
 	call color_box_area(iecheck,icon,icol,nc)
 	
-	ierr = 1
+	ierr = 0
+
 	do ie=1,nel
-	  if( iarv(ie) == icol .and. icon(ie) == 0 ) return	!not connected
+	  if( iarv(ie) == icol .and. icon(ie) == 0 ) then
+	    !write(6,*) 'area not connected: ',ie,icol,iarv(ie),icon(ie)
+	    ierr = ierr + 1
+	  end if
 	end do
 
-	ierr = 0
+	!if( ierr > 0 ) then
+	!  write(6,*) 'initial color was: ',iarv(iecheck),nc,ierr
+	!end if
 
 	end
 
@@ -918,7 +926,7 @@ c area code 0 is not allowed !!!!
 
 	logical bw
 	integer ii,i
-	integer icol,ii_start,icol_new,iii,ien,icoln
+	integer icol,ii_start,icol_new,iii,ien,icoln,ncol
 	integer ie_start,ie_try,ii_aux
 	integer iens(3)
 	integer icols(3)
@@ -929,12 +937,17 @@ c area code 0 is not allowed !!!!
 
 !	--------------------------------------
 !	find colors of neigboring elements
+!	exclude areas that are already not connected
 !	--------------------------------------
 
 	icols = 0
 	do ii=1,3
 	  iens(ii) = ieltv(ii,ie)
-	  if( iens(ii) > 0 ) icols(ii) = iarv(iens(ii))
+	  if( iens(ii) > 0 ) then
+	    icols(ii) = iarv(iens(ii))
+	    call check_element_connection(iens(ii),ierr)
+	    if( ierr /= 0 ) icols(ii) = 0
+	  end if
 	end do
 
 	if( any(icols==icol) ) goto 99	!this would mean it is connected
@@ -943,65 +956,68 @@ c area code 0 is not allowed !!!!
 !	find element with predominant color and start from this one
 !	--------------------------------------
 
+	ncol = 2
 	if( icols(1) == icols(2) ) then
 	  ii_start = 1
+	  if( icols(1) == icols(3) ) ncol = 1
 	else if( icols(1) == icols(3) ) then
 	  ii_start = 1
 	else if( icols(2) == icols(3) ) then
 	  ii_start = 2
 	else					!all colors are different
 	  ii_start = 1
+	  ncol = 3
 	end if
 
 !	--------------------------------------
 !	loop over colors of element and neighbors
 !	--------------------------------------
 
-	!ii_aux = mod(ii_start+2,3)
-	ii_start = ii_start - 1
-	if( ii_start == 0 ) ii_start = 3
-	!if( ii_aux /= ii_start ) stop 'ii_aux/=ii_start: internal error'
+	ii_start = 1 + mod(ii_start+1,3)	!ii_start-1
 
 	ierr = 0
 
 	bw = ( icol == 33 )
+	bw = .false.
 
 	if( bw ) then
 	  write(6,*) '======================================='
 	  write(6,*) 'swapping color icol: ',icol
 	  write(6,*) '======================================='
+	  write(6,*) ncol,' different colors in neibors found'
 	  do ii=1,3
 	    write(6,*) ii,iens(ii),icols(ii)
 	  end do
 	end if
 
+	ierr = -1
+
 	do ii=1,3
 	  ii_start = 1 + mod(ii_start,3)
 	  icol_new = icols(ii_start)
-	  if( bw ) write(6,*) 'ii,ii_start,icol: ',ii,ii_start,icol_new
-	  if( icol_new /= 0 ) then
-	    iarv(ie) = icol_new
-	    if( bw ) write(6,*) 'trying color: ',icol_new
-	    call check_element_connection(ie,ierr)
-	    if( bw ) write(6,*) 'old area: ',0,icol,ierr
-	    if( ierr /= 0 ) cycle	!old elem still not connected
-	    do iii=1,3			!now check the surrounding areas
-	      ien = iens(iii)
-	      icoln = icols(iii)
-	      if( ien == 0 ) cycle
-	      call check_element_connection(ien,ierr)
-	      if( bw ) write(6,*) 'new area: ',iii,icoln,ierr
-	      if( ierr /= 0 ) exit	!area not connected
-	    end do
-	  end if
+	  if( icol_new == 0 ) cycle
+	  iarv(ie) = icol_new
+	  if( bw ) write(6,*) 'trying color: ',icol_new
+	  call check_element_connection(ie,ierr)
+	  if( bw ) write(6,*) 'checking: ',0,icol,ierr
+	  if( ierr /= 0 ) cycle	!old elem still not connected
+	  do iii=1,3			!now check the surrounding areas
+	    ien = iens(iii)
+	    icoln = icols(iii)
+	    if( ien == 0 ) cycle
+	    if( icoln == 0 ) cycle
+	    call check_element_connection(ien,ierr)
+	    if( bw ) write(6,*) 'checking: ',iii,icoln,ierr
+	    if( ierr /= 0 ) exit	!area not connected
+	  end do
 	  if( ierr == 0 ) exit		!this color works
 	end do
 
 	if( ierr == 0 ) then
-	  write(6,*) 'switching color works: ',icol,icol_new
+	  if( bw ) write(6,*) 'swapping colors works: ',icol,icol_new
 	else
 	  iarv(ie) = icol		!set back old color
-	  write(6,*) 'cannot automatically reconnect area...'
+	  if( bw ) write(6,*) 'cannot automatically reconnect area...'
 	end if
 
 	return
@@ -1730,7 +1746,7 @@ c area code 0 is not allowed !!!!
 
 	implicit none
 
-	character*80 file
+	character*(*) file
 
 	integer inext(nkn)
 	integer intype(nkn)
@@ -1749,6 +1765,49 @@ c area code 0 is not allowed !!!!
 	call write_grd_file(file,text,nkn,nel,xgv,ygv,nen3v
      +                  ,inext,ieext,intype,ietype)
 
+	end
+
+!*****************************************************************
+
+	subroutine write_box_info(ic,icolor)
+
+	use basin
+
+	implicit none
+
+	integer ic
+	integer icolor(ic)
+
+	integer ntot,icol
+	integer ncolumns,ncc
+	integer ic1,ic2,ic3
+
+	write(6,*) 'box number and number of elements: '
+	ntot = 0
+	do icol=1,ic
+	  !write(6,*) icol,icolor(icol)
+	  ntot = ntot + icolor(icol)
+	end do
+	write(6,*) 'total: ',nel,ntot
+
+	ncolumns = 3
+	ncc = ic / ncolumns
+	if( ncc * ncolumns /= ic ) ncc = ncc + 1
+	!write(6,*) 'ncc = ',ncc
+
+	write(6,'(a)') '     box   color     box   color     box   color'
+	do ic1=1,ncc
+	  ic2 = ncc + ic1
+	  ic3 = 2*ncc + ic1
+	  if( ic3 <= ic ) then
+	    write(6,1000) ic1,icolor(ic1),ic2,icolor(ic2),ic3,icolor(ic3)
+	  else
+	    write(6,1000) ic1,icolor(ic1),ic2,icolor(ic2)
+	  end if
+	end do
+
+	return
+ 1000	format(6i8)
 	end
 
 !*****************************************************************
