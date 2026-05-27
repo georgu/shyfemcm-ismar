@@ -99,4 +99,12 @@ Automatic merge failed; fix conflicts and then commit the result.
 	deleted by them: docs/shyfem.tex
 	both modified:   src/utils/shyutil/version.f90
 
+to change in Rules.make
+
+	PARALLEL_MPI = NODE
+	PARTS = PARMETIS
+	#NETCDF = true
+	WW3 = true
+	WW#DIR = ...
+	WW3SWITCH = switch_itedev
 

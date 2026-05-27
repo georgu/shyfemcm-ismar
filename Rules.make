@@ -112,8 +112,8 @@ INTEL_VERSION = IFORT
 PARALLEL_OMP = false
 #PARALLEL_OMP = true
 
-#PARALLEL_MPI = NONE
-PARALLEL_MPI = NODE
+PARALLEL_MPI = NONE
+#PARALLEL_MPI = NODE
 #PARALLEL_MPI = ELEM
 
 ##############################################
@@ -141,9 +141,9 @@ PARALLEL_MPI = NODE
 #
 ##############################################
 
-#PARTS = NONE
+PARTS = NONE
 #PARTS = METIS
-PARTS = PARMETIS
+#PARTS = PARMETIS
 METISDIR = 
 METISDIR = ${METIS_HOME}
 #METISDIR = /usr/local
@@ -264,10 +264,10 @@ GPU=NONE
 ##############################################
 
 #NETCDF = false
-NETCDF = true
+#NETCDF = true
 #NETCDFDIR =
-NETCDFDIR = /home/aron/opt/netcdf_gfortran
-NETCDFFDIR = /home/aron/opt/netcdf_gfortran
+NETCDFDIR = ${NETCDF_C_HOME}
+NETCDFFDIR =${NETCDF_FORTRAN_HOME}
 
 ##############################################
 # GOTM library
@@ -338,11 +338,11 @@ BFMDIR=$(BFM_HOME)
 #
 ##############################################
 
-#WW3 = false
-WW3 = true
-#WW3DIR = ${WW3_HOME}
-WW3DIR = /home/aron/git/ww3.erdc/WW3
-WW3SWITCH = switch_itedev
+WW3 = false
+#WW3 = true
+WW3DIR = ${WW3_HOME}
+#WW3DIR = /path/to/WW3
+#WW3SWITCH = switch_itedev
 
 ##############################################
 # Experimental features
