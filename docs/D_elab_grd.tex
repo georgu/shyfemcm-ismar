@@ -1,0 +1,112 @@
+SHYFEM provides a number of routines to pre-process grd files which support the
+-h option. Below they are described in their full functionalities.
+
+\subsection{exgrd}
+|exgrd| is the tool to extract items from GRD File.
+\begin{verbatim}
+Usage : exgrd [-h] [-options] grd-file(s)
+Options :
+  -i   show only info on file          -h   show this help screen
+  -n   extract nodes                   -N   delete nodes
+  -e   extract elements                -E   delete elements
+  -l   extract lines                   -L   delete lines
+  -s   extract unused nodes            -S   delete unused nodes
+  -t#  select from type                -T#  select up to type
+  -d#  select from depth               -D#  select up to depth
+  -v#  select from vertices            -V#  select up to vertices
+  -r#  select from number range        -R#  select up to number range
+  -u   unify nodes                     -o#  tollerance for unify (def=0)
+  -C   compress numbers                -a   make items anti-clockwise
+  -x   delete degenerate elements
+\end{verbatim}
+
+\subsection{shybas}
+|shybas| is the routine for elaborating grid files (GRD and BAS). It also returns
+information on grid file.
+
+\begin{verbatim}
+ Usage: shybas [-h|-help] [-options] bas-file
+  returns info on or elaborates a bas file
+  options:
+   -h|-help        this help screen
+   -v|-version     version of routine
+   -verb           be more verbose
+   -quiet          do not be verbose
+   -nomin          do not compute min distance
+   -area           area/vol for each area code
+  output options:
+   -grd            writes grd file
+   -xyz            writes xyz file
+   -depth          writes depth values
+   -reg dxy        writes regular depth values
+   -unique         writes grd file with unique depths on nodes
+   -delem          writes grd file with constant depths on elements
+   -hsigma val     creates hybrid depth level
+   -npart          writes grd file with nodal partition to be visualized
+   -part grd-file  uses lines contained in grd-file to create partition
+   -gr3            writes grid in gr3 format (for WWMIII model
+   -msh            writes grid in msh (gmsh v. 2) format (for WW3 model
+  what to do:
+   -inter          interactively shows nodes and elems
+   -quality        shows quality of file
+   -resol          writes resolution of file
+   -freq           computes frequency curves
+   -check          runs extra check on file
+   -compare        compares depth of 2 basins
+   -invert_depth   inverts depth values
+   -box            creates index for box model
+   -custom         run custom routine defined by user
+  bathymetry interpolation:
+   -bfile bathy    bathymetry file for interpolation
+   -all            interpolate in all elements
+   -btype type     interpolate only on elems type (Default -1)
+   -node           interpolate to nodes
+   -bmode mode     mode of interpolation
+   -usfact fact    factor for std (Default 1)
+   -uxfact fact    factor for max radius (Default 3)
+  limiting and smoothing bathymetry:
+   -hmin val       minimum depth
+   -hmax val       maximum depth
+   -asmooth alpha  alpha for smoothing
+   -iter n         iterations for smoothing
+
+   interpolation mode: (default=1)
+     1 exponential
+     2 uniform on squares
+     3 exponential with autocorrelation
+\end{verbatim}
+
+\subsection{shypre}
+The pre-processing routine |shypre| is used to generate the bas unformatted
+file from the grd formatted file
+
+\begin{verbatim}
+ Usage: shypre [-h|-help] [-options] grd-file
+  pre-processes grd file and create bas file
+  options:
+   -h|-help         this help screen
+   -v|-version      version of routine
+  general options
+   -info            only give info on grd file
+   -quiet           be quiet in execution
+   -silent          do not write anything
+  optimization options
+   -noopti          do not optimize bandwidth
+   -manual          manual optimization
+  options for partitioning
+   -partition file  use file containing partitioning
+   -nepart          use node and elem type in file for partitioning
+\end{verbatim}
+
+\subsection{shyparts}
+This program performs the partition of a grid using the METIS library.
+
+\begin{verbatim}
+ Usage: shyparts [-h|-help] [-options] grd-file
+  partitioning of grd file with METIS
+  options:
+   -h|-help      this help screen
+   -v|-version   version of routine
+  options for partitioning
+   -nparts val   number of partitions
+\end{verbatim}

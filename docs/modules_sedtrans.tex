@@ -1,0 +1,151 @@
+
+%------------------------------------------------------------------------
+%
+%    Copyright (C) 1985-2020  Georg Umgiesser
+%
+%    This file is part of SHYFEM.
+%
+%    SHYFEM is free software: you can redistribute it and/or modify
+%    it under the terms of the GNU General Public License as published by
+%    the Free Software Foundation, either version 3 of the License, or
+%    (at your option) any later version.
+%
+%    SHYFEM is distributed in the hope that it will be useful,
+%    but WITHOUT ANY WARRANTY; without even the implied warranty of
+%    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+%    GNU General Public License for more details.
+%
+%    You should have received a copy of the GNU General Public License
+%    along with SHYFEM. Please see the file COPYING in the main directory.
+%    If not, see <http://www.gnu.org/licenses/>.
+%
+%    Contributions to this file can be found below in the revision log.
+%
+%------------------------------------------------------------------------
+
+The sediment transport module calculates sediment transport for currents 
+only or combining waves and currents over either cohesive and non-cohesive
+sediments. The core of this module is derived by the SEDTRANS05 
+sediment transport model, which is here coupled with SHYFEM. This sediment 
+transport module computes the erosion and deposition rates at every mesh 
+node and determines the sediment volume that is injected into the water 
+column. After this step, sediment is advected with the transport and 
+diffusion module described above. The module updates every time step the 
+characteristcs of the bottom in terms of grain size composition and 
+sediment density.
+
+The sediment transport module is activated by setting |isedi| = 1 
+and |sedgrs| in the section |sedtr|. 
+For more details about the parameters see the Appendix C.
+
+For more information about the sediment transport module please refer 
+to Neumeier et al. \cite{urs:sedtrans05} and Ferrarin et al. 
+\cite{ferrarin:morpho08}.
+
+\subsubsection{Sediment transport formulation}
+For non-cohesive sediment two mechanisms exist: the bedload and the 
+suspended transport. In the other hand, for cohesive sediments only 
+the suspended transport happens.Thus, the sediment continuity equation 
+for non-cohesive bedload transport is used while the transport and diffusion 
+equation describes the transport of suspended sediment 
+(both cohesive and non-cohesive).
+For the bedload component a direct advection scheme is used. 
+Five methods are proposed to predict sediment transport for non-cohesive
+sediments. The methods of Brown \cite{brown:engi}, Yalin \cite{yalin:bedload} 
+and Van Rijn \cite{vanrijn93:prin} predict the bedload transport. The 
+methods of Engelund and Hansen \cite{eh:momo} and Bagnold 
+\cite{bagnolds:ma-sed} predict the total load transport.
+
+Different approaches have been used to compute the sediment flux 
+between water column and bottom for cohesive and non-cohesive sediments.
+For cohesive sediments the model computes erosion and deposition rates,
+while for non-cohesive the net sediment flux between bottom and water 
+column computed as the difference between the equilibrium
+concentration and the existing concentration in the lower level.
+Here the source (erosion occurs, flux from the bottom to the water 
+column) term has been taken as explicit, whereas the sink term as 
+semi-implicit (as deposition occurs, sediment fluxes happen from 
+the water column to the bottom).
+This approach permits to avoid negative concentration 
+due to deposition higher than the sediment mass present in the water 
+column.
+
+The vertical mixing coefficient has been calculated  using analytical
+expressions given by \cite{vanrijn93:prin} for both the case of current
+related and wave related turbulent mixing.
+
+\subsubsection{Bed representation}
+The bed module is designed to have spatially different characteristics, such 
+as grain size composition, sediment density and critical stress for erosion.
+The bed is subdivided in several layers and levels. Each layer is considered
+homogeneous, well mixed and characterized by its own grain size distribution
+(fraction of each class of sediment considered). On the level are defined
+the dry bulk density $\rho_{dry}$ and the critical stress for erosion
+$\tau_{ce}$; it is assumed that these variables vary linearly between two
+levels. These characteristics could vary spatially in the domain.
+
+At each location the uppermost layer has to be always greater or equal to
+the active, or mixed, layer that is available for suspension.
+Sediment below the active layer is unavailable for resuspension until the 
+active layer moves downward either as a consequence of erosion, or it 
+has thickened due to an increased shear stress. When an active layer is considered,
+the bottom roughness height is calculated as the sum of grain, bedload and bedform (ripple) roughnesses.
+
+Multiple sand grain size classes are considered to behave independently. At
+each location the average grain size (based on the sediment fractions) is
+used to compute the bed roughness and critical shear velocities.
+Modification of the bed elevation and to the grain size distribution are
+updated at each time step based on the net erosion and deposition.
+For each size class, the volume of sediment removed from the bed during any
+time step is limited by the amount available in the active layer. In this
+way the model takes into account time-dependent and spatial sediment
+distribution and bed armouring.
+
+\subsubsection{Sand-mud mixture}
+The morphological behaviour of estuaries and lagoons often depends on
+non-cohesive as well as cohesive sediments. Prediction of the distribution
+of sediments in these environments, characterized by zonation of sand,
+mud and mixed deposits, is of crucial importance for sustainable
+management and development of such systems.
+
+Based on laboratory and field experiments several researchers identified a
+transition from non-cohesive to cohesive behaviour at increasing mud content
+in a sand bed. A sand bed with small amount of mud already shows increased
+resistance against erosion. Above a critical mud content (\% $<$ 0.063 mm), 
+the bed behaved cohesively. The critical mud content depend on the history 
+of the bed and on the geochemical properties of the sand and mud and could 
+vary from 3-20 \%. Such a wide range clearly demonstrate that the 
+parameters governing the erosion behaviour of sand-mud mixture are
+ not fully understood yet. For this reason is crucial to estimate 
+the critical mud or clay content from laboratory and field experiments.
+
+Below the critical mud content the sediment particles are eroded as
+non-cohesive sediments. It is assumed that the sediments in suspension
+always behave independently, either if flocculation processes of the
+thinner particles could trap sand grains into the floc.
+
+Sand increases the binding between clay particles and results
+in a more compact and dense matrix more resistant to erosion. For
+a non-consolidated cohesive bed, adding sand to mud increases the erosion
+resistance due to increased density and consolidation rates.
+The improved critical stress for erosion due to sand particles is taken
+into consideration increasing the dry density with the sand fraction.
+
+\subsubsection{Sediment model output}
+The sediment transport model writes the following output:
+\begin{itemize}
+\item erosion/deposition [m], 2D variable 80 in file SED
+\item average grainsize of first bottom layer [m], 2D variable 81 in file SED 
+\item bed shear stress [Pa] of first bottom layer, 2D variable 82 in file SED
+\item updated node depth [m], 2D variable 83 in file SED
+\item total bedload transport [kg/ms], 2D variable 84 in file SED
+\item total suspended concentration [kg/m3], 3D variable 85 in file SCO
+\end{itemize}
+
+The time step and start time for writing to file SED and SCO
+are defined by the parameters |idtcon| and |itmcon| in the |para|
+section. These parameters are the same used for writing tracer
+concentration, salinity and water temperature. If |idtcon| is not
+defined, then the sediment model does not write any results.
+
+

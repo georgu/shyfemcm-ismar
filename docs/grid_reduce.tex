@@ -25,13 +25,20 @@
 
 Every |grd| file can be open with the |grid| program.
 Normally, the coastline needs some post-processing.
-It might either have resolution which is too high, island
-might show up as open lines etc..
+It might either have a resolution that is too high, islands might show up as open lines etc..
 
-It is important that there is one closed boundary line that
-defines the whole domain of the computation. If you have an
-open coastline, please close the line with the routine |grid|
-at the places where you want your open boundary to be.
+It is important that there is one boundary line that
+defines the whole domain of the computation and that must be closed. If you have a
+coastline, please define your domain closing the line (including additional boundary nodes) with the gui |grid| (see
+\Fig\ref{line} as example).
+You can then identify what portion of the domain line will be considered open boundary.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[scale=0.5]{crea_linea.png}
+\caption{Example of the passages needed to create a closed line with the GRD GUI using commands on the right panel of the gui: A) create nodes; B) use right (to find) - left (to select) click on the mouse to chose the nodes part of the line; C) create line; D) close the line adding nodes.}
+\label{line}
+\end{figure}
 
 Once this domain boundary line has been defined, care has
 to be taken that the lines inside this domain, which denote
@@ -40,9 +47,9 @@ islands, are closed.
 Finally, the resolution of the boundary lines (coast and islands)
 have to be adjusted if you use the meshing program here provided. 
 If the coastline is left as it is you might
-have a much too high resolution along the boundaries. This is due
-to the fact that the meshing algorithm does not discard any points
-given to it. This means that all boundary nodes are used for the meshing.
+have an excessively high resolution along the boundaries. This happens as the 
+meshing algorithm does not discard any points given to it resulting in
+all boundary nodes used for the meshing.
 Therefore, if you have a very high resolution boundary line, you will
 get many elements along the boundary and relatively little elements
 (depending on the number of internal points) in the inside of the

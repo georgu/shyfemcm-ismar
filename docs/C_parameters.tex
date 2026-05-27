@@ -1,0 +1,2135 @@
+The parameter input file has the extension .str and is composed of different sections, below described. For each section the list of setting parameters that can be declared are presented.
+\subsection{Section {\tt \$title}}
+\label{parameter}
+
+This section must be always the first section in the parameter input file.
+It contains only three lines. An example is given in
+\Fig\ref{fig:titleexample}.
+
+\begin{figure}[hbtp]
+\begin{verbatim}
+$title
+        free one line description of simulation
+        name_of_simulation
+        name_of_basin
+$end
+\end{verbatim}
+\caption{Example of section {\tt \$title}}
+\label{fig:titleexample}
+\end{figure}
+
+The first line of this section is a free one line description of
+the simulation that is to be carried out. The next line contains
+the name of the simulation.
+All created files will use this name in the main part of the file name
+with different extensions. Therefore the hydrodynamic output file
+(extension |out|) will be named |name_of_simulation.out|.
+The last line gives the name of the basin file to be used. This
+is the pre-processed file of the basin with extension |bas|.
+In our example the basin file |name_of_basin.bas| is used.
+
+The directory where this files are read from or written to depends
+on the settings in section {\tt \$name}. Using the default
+the program will read from and write to the current directory.
+
+\subsection{Section {\tt \$para}}
+\paragraph{Compulsory time parameters}
+
+This parameters are compulsory parameters that define the
+period of the simulation. They must be present in all cases.
+
+\descrpitem{|itanf|}
+\descrptext{%
+Start of simulation. (Default 0)
+}
+\par
+\descrpitem{|itend|}
+\descrptext{%
+End of simulation.
+}
+\par
+\descrpitem{|idt|}
+\descrptext{%
+Time step of integration.
+}
+\par
+
+
+\paragraph{Output parameters}
+
+The following parameters deal with the output frequency
+and start time to write external files. The content of the various
+output files should be looked up in the appropriate section.
+
+If no output time step is decleared, the output file will not be written.
+The default value of the output time step is 0., so, if not decleared, there will be no output file. If the time step of the
+output files is equal to the time step of the simulation then
+at every time step the output file is written. The default start time
+of the output is |itanf|, the start of the simulation.
+
+\descrpitem{|idtout|\\|itmout|}
+\descrptext{%
+Time step and start time for writing to file OUT,
+the file containing the general hydrodynamic results.
+}
+\par
+
+\descrpitem{|idtext|\\|itmext|}
+\descrptext{%
+Time step and start time for writing to file EXT,
+the file containing hydrodynamic data of extra points.
+The extra points for which the data is written
+to this file are given in section |extra| of
+the parameter file.
+}
+\par
+
+\descrpitem{|idtrst|}
+\descrptext{%
+Time step for writing the restart
+file (extension RST). No restart file is written
+with |idtrst| equal to 0. A negative value
+is also possible for the time step. In this case
+the time step used is |-idtrst|, but the file is
+overwritten every time. It therefore contains
+always only the last written restart record. The
+special value of |idtrst = -1| will write only the
+last time step of the simulation in the restart file.
+This is useful if you want to start another
+simulation from the last output. (Default 0)
+}
+\par
+\descrpitem{|itmrst|}
+\descrptext{%
+Start time for writing the restart file. If
+not given it is the beginning of the simulation.
+}
+\par
+\descrpitem{|itrst|}
+\descrptext{%
+Time to use for the restart. If a restart
+is performed, then the file name containing
+the restart data has to be specified in |restrt|
+and the time record corresponding to |itrst|
+is used in this file. A value of -1 is also possible.
+In this case the last record in the restart file
+is used for the restart and the simulation starts
+from this time. Be aware that this option changes
+the parameter |itanf| to the time of the last
+record found in |restrt|.
+}
+\par
+\descrpitem{|ityrst|}
+\descrptext{%
+Type of restart. If 0 and the restart file is not
+found the program will exit with an error. Otherwise
+the program will simply continue with a cold start.
+If |ityrst| is 1 and the given time record is not
+found in the file it will exit with error. If
+it is 2 it will initialize all values from the
+first time record after |itrst|. Therefore, the
+value of 2 will guarantee that the program will not
+abort and continue running, but it might not
+be doing what you intended. (Default 0)
+}
+\par
+\descrpitem{|flgrst|}
+\descrptext{%
+This variable indicates which variables are read
+from the restart file. By default all available
+variables are read and used. If some variables
+are not wanted (because, e.g., you want to restart
+from a different T/S field), this fact can be indicated
+in |flgrst|. 1 indicates restart of hydro values,
+10 the depth values, 100 T/S values, 1000 the tracer
+concentration, 10000 vertical velocities and
+100000 the ecological variables. Therefore, a value
+of 10111 indicates a restart of everything except
+the tracer and the ecological values. The default
+value for |flgrst| is -1, which means 111111.
+}
+\par
+
+\descrpitem{|idtres|\\|itmres|}
+\descrptext{%
+Time step and start time for writing to file RES,
+the file containing residual hydrodynamic data.
+}
+\par
+
+\descrpitem{|idtrms|\\|itmrms|}
+\descrptext{%
+Time step and start time for writing to file RMS,
+the file containing hydrodynamic data of root mean
+square velocities.
+}
+\par
+
+\descrpitem{|idtflx|\\|itmflx|}
+\descrptext{%
+Time step and start time for writing to file FLX,
+the file containing discharge data through defined
+sections.
+The transects for which the discharges are computed
+are given in section |flux| of
+the parameter file.
+}
+\par
+
+\descrpitem{|idtvol|\\|itmvol|}
+\descrptext{%
+Time step and start time for writing to file VOL,
+the file containing volume information of areas
+defined by transects.
+The transects that are used to compute the volumes
+are given in section |volume| of
+the parameter file.
+}
+\par
+
+\descrpitem{|netcdf|}
+\descrptext{%
+This parameter chooses output in NetCDF format
+if |netcdf| is 1, else the format is unformatted
+fortran files. (Default 0)
+}
+\par
+
+\descrpitem{|idtoff|}
+\descrptext{%
+handles offline mode (default 0):
+\begin{description}
+\item[0] do nothing (no offline routines called)
+\item[$>$0] write offline data file (.off) with time step |idtoff|.
+\item[$<$0] reads offline data from file |offlin|
+defined in section |name|. Usage:
+\begin{description}
+\item[-1] uses offline hydro results
+\item[-2] uses offline T/S results
+\item[-4] uses offline turbulence results
+\end{description}
+\end{description}
+}
+\par
+
+\descrpitem{|itmoff|}
+\descrptext{%
+Start time for writing to file OFF,
+the file containing data for offline runs.
+}
+\par
+
+
+\paragraph{General time and date parameters}
+
+A time and date can be assigned to the simulation. These values
+refer to the time 0 of the FEM model. The format for the date is
+YYYYMMDD and for the time HHMMSS.
+You can also give a time zone if your time is not referring to
+GMT but to another time zone such as MET.
+
+|date|                The real date corresponding to time 0. (Default 0)
+|time|                The real time corresponding to time 0. (Default 0)
+|tz|                  The time zone you are in. This is 0 for GMT, 1 for MET
+and 2 for MEST (MET summer time). (Default 0)
+
+
+\paragraph{Model parameters}
+
+The next parameters define the inclusion or exclusion of
+certain terms of the primitive equations.
+
+\descrpitem{|ilin|}
+\descrptext{%
+Linearization of the momentum equations. If |ilin|
+is different from 0 the advective terms are not
+included in the computation. (Default 1)
+}
+\par
+\descrpitem{|itlin|}
+\descrptext{%
+This parameter decides how the advective (non-linear)
+terms are computed. The value of 0 (default) uses
+the usual finite element discretization over a single
+element. The value of 1 chooses a semi-lagrangian
+approach that is theoretically stable also for
+Courant numbers higher than 1. It is however recommended
+that the time step is limited using |itsplt| and
+|coumax| described below. (Default 0)
+}
+\par
+\descrpitem{|iclin|}
+\descrptext{%
+Linearization of the continuity equation. If |iclin|
+is different from 0 the depth term in the continuity
+equation is taken to be constant. (Default 0)
+}
+\par
+
+The next parameters allow for a variable time step in the
+hydrodynamic computations. This is especially important for the
+non-linear model (|ilin=0|) as in this case the criterion
+for stability cannot be determined a priori and in any case the
+time integration will not be unconditionally stable.
+
+The variable time steps allows for longer basic time steps
+(here called macro time steps) which have to be set in |idt|.
+It then computes the optimal time step (here micro time step)
+in order to not exceed the given Courant number. However,
+the value for the macro time step will never be exceeded.
+
+Normally time steps are always given in full seconds. This is still
+true when specifying the macro time step |idt|.
+In older versions, the computed micro time steps also had to be
+ full integers. Starting from version 7.1, fractional time steps
+were allowed. This allows time steps smaller than 1s.
+
+\descrpitem{|itsplt|}
+\descrptext{%
+Type of variable time step computation. If this value
+is 0, the time step will be kept constant at its initial
+value. A value of 1 divides the initial time step into
+(possibly) equal parts, but makes sure that at the end
+of the micro time steps one complete macro time
+step has been executed. The mode |itsplt| = 2
+ignores the macro time step, but always
+uses the biggest time step possible. In this case,
+it is not assured that after some micro time steps
+a macro time step will be recovered. Please note
+that the initial macro time step will never be exceeded.
+In any case, the time step will always be rounded to the
+next lower integer value. This is not the case with
+|itsplt| = 3 where the highest possible fractional time step
+will be used. (Default 0)
+}
+\par
+\descrpitem{|coumax|}
+\descrptext{%
+Normally the time step is computed in order to not
+exceed the Courant number of 1. However, in some cases
+the non-linear terms are stable even for a value higher
+than 1 or there is a need to achieve a lower Courant number.
+Setting |coumax| to the desired Courant number
+achieves exactly this effect. (Default 1)
+}
+\par
+\descrpitem{|idtsyn|}
+\descrptext{%
+In case of |itsplt| = 2 this parameter makes sure that
+after a time of |idtsyn| the time step will be syncronized
+to this time. Therefore, setting |idtsyn| = 3600 means
+that there will be a time stamp every hour, even if the model
+has to take one very small time step in order to reach that
+time. This parameter is useful
+only for |itsplt| = 2 and its default value of
+0 does not make any syncronization.
+}
+\par
+\descrpitem{|idtmin|}
+\descrptext{%
+This variable defines the smallest time step possible
+when time step splitting is enabled. Normally the smallest
+time step is 1 second. Please set |idtmin| to values
+smaller than 1 in order to allow for fractional time steps.
+A value of 0.001 allows for timesteps of down to
+1 millisecond. (Deault 1)
+}
+\par
+
+These parameters define the weighting of time level in the
+semi-implicit algorithm. With these parameters the damping
+of gravity or Rossby waves can be controlled. Only modify them if
+you know what you are doing.
+
+\descrpitem{|azpar|}
+\descrptext{%
+Weighting of the new time level of the transport
+terms in the continuity equation. (Default 0.5)
+}
+\par
+\descrpitem{|ampar|}
+\descrptext{%
+Weighting of the new time level of the pressure
+term in the momentum equations. (Default 0.5)
+}
+\par
+\descrpitem{|afpar|}
+\descrptext{%
+Weighting of the new time level of the Coriolis
+term in the momentum equations. (Default 0.5)
+}
+\par
+\descrpitem{|avpar|}
+\descrptext{%
+Weighting of the new time level of the non-linear
+advective terms in the momentum equations. (Default 0.0)
+}
+\par
+
+The next parameters define the weighting of time level for the
+vertical stress and advection terms. They guarantee the stability
+of the vertical system. For this reason they are normally set to
+1 which corresponds to a fully implicit discretization. Only
+modify them if you know what you are doing.
+
+\descrpitem{|atpar|}
+\descrptext{%
+Weighting of the new time level of the vertical
+viscosity in the momentum equation. (Default 1.0)
+}
+\par
+\descrpitem{|adpar|}
+\descrptext{%
+Weighting of the new time level of the vertical
+diffusion in the scalar equations. (Default 1.0)
+}
+\par
+\descrpitem{|aapar|}
+\descrptext{%
+Weighting of the new time level of the vertical
+advection in the scalar equations. (Default 1.0)
+}
+\par
+
+
+\paragraph{Coriolis parameters}
+
+The next parameters define the parameters to be used
+with the Coriolis terms.
+
+\descrpitem{|icor|}
+\descrptext{%
+If this parameter is 0, the Coriolis terms are
+not included in the computation. A value of 1
+uses a beta-plane approximation with a variable
+Coriolis parameter $f$, whereas a value of
+2 uses an f-plane approximation where the
+Coriolis parameter $f$ is kept constant over the
+whole domain. (Default 0)
+}
+\par
+\descrpitem{|dlat|}
+\descrptext{%
+Average latitude of the basin. This is used to
+compute the Coriolis parameter $f$. This parameter
+is not used if spherical coordinates are used
+(|isphe|=1) or if a coordinate 	projection is set
+(|iproj| $>$0). (Default 0)
+}
+\par
+\descrpitem{|isphe|}
+\descrptext{%
+If 0 a cartesian coordinate system is used,
+if 1 the coordinates are in the spherical system (lat/lon).
+Please note that in case of spherical coordinates the
+Coriolis term is always included in the computation, even
+with |icor| = 0. If you really do not want to use the
+Coriolis term, then please set |icor| = -1. The default is
+-1, which means that the type of coordinate system will
+be determined automatically.
+}
+\par
+
+
+\paragraph{Depth parameters}
+
+The next parameters deal with handling depth values of the basin.
+
+\descrpitem{|href|}
+\descrptext{%
+Reference depth. If the depth values of the basin and
+the water levels are referred to mean sea level, |href|
+should be 0 (default value). Else this value is
+subtracted from the given depth values. For example,
+if |href = 0.20| then a depth value in the basin
+of 1 meter will be reduced to 80 centimeters.
+}
+\par
+
+\descrpitem{|hzmin|}
+\descrptext{%
+Minimum total water depth that will remain in a
+node if the element becomes dry. (Default 0.01 m)
+}
+\par
+\descrpitem{|hzoff|}
+\descrptext{%
+Total water depth at which an element will be
+taken out of the computation because it becomes dry.
+(Default 0.05 m)
+}
+\par
+\descrpitem{|hzon|}
+\descrptext{%
+Total water depth at which a dry element will be
+re-inserted into the computation.
+(Default 0.10 m)
+}
+\par
+
+\descrpitem{|hmin|}
+\descrptext{%
+Minimum water depth (most shallow) for the whole
+basin. All depth values of the basin will be adjusted
+so that no water depth is shallower than |hmin|.
+(Default is no adjustment)
+}
+\par
+\descrpitem{|hmax|}
+\descrptext{%
+Maximum water depth (deepest) for the whole
+basin. All depth values of the basin will be adjusted
+so that no water depth is deeper than |hmax|.
+(Default is no adjustment)
+}
+\par
+
+\paragraph{Bottom friction}
+
+The friction term in the momentum equations can be written as
+$Ru$ and $Rv$ where $R$ is the variable friction coefficient and
+$u,v$ are the velocities in $x,y$ direction respectively.
+The form of $R$ can be specified in various ways. The value of
+|ireib| is chosen between the formulations. In the parameter
+input file a value $\lambda$ is specified that is used in
+the formulas below. In a 2D simulation the Strickler (2) or the Chezy (3)
+formulation is the preferred option, while for a 3D simulation is
+recommended to use the drag coefficient (5) or the roughness length
+formulation (6).
+
+\descrpitem{|ireib|}
+\descrptext{%
+Type of friction used (default 0):
+\begin{description}
+\item[0] No friction used
+\item[1] $R=\lambda$ is constant
+\item[2] $\lambda$ is the Strickler coefficient.
+In this formulation $R$ is written as
+$R = \frac{g}{C^2} \frac{\vert u \vert}{H}$
+with $C=k_s H^{1/6}$ and $\lambda=k_s$ is
+the Strickler coefficient. In the above
+formula $g$ is the gravitational acceleration,
+$\vert u \vert$ the modulus of the current velocity
+and $H$ the total water depth.
+\item[3] $\lambda$ is the Chezy coefficient.
+In this formulation $R$ is written as
+$R = \frac{g}{C^2} \frac{\vert u \vert}{H}$
+and $\lambda=C$ is the Chezy coefficient.
+\item[4] $R=\lambda/H$ with $H$ the total water depth
+\item[5] $\lambda$ is a constant drag coefficient and $R$ is
+computed as $R=\lambda\frac{\vert u \vert}{H}$
+\item[6] $\lambda$ is the bottom roughness length and $R$ is
+computed through the formula
+$R=C\frac{\vert u \vert}{H}$ with
+$C=\big(\frac{0.4}{log(\frac{\lambda+0.5H}
+{\lambda})}\big)^2$
+\item[7] If $\lambda \geq 1$ it specifies the Strickler
+coefficient (|ireib=2|), otherwise it specifies a
+constant drag coefficient (|ireib=5|).
+\end{description}
+}
+\par
+\descrpitem{|czdef|}
+\descrptext{%
+The default value for the friction parameter $\lambda$.
+Depending on the value of |ireib| the coefficient $\lambda$
+is representing linear friction, a constant drag coefficient,
+the Chezy or Strickler parameter, or the roughness length
+(default 0).
+}
+\par
+\descrpitem{|iczv|}
+\descrptext{%
+Normally the bottom friction coefficient
+(such as Strickler, Chezy, etc.)
+is evaluated at every time step (|iczv| = 1).
+If for some reason this behavior is not desirable,
+|iczv| = 0 evaluates this value only before the
+first time step, keeping it constant for the
+rest of the simulation. Please note that this is
+only relevant if you have given more than one bottom
+friction value (inflow/outflow) for an area. The
+final value of $R$ is computed at every time step
+anyway. (default 1)
+}
+\par
+
+The value of $\lambda$ may be specified for the whole basin through
+the value of |czdef|. For more control over the friction parameter
+it can be also specified in section |area| where the friction
+parameter depending on the type of the element may be varied. Please
+see the paragraph on section |area| for more information.
+
+\paragraph{Physical parameters}
+
+The next parameters describe physical values that can be adjusted
+if needed.
+
+\descrpitem{|rowass|}
+\descrptext{%
+Average density of sea water. (Default 1025 \densityunit)
+}
+\par
+\descrpitem{|roluft|}
+\descrptext{%
+Average density of air. (Default 1.225 \densityunit)
+}
+\par
+\descrpitem{|grav|}
+\descrptext{%
+Gravitational acceleration. (Default 9.81 \accelunit)
+}
+\par
+
+\paragraph{Wind parameters}
+
+The next two parameters deal with the wind stress to be
+prescribed at the surface of the basin.
+
+The wind data can either be specified in an external file (ASCII
+or binary) or directly in the parameter file in section |wind|.
+The ASCII file or the wind section contain three columns, the first
+giving the time in seconds, and the others the components of
+the wind speed. Please see below how the last two columns are
+interpreted depending on the value of |iwtype|. For the format
+of the binary file please see the relative section.
+If both a wind file and section |wind| are given, data from the
+file is used.
+
+The wind stress is normally computed with the following formula
+\beq
+\tau^x = \rho_a c_D \vert u \vert u^x \quad
+\tau^y = \rho_a c_D \vert u \vert u^y
+\eeq
+where $\rho_a,\rho_0$ is the density of air and water respectively,
+$u$ the modulus of wind speed and $u^x,u^y$ the components of
+wind speed in $x,y$ direction. In this formulation $c_D$ is a
+dimensionless drag coefficient that varies between 1.5 \ten{-3} and
+3.2 \ten{-3}. The wind speed is normally the wind speed measured
+at a height of 10 m.
+
+|iwtype|      The type of wind data given (default 1):
+\begin{description}
+\item[0] No wind data is processed
+\item[1] The components of the wind is given in [m/s]
+\item[2] The stress ($\tau^x,\tau^y$) is directly specified
+\item[3] The wind is given in speed [m/s] and direction
+[degrees]. A direction of 0\degrees{} specifies
+a wind from the north, 90\degrees{} a wind
+from the east etc.
+\item[4] As in 3 but the speed is given in knots
+\end{description}
+\descrpitem{|itdrag|}
+\descrptext{%
+Formula to compute the drag coefficient.
+\begin{description}
+\item[0] constant value given in |dragco|.
+\item[1] Smith and Banke (1975) formula
+\item[2] Large and Pond (1981) formula
+\item[3] Spatio/temporally varing in function of wave. Need
+the coupling with WWMIII.
+\item[4] Spatial/temporal varying in function of heat flux. Only for iheat = 6 and iheat = 8.
+\end{description}
+(Default 0)
+}
+\par
+|dragco|      Drag coefficient used in the above formula.
+Please note that in case
+of |iwtype| = 2 this value is of no interest, since the
+stress is specified directly. (Default 2.5E-3)
+|wsmax|       Maximum wind speed allowed in [m/s]. This is in order to avoid
+errors if the wind data is given in a different format
+from the one specified by |iwtype|. (Default 50)
+
+\descrpitem{|wslim|}
+\descrptext{%
+Limit maximum wind speed to this value [m/s]. This provides
+an easy way to exclude strong wind gusts that might
+blow up the simulation. Use with caution.
+(Default -1, no limitation)
+}
+\par
+
+\paragraph{Meteo and heat flux parameters}
+The next parameters deal with the heat and meteo forcing.
+
+\descrpitem{|iheat|}
+\descrptext{%
+The type of heat flux algorithm (Default 1):
+\begin{description}
+\item[1] As in the AREG model
+\item[2] As in the POM model
+\item[3] Following A. Gill
+\item[4] Following Dejak
+\item[5] As in the GOTM model
+\item[6] Using the COARE3.0 module
+\item[7] Read  sensible, latent and longwave fluxes from file
+\item[8] Heat flux with bulk-formulae by \cite{Pettenuzzo2010}, computing Net Long wave radiation \cite{Bignami1995}, Sensible heat \cite{Kondo1975}, Latent heat \cite{Kondo1975}, Evaporation \cite{Kondo1975}, Short Wave Solar Radiation \cite{Reed1977}. Selecting iheat = 8 you need to activate also itdrag=4 since the spatial/temporal-varying wind drag coefficient is computed with \cite{Hellermann1983} parametrization, as function of heat flux.
+\end{description}
+}
+\par
+\descrpitem{isolp}
+\descrptext{%
+The type of solar penetration parameterization by one or more exponential decay curves. isolp = 0 sets an e- folding decay of radiation (one exponential decay curve) as function of depth hdecay. isolp = 1 sets a profile of solar radiation with two length scale of penetration. Following the \cite{Jerlov1968} classification the type of water is clear water (type I). (Default 0)
+}
+\par
+
+\descrpitem{iwtyp}
+\descrptext{%
+The water types from clear water (type I) to the most turbid water (coastal water 9) following the classification of Jerlov (1968). From clear water type I to type III data are taken from \cite{Paulson1977}. Water type from 1 (option n. 5) to type 9 (option n. 9) were retrieved interpolating Jerlov data so they are still experimental. The possible values for iwtyp are:
+\begin{description}
+\item[0] clear water type I
+\item[1] type IA
+\item[2] type IB
+\item[3] type II
+\item[4] type III
+\item[5] type 1
+\item[6] type 3
+\item[7] type 5
+\item[8] type 7
+\item[9] type 9
+\end{description}
+}
+\par
+
+\descrpitem{|hdecay|}
+\descrptext{%
+Depth of e-folding decay of radiation [m]. If |hdecay| = 0
+everything is absorbed in first layer (Default 0).
+}
+\par
+
+\descrpitem{|botabs|}
+\descrptext{%
+Heat absorption at bottom [fraction] (Default 0).
+\begin{description}
+\item[=0] everything is absorbed in last layer
+\item[=1] bottom absorbs remaining radiation
+\end{description}
+}
+\par
+
+\descrpitem{|albedo|}
+\descrptext{%
+General albedo (Default 0.06).
+}
+\par
+
+\descrpitem{|albed4|}
+\descrptext{%
+Albedo for temp below 4 degrees (Default 0.06).
+}
+\par
+
+\descrpitem{|imreg|}
+\descrptext{%
+Regular meteo data (Default 0).
+}
+\par
+
+\descrpitem{|ievap|}
+\descrptext{%
+Compute evaporation mass flux (Default 0).
+}
+\par
+
+
+\paragraph{Parameters for 3d}
+The next parameters deal with the layer structure in 3D.
+
+\descrpitem{|dzreg|}
+\descrptext{%
+Normally the bottom of the various layers are given in
+section |\$levels|. If only a regular vertical grid is desired
+then the parameter |dzreg| can be used. It specifies the spacing
+of the vertical layers in meters. (Default is 0, which means
+that the layers are specified explicitly in |\$levels|.
+}
+\par
+
+The last layer (bottom layer) is treated in a special way. Depending on
+the parameter |ilytyp| there are various cases to be considered. A value
+of 0 leaves the last layer as it is, even if the thickness is very small.
+A value of 1 will always eliminate the last layer, if it has not full
+layer thickness. A value of 2 will do the same, but only if the last layer
+is smaller than |hlvmin| (in units of fraction). Finally, a value of
+3 will add the last layer to the layer above, if its layer thickness
+is smaller than |hlvmin|.
+
+\descrpitem{|ilytyp|}
+\descrptext{%
+Treatment of last (bottom) layer. 0 means no adjustment,
+1 deletes the last layer, if it is not a full layer,
+2 only deletes it
+if the layer thickness is less than |hlvmin|, and 3
+adds the layer thickness to the layer above if it is smaller
+than |hlvmin|. Therefore, 1 and 2 might change the
+total depth and layer structure, while 3 only might
+change the layer structure. The value of 1 will always
+give you full layers at the bottom.
+}
+\par
+\descrpitem{|hlvmin|}
+\descrptext{%
+Minimum layer thickness for last (bottom) layer used when
+|ilytyp| is 2 or 3. The unit is fractions of the nominal
+layer thickness. Therefore, a value of 0.5 indicates that
+the last layer should be at least half of the full
+layer.
+}
+\par
+
+ With $z-$layers the treatment of the free-surface must be addressed.
+What happen if the water level falls below the first $z$-level?
+A $z-$star type vertical grid deformation can be deployed.
+The next parameter specify the number of surface layers that are moving.
+\par
+\descrpitem{|nzadapt|}
+\descrptext{%
+Parameter that controls the number of surface $z-$layers that are moving.
+The value $|nzadapt|\le 1$ corresponds to standard $z-$layers (Default).
+Then, some care is needed to define the first interface sufficiently
+deep to avoid the well-known "drying" of the first layer.
+The value of $|nzadapt| = N_{tot}$, with $N_{tot}$ the total number
+of $z$-layers, is $z-$star (all layers are moving).
+Other values of $1<|nzadapt|<N_{tot}$ corresponds to move, at minimum,
+the first |nzadapt| surface layers with $z-$star.
+These feature is still experimental.
+}
+\par
+
+The above parameters are dealing with zeta layers, where every layer
+has constant thickness, except the surface layer which is varying with
+the water level. The next parameters deal with sigma layers where all
+layers have varying thickness with the water level.
+\par
+\descrpitem{|nsigma|}
+\descrptext{%
+Number of sigma layers for the run. This parameter can
+be given in alternative to specifying the sigma layers
+in |\$levels|. Only regularly spaced sigma levels
+will be created.
+}
+\par
+
+\par
+\descrpitem{|hsigma|}
+\descrptext{%
+This is still an experimental feature. It allows to use
+sigma layers above zeta layers. |hsigma| is the depth where
+the transition between these two types of layers
+is occurring.
+}
+\par
+
+The next parameters deal with vertical diffusivity and viscosity.
+
+\descrpitem{|diftur|}
+\descrptext{%
+Vertical turbulent diffusion parameter for the tracer.
+(Default 0)
+}
+\par
+\descrpitem{|difmol|}
+\descrptext{%
+Vertical molecular diffusion parameter for the tracer.
+(Default 1.0e-06)
+}
+\par
+\descrpitem{|vistur|}
+\descrptext{%
+Vertical turbulent viscosity parameter for the momentum.
+(Default 0)
+}
+\par
+\descrpitem{|vismol|}
+\descrptext{%
+Vertical molecular viscosity parameter for the momentum.
+(Default 1.0e-06)
+}
+\par
+
+\descrpitem{|dhpar|}
+\descrptext{%
+Horizontal diffusion parameter (general).
+(Default 0)
+}
+\par
+
+The next parameters deal with the control of the scalar transport
+and diffusion equation. You have the possibility to prescribe the tvd scheme
+desired and to limit the Courant number.
+
+\descrpitem{|itvd|}
+\descrptext{%
+Type of the horizontal advection scheme used for
+the transport and diffusion
+equation. Normally an upwind scheme is used (0), but setting
+the parameter |itvd| to a value greater than 0
+chooses a TVD scheme. A value of 1 will use a TVD scheme
+based on the average gradient, and a value of 2 will use
+the gradient of the upwind node (recommended).
+This feature
+is still experimental, so use with care. (Default 0)
+}
+\par
+\descrpitem{|itvdv|}
+\descrptext{%
+Type of the vertical advection scheme used for
+the transport and diffusion
+equation. Normally an upwind scheme is used (0), but setting
+the parameter |itvd| to 1 chooses a TVD scheme. This feature
+is still experimental, so use with care. (Default 0)
+}
+\par
+\descrpitem{|rstol|}
+\descrptext{%
+Normally the internal time step for scalar advection is
+automatically adjusted to produce a Courant number of 1
+(marginal stability). You can set |rstol| to a smaller value
+if you think there are stability problems. (Default 1)
+}
+\par
+
+
+\paragraph{Various parameters}
+
+The next parameters refer to various groups not described previously.
+
+\descrpitem{|tauvel|}
+\descrptext{%
+If you have velocity observations given in file
+|surfvel| then you can specify the relaxation
+parameter $\tau$ in the variable |tauvel|. (Default 0,
+which means no assimilation of velocities)
+}
+\par
+
+\descrpitem{|rtide|}
+\descrptext{%
+If |rtide| = 1 the model calculates equilibrium tidal
+potential and load tides and uses these to force the
+free surface (Default 0).
+}
+\par
+
+
+\paragraph{Temperature and salinity}
+
+The next parameters deal with the transport and diffusion
+of temperature and salinity. Please note that in order to compute
+T/S, the parameter |ibarcl| must be different from 0. In this case
+T/S advection is computed, but may be selectively turned off setting
+one of the two parameters |itemp| or |isalt| explicitly to 0.
+
+\descrpitem{|itemp|}
+\descrptext{%
+Flag if the temperature computation is done.
+A value different from 0 computes the temperature transport
+and diffusion. (Default 1)
+}
+\par
+\descrpitem{|isalt|}
+\descrptext{%
+Flag if the salinity computation is done.
+A value different from 0 computes the salinity transport
+and diffusion. (Default 1)
+}
+\par
+
+The next parameters set the initial conditions for temperature and salinity.
+Both the average value and the stratification can be specified.
+
+\descrpitem{|temref|}
+\descrptext{%
+Reference (initial) temperature of the water in
+centigrade. (Default 0)
+}
+\par
+\descrpitem{|salref|}
+\descrptext{%
+Reference (initial) salinity of the water in
+psu (practical salinity units) or ppt.
+(Default 0)
+}
+\par
+\descrpitem{|tstrat|}
+\descrptext{%
+Initial temperature stratification in units of [C/km].
+A positive value indicates a stable stratification.
+(Default 0)
+}
+\par
+\descrpitem{|sstrat|}
+\descrptext{%
+Initial salinity stratification in units of [psu/km].
+A positive value indicates a stable stratification.
+(Default 0)
+}
+\par
+
+The next parameters deal with horizontal diffusion of temperature
+and salinity. These parameters overwrite the general parameter for
+horizontal diffusion |dhpar|.
+
+\descrpitem{|thpar|}
+\descrptext{%
+Horizontal diffusion parameter for temperature.
+(Default 0)
+}
+\par
+\descrpitem{|shpar|}
+\descrptext{%
+Horizontal diffusion parameter for salinity.
+(Default 0)
+}
+\par
+
+
+\paragraph{Concentrations}
+
+The next parameters deal with the transport and diffusion
+of a conservative substance. The substance is dissolved in
+the water and acts like a tracer.
+
+\descrpitem{|iconz|}
+\descrptext{%
+Flag if the tracer computation is done.
+A value different from 0 computes the transport
+and diffusion of the substance. If greater than 1
+|iconz| concentrations are simulated. (Default 0)
+}
+\par
+\descrpitem{|conref|}
+\descrptext{%
+Reference (initial) concentration of the tracer in
+any unit. (Default 0)
+}
+\par
+\descrpitem{|contau|}
+\descrptext{%
+If different from 0 simulates decay of concentration. In
+this case |contau| is the decay rate (e-folding time) in days.
+(Default 0)
+}
+\par
+
+\descrpitem{|chpar|}
+\descrptext{%
+Horizontal diffusion parameter for the tracer.
+This value overwrites the general parameter for
+horizontal diffusion |dhpar|. (Default 0)
+}
+\par
+
+
+\paragraph{Output for scalars}
+
+The next parameters define the output frequency of the
+computed scalars (temperature, salinity, generic concentration) to file.
+
+\descrpitem{|idtcon|\\|itmcon|}
+\descrptext{%
+Time step and start time for writing to file
+CON (concentration) and NOS (temperature and
+salinity).
+}
+\par
+
+\subsection{Section {\tt \$proj}}
+The parameters set in this section handle the projection from cartesian to
+geographical coordinate system. If |iproj| $>$0 the projected geographical
+coordinates can be used for spatially computing the Coriolis parameter
+and tidal potential even if the basin has been set in a cartesian coordinate system
+(|isphe| = 0) .
+
+Please find all details here below.
+
+\descrpitem{|iproj|}
+\descrptext{%
+Switch that indicates the type of projection
+(default 0):
+\begin{description}
+\item[0] do nothing
+\item[1] Gauss-Boaga (GB)
+\item[2] Universal Transverse Mercator (UTM)
+\item[3] Equidistant cylindrical (CPP)
+\item[4] UTM non standard
+\end{description}
+}
+\par
+
+\descrpitem{|c\_fuse|}
+\descrptext{%
+Fuse for GB (1 or 2, default 0)
+}
+\par
+
+\descrpitem{|c\_zone|}
+\descrptext{%
+Zone for UTM (1-60, default 0)
+}
+\par
+
+\descrpitem{|c\_lamb|}
+\descrptext{%
+Central meridian for non-std UTM (default 0)
+}
+\par
+
+\descrpitem{|c\_x0|}
+\descrptext{%
+x0 for GB and UTM (default 0)
+}
+\par
+
+\descrpitem{|c\_y0|}
+\descrptext{%
+y0 for GB and UTM (default 0)
+}
+\par
+
+\descrpitem{|c\_skal|}
+\descrptext{%
+Scale factor for non-std UTM (default 0.9996)
+}
+\par
+
+\descrpitem{|c\_phi|}
+\descrptext{%
+Central parallel for CPP (default 0.9996)
+}
+\par
+
+\descrpitem{|c\_lon0|}
+\descrptext{%
+Longitude origin for CPP (default 0)
+}
+\par
+
+\descrpitem{|c\_lat0|}
+\descrptext{%
+Latitude origin for CPP (default 0)
+}
+\par
+
+\subsection{Section {\tt \$waves}}
+
+Parameters in this section activate the wind wave module and define
+which kind of wind wave model has to be used. These parameters must
+be in section |waves|.
+
+\descrpitem{|iwave|}
+\descrptext{%
+Type of wind wave model and coupling procedure (default 0):
+\begin{description}
+    \item[0] No wind wave model called
+    \item[1] The parametric wind wave model is called
+    (see file subwave.f)
+    \item[$>$1] The spectral wind wave model WWMIII is called
+    \item[2] ... wind from SHYFEM, radiation stress formulation
+    \item[3] ... wind from SHYFEM, vortex force formulation
+    \item[4] ... wind from WWMIII, radiation stress formulation
+    \item[5] ... wind from WWMIII, vortex force formulation
+    \item[11] The spectral wind wave model WaveWatch WW3 is called
+\end{description}
+}
+\par
+When the vortex force formulation is chosen the wave-supported
+surface stress is subtracted from the wind stress, in order to
+avoid double counting of the wind forcing in the flow model.
+Moreover, the use of the wave-dependent wind drag coefficient
+can be adopted setting |itdrag| = 3.
+
+\descrpitem{|dtwave|}
+ \descrptext{%
+Time step for coupling with WWMIII. Needed only for
+}
+\par
+
+ \descrpitem{|iwave|} \descrptext{%
+$>$1 (default 0).
+}
+\par
+\descrpitem{|idtwav|} \descrpitem{|itmwav|} \descrptext{%
+Time step and start time for writing to file wav,
+the files containing output wave variables (significant
+wave height, wave period, mean wave direction).
+}
+\par
+\subsection{Section {\tt \$sedtr}}
+
+
+The following parameters activate the sediment transport module
+and define the sediment grain size classes to be simulated.
+
+\descrpitem{|sedtr|}
+\descrptext{%
+Sediment transport module section name.
+}
+\par
+
+\descrpitem{|isedi|}
+\descrptext{%
+Flag if the sediment computation is done:
+\begin{description}
+\item[0] Do nothing (default)
+\item[1] Compute sediment transport
+\end{description}
+}
+\par
+
+\descrpitem{|idtsed|\\|itmsed|}
+\descrptext{%
+Time step and start time for writing to files sed e sco,
+the files containing sediment variables and suspended
+sediment concentration.
+}
+\par
+
+\descrpitem{|sedgrs|}
+\descrptext{%
+Sediment grain size class vector [mm]. Values has to be
+ordered from the finest to the coarser. \\
+|example: sedgrs = '0.1 0.2 0.3 0.4'|
+}
+\par
+
+\descrpitem{|irocks|}
+\descrptext{%
+Element type in which erosion-deposition is not computed
+(Default -1).
+}
+\par
+
+\descrpitem{|sedref|}
+\descrptext{%
+Initial sediment reference concentration [kg/m3]
+(Default 0).
+}
+\par
+
+\descrpitem{|sedhpar|}
+\descrptext{%
+Sediment diffusion coefficient (Default 0).
+}
+\par
+
+\descrpitem{|adjtime|}
+\descrptext{%
+Time for sediment initialization [s]. The sediment model needs a
+initialization time in which the system goes to a quasi steady
+state. When t = |adjtime| the bed evolution change in the output
+is reset. Keep in mind that |adjtime| has to be chosen case by
+case as a function of the morphology and the parameters used for
+the simulation (Default 0).
+}
+\par
+
+\descrpitem{|percin|}
+\descrptext{%
+Initial sediment distribution (between 0 and 1) for each
+grain size class. The sum of percin must be equal to 1. \\
+|example: percin = 0.25 0.25 0.25 0.25| \\
+If percin is not selected the model impose equal
+percentage for each grainsize class (percin = 1/nrs).
+In case of spatial differentiation of the sediment
+distribution set a number of percin equal to the number
+of grain size classes per number of area types. Element
+types should be numbered consecutively starting from 0.\\
+|example: percin = 0.25 0.25 0.25 0.25  \\
+0.20 0.20 0.30 0.30  \\
+0.45 0.15 0.15 0.15|
+}
+\par
+
+\descrpitem{|tauin|}
+\descrptext{%
+Initial dry density or TAUCE. In function of value: \\
+0-50 : critical erosion stress (Pa) \\
+\textgreater 50  : dry bulk density of the surface (kg/m**3). \\
+In case of spatial differentiation set a number of tauin
+equal to the number of area type. Element types should be
+numbered consecutively starting from 0. \\
+|example: tauin = '0.9 1.4 2.5 1.1'|
+}
+\par
+
+\descrpitem{|sedp|}
+\descrptext{%
+File containing spatially varying initial sediment distribution
+for each grid node. Values are in percentage of each class and
+the file should be structured with number of columns equal the
+number of grain size classes and the number of row equal the
+number of nodes (the order should follow the internal node
+numbering).
+}
+\par
+
+\descrpitem{|sedt|}
+\descrptext{%
+File containing spatially varying initial critical erosion
+stress (Pa) or dry bulk density (kg/m3). One value for each
+node (the order should follow the internal node numbering).
+}
+\par
+
+\descrpitem{|sedcon|}
+\descrptext{%
+File containing the additional constants used in sediment
+model. These parameters are usually set to the indicated
+default values, but can be customized for each sediment
+transport simulation. The full parameter list together with
+their default value and brief description is reported in
+Table \ref{tab:table_sedcon}. Most of the parameters,
+especially the ones for the cohesive sediments,	have been
+calibrated for the Venice Lagoon. For more information about
+these parameters please refer to Neumeier et
+al. \cite{urs:sedtrans05} and Ferrarin et al.
+\cite{ferrarin:morpho08}.
+}
+\par
+
+
+\paragraph{Additional parameters}
+The full parameter list is reported in Table \ref{tab:table_sedcon}.
+An example of the settings for the |sedcon| file is given in
+\Fig\figref{turbulence}. Please note that is not necessary to
+define all parameters. If not defined the default value is imposed.
+
+\begin{figure}[ht]
+\begin{verbatim}
+IOPT = 3
+SURFPOR = 4
+DOCOMPACT = 1
+\end{verbatim}
+\caption{Example of the sedcon file.}
+\label{fig:sedcon}
+\end{figure}
+
+\begin{table}[ht]
+\caption{Additional parameter for the sediment transport model to be set
+in the sedcon file.}
+\begin{tabular}{lcl} \hline
+Name & Default value & Description \\ \hline
+CSULVA  & 159.4 & Coefficient for the solid transmitted stress by Ulva \\
+TMULVA  & 1.054d-3 & Threshold of motion of Ulva [Pa] \\
+TRULVA  & 0.0013 & Threshold of full resuspension of Ulva [Pa] \\
+E0      & 1.95d-5 & Minimum erosion rate \\
+RKERO   & 5.88 & Erosion proportionality coefficient \\
+WSCLAY  & 5.0 & Primary median Ws class (in the range 1:NBCONC) \\
+CDISRUPT& 0.001 & Constant for turbulent floc disruption during erosion \\
+CLIM1   & 0.1 & Lower limit for flocculation [kg/m3] \\
+CLIM2   & 2.0 & Limit between simple/complex flocculation [kg/m3] \\
+KFLOC   & 0.001 & Constant K for flocculation equation \\
+MFLOC   & 1.0 & Constant M for flocculation equation \\
+RHOCLAY & 2600.0 &  Density of clay mineral \\
+CTAUDEP & 1.0 & Scaling factor for TAUCD \\
+PRS     & 0.0 & Resuspension probability [0-1] \\
+RHOMUD  & 50.0 & Density of the freshly deposited mud \\
+DPROFA  & 470.0 & Constants for density profile \\
+DPROFB  & 150.0 & A : final deep density \\
+DPROFC  & 0.015 & Define the shape (in conjunction with B and C) \\
+DPROFD  & 0.0 & Aux parameter for density profile \\
+DPROFE  & 0.0 & Aux parameter for density profile \\
+CONSOA  & 1d-5 & time constant of consolidation \\
+TEROA   & 6d-10 & Constant for erosion threshold from density \\
+TEROB   & 3.0 & Aux parameter for erosion threshold from density \\
+TEROC   & 3.47 & Aux parameter for erosion threshold from density \\
+TEROD   & -1.915 & Aux parameter for erosion threshold from density \\
+KCOES   & 0.15 & Fraction of mud for sediment to be cohesive \\
+CDRAGRED& -0.0893 & Constant for the drag reduction formula \\
+Z0COH   & 2.0D-4 & Bed roughness length for cohesive sediments \\
+FCWCOH  & 2.2D-3 & Friction factor for cohesive sediments \\
+LIMCOH  & 0.063 & Limit of cohesive sediment grainsize [mm] \\
+SMOOTH  & 1.0 & Smoothing factor for morphodynamic \\
+ANGREP  & 32.0 & Angle of repose \\
+IOPT    & 5 & Sediment bedload transport formula option number \\
+MORPHO  & 1.0 & Morphological acceleration factor \\
+RHOSED  & 2650.0 & Sediment grain density \\
+POROS   & 0.4 & Bed porosity [0-1] \\
+SURFPOR & 0.6 & Bed porosity of freshly deposited sand [0-1] \\
+DOCOMPACT& 0.0 & If not zero, call COMPACT routine \\ \hline
+\end{tabular}
+\label{tab:table_sedcon}
+\end{table}
+
+\subsection{Section {\tt \$wrt}}
+
+
+Parameters for computing water renewal time.
+During runtime it writes a .jas file with timeseries of total tracer
+concentration in the basin and WRT computed according to different methods.
+Nodal values of computed WRT are written in the .wrt file.
+Frequency distributions of WRTs are written in the .frq file.
+
+Please find all details here below.
+
+\descrpitem{|idtwrt|}
+\descrptext{%
+Time step to reset concentration to c0. Use 0 if no reset
+is desired. Use -1 if no renewal time computation is desired
+(Default -1).
+}
+\par
+
+\descrpitem{|itmin|}
+\descrptext{%
+Time from when to compute renewal time (-1 for start of sim)
+(Default -1)
+}
+\par
+
+\descrpitem{|itmax|}
+\descrptext{%
+Time up to when to compute renewal time (-1 for end of sim)
+(Default -1).
+}
+\par
+
+\descrpitem{|c0|}
+\descrptext{%
+Initial concentration of tracer (Default 1).
+}
+\par
+
+\descrpitem{|iaout|}
+\descrptext{%
+Area code of elements out of the body of water (e.g. lagoon, lake, sea) (used for init and retflow).
+Use -1 if no outside areas exist. (Default -1).
+}
+\par
+
+\descrpitem{|percmin|}
+\descrptext{%
+Percentage to reach after which the computation is stopped.
+Use 0 if no premature end is desired (Default 0).
+}
+\par
+
+\descrpitem{|iret|}
+\descrptext{%
+Equal to 1 if return flow is used. If equal to 0 the
+concentrations outside are explicitly set to 0 (Default 1).
+}
+\par
+
+\descrpitem{|istir|}
+\descrptext{%
+If equal to 1 simulates completely stirred tank
+(replaces at every time step conz with average conz)
+(Default 0).
+}
+\par
+
+\descrpitem{|iadj|}
+\descrptext{%
+Adjust renewal time for tail of distribution (Default 1).
+}
+\par
+
+\descrpitem{|ilog|}
+\descrptext{%
+Use logarithmic regression to compute renewal time (Default 0).
+}
+\par
+
+\descrpitem{|ctop|}
+\descrptext{%
+Maximum to be used for frequency curve (Default 0).
+}
+\par
+
+\descrpitem{|ccut|}
+\descrptext{%
+Cut renewal time at this level (for res time computation)
+(Default 0).
+}
+\par
+
+\descrpitem{|wrtrst|}
+\descrptext{%
+If reset times are not regularly distributed (e.g., 1 month)
+it is possible to give the exact times when a reset should
+take place. |wrtrst| is a file name where these reset times
+are specified, one for each line. For every line two integers
+indicating date and time for the reset must be specified.
+If only one value is given, time is taken to be 0. The format
+of date is "YYYYMMDD" and for time "hhmmss". If the file
+wrtrst is given |idtwrt| should be 0.
+}
+\par
+
+\subsection{Section {\tt \$lagrg}}
+
+
+This section describes the use of the Lagrangian Particle Module.
+The lagrangian particles can be released inside a specified area with a
+regular distribution. The area is defined in the file |lagra|.
+The amount of particles released and the
+time step is specified by |nbdy| and |idtrl|.
+
+The lagrangian module runs between the times |itlanf| and |itlend|. If one
+or both are missing, the simulation extremes are substituted. Inside
+the lagrangian simulation window the release of particles is controlled
+by the parameters |idtl|, |itranf| and |itrend|. |itranf| gives the time
+of the first release, |itrend| the time for the last release. If not
+given they are set equal to the extremes of the lagrangian simulation.
+|idtl| gives the time step of release.
+
+Particles are released inside the given areas (filename |lagra|). If
+this file is not specified they are released over the whole domain. It is also possible to
+ release particles over open boundaries. However,
+this is still experimental. Please see the file |lagrange_main.f|
+for more details.
+
+The output frequency of the results can be contolled by
+|idtlgr| and |itmlgr|.
+
+Please find all details here below.
+
+\descrpitem{|ilagr|}
+\descrptext{%
+Switch that indicates if the lagrangian module
+should be run (default 0):
+\begin{description}
+\item[0] do nothing
+\item[1] surface lagrangian
+\item[2] 2d lagrangian (not implemented)
+\item[3] 3d lagrangian
+\end{description}
+}
+\par
+
+\descrpitem{|nbdymax|}
+\descrptext{%
+Maximum numbers of particles that can be in the domain.
+This should be the maximum number of particles
+that can be created and inserted. Use 0 to not limit
+the number of particles (at your own risk). This
+parameter must be set and has no default.
+}
+\par
+
+\descrpitem{|nbdy|}
+\descrptext{%
+Total number of particles to be released in the domain each
+time a release of particles takes place.
+(Default 0)
+}
+\par
+
+\descrpitem{|rwhpar|}
+\descrptext{%
+A horizontal diffusion can be defined for the lagrangian model.
+Its value can be specified in |rwhpar| and the units are
+[m**2/s]. (Default 0)
+}
+\par
+
+\descrpitem{|itlanf\\itlend|}
+\descrptext{%
+The start and end time for the lagrangian module.
+If not given, the module runs for the whole simulation.
+}
+\par
+
+\descrpitem{|itmlgr\\idtlgr|}
+\descrptext{%
+Initial time and time step for the output to file
+of the particles. if |idtlgr| is 0,
+no output is written. (Default 0)
+}
+\par
+
+\descrpitem{|idtl|}
+\descrptext{%
+The time step used for the release of particles. If this
+is 0 particles are released only once at the beginning
+of the lagrangian simulation. No particles are released
+for a value of less than 0. (Default 0)
+}
+\par
+
+\descrpitem{|itranf\\itrend|}
+\descrptext{%
+Initial and final time for the release of particles.
+If not specified the particles are released over the
+whole lagrangian simulation period.
+}
+\par
+
+\descrpitem{|ipvert|}
+\descrptext{%
+Set the vertical distribution of particles:
+\begin{description}
+\item[0] releases one particle only in surface layer
+\item[$>$0] releases n particles regularly
+\item[$<$0] releases n particles randomly
+\end{description}
+}
+\par
+
+|linbot| Set the bottom layer for vertical releases (Default -1, bottom layer)
+|lintop| Set the top layer for vertical releases (Default 1, surface layer)
+
+\descrpitem{|lagra|}
+\descrptext{%
+File name that contains closed lines of the area where
+the particles have to be released. If not given, the particles
+are released over the whole domain.
+}
+\par
+
+\subsection{Section {\tt \$name}}
+
+In section |name| the names of input files can be
+given. All directories default to the current directory,
+whereas all file names are empty, i.e., no input files are
+given.
+Strings in section |name| enable the specification of files
+c that account for initial conditions or forcing.
+
+\descrpitem{|zinit|}
+\descrptext{%
+Name of file containing initial conditions for water level.
+}
+\par
+
+\descrpitem{|uvinit|}
+\descrptext{%
+Name of file containing initial conditions for velocity
+}
+\par
+
+\descrpitem{|wind|}
+\descrptext{%
+File with wind data. The file may be either
+formatted or unformatted. For the format of the unformatted
+file please see the section where the WIN
+file is discussed.
+The format of formatted ASCII file
+is in standard time-series format, with the
+first column containing the time in seconds and
+the next two columns containing the wind data.
+The meaning of the two values depend on the
+value of the parameter |iwtype| in the |para| section.
+}
+\par
+\descrpitem{|qflux|}
+\descrptext{File with heat flux data. This file must be in
+a special format to account for the various parameters
+that are needed by the heat flux module to run. Please
+refer to the information on the file \descrpitem{|qflux|}.}
+
+\descrpitem{|rain|}
+\descrptext{File with rain data. This file is a standard time series
+with the time in seconds and the rain values
+in mm/day. The values may include also evaporation. Therefore,
+also negative values (for evaporation) are permitted.}
+
+\descrpitem{|ice|}
+\descrptext{File with ice cover. The values range from 0 (no ice cover)
+to 1 (complete ice cover).}
+
+\descrpitem{|surfvel|}
+\descrptext{File with surface velocities from observation. These
+data can be used for assimilation into the model.}
+
+\descrpitem{|restrt|}
+\descrptext{Name of the file if a restart is to be performed. The
+file has to be produced by a previous run
+with the parameter |idtrst| different
+from 0. The data record to be used in the file for the
+restart must be given by time |itrst|.}
+
+\descrpitem{|gotmpa|}
+\descrptext{Name of file containing the parameters for the
+GOTM turbulence model (iturb = 1).}
+
+\descrpitem{|tempin|}
+\descrptext{Name of file containing initial conditions for temperature}
+
+\descrpitem{|saltin|}
+\descrptext{Name of file containing initial conditions for salinity}
+
+\descrpitem{|conzin|}
+\descrptext{Name of file containing initial conditions for concentration}
+
+\descrpitem{|tempobs|}
+\descrptext{Name of file containing observations for temperature}
+
+\descrpitem{|saltobs|}
+\descrptext{Name of file containing observations for salinity}
+
+\descrpitem{|temptau|}
+\descrptext{Name of file containing the time scale for nudging
+of temperature}
+
+\descrpitem{|salttau|}
+\descrptext{Name of file containing the time scale for nudging
+of salinity}
+
+\descrpitem{|bfmini|}
+\descrptext{Name of file containing initial conditions for bfm}
+
+\descrpitem{|offlin|}
+\descrptext{Name of the file if a offline is to be performed. The
+file has to be produced by a previous run
+with the parameter |idtoff| greater than 0.}
+
+\subsection{Section {\tt \$bound}}
+
+These parameters determine the open boundary nodes and the type
+of the boundary: level or flux boundary. At the first type of boundary the water levels
+are imposed, at the second the fluxes are prescribed.
+
+There may be multiple sections |bound| in one parameter input file,
+describing all open boundary conditions necessary. Every section
+must therefore be supplied with a boundary number. The numbering
+of the open boundaries must
+be increasing. The number of the boundary must be specified
+directly after the keyword |bound|, such as |bound1| or |bound 1|.
+
+\descrpitem{|kbound|}
+\descrptext{%
+Array containing the node numbers that are part of the
+open boundary. The node numbers must form one contiguous
+line with the domain (elements) to the left. This
+corresponds to an anti-clockwise sense. The type of
+boundary depends on the	value of |ibtyp|. In case this value
+is 1 or 2 at least two nodes must be given.
+}
+\par
+
+\descrpitem{|ibtyp|}
+\descrptext{%
+Type of open boundary.
+\begin{description}
+\item[0] No boundary values specified
+\item[1] Level boundary. At this open boundary
+the water level is imposed and the prescribed
+values are interpreted as water levels in meters.
+If no value for |ibtyp| is specified this
+is the default.
+\item[2] Flux boundary. Here the discharge in \dischargeunit
+has to be prescribed.
+\item[3] Internal flux boundary. As with |ibtyp = 2| a
+discharge has to be imposed, but the node where
+discharge is imposed can be an internal node
+and need not be on the outer boundary of
+the domain. For every node in |kbound| the
+volume rate specified will be added to the
+existing water volume. This behavior is different
+from the |ibtyp = 2| where the whole boundary
+received the discharge specified.
+\item[4] Momentum input. The node or nodes may be internal.
+This feature can be used to describe local
+acceleration of the water column.
+The unit is force / density [\maccelunit].
+In other words it is the rate of volume
+[\dischargeunit] times the velocity [m/s]
+to which the water is accelerated.
+\end{description}
+}
+\par
+\descrpitem{|iqual|}
+\descrptext{%
+If the boundary conditions for this open boundary
+are equal to the ones of boundary |i|, then
+setting |iqual = i| copies all the values of
+boundary |i| to the actual boundary. Note that the
+value of |iqual| must be smaller than the number
+of the actual boundary, i.e., boundary |i| must have
+been defined before. (This feature is temporarily
+not working; please do not use.)
+}
+\par
+
+The next parameters give a possibility to specify the file name
+of the various input files that are to be read by the model.
+Values for the boundary condition can be given at any time step.
+The model interpolates in between given time steps if needed. The
+grade of interpolation can be given by |intpol|.
+
+All files are in ASCII and share a common format.
+The file must contain two columns, the first giving the
+time of simulation in seconds that refers to the value
+given in the second column. The value in the second
+column must be in the unit of the variable that is given.
+The time values must be in increasing order.
+There must be values for the whole simulation,
+i.e., the time value of the first line must be smaller
+or equal than the start of the simulation, and the time
+value of the last line must be greater or equal than the
+end of the simulation.
+
+\descrpitem{|boundn|}
+\descrptext{%
+File name that contains values for the boundary condition.
+The value of the variable given in the second column
+must be in the unit determined by |ibtyp|, i.e.,
+in meters for a level boundary, in \dischargeunit for
+a flux boundary and in \maccelunit for a momentum
+input.
+}
+\par
+\descrpitem{|zfact|}
+\descrptext{%
+Factor with which the values from |boundn|
+are multiplied to form the final value of the
+boundary condition. E.g., this value can be used to
+set up a quick sensitivity run by multiplying
+all discharges by a factor without generating
+a new file. (Default 1)
+}
+\par
+
+\descrpitem{|levmin\\levmax|}
+\descrptext{%
+A point discharge normally distributes its discharge
+over the whole water column. If it is important that in
+a 3D simulation the water mass discharge is concentrated
+only in some levels, the parameters |levmin| and |levmax|
+can be used. They indicate the lowest and deepest level over
+which the discharge is distributed. Default values are 0, which
+indicate that the discharge is distributed over the
+whole water column. Setting only |levmax| distributes from
+the surface to this level, and setting only |levmin|
+distributes from the bottom to this level.
+}
+\par
+
+\descrpitem{|conzn\\tempn\\saltn|}
+\descrptext{%
+File names that contain values for the respective
+boundary condition, i.e., for concentration,
+temperature and salinity. The format is the same
+as for file |boundn|. The unit of the values
+given in the second column must the ones of the
+variable, i.e., arbitrary unit for concentration,
+centigrade for temperature and psu (per mille)
+for salinity.
+}
+\par
+
+\descrpitem{|vel3dn|}
+\descrptext{%
+File name that contains current velocity values for the
+boundary condition.  The format is the same as for file
+|tempn| but it has two variables:
+current velocity in x and current velocity in y.
+Velocity can be nudged or imposed depending on the value
+of |tnudge| (mandatory). The unit is [m/s].
+}
+\par
+
+\descrpitem{|tnudge|}
+\descrptext{%
+Relaxation time for nudging of boundary velocity.
+For |tnudge| = 0 velocities are imposed, for
+|tnudge| $>$ 0 velocities are nudged. The
+default is -1 which means do nothing. Unit is [s].
+(Default -1)
+}
+\par
+
+The next variables specify the name of the boundary value file
+for different modules. Please refer to the documentation of the
+single modules for the units of the variables.
+
+\descrpitem{|bio2dn|}
+\descrptext{%
+File name that contains values for the ecological
+module (EUTRO-WASP).
+}
+\par
+\descrpitem{|sed2dn|}
+\descrptext{%
+File name that contains values for the sediment
+transport module.
+The unit of the values given
+in the second and following columns (equal to the
+number of defined grainsize in parameter |sedgrs|).
+}
+\par
+
+\descrpitem{|mud2dn|}
+\descrptext{%
+File name that contains values for the fluid mud
+module.
+}
+\par
+\descrpitem{|lam2dn|}
+\descrptext{%
+File name that contains values for the fluid mud
+module (boundary condition for the structural parameter,
+to be implemented).
+}
+\par
+\descrpitem{|dmf2dn|}
+\descrptext{%
+File name that contains values for the fluid mud
+module (boundary conditions for the advection of flocsizes,
+to be implemented).
+}
+\par
+\descrpitem{|tox3dn|}
+\descrptext{%
+File name that contains values for the toxicological
+module.
+}
+\par
+
+\descrpitem{|bfmbcn|}
+\descrptext{%
+File name that contains values for the bfm module.
+}
+\par
+
+\descrpitem{|mercn|}
+\descrptext{%
+File name that contains values for the mercury module.
+}
+\par
+
+\descrpitem{|intpol|}
+\descrptext{%
+Order of interpolation for the boundary values read
+in files. Use 1 for stepwise (no) interpolation,
+2 for linear and 4 for cubic interpolation.
+The default is linear interpolation, except for
+water level boundaries (|ibtyp=1|) where cubic
+interpolation is used.
+}
+\par
+
+The next parameters can be used to impose a sinusoidal water level
+(tide) or flux at the open boundary. These values are used if no
+boundary file |boundn| has been given. The values must be in the unit
+of the intended variable determined by |ibtyp|.
+
+\descrpitem{|ampli|}
+\descrptext{%
+Amplitude of the sinus function imposed. (Default 0)
+}
+\par
+\descrpitem{|period|}
+\descrptext{%
+Period of the sinus function. (Default 43200, 12 hours)
+}
+\par
+\descrpitem{|phase|}
+\descrptext{%
+Phase shift of the sinus function imposed. A positive value
+of one quarter of the period reproduces a cosine
+function. (Default 0)
+}
+\par
+\descrpitem{|zref|}
+\descrptext{%
+Reference level of the sinus function imposed. If only
+|zref| is specified (|ampli = 0|) a constant value
+of |zref| is imposed on the open boundary.
+}
+\par
+
+With the next parameters a constant value can be imposed for the
+variables of concentration, temperature and salinity. In this case
+no file with boundary values has to be supplied. The default for all
+values is 0, i.e., if no file with boundary values is supplied and
+no constant is set the value of 0 is imposed on the open boundary.
+A special value of -999 is also allowed. In this case the value
+imposed is the ambient value of the parameter close to the boundary.
+
+\descrpitem{|conz\\temp\\salt|}
+\descrptext{%
+Constant boundary values for concentration,
+temperature and salinity respectively. If these
+values are set no boundary file has to be supplied.
+(Default 0)
+}
+\par
+
+The next two values are used for constant momentum input.
+This feature can be used to describe local acceleration of the
+water column. The values give the input of momentum
+in x and y direction. The unit is force / density (\maccelunit).
+In other words it is the rate of volume (\dischargeunit) times
+the velocity (m/s) to which the water is accelerated.
+
+These values are used if
+boundary condition |ibtyp = 4| has been chosen and
+no boundary input file has been given.
+If the momentum input is varying then it may be specified with
+the file |boundn|. In this case the file |boundn| must contain
+three columns, the first for the time, and the other two for
+the momentum input in $x,y$ direction.
+
+Please note that this feature is temporarily not available.
+
+\descrpitem{|umom\\vmom|}
+\descrptext{%
+Constant values for momentum input. (Default 0)
+}
+\par
+
+The next two values can be used
+to achieve the tilting of the open boundary if only one water level value
+is given. If only |ktilt| is given then the boundary values
+are tilted to be in equilibrium with the Coriolis force. This may avoid
+artificial currents along the boundary. |ktilt| must be a boundary node
+on the boundary.
+
+If |ztilt| is given the tilting of the boundary is explicitly set
+to this value. The tilting of the first node of the boundary is set
+to $-|ztilt|$
+and the last one to $+|ztilt|$. The total amount of tilting is
+therefore is $2 \cdot |ztilt|$. If |ktilt| is not specified
+then a linear interpolation between the first and the last boundary
+nodes will be carried out. If also |ktilt| is specified then
+the boundary values are arranged that the water levels are
+tilted around |ktilt|, e.g., $-|ztilt|$ at the first boundary node,
+0 at |ktilt|, and $+|ztilt|$ at the last boundary node.
+
+\descrpitem{|ktilt|}
+\descrptext{%
+Node of boundary around which tilting should
+take place. (Default 0, i.e., no tilting)
+}
+\par
+\descrpitem{|ztilt|}
+\descrptext{%
+Explicit value for tilting (unit meters).
+(Default 0)
+}
+\par
+
+Other parameters:
+
+\descrpitem{|igrad0|}
+\descrptext{%
+If different from 0, a zero gradient boundary
+condition will be implemented. This is already the
+case for scalars under outflowing conditions. However,
+with |igrad0| different from 0 this conditions
+will be used also for inflow conditions. (Default 0)
+}
+\par
+
+\descrpitem{|tramp|}
+\descrptext{%
+Use this value to start smoothly a discharge
+boundary condition. If set, it indicates the
+time (seconds) that will be used to increase
+a discharge from 0 to the desired value (Default 0)
+}
+\par
+
+\descrpitem{|levflx|}
+\descrptext{%
+If discharge is depending on the water level
+(e.g., lake outflow) then this parameter indicates to
+use one of the possible outflow curves. Please
+note that the flow dependence on the water level
+must be programmed in the routine $|level\_flux()|$.
+(Default 0)
+}
+\par
+
+\descrpitem{|nad|}
+\descrptext{%
+On the open boundaries it is sometimes convenient
+to not compute the non-linear terms in the momentum
+equation because instabilities may occur. Setting
+the parameter |nad| to a value different from 0
+indicates that in the first |nad| nodes from the
+boundary the non linear terms are switched off.
+(Default 0)
+}
+\par
+
+\descrpitem{|lgrpps|}
+\descrptext{%
+Indicates the number of particles released at
+the boundary for the lagrangian module. If positive,
+it is the number of particles per second released
+along the boundary. If negative, its absolute
+value indicates the particles per volume flux
+(unit \dischargeunit) released along the boundary.
+(Default 0)
+}
+\par
+
+\subsection{Section {\tt \$wind}}
+
+
+In this section the wind data can be given directly without
+the creation of an external file. Note, however, that
+a wind file specified in the |name| section takes precedence
+over this section. E.g., if both a section |wind| and a
+wind file in |name| is given, the wind data from the file is used.
+
+The format of the wind data in this section is the same as the
+format in the ASCII wind file, i.e., three columns, with
+the first specifying the time in seconds and the other two columns
+giving the wind data. The interpretation of the wind data
+depends on the value of |iwtype|. For more information please
+see the description of |iwtype| in section |para|.
+
+\subsection{Section {\tt \$extra}}
+
+In this section, the node numbers of so called ``extra'' points are given.
+These are points where the value of simulated variables (water level,
+velocities, temperature, salinity, tracer, etc.) are written to create
+a time series that can be elaborated later. The output for these ``extra''
+points consumes little memory and can be therefore written with a
+much higher frequency (typically the same as the integration time step)
+than the complete hydrodynamic output. The output is written
+to file EXT.
+
+The format of the section is the following:
+\begin{verbatim}
+$extra
+        node1   'string1'
+        node2   'string2'
+        etc..
+$end
+\end{verbatim}
+where node is the node number and string is a description of the node.
+If no description strings are needed the nodes can also be specified
+by just giving their values:
+\begin{verbatim}
+$extra
+        node1  node2  node3
+        node4  etc..
+$end
+\end{verbatim}
+This format is however deprecated.
+
+
+\subsection{Section {\tt \$flux}}
+
+In this section, transects are specified through which the discharge
+of water is computed by the program and written to file FLX.
+The transects are defined by their nodes through which they run.
+All nodes in one transect must be adjacent, i.e., they must form a
+continuous line in the FEM network.
+
+The nodes of the transects are specified in free format and are
+ended with the description of the section.
+An example is given here:
+\begin{verbatim}
+$flux
+        1001 1002 1004 'section 1'
+        35 37 46 'special section'
+        407
+        301 'section given on two lines'
+$end
+\end{verbatim}
+The example shows the definition of 3 transects. As can be seen, the
+nodes of the transects can be given on one line alone (first transect),
+or on more than one lines (transect 3).
+There is also an old format that separates one section from the other by
+inserting the value 0. However, this format is deprecated.
+

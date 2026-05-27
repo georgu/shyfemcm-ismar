@@ -34,7 +34,7 @@ To use it run:
     coast.pl mpcoast.dat > coast.grd
 \end{code}
 
-After this step you can check your cost line with the |grid| program:
+After this step you can check your coast line with the |grid| program:
 
 \begin{code}
     grid coast.grd
@@ -72,8 +72,11 @@ when the information on depth is missing.
 
 \end{itemize}
 
-Please note that for SHYFEM depth values have to be positive. If your
-files have depth values as negative numbers, you will have to invert
+Please note that for SHYFEM depth values have to be positive 
+for all the elements whose depth is below the chosen reference mean-sea-level.
+If some very shallow grid elements have depths that are above the reference sea-level 
+of your bathimetry, then only those elements can have negative depths.
+If your files have depth values as negative numbers, you will have to invert
 them. You can use the command
 
 \begin{code}

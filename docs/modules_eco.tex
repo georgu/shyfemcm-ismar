@@ -1,0 +1,126 @@
+
+%------------------------------------------------------------------------
+%
+%    Copyright (C) 1985-2020  Georg Umgiesser
+%
+%    This file is part of SHYFEM.
+%
+%    SHYFEM is free software: you can redistribute it and/or modify
+%    it under the terms of the GNU General Public License as published by
+%    the Free Software Foundation, either version 3 of the License, or
+%    (at your option) any later version.
+%
+%    SHYFEM is distributed in the hope that it will be useful,
+%    but WITHOUT ANY WARRANTY; without even the implied warranty of
+%    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+%    GNU General Public License for more details.
+%
+%    You should have received a copy of the GNU General Public License
+%    along with SHYFEM. Please see the file COPYING in the main directory.
+%    If not, see <http://www.gnu.org/licenses/>.
+%
+%    Contributions to this file can be found below in the revision log.
+%
+%------------------------------------------------------------------------
+\newcommand{\Ttwoa}{\ref{FuncDesc}}
+\subsection{AQUABC}
+The model is focused on cyanobacteria and nitrogen fixation. It incorporates five groups of phytoplankton represented by six state variables: diatoms, non-nitrogen fixing cyanobacteria, nitrogen fixing cyanobacteria, nostacales, akinetes (representing a second group of nitrogen fixing cyanobacteria) and other planktonic algae. However it is a full ecological model containing one group of zooplankton, inorganic nutrients (C, N, P, Si), dissolved organic matter (DOC, DON, DOP), detrital particulate organic matter (POC, PON, POP) and other support variables (Alkalinity, Dissolved Oxygen and Biogenic Silicon in particulate form) as well. The list of the state variables are given in \ref{tab:table_aquabc}
+
+\begin{table}[ht]
+\caption{The list of state variables of pelagic model.}
+\begin{tabular}{lcl} \hline
+State Variable&	Unit \\
+Total ammonia nitrogen &	gN·m-3 \\
+Nitrate nitrogen	&gN·m-3\\
+Orthophosphate phosphorus&	gP·m-3\\
+Dissolved silicon&	gSi·m-3\\
+Dissolved oxygen&	gO2·m-3\\
+Diatoms carbon&	gC·m-3\\
+Non-fixing cyanobacteria carbon&	gC·m-3\\
+Fixing cyanobacteria carbon&	gC·m-3\\
+Nostocates (vegetative-heterocyst cells) carbon	&gC·m-3\\
+Nostocates (akinetes) carbon&	gC·m-3\\
+Other planktonic algae carbon&	gC·m-3\\
+Zooplankton carbon&	gC·m-3\\
+Zooplankton nitrogen&	gN·m-3\\
+Zooplankton phosphorus&	gP·m-3\\
+Detrital particulate organic carbon&	gC·m-3\\
+Detrital particulate organic nitrogen&	gN·m-3\\
+Detrital particulate organic phosphorus	gP·m-3\\
+Particulate silica&	gSi·m-3\\
+Dissolved organic carbon&	gC·m-3\\
+Dissolved organic nitrogen	&gN·m-3\\
+Dissolved organic phosphorus&	gP·m-3\\
+Dissolved inorganic carbon&	gC·m-3\\
+Alkalinity	&moles/L \\
+\hline
+\end{tabular}
+\label{tab:table_aquabc}
+\end{table}
+
+The phytoplankton groups interact with all of the state variables through several processes. The model assumes fixed stoichiometry for phytoplankton and variable stoichiometry for zooplankton. All phytoplankton undergo the same five main processes; where growth results in uptake of the relevant nutrients and incorporate them into phytoplankton biomass where
+\begin{itemize}
+\item Primary production incorporates free nutrients into phytoplankton biomass
+\item Death converts the phytoplankton biomass to detrital particulate organic matter 
+\item Excretion converts the phytoplankton biomass to dissolved organic matter
+\item Respiration converts the phytoplankton biomass to inorganic nutrients
+\item Grazing converts the phytoplankton biomass to zooplankton biomass
+\item The dead organic matter dissolves into dissolved organic matter, and the dissolved organic matter mineralizes to free nutrients.
+\end{itemize}
+
+More advanced features such as sediment diagenesis and interaction of surface water and sediments are available as well. A research version contains additional state variables to consider the full redox cycle in water column and sediments.
+
+\subsection{EUTRO}
+The water quality model has been derived from the EUTRO module of WASP (released by the U.S. Environmental Protection Agency (EPA) (Ambrose et al., 1993) and modified, according to \cite{Umgie2003, Canu2003, Aveytua2020}.
+The modified model simulates and represents, by means of an eulerian approach, the evolution of eleven state variables in the water column and sediment bed, including dissolved oxygen (DO), carbonaceous biochemical oxygen demand (CBOD), phytoplankton carbon and chlorophyll a (PHY), ammonia (NH3), nitrate (NOX), organic nitrogen (ON), organic phosphorus (OP), orthophosphate (OPO4) , zooplankton (ZOO), organismic nitrogen in the sediment (ONsed), organic phosphorous in the sediment (OPsed). The interacting state variables can be considered as four interacting systems: the carbon cycle, the phosphorous cycle, the nitrogen cycle and the dissolved oxygen balance (\Fig \ref{eutro_scheme}).
+
+
+\begin{figure}[htbp]
+centering
+\includegraphics[scale=1]{eutro.png}
+\caption{The overall structure of the EUTRO module with state variables (grey boxes), fluxes of matter (arrows). Black circles represent oxygen consumption in nitrification and in the degradation of organic matter. }
+\label{eutro_scheme}
+\end{figure}
+
+The model implementation allows to vary the represented complexity, by switching the state variables on and off.
+Phytoplankton (Table 1) is driven by the anabolic and the catabolic terms, plus a grazing term related to zooplankton concentration (Reaction 10, 11 and 14, \Ttwoa). The anabolic term is related to light intensity, temperature and concentration of nutrients in water, while the catabolic term depends on temperature (\Ttwoa) .
+Phytoplankton growth is described by combining a maximum growth rate under optimal conditions, and a number of dimensionless factors, each ranging from 0 to 1, related to specific environmental factors (nutrient, light availability), reducing the phytoplanktonic growth when environmental conditions are suboptimal. Inorganic phosphorous and nitrogen availability on phytoplankton growth/nutrients uptake is simulated by means of Michealis-Menten-Monod kinetics (Table 2). Phytoplankton uptake nitrogen both in the forms of ammonia and nitrate, but ammonia is assimilated preferentially, as indicated in the ammonia preference relation (Reaction. 35, \Ttwoa). Temperature influence on phytoplankton growth is expressed using an exponential relation (Reaction 10, \Ttwoa), light limitation can be chosen between two alternative options (Di Toro and Smith subroutines, Reaction 41, \Ttwoa). 
+Nitrogen and phosphorous are then returned to the organic compartment (ON, OP) via phytoplankton and zooplankton respiration and death. After mineralization, the organic form is again converted in the dissolved inorganic form available for phytoplankton growth. 
+The DO mass balance is influenced by the reareation rate, due to the exchange with the atmosphere, and photosynthesis (sources of DO) and by respiration and mineralization of particulated and dissolved organic matter (sinks of DO). Other terms included in the DO mass balance are the ones referring to redox reactions such as nitrification and denitrification. The reaeration rate is computed taking into account the wind and current speeds, depth and temperature.
+The dynamic of a generic pool of herbivorous zooplankton is simulated with the variable ZOO. Zooplankton grazing has been described by means of a type II functional relationship.
+Grazed phytoplankton is assimilated according to the efficiency coefficient EFF. The not assimilated fraction is transferred to the organic matter compartments. Finally, zooplankton mortality is described by a first order kinetics. 
+
+\input{bio3d_t.tex}
+
+
+\subsubsection{sediment module}
+An additional process that can be switched on and off is the evolution of both nitrogen and phosphorus detritus in sediment. The variables  ONsed and OPsed (not subjected to advection-diffusion processes) are used in this case. These two variables interact with the Nitrogen and Phosphorous cycles through the resuspension and sinking of organic N and P, as described by the equations in Table 1. When the wsedim  subroutine is switched on, OP, ON, NH3 and OPO4 are updated at each time step in agreement with those equations. The resuspension is a linear function of the water velocity calculated by the hydrodynamic model at each box, as written in Tab. \ref{MassBalance}. The amount of the sinking nutrients depends on specific parameters, as given in Tab. \Ttwoa, and on the depth of the underlying column.
+This routine can be switched on and off as needed by the user, setting the |bsedim|, parameter true or false in the bio3d routine. 
+
+\subsubsection{Parameters for the str file}
+Below the parameters to set in the input file |str|
+
+
+|Ibio=1|		simulate eutro
+
+To set boundary conditions add a section |$bound| and set:
+
+|bio2dn=| File name that contains boundary conditions for concentration of the water quality state variables. The format is the same as for the file boundn. The unit of the values given in the second and following column (9 data columns for EUTRO) must the ones of the variable.
+
+Initialization of variables are done using external files, otherwise are set by default in the code, with uniform value in the domain.  Spatially variable initial conditions should be provided in section |$name|.
+\begin{itemize}
+\item Name1.bio: File with concentration values of water quality for the initialization.
+\item Name1.salt: Files with salinity concentration values [psu] for the initialization.
+\item Name1.temp: File with and Temperature values [deg C] for the initialization.
+\end{itemize}
+
+%For further details about EUTRO-WASP integration into SHYFEM see \cite{Umgie2003}.
+
+
+%\subsubsection{ERSEM-BFM}
+
+%The ecosystem model is built on the base of the Biogeochemical Flux Model (ERSEM-BFM), a biomass-based differential equation model. The model is built with respect to mass conservation following a top-down approach, where the food web consists of functional groups defined as Chemical Functional Families and Living Functional Groups. Each group is expressed in terms of basic elements components, such as C, N, P and SI, or by molecules as Chlorophyll, which constitutes a set of state variables. The model simulates the evolution of up to 44 state variables in the water column describing both the main metabolic processes within each functional groups and the predation processes between functional groups. In particular, carbon assimilation, nutrient uptake, analysis of primary producers, grazing by and of secondary producers, respiration, mortality excretion and exudation of all organisms are modelled.
+
+%Only the pelagic foodweb has been considered which is constituted by primary producers, zooplankton, bacteria, nutrients and dissolved chemical species for oxygen and the carbonate system. Primary producers are divided in four principal groups: one silicate dependent group named diatoms and three silicate independent groups named picophytoplankton, flagellates and dinoflagellates. Bacterioplankton represent free-living, non-colonial bacteria that can switch from aerobic to anaerobic metabolism according to the pelagic oxygen conditions. There are four zooplankton groups in the model corresponding to microzooplankton, heterotrophic nanoflagellates, carnivorous mesozooplancton and omnivorous mesozooplancton. The other explicitly simulated environmental variables are nutrients (nitrite, nitrate, ammonium, orthophosphate and silicate. dissolved bioavailable iron), dissolved oxygen, carbon dioxide, dissolved and particulate (non-living) organic matter.
+
+%More information on the ERSEM-BFM ecological module can be found at https://www.nioz.nl/en/about/cos/ecosystem-modelling/ersem-bfm-model

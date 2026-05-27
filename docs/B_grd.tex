@@ -1,0 +1,103 @@
+
+%------------------------------------------------------------------------
+%
+%    Copyright (C) 1985-2020  Georg Umgiesser
+%
+%    This file is part of SHYFEM.
+%
+%    SHYFEM is free software: you can redistribute it and/or modify
+%    it under the terms of the GNU General Public License as published by
+%    the Free Software Foundation, either version 3 of the License, or
+%    (at your option) any later version.
+%
+%    SHYFEM is distributed in the hope that it will be useful,
+%    but WITHOUT ANY WARRANTY; without even the implied warranty of
+%    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+%    GNU General Public License for more details.
+%
+%    You should have received a copy of the GNU General Public License
+%    along with SHYFEM. Please see the file COPYING in the main directory.
+%    If not, see <http://www.gnu.org/licenses/>.
+%
+%    Contributions to this file can be found below in the revision log.
+%
+%------------------------------------------------------------------------
+\label{grid}
+The SHYFEM grid files have a defined format and file extension (.grd). Below the grd file format is expressed. 
+The names used are described in the legend:
+\begin{code}
+n	item number (node, element, line)
+t	type
+d	depth
+x,y	coordinates
+ntot	number of following nodes
+n1,n2	node numbers
+\end{code}
+
+The format of lines in input file is:
+
+\begin{code}
+comment:
+
+0 [anything]
+
+node:
+
+1	n	t	x	y	[d]
+
+element:
+
+2	n	t	ntot	n1 n2 n3 ... 	[d]
+
+line:
+
+3	n	t	ntot	n1 n2 ...	[d]
+
+
+\end{code}
+Be careful about the following:
+\begin{itemize}
+\item Lines may be split at any point, except before optional argument.
+\item d must not be on separate line.
+\item If line is split, the continuation line(s) must start with a blank.
+\item Blank lines can be inserted as needed
+\item if d is not specified, -999. will be used (flag)
+\item use t=0 if you do not know what to use
+\item n must be unique for every item type 
+\item item numbers need not be consecutive
+\item the sequence of items is not important, 
+nodes can be mixed with elements/lines
+\item the minimum number of nodes for element items is 3
+\item the minimum number of nodes for line items is 2
+\item element items should have all nodes unique
+\item line items with the same first and last node are considered closed
+\end{itemize}
+
+Examples of grd file format is given below.
+\begin{code}
+example 1 :
+
+0 example of one line
+
+1 11 0 10. 10.
+1 12 0 20. 20.
+
+3 7 0 2 11 12
+
+#----------------
+
+example 2 :
+
+0 example of one element with continuation line
+
+1 11 0 10. 10.
+1 12 0 20. 20.
+1 15 0 10. 20.
+
+2 7 0 3 
+   11 12 15
+
+=============================================================
+
+\end{code}
+

@@ -1,0 +1,276 @@
+
+%------------------------------------------------------------------------
+%
+%    Copyright (C) 1985-2020  Georg Umgiesser
+%
+%    This file is part of SHYFEM.
+%
+%    SHYFEM is free software: you can redistribute it and/or modify
+%    it under the terms of the GNU General Public License as published by
+%    the Free Software Foundation, either version 3 of the License, or
+%    (at your option) any later version.
+%
+%    SHYFEM is distributed in the hope that it will be useful,
+%    but WITHOUT ANY WARRANTY; without even the implied warranty of
+%    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+%    GNU General Public License for more details.
+%
+%    You should have received a copy of the GNU General Public License
+%    along with SHYFEM. Please see the file COPYING in the main directory.
+%    If not, see <http://www.gnu.org/licenses/>.
+%
+%    Contributions to this file can be found below in the revision log.
+%
+%------------------------------------------------------------------------
+
+The source code of the model is provided in a file named \ttt{\shydist}
+or similar, depending on the version of the code. In this case the
+version is \version.  The file can be downloaded from the SHYFEM GIT
+repository \textcolor{red}{UPDATE LINK TO GIT}\footnote{ https://github.com/shyfemcm/shyfemcm}, or
+ in the SHYFEM web-site \textcolor{red}{UPDATE LINK TO WEBSITE} \footnote{http://www.ismar.cnr.it/shyfem/}, as 
+described in section \ref{where}.
+
+\subsection{How to choose the right repository for the model}
+
+There is more than one repository for getting the code. Some of the possibilities will be described below.
+
+\begin{enumerate}
+
+\item  the official community repository is https://github.com/shyfemcm/shyfemcm
+
+	This is the official community model repository. Here all official updates and contributions eventually will end up. It might not 	contain the last developments, but it should be stable to be used for all purposes.
+
+	In order to clone this repository, please run:
+
+	git clone https://github.com/SHYFEM-model/shyfem.git
+
+	or download from https://github.com/shyfemcm/shyfemcm
+
+\item  the old pre-community model repository
+
+	https://github.com/SHYFEM-model/shyfem
+
+	This contains the last version pre-community. It is now at
+	version 7.5.85 and will not be evolving further
+
+	Please do not use this distribution anymore.
+
+	If for some reasons you still have to use this old version,
+	please run:
+
+	git clone https://github.com/SHYFEM-model/shyfem.git
+
+	or download from https://github.com/SHYFEM-model/shyfem
+
+\item  the private ismar community repository
+
+	https://github.com/georgu/shyfemcm-ismar
+
+	Here all the development at the ISMAR institute is going on. The
+	repository contains more branches. Depending on what you would
+	like to do, once you have downloaded the model you should switch
+	to the appropriate branch.
+
+	main		this is the main branch and it should normally
+			be the same as the main branch of the official
+			repository in point 1 above.
+
+	develop		here all the new developments of ISMAR are being
+			kept. If you need a special feature that the
+			official branch does not have, please look here.
+
+	feature1	these is a feature branch. Here some new feature
+			will be implemented. Once the feature is tested
+			it will be ported to the develop branch.
+
+	feature2	etc...
+
+	In order to clone this repository, please run:
+
+	git clone https://github.com/georgu/shyfemcm-ismar.git
+
+	or download from https://github.com/georgu/shyfemcm-ismar
+
+\item  how to update and switch branches
+
+	if you have used the command "git clone" in order to download
+	and install the model, you can easily upgrade to a new version
+	with this command:
+
+	git pull
+
+	if you get an error, please have a look at the following section
+	to resolve the problem.
+
+	To switch branches you do:
+
+	git status		 (this will tell you on what branch you are)
+	git checkout develop	(this will switch to the branch develop)
+
+	In order to switch to a different branch, once you have 
+
+\end{enumerate}
+
+\subsection{How to to install the model with git}
+In the following there is the description of the list of steps to install from git the model:
+
+\begin{enumerate}
+\item  check your repository: refer to previous section.
+
+\item  install git on your computer\\
+
+	run "git --version"\\
+	if you see no error, you already have git installed\\
+	if not, please install git\\
+	with debian, you can run (as superuser)\\
+		apt update\\
+		apt install git\\
+
+\item  get the latest version of the model:the name of the repository below may change depending on
+	your choice on what repository you have chosen to use. Please refer to point 0 above. You have two choices. The first is the preferred one.
+
+	\subitem a) clone directly in your current directory
+		git clone  \footnote{https://github.com/shyfemcm/shyfemcm.git} myshyfem
+		this will create a directory myshyfem in your current directory
+		this directory contains the model code
+		be sure not to have an existing myshyfem directory
+			in your current directory
+		you can give any name to the new shyfem directory
+	
+	\subitem b) download from Github
+		goto  \footnote{https://github.com/shyfemcm/shyfemcm}
+		you will see a green button with "Code" written on it
+		download the zip file
+		do a "unzip -v" to see in what dir the model will be copied
+		unzip in a convenient directory
+		please remember that with this choice you do not need
+		to install git on your computer. However, updating
+		the model to a new version means that you will have
+		to execute these steps over and over again
+
+\item compile the model
+
+	go into the directory that has been created and run
+		make\\
+	this should compile the model with standard flags\\
+	you can always run "make help" to see other targets\\
+	running make check$\_$software will tell you what software is missing for shyfem to be installed
+	
+\item make a symbolic link: 	
+this is not necessary, but useful\\
+	goto your home directory and run\\
+		ln -s dir-where-shyfem-is-installed shyfem\\
+	this will create a link to the new shyfem directory\\
+	be sure you do not have a shyfem directory (or link) in your home
+
+\item update the model
+
+	this is needed when new functionality has been added to the model with these commands you can download the latest version easily\\
+
+	updating only works if you have git installed on your computer and you have chosen option 2a above. In case you have chosen 	option 2b you will have to download the model again from scratch.\\
+
+	goto the shyfem directory where the model is installed\\
+		git fetch\\
+		git pull\\
+		make\\
+
+	this will get the latest model version and compile it\\
+
+	if you get an error with "git pull" you probably have changed something in the model code and the pull would overwrite your changes. Save your changes somewhere, then do\\
+		git checkout file(s)\\
+	where file(s) are the offending file(s)\\
+		git pull\\
+	and then compare the difference between your files and the new ones\\
+\end{enumerate}
+
+
+Once you have downloaded the model distribution, move the file to
+the directory in which you want to install the model and unpack the
+distribution. In the following we will assume that the file is in your
+home directory and your home directory is called \ttt{\basedir}. However,
+any other directory works as well. To unpack the distribution
+in your home directory, move there and run the command:
+
+\begin{codem}
+    cd \basedir
+    tar xzvf \shydist
+\end{codem}
+
+At this point a new folder named \ttt{\shydir} has been created. 
+This directory is the root of the SHYFEM model. All other commands
+given in this chapter assume that you are in this directory. 
+Therefore, before reading on, please move into this directory:
+
+\begin{codem}
+    cd \shydir
+\end{codem}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\sysfiles}{.bashrc .bash\_profile .profile}
+
+Before compiling it is advisable to install some files for a simpler
+usage of the model. As long as you only want to run a simulation, this
+step is not strictly necessary. But if you will run some scripts of the
+distribution, these scripts will not work properly if you do not install
+the model.
+
+In order to install the model, you should run
+
+\begin{code}
+    make install
+\end{code}
+
+This command will do the following:
+
+\begin{itemize}
+
+\item It hardcodes the installation directory in all scripts of the
+model so only programs of the installed version will be executed.
+
+\item It inserts a symbolic link |shyfem| from the home directory to
+the root of the SHYFEM installation.
+
+\item It inserts a small snippet of code into the initialization files
+\ttt{\sysfiles} that are in your home directory. This will adjust your
+path to point to the SHYFEM directory and gives you access to some
+administrative commands.
+
+\end{itemize}
+
+After this command you will find the original files that have been changed
+in your home directory saved with a trailing number (e.g., |.profile.35624|
+or similar).  If you encounter problems, just substitute back these files.
+
+In order to guarantee that your new settings take effect, you have to log
+out and log in again.
+
+If you do not want to run the installation routine, you should at least
+manually insert a symbolic link to the root of the SHYFEM model and
+modify your PATH enviromental variable:
+
+\begin{codem}
+    cd
+    ln -fs \shydir shyfem
+    echo -e "export PATH=$PATH:$HOME/shyfem/fembin" >> .bashrc
+\end{codem}
+
+If you have more versions installed, you should use |make install_hard|
+in order to use the complete paths of the directories in the scripts.
+You can run |make install_hard_reset| to restore the settings previous to
+this last installation.
+
+If you want to uninstall the model, you should use the command
+|make uninstall|. This will delete the symbolic link, cancel the hard
+links in the model scripts and restore the systemfiles \ttt{\sysfiles}
+to their original content.
+
+Please note that you still have to delete manually the model
+directory. This can be done with the command \ttt{rm -rf \shydir}. 
+In this case be aware
+that changes done by you to the code will be lost.
+
+For other options please refers to the |Rules.make| file.
+
+
+

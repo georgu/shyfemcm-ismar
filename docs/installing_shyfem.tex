@@ -23,22 +23,12 @@
 %
 %------------------------------------------------------------------------
 
-In the following an overview is given on running the model \shy{}. In the SHYFEM code directory you can find a directory called |examples|.  In it you can find examples to build from simple 2D to more complex 3D setup files. All explanations are
-provided in the README file and in the wiki at the following
-link:
-\\
-\\
-\underline{\texttt{https://github.com/georgu/shyfemcm-ismar/wiki/Test-cases}}
-\\
-\\
-The
-model needs a parameter input file in ASCII format, with extension |str|,
-that is read on standard input. Moreover, it needs some external files
-that are specified in this parameter input file. The model produces
-several external files with the results of the simulation. Again, the
-name of this files can be influenced by the parameter input file.
-Once the str file (e.g., param.str) is made, the following line starts the simulation:
+The \shy{} model is only available for Linux Operating System.
+Several software products must be present in order to be able
+to compile the model. Please refer to the documentation of your Linux
+distribution for installing these programs.
 
-\begin{verbatim}
-          shyfem param.str
-\end{verbatim}
+The source code is composed mainly of Fortran 90 files, but files written
+in C, Fortran 77, Perl and Shell scripts are also present.
+
+

@@ -22,12 +22,25 @@
 %    Contributions to this file can be found below in the revision log.
 %
 %------------------------------------------------------------------------
+\label{preprocessing}
 
 Before you can start using the model you have to create a numerical grid.
-This step is more difficult for models that work on unstructured grids
+Creating a grid is more difficult for models that work on unstructured grids
 (like finite element models) than for finite difference models, where
 often it is enough to have a regular gridded bathymetry to start running
 simulations.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[scale=0.5]{example_finite_elements.png}
+\caption{Example of  a finite element grid. Zoom on elements. Vertices are called nodes.}
+\label{grd_example}
+\end{figure}
+
+the SHYFEM finite element grids are composed of triangular elements, 
+where the vertices are called nodes. For a thorough description of the 
+approach used with staggered finite elements
+over such a grid refer to Appendix A.2.
 
 This chapter describes the steps needed to create a numerical grid for SHYFEM.
 
@@ -52,9 +65,9 @@ objects, which are: Nodes, Elements, Lines. These parts are the following:
 
 The presence of these structures depends on type of |grd| file, for example,
 in a boundary line the structures will be the line and its nodes.
-For more details on the format, please, refer to |grd| file appendix~\ref{file_formats}.
+For more details on the format, please, refer to |grd| file appendix~\ref{grid}.
 
-The steps to create a |grd| file are the following:
+The steps to create a |grd| file are the following and they will be described below:
 
 \begin{enumerate}
 

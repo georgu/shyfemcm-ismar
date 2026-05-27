@@ -1,0 +1,85 @@
+
+%------------------------------------------------------------------------
+%
+%    Copyright (C) 1985-2020  Georg Umgiesser
+%
+%    This file is part of SHYFEM.
+%
+%    SHYFEM is free software: you can redistribute it and/or modify
+%    it under the terms of the GNU General Public License as published by
+%    the Free Software Foundation, either version 3 of the License, or
+%    (at your option) any later version.
+%
+%    SHYFEM is distributed in the hope that it will be useful,
+%    but WITHOUT ANY WARRANTY; without even the implied warranty of
+%    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+%    GNU General Public License for more details.
+%
+%    You should have received a copy of the GNU General Public License
+%    along with SHYFEM. Please see the file COPYING in the main directory.
+%    If not, see <http://www.gnu.org/licenses/>.
+%
+%    Contributions to this file can be found below in the revision log.
+%
+%------------------------------------------------------------------------
+\newcommand{\sysfiles}{.bashrc .bash\_profile .profile}
+
+Once the source code has been copied in your computer, to install the model
+it is necessary to configure and compile it.
+Remember that the root of the \shy{} model corresponds to the directory
+where the code has been installed (e.g. \ttt{\shydir} or |/home/model/shyfemcm-ismar|).
+You can choose to configure the model by yourself or using a command that
+automatically configure your system. \\
+In the first case it is suggested to at least
+manually insert a symbolic link to the root of the \shy{} model and
+modify your PATH enviromental variable:
+
+\begin{codem}
+    cd
+    ln -fs /home/model/shyfemcm-ismar shyfem
+    echo -e "export PATH=$PATH:$HOME/shyfem/bin" >> .bashrc
+\end{codem}
+In the second case move to the root of the \shy{} model and
+run |make install|:
+\begin{codem}
+    cd /home/model/shyfemcm-ismar
+    make install
+\end{codem}
+This command will do the following:
+
+\begin{itemize}
+
+\item It hardcodes the installation directory in all scripts of the
+model so only programs of the installed version will be executed.
+
+\item It inserts a symbolic link |shyfem| from the home directory to
+the root of the SHYFEM installation.
+
+\item It inserts a small snippet of code into the initialization file
+\ttt{.bashrc} that is in your home directory.
+This will adjust your
+path to point to the SHYFEM directory and gives you access to some
+administrative commands.
+
+\end{itemize}
+
+After this command you will find the original files that have been changed
+in your home directory saved with a trailing number (e.g., |.bashrc.35624|
+or similar).  If you encounter problems, just substitute back these files.
+
+In order to guarantee that your new settings take effect, you have to log
+out and log in again.
+
+Once the model is installed, the next step is compiling the model. \\
+%For other options please refers to the |Rules.make| file.
+
+If you want to uninstall the model, you should use the command
+|make uninstall|. This will delete the symbolic link, cancel the hard
+links in the model scripts and restore the systemfiles %\ttt{\%sysfiles}
+to their original content.
+
+Please note that you still have to delete manually the model
+directory. This can be done with the command \ttt{rm -rf \shydir}.
+In this case be aware
+that changes done by you to the code will be lost.
+

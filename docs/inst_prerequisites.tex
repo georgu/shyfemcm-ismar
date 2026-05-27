@@ -1,0 +1,89 @@
+
+%------------------------------------------------------------------------
+%
+%    Copyright (C) 1985-2020  Georg Umgiesser
+%
+%    This file is part of SHYFEM.
+%
+%    SHYFEM is free software: you can redistribute it and/or modify
+%    it under the terms of the GNU General Public License as published by
+%    the Free Software Foundation, either version 3 of the License, or
+%    (at your option) any later version.
+%
+%    SHYFEM is distributed in the hope that it will be useful,
+%    but WITHOUT ANY WARRANTY; without even the implied warranty of
+%    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+%    GNU General Public License for more details.
+%
+%    You should have received a copy of the GNU General Public License
+%    along with SHYFEM. Please see the file COPYING in the main directory.
+%    If not, see <http://www.gnu.org/licenses/>.
+%
+%    Contributions to this file can be found below in the revision log.
+%
+%------------------------------------------------------------------------
+
+Here is a list of packages, tools and libraries that you will need to build and
+run the \shy{} model.
+Here below we use the command |sudo apt install| to install a package in a Debian
+based linux system (installation is tested on Ubuntu) but other Linux
+distributions can be considered.
+
+\subsection{Mandatory}
+\begin{itemize}
+
+\item The package |make| is required for compilation.
+
+\item The |perl| interpreter and the |bash| shell are necessary for compiling.
+
+\item A Fortran 77 and 90 compiler is required. Supported compilers are the Gnu
+compiler |gfortran| and the Intel Fortran compiler |ifort|.
+
+\item A C compiler. Supported compilers are the Gnu |gcc| and the Intel C
+compiler |icc|.
+
+\end{itemize}
+
+\subsection{Optional}
+
+\begin{itemize}
+
+\item For parallel runs: the mesh partitioner |METIS| and the |MPI| library are
+ required.
+
+\item For output files in NetCDF, the |NetCDF| library is necessary.
+
+\item For solving the linear system in parallel, the |PETSC| solver is necessary
+%(to install it refer to \ref{PETSC}).
+
+\end{itemize}
+
+%\textcolor{red}{Continue with others (cf output check_software)? graphics...?} \\
+Note that once \shy{} has been downloaded (see section \ref{inst_where}), it is possible to
+automatically check the status of the programs listed here above (plus some more additional packages)
+through the command:
+\begin{code}
+   make check_software
+\end{code}
+If you get something like |bash: make: command not found|, then you do
+not have make installed. Please first install the |make| command and
+then run the command again.
+
+The output of the command |make check_software| will show you which software you still have
+to install.
+
+If you need additional packages, the name of the corresponding package
+to install can be found at the
+web-page\footnote{https://www.debian.org/distrib/packages} for Debian OS.
+Usually, Debian-based (e.g., Ubuntu) distributions have the same name.
+
+Whereas most package names are easy to guess, a common problem refers to
+ the developer X11 libraries. In order to be able to compile the
+program |grid| you will need to install some packages that may have
+different names depending on your distribution. The packages you need to find
+ are |libx11-dev|, |x11proto-core-dev| and |libxt-dev|.
+
+Please note that you have to carry out the steps in this section only
+the first time you install the model. If you install a new version of
+\shy{} software you can skip these steps.
+

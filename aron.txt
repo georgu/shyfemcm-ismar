@@ -1,0 +1,102 @@
+
+From https://github.com/aronroland/shyfemcm-owt
+ * branch              shyfem_ww3 -> FETCH_HEAD
+Auto-merging src/utils/shyutil/version.f90
+CONFLICT (content): Merge conflict in src/utils/shyutil/version.f90
+Auto-merging src/shyfem/Makefile
+Removing docs/wind_forcing.tex
+Removing docs/waves_ww3.tex
+Removing docs/watermark/watermark.pl
+Removing docs/watermark/ingv.jpg
+Removing docs/usage.tex
+Removing docs/todo.txt
+Removing docs/summary_installing.tex
+Removing docs/steele.tex
+Removing docs/software.tex
+CONFLICT (modify/delete): docs/shyfem.tex deleted in 45e9f175e69ebb87ffbd1754d437e34b275d6c61 and modified in HEAD. Version HEAD of docs/shyfem.tex left in tree.
+Removing docs/sdg.tex
+Removing docs/mwr/math.tex
+Removing docs/mwr/georg.txt
+Removing docs/mwr/discret3d.tex
+Removing docs/mwr/discret2d.tex
+Removing docs/mwr/discret.tex
+Removing docs/mwr/abbrev.pl
+Removing docs/mwr/Makefile
+Removing docs/model_how_to_run.tex
+Removing docs/meshing.txt
+Removing docs/material/comments_on_manual.txt
+Removing docs/material/README_Pardiso
+Removing docs/manual_layout.txt
+Removing docs/howto_use_grid.txt
+Removing docs/howto/SHYFEM_QUICK_START.txt
+Removing docs/howto/Makefile
+Removing docs/howto/INFO_INSTALL.txt
+Removing docs/howto/HOWTO_PETSC.txt
+Removing docs/howto/HOWTO_NETCDF.txt
+Removing docs/howto/HOWTO_MPI.txt
+Removing docs/howto/HOWTO_GIT_REPO.txt
+Removing docs/howto/HOWTO_GIT.txt
+Removing docs/howto/HOWTO_FEM_FILES.txt
+Removing docs/howto/HOWTO_BUG.txt
+Removing docs/help.txt
+Removing docs/header.tex
+Removing docs/grid_else.tex
+Removing docs/git.tex
+CONFLICT (modify/delete): docs/final/shyfem.pdf deleted in 45e9f175e69ebb87ffbd1754d437e34b275d6c61 and modified in HEAD. Version HEAD of docs/final/shyfem.pdf left in tree.
+CONFLICT (modify/delete): docs/femdoc.sh deleted in 45e9f175e69ebb87ffbd1754d437e34b275d6c61 and modified in HEAD. Version HEAD of docs/femdoc.sh left in tree.
+CONFLICT (modify/delete): docs/femdoc.pl deleted in 45e9f175e69ebb87ffbd1754d437e34b275d6c61 and modified in HEAD. Version HEAD of docs/femdoc.pl left in tree.
+Removing docs/fem3d.tex
+Removing docs/extra/shyfem_2009.pdf
+Removing docs/extra/shyfem_2004.pdf
+Removing docs/extra/discret.pdf
+Removing docs/download.tex
+Removing docs/discret.tex
+Removing docs/data_requirement.txt
+Removing docs/compilation.tex
+Removing docs/bound_cond.tex
+Removing docs/bio3d_st.tex
+Removing docs/bio3d.tex
+Removing docs/basic_usage.tex
+Removing docs/basic_minimal.tex
+Removing docs/Roadmap_Shyfem.tex
+Removing docs/Release_notes_7.1v1.tex
+Removing docs/Release_notes_7.0v3.tex
+Removing docs/Release_notes_7.0v2.tex
+Removing docs/Release_notes_7.0.tex
+Removing docs/README
+Removing docs/PostProcessing.txt
+Removing docs/ModelApplication.txt
+Auto-merging docs/Makefile
+CONFLICT (content): Merge conflict in docs/Makefile
+Removing docs/INFO_develop
+CONFLICT (modify/delete): docs/INFO_LOG deleted in 45e9f175e69ebb87ffbd1754d437e34b275d6c61 and modified in HEAD. Version HEAD of docs/INFO_LOG left in tree.
+Removing docs/INFO_LAGRANGE
+Removing docs/GridGeneration.txt
+Auto-merging VERSION
+CONFLICT (content): Merge conflict in VERSION
+Auto-merging Rules.make
+Auto-merging RELEASE_NOTES
+CONFLICT (content): Merge conflict in RELEASE_NOTES
+Auto-merging COMMIT
+CONFLICT (content): Merge conflict in COMMIT
+Automatic merge failed; fix conflicts and then commit the result.
+
+	new file:   testcases/examples/venice_lagoon/*
+
+	modified:   Rules.make
+
+	modified:   src/shyfem/Makefile
+	modified:   src/shyfem/ww3.f90
+
+	both modified:   COMMIT
+	both modified:   RELEASE_NOTES
+	both modified:   VERSION
+	deleted by them: docs/INFO_LOG
+	both modified:   docs/Makefile
+	deleted by them: docs/femdoc.pl
+	deleted by them: docs/femdoc.sh
+	deleted by them: docs/final/shyfem.pdf
+	deleted by them: docs/shyfem.tex
+	both modified:   src/utils/shyutil/version.f90
+
+

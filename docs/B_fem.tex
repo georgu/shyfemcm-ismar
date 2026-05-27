@@ -1,0 +1,122 @@
+The FEM file uses an optimized way of specifying variables that can be used
+in SHYFEM for setting boundary and initial conditions. For 3D files, only
+variables that are exisiting are stored. This makes a big difference
+when using zeta coordinates, because in the coastal zone many deep
+layers are not existing.
+
+The FEM file is headerless. What that means is that the whole file
+has no specific header, whereas the single records have headers. This
+feature makes it easy to combine different fem files together. If there
+are two files of the same variable (say temperature) of different years
+(|temp2018.fem|, |temp2019.fem|), combining them is as easy as
+
+|cat temp2018.fem temp2019.fem > combined.fem|. 
+
+The only thing that has
+to be taken care of is that the time records could not be unique (there
+might be two time records with the same time step), but this
+can be handled in a second step with the program femelab:
+
+|femelab -checkdt -out combined.fem|
+
+which will write a new file |out.fem| with unique time stamps.
+
+All routines to write FEM files can be found in |fem3d/subfemfile.f|.
+In the same file also documentation can be found on the file format.
+In the file |femutil/femfiles/profile.f| examples of how to write
+FEM files can be found.
+
+Each FEM file consists of time records:
+
+\begin{verbatim}
+!       time record 1
+!       time record 2
+!       time record ...
+\end{verbatim}
+
+The format of each time record is as follows:
+
+\begin{verbatim}
+!       header record
+!       data record for variable 1
+!       data record for variable 2
+!       data record for variable ...
+!       data record for variable nvar
+\end{verbatim}
+
+The format of the header is
+
+\begin{verbatim}
+!       dtime,nvers,idfem,np,lmax,nvar,ntype
+!       date,time                          for ntype == 1
+!       (hlv(l),l=1,lmax)                  only if( lmax > 1 )
+!       regpar                             for ntype == 10
+\end{verbatim}
+
+For the explaination of the meaning of the various parameters please
+see the legend below. |nvers| is a version number of the FEM files. Presently,
+the version is 3.
+
+The format of the data record depends on |lmax| which is 1 for 2D data
+fields and greater than 1 for 3D fields:
+
+\begin{verbatim}
+!       if( lmax == 1 )
+!               string
+!               np,lmax                    only for nvers > 2
+!               (data(1,k),k=1,np)
+!       if( lmax > 1 )
+!               string
+!               np,lmax                    only for nvers > 2
+!               do k=1,np
+!                 lm,hd(k),(data(l,k),l=1,lm)
+!               end do
+\end{verbatim}
+
+The meaning of the various parameters can be found here in the legend.
+All variables and parameters are integer except where otherwise indicated.
+
+\begin{verbatim}
+! dtime         time stamp (double precision, seconds)
+! nvers         version of file format
+! idfem         id to identify fem file (must be 957839)
+! np            number of horizontal points given
+! lmax          maximum number of layers given (1 for 2D)
+! nvar          number of variables in time record
+! ntype         type of data, defines extra data to follow
+! date          reference date (integer, YYYYMMDD)
+! time          reference time (integer, hhmmss)
+! hlv           layer depths (the bottom of each layer)
+! string        string with description of data (character*80)
+! ilhkv(k)      total number of levels of node k (1 for 2D)
+! hd(k)         total depth in node k (real, -999 if unknown)
+! data(l,k)     data for variable at level l and node k (real)
+! lm            total number of vertical data for point k
+! k,l           index for horizontal/vertical dimension
+! regpar        regular grid info: nx,ny,x0,y0,dx,dy,flag
+! nx,ny         size of regular grid
+! x0,y0         origin of regular grid (real)
+! dx,dy         space increment of regular grid (real)
+! flag          flag for invalid data of regular grid (real)
+\end{verbatim}
+
+The meaning of |ntype| is given here:
+
+\begin{verbatim}
+! 0             no other lines in header
+! 1             give date/time of reference on extra line
+! 10            regular grid, info on extra line (regpar)
+\end{verbatim}
+
+and combinations are possible. So |ntype=11| means date/time line 
+and regular grid.
+
+One clarification on the time specification: the variable |dtime| indicates the
+seconds relative to the reference date |date,time|.
+Therefore, you can either use |dtime| as time
+in seconds referred to the reference date specified with |date,time|. Or you
+can set |dtime=0| and specify the date and time of the record in the
+|date,time| line. It is also possible to mix both approaches. 
+
+If no reference date is specified, |dtime| refers to the reference
+date in the simulation. This approach is not recommended.

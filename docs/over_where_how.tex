@@ -1,0 +1,111 @@
+
+%------------------------------------------------------------------------
+%
+%    Copyright (C) 1985-2020  Georg Umgiesser
+%
+%    This file is part of SHYFEM.
+%
+%    SHYFEM is free software: you can redistribute it and/or modify
+%    it under the terms of the GNU General Public License as published by
+%    the Free Software Foundation, either version 3 of the License, or
+%    (at your option) any later version.
+%
+%    SHYFEM is distributed in the hope that it will be useful,
+%    but WITHOUT ANY WARRANTY; without even the implied warranty of
+%    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+%    GNU General Public License for more details.
+%
+%    You should have received a copy of the GNU General Public License
+%    along with SHYFEM. Please see the file COPYING in the main directory.
+%    If not, see <http://www.gnu.org/licenses/>.
+%
+%    Contributions to this file can be found below in the revision log.
+%
+%------------------------------------------------------------------------
+\label{where} 
+
+\subsection{From website}
+From website shyfem.org you can download the latest stable version of the model.
+The version released from the website is the stable one and is always updated to the latest release. 
+\subsection{From GitHub}
+
+%From |Google Drive| you can
+%download the latest and older version of the model. In order to do so, please go to
+%|https://drive.google.com/open?id=0B742mznAzyDPbGF2em5NMjZYdHc| and
+%download the version you would like to install on your computer. Normally
+%this will be the last available version.
+Since SHYFEM is a model in constant development, for research purposes the user can download the develop versions, 
+and also the latest stable one, from GitHub.
+
+
+Please go to the |GitHub| website of the \shyfem{} model
+|https://github.com/SHYFEM-model/shyfem| and navigate to |releases|.  
+You either can visualize the releases or the tags (versions)
+of the model and download them. Please see below for the difference
+between tags and releases.
+
+If you are a developer then you should install the |git|
+versioning system that will give you direct access to the latest versions
+of \shyfem{}.  Please see below how to do this.
+
+Here is some information on how the various releases are managed and where to
+download the latest version.
+
+There are various types of versions:
+
+\begin{itemize}
+
+\item commit: commits are the smallest changes in the code base. 
+Every time changes have been carried out, they will be committed to the repository. 
+It is possible to see all the commits of the code
+by typing |git-tags| which presents all the commits and also the tags,
+which are explained here below.
+
+\item version: the name version is just a shortcut for an existing tag 
+or release that will have a version number associated.  
+A commit has no version number and can therefore not
+be identified in this way.
+
+\item tag: tags are like commits, but a version number is given to
+them. This means that these tags are more stable than simple commits. It
+is always advisable to download tags in order to be able to easily refer
+to the version number of \shyfem{}.
+
+\item release: releases are nothing else than tags, but a name is also
+given to this tag. This means that releases should be even more stable
+than tags or commits. If you do not need a bleeding edge version, than
+these are the versions that you should download.
+
+\end{itemize}
+
+For an easy use of github follow this procedure:
+\begin{itemize}
+\item to find commits and tags: use |gittags|. Its output provide the latest
+ commits and tags (if applied). 
+
+\item to see releases:  go to the github web page
+(|https://github.com/SHYFEM-model/shyfem|). Click on |releases| and 
+you can directly download the latest
+version of \shyfem{}.
+
+ \item to get access to the latest single commits, not available at |github| web page:
+\subitem install |git| on your computer. 
+\subitem go to the web page and click on |clone| to download the latest version with all
+the versioning information included. 
+\subitem Unpack the archive in any directory, and enter the newly created directory.
+\subitem Type |git fetch| and |git pull| to have the newest commit of the code base.
+\end{itemize}
+
+ If you are a developer:
+\begin{itemize}
+\item you should have git installed on your computer.
+\item If you want your changes in code being published do a |pull request| from the |github| website. 
+\subitem Please be sure that you base your 
+|pull request| on the latest commit (not tag or release). 
+\subitem do a |git fetch| and |git pull|
+\subitem check if your changes are compatible
+\subitem do the |pull request|.
+\end{itemize}
+
+ All |pull requests| have to be based on the |develop| branch.
+
