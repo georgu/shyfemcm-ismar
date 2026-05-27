@@ -60,6 +60,8 @@
 ! 09.05.2023    lrp     introduce top layer index variable
 ! 24.09.2024    ggu     introduced tvd mpi (bmpi)
 ! 21.04.2026    ggu     use bdry to see if mfluxv should be used
+! 29.04.2026    ggu     timing calls inserted
+! 08.05.2026    ggu     debug code (also passing debug vals to other routines)
 !
 !**************************************************************
 
@@ -227,7 +229,9 @@
 	end if
 
 	btvd2 = itvd == 2
+        call cpu_time_start(22)
 	if( btvd2 ) call tvd_mpi_run(cn1)
+        call cpu_time_end(22)
 
         cn=0.
 	co=cn1
@@ -246,15 +250,16 @@
 	!write(6,*) subset_el
 	!write(6,*) sum(subset_el),nkn,nel
 
-      do i=1,subset_num 	! loop over indipendent subset
+        call cpu_time_start(20)
+        do i=1,subset_num 	! loop over indipendent subset
        
-!$     nchunk = subset_el(i) / ( nthreads * 10 )
-       nchunk = max(nchunk,1)
-       !write(6,*) i,subset_el(i),nchunk,nthreads
+!$      nchunk = subset_el(i) / ( nthreads * 10 )
+        nchunk = max(nchunk,1)
+        !write(6,*) i,subset_el(i),nchunk,nthreads
 
 !$OMP TASKWAIT 
 !!!$OMP TASKGROUP 
-       do jel=1,subset_el(i),nchunk
+        do jel=1,subset_el(i),nchunk
 
 !$OMP TASK &
 !$OMP& DEFAULT(NONE) &
@@ -268,8 +273,8 @@
 !$OMP& SHARED(subset_num,indipendent_subset) &
 !$OMP& SHARED(difhv,cbound,gradxv,gradyv,cobs,rtauv,load,difv,wsinkv)
 
-       do j=jel,jel+nchunk-1 	! loop over elements in subset
-		if(j .le. subset_el(i)) then
+          do j=jel,jel+nchunk-1 	! loop over elements in subset
+	    if(j .le. subset_el(i)) then
 	        ie = indipendent_subset(j,i)
 	        !print *,i,ie
                 call conz3d_element(ie,cdiag,clow,chigh,cn,cn1 &
@@ -283,64 +288,54 @@
      &			,az,ad,aa,azt,adt,aat,an,ant &
      &			,rso,rsn,rsot,rsnt &
      &			,nlvddi,nlev)
-		end if
-	end do ! end loop over el in subset
+	    end if
+	  end do ! end loop over el in subset
 !$OMP END TASK
-      end do
+        end do
 
 !!!$OMP END TASKGROUP       
 !$OMP TASKWAIT       
 
-       end do ! end loop over subset
+	
+        end do ! end loop over subset
+        call cpu_time_end(20)
        
-       if( shympi_partition_on_elements() ) then
-         !call shympi_comment('shympi_elem: exchange scalar')
-         call shympi_exchange_and_sum_3d_nodes(cn)
-         call shympi_exchange_and_sum_3d_nodes(cdiag)
-         call shympi_exchange_and_sum_3d_nodes(clow)
-         call shympi_exchange_and_sum_3d_nodes(chigh)
-       end if
+        if( shympi_partition_on_elements() ) then
+          !call shympi_comment('shympi_elem: exchange scalar')
+          call shympi_exchange_and_sum_3d_nodes(cn)
+          call shympi_exchange_and_sum_3d_nodes(cdiag)
+          call shympi_exchange_and_sum_3d_nodes(clow)
+          call shympi_exchange_and_sum_3d_nodes(chigh)
+        end if
 
-       ntot = nkn
-       if( shympi_partition_on_nodes() ) ntot = nkn_unique
-!$     nchunk = ntot / ( nthreads * 10 )
-       nchunk = max(nchunk,1)
+        ntot = nkn
+        if( shympi_partition_on_nodes() ) ntot = nkn_unique
+!$      nchunk = ntot / ( nthreads * 10 )
+        nchunk = max(nchunk,1)
 
 !$OMP TASKWAIT
 !!!$OMP TASKGROUP
-       do knod=1,ntot,nchunk
+        call cpu_time_start(21)
+        do knod=1,ntot,nchunk
 !$OMP TASK FIRSTPRIVATE(knod) PRIVATE(k) DEFAULT(NONE)      &
 !$OMP& SHARED(cn,cdiag,clow,chigh,cn1,cbound,load,nchunk,   &
 !$OMP&           rload,ad,aa,dt,nlvddi,ntot)
-	 do k=knod,knod+nchunk-1
-	 if(k .le. ntot) then
-	   call conz3d_nodes(k,cn,cdiag(:,k),clow(:,k),chigh(:,k), &
+	  do k=knod,knod+nchunk-1
+	    if(k .le. ntot) then
+	      call conz3d_nodes(k,cn,cdiag(:,k),clow(:,k),chigh(:,k), &
      &                          cn1,cbound,load,rload, &
      &                          ad,aa,dt,nlvddi)
-         endif
-         enddo
+            end if
+          end do
 !$OMP END TASK 	      
 	end do
+        call cpu_time_end(21)
 
 !!!$OMP END TASKGROUP
 !$OMP TASKWAIT       
 
 	cn1 = real(cn)		!here happens INTEL_BUG
 	
-	if (bdebug ) then
-	  iudb = 990 + my_id
-	  ks = 2314
-	  k = ipint(ks)
-	  call get_act_dtime(dtime)
-	  if( k > 0 .and. dtime == 1500. ) then
-	    lmax = ilhkv(k)
-	    write(iudb,*) 'after: ',dtime,ipext(k)
-	    do l=1,lmax
-	      write(iudb,*) l,cn(l,k),cn1(l,k)
-	    end do
-	  end if
-	end if
-
 	DEALLOCATE(cn)
 	DEALLOCATE(co)
 	DEALLOCATE(cdiag)
@@ -800,14 +795,30 @@
 	double precision, parameter :: d_tiny = tiny(1.d+0)
 	double precision, parameter :: r_tiny = tiny(1.)
       
+	integer kext
+	integer, save :: iudbg = 876
 	logical, save :: bdebug = .false.
-	character*80 aline
+	character*80 aline,what
+	integer isact,istot
+	real dt_total
+	double precision caux_flux,caux_volold,caux_volnew
+	double precision caux_conzold,caux_conznew
+	double precision dtime_act
 
 	logical :: is_dry_node
 
 ! ----------------------------------------------------------------
 !  debug code
 ! ----------------------------------------------------------------
+
+	kext = ipv(k)
+	bdebug = ( kext == 4279 )
+	bdebug = .false.
+
+	if( bdebug ) then
+	  call get_conz_debug(what,isact,istot,dtime_act)
+	  call get_timestep(dt_total)
+	end if
 
 ! ----------------------------------------------------------------
 !  handle boundary (flux) conditions
@@ -820,19 +831,41 @@
 
 	  do l=jlevel,ilevel
 
-            !mflux = cbound(l,k)		!mass flux has been passed
-	    cconz = cbound(l,k)			!concentration has been passed
 	    qflux = mfluxv(l,k)
 	    if( bdry ) qflux = 0.
+	    cconz = cbound(l,k)			!concentration has been passed
 	    if( qflux .lt. 0. .and. is_boundary(k) ) cconz = cn1(l,k)
 	    mflux = qflux * cconz
+
+	if( bdebug .and. what == 'temp' ) then
+	  call get_timeline(dtime_act,aline)
+	  write(iudbg,*) '-------------------------'
+	  write(iudbg,*) trim(what)
+	  write(iudbg,*) trim(aline)
+	  write(iudbg,*) isact,istot,dt,dt_total
+	  write(iudbg,*) kext,ilevel
+	  write(iudbg,*) bdry
+	  write(iudbg,*) cconz,qflux,mflux
+	  caux_flux = dt * mflux
+	  caux_volold = cn(l,k)
+	  caux_volnew = caux_volold + caux_flux
+	  caux_conzold = caux_volold/cdiag(l)
+	  caux_conznew = caux_volnew/cdiag(l)
+	  if( caux_flux > cdiag(l) ) then
+	    write(iudbg,*) caux_flux, cdiag(l),' *** flux error'
+	  else
+	    write(iudbg,*) caux_flux, cdiag(l),' ok'
+	  end if
+	  write(iudbg,*) caux_conzold,caux_conznew
+	  write(iudbg,*) '-------------------------'
+	end if
 
             cn(l,k) = cn(l,k) + dt * mflux	!explicit treatment
 
 	    loading = rload*load(l,k)
-            if( loading == 0 ) then			!no loading
+            if( loading == 0 ) then		!no loading
               !nothing
-            else if ( loading < 0.d0 ) then		!excess deposition
+            else if ( loading < 0.d0 ) then	!excess deposition
 	      cload = 0.
 	      if( cn(l,k) > 0. ) then
                 cload = - dt * loading
@@ -844,18 +877,9 @@
               loading = -cload / dt
               if( rload > 0. ) load(l,k) = loading / rload
               cn(l,k) = cn(l,k) + dt*loading
-            else					!erosion
+            else				!erosion
               cn(l,k) = cn(l,k) + dt*loading
             end if
-
-	    if( bdebug ) then
-	     if( mflux /= 0. .or. loading /= 0. ) then
-	      call get_act_timeline(aline)
-	      write(666,*) trim(aline),l,k
-	      write(666,*) cconz,qflux,mflux
-	      write(666,*) rload,loading
-	     end if
-	    end if
 
 	  end do
 
@@ -964,6 +988,58 @@
         write(iunit,*) '------------------------------------'
 
         end
+
+!*****************************************************************
+!*****************************************************************
+!*****************************************************************
+!passing parameters from calling subroutine
+!*****************************************************************
+!*****************************************************************
+!*****************************************************************
+
+	module conz_debug
+
+	implicit none
+
+	character*80, save :: what_debug
+	integer, save :: isact_debug,istot_debug
+	double precision, save :: dtime_act_debug
+
+	end module conz_debug
+
+	subroutine set_conz_debug(what,isact,istot,dtime_act)
+
+	use conz_debug
+
+	implicit none
+
+	character*(*) what
+	integer isact,istot
+	double precision dtime_act
+
+	what_debug = what
+	isact_debug = isact
+	istot_debug = istot
+	dtime_act_debug = dtime_act
+
+	end
+
+	subroutine get_conz_debug(what,isact,istot,dtime_act)
+
+	use conz_debug
+
+	implicit none
+
+	character*(*) what
+	integer isact,istot
+	double precision dtime_act
+
+	what = what_debug
+	isact = isact_debug
+	istot = istot_debug
+	dtime_act = dtime_act_debug
+
+	end
 
 !*****************************************************************
 

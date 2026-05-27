@@ -31,6 +31,7 @@
 # 07.01.2022	ggu	routine to return info on total node/elem/line numbers
 # 20.02.2022	ggu	new routine make_connection()
 # 31.01.2023	ggu	new routines to compute total items
+# 08.05.2026	ggu	new routine is_latlon()
 #
 ##############################################################
 #
@@ -1385,6 +1386,21 @@ sub make_connection
 }
 
 ###################################
+
+sub is_latlon
+{
+    my ($self) = @_;
+
+    my ($xmin,$ymin,$xmax,$ymax) = $self->get_xy_minmax();
+
+    if( $xmin < -360 or $xmax > 360 or $ymin < -90 or $ymax > 90 ) {
+      $self->{latlon} = 0;
+    } else {
+      $self->{latlon} = 1;
+    }
+
+    return $self->{latlon};
+}
 
 sub set_latlon	#must be called after nodes have been read
 {

@@ -146,6 +146,8 @@
 !  01.02.2023	ggu	use real area in plobox()
 !  08.03.2025	ggu	plot nodal code
 !  13.10.2025	ggu	introduced bintp
+!  18.05.2026	ggu	bug fix for regular plot
+!  19.05.2026	ggu	more bug fixes for regular plot
 ! 
 !  notes :
 ! 
@@ -1106,6 +1108,8 @@
 !  for other values:	uvnode,vvnode must be set
 ! 
 !  bonelem,bistrans are set in mod_hydro_plot
+!  nonelem	variables are defined on elements
+!  bistrans	variable is transport
 
 	use mod_hydro_plot
 	use mod_depth
@@ -1118,14 +1122,14 @@
 	integer ivel			!what to plot
         character*(*) title		!title for annotation
 	logical bregdata		!is data on regular grid?
-	logical bintp			!if regular interpolate on fem grid
+	logical bintp			!date is on fem grid
 
 	real uvmod(nkn)
 
 	logical boverl,bnode,bbound,bnorm
         logical bspecial,bhasbasin
 	logical bdebug
-	logical bregplot
+	logical bregplot		!want regular plot
 	logical bvel,btrans,bwind,bwave,bvelok
         character*80 anoline
         character*80 spcvel
@@ -1160,6 +1164,9 @@
 
 	real getpar,getcol
 	integer getlev
+
+	!write(6,*) 'start of plovect: ',bregdata,bintp,ivel
+	!write(6,*) 'bonelem,bistrans: ',bonelem,bistrans
 
 ! ------------------------------------------------------------------
 !  set up parameters
@@ -1234,9 +1241,8 @@
 	if( bregdata ) then		!data is on regular grid (global value)
 	  bregplot = .true.
 	else				!see if we have to plot regular
-	  call prepare_regular(nx,ny,bregplot)
+	  call prepare_regular(nx,ny,bregplot)	!sets nx,ny,bregplot and regpar
 	end if
-	!if( bregplot ) write(6,*) 'plot on regular grid: ',bregdata,bregplot
 
 ! ------------------------------------------------------------------
 !  prepare for velocity or transport
@@ -1293,6 +1299,9 @@
 !  regular interpolation
 ! ------------------------------------------------------------------
 
+! in uvnode,vvnode are the values of velocity
+! either from the fem grid (nkn) or from the regular grid (nx*ny)
+
 	if( bregdata ) then	!is already regular grid - we just copy
 	  call mod_hydro_get_regpar(regpar)	!regular data description
 	  nx = nint(regpar(1))
@@ -1311,15 +1320,20 @@
 	    call am2av(vreg,vvnode,nx,ny)
 	    np = nkn
 	  else				!use regular grid for plotting
-	    np = nx*ny
-	    uvnode(1:np) = reshape(ureg(:,:),(/nx*ny/))
+	    uvnode(1:np) = reshape(ureg(:,:),(/nx*ny/))	!this seems useless
 	    vvnode(1:np) = reshape(vreg(:,:),(/nx*ny/))
+	    np = nx*ny
 	  end if
-	else if( bregplot ) then
-	  np = nx*ny
+	else if( bregplot ) then	!want regular plot for arrows
+	  call getgeo(x0,y0,dx,dy,flag)
 	  call av2amk(bwater,uvnode,ureg,nx,ny)
 	  call av2amk(bwater,vvnode,vreg,nx,ny)
+	  np = nkn
+	else
+	  np = nkn
 	end if
+
+! np is the size of data in uvnode/vvnode
 
 ! ------------------------------------------------------------------
 !  compute modulus and maximum of velocity
@@ -1328,13 +1342,19 @@
 	call moduv(uvnode,vvnode,uvmod,np,uvmax,uvmed) !compute mod/max/aver
 
 	if( .not. bbound ) then		!set boundary vectors to 0
-	  call bnd2val(uvnode,0.)	
-	  call bnd2val(vvnode,0.)	
+	  if( np == nkn ) then		!only if data is on fem grid
+	    call bnd2val(uvnode,0.)	
+	    call bnd2val(vvnode,0.)	
+	  end if
 	end if
 
 ! ------------------------------------------------------------------
 !  underlying color 
 ! ------------------------------------------------------------------
+
+	!write(6,*) 'bregplot: ',bregplot,bintp,size(uvover)
+
+! size of uvmod is np
 
 	if( boverl ) then
 	  if( ioverl .eq. 1 ) then		!horizontal velocities
@@ -1354,13 +1374,23 @@
 	  call colauto(pmin,pmax)
 	  if( bverb ) write(6,*) 'overlay color... ',pmin,pmax
           call qcomm('Plotting overlay')
-          !call isoline(uvover,np,0.,2)
-	  if( bintp ) then	!values have been interpolated onto fem grid
-            call qcomm('Plotting interpolated regular grid')
+	  if( bregdata ) then	!values are on regular grid
+	    if( bintp ) then	!values have been interpolated on fem grid
+              call qcomm('Plotting reg data on fem grid')
+              call isoline(uvover,np,0.,2)
+	    else
+              call qcomm('Plotting regular data on regular grid')
+	      call mod_hydro_get_regpar(regpar)	!regular data description
+              call isoreg(uvover,np,regpar,0.,2)
+	    end if
+	  else if( bregplot ) then
+	    call mod_hydro_get_regpar(regpar)	!regular data description
+            call qcomm('Plotting fem data regular grid')
+            !call isoreg(uvover,np,regpar,0.,2)
             call isoline(uvover,np,0.,2)
-	  else
-            call qcomm('Plotting regular grid')
-            call isoreg(uvover,np,regpar,0.,2)
+	  else 
+            call qcomm('Plotting fem data on fem grid')
+            call isoline(uvover,np,0.,2)
 	  end if
 	end if
 
@@ -2535,11 +2565,12 @@
 
 	implicit none
 
-	integer nx,ny
-	logical bregplot
+	integer, intent(out) :: nx,ny
+	logical, intent(out) :: bregplot
 
 	real x0,y0,dx,dy,flag
 	real xmin,ymin,xmax,ymax
+	real regpar(7)
 
 	nx = 0
 	ny = 0
@@ -2550,6 +2581,20 @@
 	call getbas(xmin,ymin,xmax,ymax)
 	nx = nint((xmax-xmin)/dx)
 	ny = nint((ymax-ymin)/dy)
+
+	x0 = xmin
+	y0 = ymin
+	call setgeo(x0,y0,dx,dy,flag)
+
+	call mod_hydro_get_regpar(regpar)	!regular data description
+	regpar(1) = nx
+	regpar(2) = ny
+	regpar(3) = x0
+	regpar(4) = y0
+	regpar(5) = dx
+	regpar(6) = dy
+	regpar(7) = flag
+	call mod_hydro_set_regpar(regpar)	!regular data description
 
 	call mod_hydro_plot_regular_init(nx,ny)	!nx,ny may be changed here
 

@@ -40,6 +40,7 @@
 ! 22.02.2018	ggu	changed VERS_7_5_42
 ! 03.07.2018	ggu	revision control introduced
 ! 16.02.2019	ggu	changed VERS_7_5_60
+! 08.05.2026	ggu	in check_monotone() handle negative depth layers
 !
 !*****************************************************************
 !*****************************************************************
@@ -406,10 +407,9 @@
 
 	ndims = 1
 	call nc_get_var_data(ncid,zcoord,1,nlvdim,ndims,dims,zdep)
+	call check_monotone(nz,zdep,'checking z-coordinates')
 	hlv = zdep
 	nz1 = nz
-
-	call check_monotone(nz,zdep,'checking z-coordinates')
 
 	if( nz1 == 1 ) return	!just one layer - hlv not of concern
 	if( abs(hlv(1)) < eps ) call depth_shift_up(nz1,hlv)
@@ -841,13 +841,28 @@
 	real val(n)
 	character*(*) text
 
-	logical bgrow
+	logical bgrow,bquiet
 	integer i,imin,imax
 	real dv
 
 	if( n <= 1 ) return
 
+	call nc_get_quiet(bquiet)
 	bgrow = val(2) > val(1)
+
+	if( .not. bgrow ) then
+	  if( val(n) == -1. ) then
+	    if( .not. bquiet ) then
+	      write(6,*) 'level are sigma layers... keeping them'
+	    end if
+	  else
+	    if( .not. bquiet ) then
+	      write(6,*) 'level are negative... inverting'
+	    end if
+	    val = -val
+	    bgrow = .true.
+	  end if
+	end if
 
 	do i=2,n
 	  dv = val(i) - val(i-1)

@@ -92,6 +92,7 @@
 !  21.05.2019	ggu	changed VERS_7_5_62
 !  18.09.2024	ggu	new parameter rfaccol, new log colorbar
 !  09.01.2025	ggu	avoid divide by zero in scale_legend(): 10 -> 10.
+!  18.05.2026	ggu	added bbox and badjust in blank_window()
 ! 
 !  notes :
 ! 
@@ -2242,8 +2243,18 @@
 	real rf
         real x0,y0,x1,y1
 
+	logical bbox,badjust
 	real dx,dy,xm,ym
         real x0aux,y0aux,x1aux,y1aux
+	real rx,ry
+
+	bbox = .true.		!plot box around white area
+	bbox = .false.		!plot box around white area
+	badjust = .true.	!shrink x-extension of white area
+
+	ry = rf
+	rx = rf
+	if( badjust ) rx = rf * 0.7
 
 	if( rf <= 0 ) return
 
@@ -2253,8 +2264,8 @@
 	  dy = y1 - y0
 	  dx = x1 - x0
 	  dy = y1 - y0
-	  dx = 0.5 * dx * rf
-	  dy = 0.5 * dy * rf
+	  dx = 0.5 * dx * rx
+	  dy = 0.5 * dy * ry
 	  x0aux = xm - dx
 	  x1aux = xm + dx
 	  y0aux = ym - dy
@@ -2262,22 +2273,23 @@
 
 	  !write(6,*) x0,y0,x1,y1
 	  !write(6,*) x0aux,y0aux,x1aux,y1aux
+	else
+	  x0aux = x0
+	  x1aux = x1
+	  y0aux = y0
+	  y1aux = y1
 	end if
 
         call qcomm('Start blanking window')
 	call qwhite(.true.)
 	call qgray(1.)	!color is white
-	if( rf /= 1. ) then
-	  call qrfill(x0aux,y0aux,x1aux,y1aux)
-	else
-	  call qrfill(x0,y0,x1,y1)
-	end if
+	call qrfill(x0aux,y0aux,x1aux,y1aux)
 	call qgray(0.)
 	call qwhite(.false.)
+	if( bbox ) call plot_box(0,x0aux,y0aux,x1aux,y1aux)
         call qcomm('End blanking window')
 
         end
 
 ! ******************************************************************
-
 

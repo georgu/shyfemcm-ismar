@@ -24,6 +24,8 @@ FEMBIN = $(FEMDIR)/bin
 
 EXES = shyfem rstinf rst2shy
 
+EXES_ALL = $(EXES) heat_test
+
 #----------------------	INCLUDE	----------------------
 
 INCLUDE = -I$(FEMDIR)/include
@@ -295,6 +297,9 @@ rstinf: $(MODULES) $(OBJ) $(XFILES) $(LIBF) rstinf.o
 rst2shy: $(MODULES) $(OBJ) $(XFILES) $(LIBF) rst2shy.o
 	 $(F77) $(FFLAGS) $(INCLUDE) $(LFLAGS) $^ $(LIBL) -o $@ 
 
+heat_test: $(MODULES) $(OBJ) $(XFILES) $(LIBF) heat_test.o
+	 $(F77) $(FFLAGS) $(INCLUDE) $(LFLAGS) $^ $(LIBL) -o $@ 
+
 links:
 	@$(FEMBIN)/symlink $(FEMBIN) $(EXES)
 
@@ -361,9 +366,10 @@ clean: cleanlinks
 	-rm -f *.o
 	-rm -f *.mod
 	-rm -f a.out
-	-rm -f $(EXES)
+	-rm -f $(EXES_ALL)
 	-rm -f *.tmp *.bak
 	-rm -f fort.*
+	-rm -f out*.ps
 
 cleanall: clean
 	-rm -f $(MODDIR)/*.mod

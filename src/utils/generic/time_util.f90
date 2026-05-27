@@ -122,6 +122,7 @@
 ! 18.05.2022	ggu	new routines cpu_time_*()
 ! 24.10.2025	ggu	new routine is_time_absolute()
 ! 29.04.2026	ggu	new routines for cpu_time_ routines
+! 05.05.2026	ggu	adjusted overflow for d1000
 !
 !**********************************************************************
 !**********************************************************************
@@ -136,14 +137,16 @@
         integer, save :: itunit,idtorig
 
 	double precision, save :: t_act,dt_act,dt_orig,atime0,dtanf,dtend
-	double precision, parameter :: d1000 = 1000*365*86400
+	double precision, parameter :: secs_in_year = 365*86400
+	double precision, parameter :: d1000 = 1000*secs_in_year
 
 	logical, save :: bsync
 
 	character*20, save :: aline_act
 
-	integer, parameter :: ncpu = 20
+	integer, parameter :: ncpu = 30
 	integer, save :: maxcpu = 0
+	integer, save :: maxshow = 0
 	double precision, save :: cputime(ncpu)
 	double precision, save :: acutime(ncpu)
 	character*80, save     :: cpustring(ncpu)
@@ -583,6 +586,7 @@
 	integer itmax
 
 	itmax = maxcpu
+	if( maxshow > 0 ) itmax = maxshow
 
         end
 

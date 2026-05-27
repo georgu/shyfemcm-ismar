@@ -50,6 +50,7 @@
 ! 31.03.2017	ggu	changed VERS_7_5_24
 ! 25.10.2018	ggu	changed VERS_7_5_51
 ! 16.02.2019	ggu	changed VERS_7_5_60
+! 08.05.2026	ggu	better error message in lagbound_read_next()
 !
 !*******************************************************************
 
@@ -347,6 +348,7 @@
 
 	integer iflag
 	real xa,ya
+	character*80 filename
 
 	integer isave,iline
 	real xsave,ysave
@@ -369,7 +371,7 @@
 	end if
 
     1	continue
-	  read(iunit,*,end=2) xa,ya,iflag
+	  read(iunit,*,end=2,err=99) xa,ya,iflag
 	  if( iflag .ne. 0 .and. n .gt. 0 ) goto 2	!not 1.point on 1.line
 	  n = n + 1
 	  if( n .gt. ndim ) stop 'error stop lagbound_read_next: ndim'
@@ -399,6 +401,20 @@
 	  lagbound_read_next = .false.
 	end if
 
+	return
+   99	continue
+	inquire(iunit,name=filename)
+	write(6,*) 'error reading filea',trim(filename)
+	write(6,*) 'the lines of the file should be:'
+	write(6,*) 'x y iflag'
+	write(6,*) 'where x y are the coordinates of the line'
+	write(6,*) 'and iflag is 1 for the start of a new line'
+	write(6,*) 'or 0 for the continuation of the line'
+	write(6,*) 'example of a minimum file content with 3 nodes:'
+	write(6,*) 'x1 y1 1'
+	write(6,*) 'x2 y2 0'
+	write(6,*) 'x3 y3 0'
+	stop 'error stop lagbound_read_next: read error'
 	end
 
 !*******************************************************************

@@ -113,6 +113,7 @@
 ! 25.01.2025    ggu     tentative cubic interpolation for wind (bbspline)
 ! 10.09.2025    ggu     add heat fluxes to meteo output data
 ! 21.10.2025    ggu     bug in conversion of rain (BUGZCONV)
+! 08.05.2026    ggu     pop trailing "- x" and "- y" from description
 !
 ! notes :
 !
@@ -228,6 +229,12 @@
 !		(Default 1)
 !
 ! DOCS  END
+
+! ihtype
+!	1 = relative humidity
+!	2 = wet bublb temperature
+!	3 = dew temperature
+!	4 = specific humidity
 
 !================================================================
         module meteo_forcing_module
@@ -717,6 +724,7 @@
 	integer nvar
 
 	integer il
+	integer ind
 	character*80 string,string1,string2
 	character*10 dir,unit
 
@@ -752,6 +760,15 @@
 
 	call iff_get_var_description(id,1,string1)
 	call iff_get_var_description(id,2,string2)
+
+	!------------------------------------------
+	! pop trailing " - x" or " - y"
+	!------------------------------------------
+
+	ind = index(string1,' - ')
+	if( ind /= 0 ) string1(ind:) = ' '
+	ind = index(string2,' - ')
+	if( ind /= 0 ) string2(ind:) = ' '
 
 	if( .not. iff_has_file(id) ) then	!no wind file
 

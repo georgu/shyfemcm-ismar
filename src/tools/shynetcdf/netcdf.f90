@@ -81,6 +81,7 @@
 ! 30.09.2025	ggu	handle variables with no CL description
 ! 01.10.2025	ggu	accept different reference date
 ! 15.01.2026	ggu	better error message in nc_define_3d_reg()
+! 06.05.2026	ggu	new routine nc_get_quiet()
 !
 ! notes :
 !
@@ -3674,6 +3675,20 @@
 	logical bquiet
 
 	bquiet_nc = bquiet
+
+	end
+
+!*****************************************************************
+
+	subroutine nc_get_quiet(bquiet)
+
+	use netcdf_params
+
+	implicit none
+
+	logical bquiet
+
+	bquiet = bquiet
 
 	end
 

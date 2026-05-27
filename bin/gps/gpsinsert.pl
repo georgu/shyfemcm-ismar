@@ -176,10 +176,10 @@ foreach (@psfile) {
 	  print $line;
       }
       print "%%EndDocument\n";
+      print "EndEPSF\n";
       print "% end of external eps file (ggu end-eps)\n";
       print "\n";
 
-      print "EndEPSF\n";
     }
   }
 

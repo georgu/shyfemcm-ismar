@@ -9,6 +9,8 @@
 #------------------------------------------------------------------------
 #
 # merges ps files
+#
+# care must be taken if ps files contain included eps files
 
 $page = 0;
 $totpages = 0;
@@ -18,9 +20,12 @@ while( $file = shift ) {
   $pages = &read_file( $file );
   $totpages += $pages;
 
-  &handle_header;
-  &handle_body;
-  &handle_trailer;
+  #print STDERR "pages: $file  $pages  $totpages\n";
+
+  handle_header();
+  handle_body();
+  handle_eps();
+  handle_trailer();
 
 }
 
@@ -29,6 +34,14 @@ while( $file = shift ) {
 ######################################################
 
 sub read_file {
+
+  # where:
+  #
+  # 1 header
+  # 2 body
+  # 3 trailer
+  # 4 inserted eps file
+  # 5 final line of inserted eps file
 
   my $file = shift;
   my @content = ();
@@ -39,21 +52,32 @@ sub read_file {
 
   @fileheader = ();
   @filebody = ();
+  @fileeps = ();
   @filetrailer = ();
+
   my $where = 1;
   my $pages = 0;
 
   foreach (@content) {
 
-    if( /^%%Page:/ ) { $where = 2; $pages++; }
+    if( /^%%Page:/ and not $where == 4 ) { $where = 2; $pages++; }
     if( /^%%Trailer/ ) { $where = 3; }
+    if( /ggu start-eps/ ) { $where = 4; }
+    if( /ggu end-eps/ ) { $where = 5; }
 
     if( $where == 1 ) {
 	push(@fileheader,$_);
     } elsif( $where == 2 ) {
 	push(@filebody,$_);
-    } else {
+    } elsif( $where == 3 ) {
 	push(@filetrailer,$_);
+    } elsif( $where == 4 ) {
+	push(@fileeps,$_);
+    } elsif( $where == 5 ) {
+	push(@fileeps,$_);
+	$where = 2
+    } else {
+	die "value of where not supported: $where\n";
     }
   }
 
@@ -115,6 +139,17 @@ sub handle_body {
   }
   
   foreach (@filebody) {
+    print;
+  }
+}
+
+######################################################
+
+sub handle_eps {
+
+  my $n = @fileeps;
+
+  foreach (@fileeps) {
     print;
   }
 }
