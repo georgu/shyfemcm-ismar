@@ -309,11 +309,13 @@ subroutine rst_write_rec(atimea, iunit)
   use iso_fortran_env, only : dp => real64
   use mod_hydro
   use mod_hydro_vel
+  use mod_geom_dynamic, only : iwetv
   implicit none
   integer, intent(in) :: iunit
   real(dp),        intent(in) :: atimea
   integer :: ios
 
+  iwetv = 0
   zov = znv
   utlov = utlnv
   vtlov = vtlnv
