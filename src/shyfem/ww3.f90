@@ -51,7 +51,8 @@
 	use w3gdatmd, ONLY: nseal
 	use w3odatmd, ONLY: IAPROC, NAPROC
 	use w3idatmd, ONLY: WX0, WXN, WY0, WYN, CX0, CXN, CY0, CYN, WLEV
-	use w3idatmd, ONLY: FLCUR, FLLEV
+	use w3idatmd, ONLY: FLCUR, FLLEV, FLWIND
+	use w3idatmd, ONLY: TC0, TCN, TW0, TWN, TLN
 	use yowNodepool, only: np, npa, iplg, ipgl, np_global
 	use yowDatapool, only: rtype, istatus, myrank
 
@@ -124,7 +125,7 @@
 		ifname = 'ww3_multi.inp'
 	endif
 
-!AR: todo: set proper file handles, same as ww3 and check if they are free in shyfem 
+!AR: todo: set proper file handles, same as ww3 and check if they are free in shyfem
 	  idsi = 8
 	  idso = 9
 	  idss = 6
@@ -329,11 +330,33 @@
 
 	if( .not. bww3 ) return
 
-		!WRITE(*,'(a20,9I10,F20.10,F30.10)') 'ww3 running now for', 
+	!AR: publish input-stream time stamps so W3WAVE's interval check passes.
+	!    WW3's TIME = previous-step (= atime - daux on first call)
+	!    WW3's TEND = next-step (= atime + daux, what we tell wmwave to reach)
+	!    Need TC0 <= TIME and TCN >= TEND.
+	block
+	  integer :: tstart(2), tendi(2), yslo(8)
+	  call dts_from_abs_time_to_ys(atime - daux, yslo)
+	  tstart(1) = 10000*yslo(1) + 100*yslo(2) + yslo(3)
+	  tstart(2) = 10000*yslo(4) + 100*yslo(5) + yslo(6)
+	  tendi(1)  = tend(1,1)
+	  tendi(2)  = tend(2,1)
+	  if (FLCUR  .and. associated(TC0) .and. associated(TCN)) then
+	    TC0 = tstart; TCN = tendi
+	  endif
+	  if (FLWIND .and. associated(TW0) .and. associated(TWN)) then
+	    TW0 = tstart; TWN = tendi
+	  endif
+	  if (FLLEV  .and. associated(TLN)) then
+	    TLN = tendi
+	  endif
+	end block
+
+		!WRITE(*,'(a20,9I10,F20.10,F30.10)') 'ww3 running now for',
     ! 1                           idcoup, ys, daux, atime
 		!WRITE(*,*) 'tend', tend
 		call mpi_barrier(mpiComm,ierr)
-		call getvarshyfem(.false.) 
+		call getvarshyfem(.false.)
 		call mpi_barrier(mpiComm,ierr)
 		!if (myrank == 0) WRITE(*,*) 'calling wmwave'
 		call wmwave ( tend )

@@ -34,9 +34,9 @@
 #
 ##############################################
 
-COMPILER_PROFILE = NORMAL
+#COMPILER_PROFILE = NORMAL
 #COMPILER_PROFILE = CHECK
-#COMPILER_PROFILE = SPEED
+COMPILER_PROFILE = SPEED
 
 ##############################################
 # Compiler
@@ -146,11 +146,13 @@ PARTS = NONE
 #PARTS = PARMETIS
 METISDIR = 
 METISDIR = ${METIS_HOME}
+#METISDIR = /home/aron/opt/parmetis_gfortran
 #METISDIR = /usr/local
 #METISDIR = $(HOME)/lib/metis
 #METISDIR = $(LD_LIBRARY_PATH)
-PARMETISDIR = 
+PARMETISDIR =
 PARMETISDIR = ${PARMETIS_HOME}
+#PARMETISDIR = /home/aron/opt/parmetis_gfortran
 #PARMETISDIR = /usr/local
 #PARMETISDIR = $(HOME)/lib/parmetis
 #PARMETISDIR = $(LD_LIBRARY_PATH)
@@ -582,7 +584,7 @@ ifeq ($(COMPILER_PROFILE),SPEED)
   PROFILE = false
   DEBUG = false
   OPTIMIZE = HIGH
-  WARNING = false
+  WARNING = true
   BOUNDS = false
   XFLAG = -DSHYFEM_SPEED
 endif
@@ -736,12 +738,13 @@ ifeq ($(DEBUG),true)
   FGNU_NOOPT = -g -fbacktrace -ffpe-trap=$(TRAP_LIST) $(FGNU_BOUNDS)
 endif
 
-FGNU_OPT   = -O
+#AR: -ffree-line-length-none required everywhere — WW3 has long continuation lines
+FGNU_OPT   = -O -ffree-line-length-none
 ifeq ($(OPTIMIZE),HIGH)
-  FGNU_OPT   = -O3
+  FGNU_OPT   = -O3 -ffree-line-length-none
 endif
 ifeq ($(OPTIMIZE),NONE)
-  FGNU_OPT   = 
+  FGNU_OPT   = -ffree-line-length-none
 endif
 
 FGNU_OMP   =
