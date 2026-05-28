@@ -162,7 +162,7 @@ SHYPRE_OBJ = \
 	shypre_subs.o shypre_opti.o
 
 LAGRANGE_OBJ = \
-      lagrange_data.o lagrange_sedim.o \
+      lagrange_sedim.o \
       lagrange_flux.o lagrange_util.o \
       lagrange_vertical.o lagrange_utils.o lagrange_connect.o \
       lagrange_inout.o lagrange_cont.o lagrange_larve.o \
@@ -399,6 +399,7 @@ cleanlinks:
 ../../lib/mod/chezy.mod: chezy.o
 ../../lib/mod/close.mod: closing.o
 ../../lib/mod/connectivity.mod: lagrange_connect.o
+../../lib/mod/conz_debug.mod: concentration_omp.o
 ../../lib/mod/extra.mod: extra.o
 ../../lib/mod/ice_global.mod: icemodel.o
 ../../lib/mod/ice_params.mod: icemodel.o
@@ -413,7 +414,6 @@ cleanlinks:
 ../../lib/mod/mod_conz.mod: conz_common.o
 ../../lib/mod/mod_gotm_aux.mod: gotm_aux.o
 ../../lib/mod/mod_keps.mod: turbulence_util.o
-../../lib/mod/mod_lagrange.mod: lagrange_data.o
 ../../lib/mod/mod_nudge.mod: nudge.o
 ../../lib/mod/mod_parwaves.mod: waves_admin.o
 ../../lib/mod/mod_renewal_time.mod: water_ren_time.o
@@ -460,6 +460,7 @@ bcvel.o: ../../lib/mod/basin.mod ../../lib/mod/levels.mod \
 beaching.o: ../../lib/mod/basin.mod ../../lib/mod/levels.mod \
 		../../lib/mod/mod_conz.mod \
 		../../lib/mod/mod_geom.mod \
+		../../lib/mod/mod_info_output.mod \
 		../../lib/mod/shympi.mod 
 bnd_routines.o: ../../lib/mod/basin.mod \
 		../../lib/mod/intp_fem_file.mod \
@@ -470,19 +471,17 @@ bnd_routines.o: ../../lib/mod/basin.mod \
 		../../lib/mod/mod_geom_dynamic.mod \
 		../../lib/mod/mod_hydro.mod \
 		../../lib/mod/mod_hydro_print.mod \
+		../../lib/mod/mod_info_output.mod \
 		../../lib/mod/pkonst.mod ../../lib/mod/shympi.mod 
 bnd_scalar.o: ../../lib/mod/intp_fem_file.mod \
-		../../lib/mod/iso8601.mod ../../lib/mod/shympi.mod 
+		../../lib/mod/iso8601.mod \
+		../../lib/mod/mod_info_output.mod \
+		../../lib/mod/shympi.mod 
 bndo.o: ../../lib/mod/basin.mod ../../lib/mod/levels.mod \
 		../../lib/mod/mod_bound_geom.mod \
 		../../lib/mod/mod_geom.mod \
 		../../lib/mod/mod_hydro.mod \
-		../../lib/mod/shympi.mod 
-bndo_admin.o: ../../lib/mod/basin.mod ../../lib/mod/levels.mod \
-		../../lib/mod/mod_bndo.mod \
-		../../lib/mod/mod_bound_geom.mod \
-		../../lib/mod/mod_geom.mod \
-		../../lib/mod/mod_hydro.mod \
+		../../lib/mod/mod_info_output.mod \
 		../../lib/mod/shympi.mod 
 boxes.o: ../../lib/mod/basin.mod ../../lib/mod/evgeom.mod \
 		../../lib/mod/levels.mod \
@@ -493,6 +492,7 @@ boxes.o: ../../lib/mod/basin.mod ../../lib/mod/evgeom.mod \
 		../../lib/mod/mod_geom_dynamic.mod \
 		../../lib/mod/mod_hydro.mod \
 		../../lib/mod/mod_hydro_vel.mod \
+		../../lib/mod/mod_info_output.mod \
 		../../lib/mod/mod_layer_thickness.mod \
 		../../lib/mod/mod_meteo.mod \
 		../../lib/mod/mod_ts.mod ../../lib/mod/shympi.mod \
@@ -522,6 +522,7 @@ chezy.o: ../../lib/mod/basin.mod ../../lib/mod/levels.mod \
 		../../lib/mod/mod_fluidmud.mod \
 		../../lib/mod/mod_hydro.mod \
 		../../lib/mod/mod_hydro_print.mod \
+		../../lib/mod/mod_info_output.mod \
 		../../lib/mod/mod_layer_thickness.mod \
 		../../lib/mod/mod_roughness.mod \
 		../../lib/mod/nls.mod ../../lib/mod/pkonst.mod \
@@ -530,6 +531,7 @@ closing.o: ../../lib/mod/arrays.mod ../../lib/mod/basin.mod \
 		../../lib/mod/mkonst.mod \
 		../../lib/mod/mod_hydro.mod \
 		../../lib/mod/mod_hydro_print.mod \
+		../../lib/mod/mod_info_output.mod \
 		../../lib/mod/mod_internal.mod \
 		../../lib/mod/shympi.mod 
 concentration.o: ../../lib/mod/basin.mod ../../lib/mod/evgeom.mod \
@@ -544,6 +546,7 @@ concentration.o: ../../lib/mod/basin.mod ../../lib/mod/evgeom.mod \
 		../../lib/mod/mod_hydro.mod \
 		../../lib/mod/mod_hydro_print.mod \
 		../../lib/mod/mod_hydro_vel.mod \
+		../../lib/mod/mod_info_output.mod \
 		../../lib/mod/mod_layer_thickness.mod \
 		../../lib/mod/mod_ts.mod ../../lib/mod/shympi.mod \
 		../../lib/mod/shympi_debug.mod 
@@ -563,11 +566,13 @@ concentration_omp.o: ../../lib/mod/basin.mod \
 const.o: ../../lib/mod/basin.mod ../../lib/mod/befor_after.mod \
 		../../lib/mod/mkonst.mod ../../lib/mod/mod_bnd.mod \
 		../../lib/mod/mod_bound_geom.mod \
+		../../lib/mod/mod_info_output.mod \
 		../../lib/mod/pkonst.mod 
 conz_admin.o: ../../lib/mod/basin.mod ../../lib/mod/levels.mod \
 		../../lib/mod/mkonst.mod \
 		../../lib/mod/mod_conz.mod \
 		../../lib/mod/mod_diff_visc_fric.mod \
+		../../lib/mod/mod_info_output.mod \
 		../../lib/mod/mod_layer_thickness.mod \
 		../../lib/mod/mod_ts.mod ../../lib/mod/para.mod \
 		../../lib/mod/shympi.mod 
@@ -605,6 +610,7 @@ diffusion_admin.o: ../../lib/mod/basin.mod \
 		../../lib/mod/mod_geom.mod \
 		../../lib/mod/mod_hydro.mod \
 		../../lib/mod/mod_hydro_print.mod \
+		../../lib/mod/mod_info_output.mod \
 		../../lib/mod/shympi.mod 
 discharge_flux.o: ../../lib/mod/basin.mod ../../lib/mod/evgeom.mod \
 		../../lib/mod/levels.mod \
@@ -644,6 +650,7 @@ extra.o: ../../lib/mod/basin.mod ../../lib/mod/befor_after.mod \
 		../../lib/mod/mod_depth.mod \
 		../../lib/mod/mod_hydro.mod \
 		../../lib/mod/mod_hydro_print.mod \
+		../../lib/mod/mod_info_output.mod \
 		../../lib/mod/mod_sediment.mod \
 		../../lib/mod/mod_trace_point.mod \
 		../../lib/mod/mod_ts.mod \
@@ -657,11 +664,13 @@ flux.o: ../../lib/mod/basin.mod ../../lib/mod/befor_after.mod \
 		../../lib/mod/levels.mod \
 		../../lib/mod/mod_conz.mod \
 		../../lib/mod/mod_flux.mod \
+		../../lib/mod/mod_info_output.mod \
 		../../lib/mod/mod_sediment.mod \
 		../../lib/mod/mod_trace_point.mod \
 		../../lib/mod/mod_ts.mod ../../lib/mod/nls.mod \
 		../../lib/mod/shympi.mod ../../lib/mod/simul.mod 
 flux_util.o: ../../lib/mod/levels.mod ../../lib/mod/mod_geom.mod \
+		../../lib/mod/mod_info_output.mod \
 		../../lib/mod/shympi.mod 
 flxm.o: ../../lib/mod/shympi.mod ../../lib/mod/simul.mod
 gotm_aux.o: ../../lib/mod/basin.mod ../../lib/mod/levels.mod \
@@ -672,8 +681,9 @@ heat_admin2.o: ../../lib/mod/basin.mod \
 		../../lib/mod/meteo_forcing_module.mod \
 		../../lib/mod/mod_debug.mod \
 		../../lib/mod/mod_hydro_print.mod \
+		../../lib/mod/mod_info_output.mod \
 		../../lib/mod/mod_meteo.mod \
-		../../lib/mod/mod_ts.mod 
+		../../lib/mod/mod_ts.mod ../../lib/mod/shympi.mod 
 heat_areg.o: ../../lib/mod/heat_const.mod
 heat_coare.o: ../../lib/mod/heat_const.mod
 heat_default.o: ../../lib/mod/heat_const.mod
@@ -715,6 +725,7 @@ initialize.o: ../../lib/mod/basin.mod \
 		../../lib/mod/mod_hydro.mod \
 		../../lib/mod/mod_hydro_print.mod \
 		../../lib/mod/mod_hydro_vel.mod \
+		../../lib/mod/mod_info_output.mod \
 		../../lib/mod/mod_internal.mod \
 		../../lib/mod/mod_roughness.mod \
 		../../lib/mod/pkonst.mod ../../lib/mod/shympi.mod 
@@ -794,6 +805,7 @@ meteo_admin.o: ../../lib/mod/basin.mod ../../lib/mod/evgeom.mod \
 		../../lib/mod/levels.mod \
 		../../lib/mod/meteo_forcing_module.mod \
 		../../lib/mod/mod_bound_dynamic.mod \
+		../../lib/mod/mod_info_output.mod \
 		../../lib/mod/mod_meteo.mod \
 		../../lib/mod/mod_ts.mod ../../lib/mod/shympi.mod 
 meteo_forcing.o: ../../lib/mod/basin.mod ../../lib/mod/evgeom.mod \
@@ -805,6 +817,7 @@ meteo_forcing.o: ../../lib/mod/basin.mod ../../lib/mod/evgeom.mod \
 		../../lib/mod/shyfem_strings.mod \
 		../../lib/mod/shympi.mod 
 mkdistance.o: ../../lib/mod/basin.mod ../../lib/mod/mod_geom.mod \
+		../../lib/mod/mod_info_output.mod \
 		../../lib/mod/shympi.mod 
 model3d_util.o: ../../lib/mod/basin.mod ../../lib/mod/evgeom.mod \
 		../../lib/mod/levels.mod \
@@ -839,9 +852,11 @@ nohydro.o: ../../lib/mod/basin.mod ../../lib/mod/evgeom.mod \
 		../../lib/mod/mod_bound_dynamic.mod \
 		../../lib/mod/mod_depth.mod \
 		../../lib/mod/mod_diff_visc_fric.mod \
+		../../lib/mod/mod_geom_dynamic.mod \
 		../../lib/mod/mod_hydro.mod \
 		../../lib/mod/mod_hydro_print.mod \
 		../../lib/mod/mod_hydro_vel.mod \
+		../../lib/mod/mod_info_output.mod \
 		../../lib/mod/mod_internal.mod \
 		../../lib/mod/mod_layer_thickness.mod \
 		../../lib/mod/mod_nohyd.mod \
@@ -865,6 +880,7 @@ offline_data.o: ../../lib/mod/basin.mod ../../lib/mod/levels.mod \
 		../../lib/mod/mod_hydro.mod \
 		../../lib/mod/mod_hydro_print.mod \
 		../../lib/mod/mod_hydro_vel.mod \
+		../../lib/mod/mod_info_output.mod \
 		../../lib/mod/mod_offline.mod \
 		../../lib/mod/mod_trace_point.mod \
 		../../lib/mod/mod_ts.mod ../../lib/mod/shympi.mod 
@@ -893,8 +909,16 @@ restart.o: ../../lib/mod/basin.mod ../../lib/mod/levels.mod \
 		../../lib/mod/mod_geom_dynamic.mod \
 		../../lib/mod/mod_hydro.mod \
 		../../lib/mod/mod_hydro_vel.mod \
+		../../lib/mod/mod_info_output.mod \
 		../../lib/mod/mod_restart.mod \
 		../../lib/mod/mod_ts.mod ../../lib/mod/shympi.mod 
+rst2shy.o: ../../lib/mod/basin.mod ../../lib/mod/clo.mod \
+		../../lib/mod/iso8601.mod ../../lib/mod/levels.mod \
+		../../lib/mod/mod_conz.mod \
+		../../lib/mod/mod_geom_dynamic.mod \
+		../../lib/mod/mod_hydro.mod \
+		../../lib/mod/mod_ts.mod ../../lib/mod/shyfile.mod \
+		../../lib/mod/shympi.mod 
 rstinf.o: ../../lib/mod/basin.mod ../../lib/mod/clo.mod \
 		../../lib/mod/levels.mod \
 		../../lib/mod/mod_geom_dynamic.mod \
@@ -951,6 +975,7 @@ shyfem_subs.o: ../../lib/mod/basin.mod \
 		../../lib/mod/mod_hydro_baro.mod \
 		../../lib/mod/mod_hydro_print.mod \
 		../../lib/mod/mod_hydro_vel.mod \
+		../../lib/mod/mod_info_output.mod \
 		../../lib/mod/mod_internal.mod \
 		../../lib/mod/mod_keps.mod \
 		../../lib/mod/mod_layer_thickness.mod \
@@ -959,6 +984,7 @@ shyfem_subs.o: ../../lib/mod/basin.mod \
 		../../lib/mod/mod_nudging.mod \
 		../../lib/mod/mod_offline.mod \
 		../../lib/mod/mod_quad_tree.mod \
+		../../lib/mod/mod_restart.mod \
 		../../lib/mod/mod_roughness.mod \
 		../../lib/mod/mod_sediment.mod \
 		../../lib/mod/mod_shyfem.mod \
@@ -984,17 +1010,20 @@ simple_sedi.o: ../../lib/mod/basin.mod ../../lib/mod/evgeom.mod \
 simsys_lp.o: ../../lib/mod/basin.mod ../../lib/mod/levels.mod \
 		../../lib/mod/mod_system.mod 
 simsys_spkaux.o: ../../lib/mod/basin.mod ../../lib/mod/levels.mod \
+		../../lib/mod/mod_info_output.mod \
 		../../lib/mod/mod_system.mod \
 		../../lib/mod/mod_system_interface.mod \
 		../../lib/mod/shympi.mod 
-sparskit_admin.o: ../../lib/mod/mod_system.mod \
+sparskit_admin.o: ../../lib/mod/mod_info_output.mod \
+		../../lib/mod/mod_system.mod \
 		../../lib/mod/mod_system_interface.mod 
 stability.o: ../../lib/mod/basin.mod ../../lib/mod/levels.mod \
 		../../lib/mod/mod_diff_visc_fric.mod \
 		../../lib/mod/mod_hydro.mod \
 		../../lib/mod/mod_info_output.mod \
 		../../lib/mod/pkonst.mod ../../lib/mod/shympi.mod 
-subset.o: ../../lib/mod/basin.mod
+subset.o: ../../lib/mod/basin.mod \
+		../../lib/mod/mod_info_output.mod 
 substress.o: ../../lib/mod/basin.mod ../../lib/mod/evgeom.mod \
 		../../lib/mod/levels.mod \
 		../../lib/mod/mod_depth.mod \
@@ -1011,9 +1040,11 @@ tidef.o: ../../lib/mod/basin.mod ../../lib/mod/coordinates.mod \
 		../../lib/mod/iso8601.mod \
 		../../lib/mod/mod_depth.mod \
 		../../lib/mod/mod_hydro.mod \
+		../../lib/mod/mod_info_output.mod \
 		../../lib/mod/shympi.mod ../../lib/mod/tide.mod 
 time_admin.o: ../../lib/mod/femtime.mod \
 		../../lib/mod/mod_info_output.mod \
+		../../lib/mod/mod_progress_bar.mod \
 		../../lib/mod/shympi.mod 
 topological_admin.o: ../../lib/mod/basin.mod \
 		../../lib/mod/evgeom.mod \
@@ -1070,6 +1101,7 @@ tvd_admin.o: ../../lib/mod/basin.mod ../../lib/mod/evgeom.mod \
 		../../lib/mod/levels.mod \
 		../../lib/mod/mod_hydro_print.mod \
 		../../lib/mod/mod_hydro_vel.mod \
+		../../lib/mod/mod_info_output.mod \
 		../../lib/mod/mod_layer_thickness.mod \
 		../../lib/mod/mod_quad_tree.mod \
 		../../lib/mod/mod_tvd.mod ../../lib/mod/shympi.mod \
@@ -1079,6 +1111,7 @@ water_ren_time.o: ../../lib/mod/basin.mod \
 		../../lib/mod/evgeom.mod ../../lib/mod/levels.mod \
 		../../lib/mod/mod_conz.mod \
 		../../lib/mod/mod_depth.mod \
+		../../lib/mod/mod_info_output.mod \
 		../../lib/mod/shympi.mod ../../lib/mod/simul.mod 
 waves_admin.o: ../../lib/mod/basin.mod \
 		../../lib/mod/coordinates.mod \

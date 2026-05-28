@@ -240,6 +240,7 @@ femelab2.o: ../../../lib/mod/clo.mod ../../../lib/mod/elabtime.mod \
 		../../../lib/mod/shyfem_strings.mod 
 femelab_cover.o: ../../../lib/mod/basin.mod \
 		../../../lib/mod/elabutil.mod 
+femintp.o: ../../../lib/mod/clo.mod ../../../lib/mod/fem_util.mod
 flxelab1.o: ../../../lib/mod/basin.mod ../../../lib/mod/clo.mod \
 		../../../lib/mod/elabtime.mod \
 		../../../lib/mod/elabutil.mod \

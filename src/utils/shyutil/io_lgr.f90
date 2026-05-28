@@ -33,6 +33,7 @@
 ! 16.02.2019	ggu	changed VERS_7_5_60
 ! 25.06.2021	ggu	minor changes
 ! 21.03.2022	ggu	new routine lgr_rewind_block()
+! 27.05.2026	ggu	adjourned routine lgr_get_header()
 !
 !**********************************************************
 ! check if file is lagrangian
@@ -76,24 +77,35 @@
 ! read lgr version header
 !**********************************************************
 
-        subroutine lgr_get_header(iu,nvers,lmax,ncust)
+        subroutine lgr_get_header(iu,nvers,lmax,ncust_local)
+
+	use mod_lagrange, only : lgr_mtype,lgr_nvers,ncust
 
         implicit none
 
         integer, intent(in) 	:: iu
 	integer, intent(out)	:: nvers
 	integer, intent(out)	:: lmax
-	integer, intent(out)	:: ncust
+	integer, intent(out)	:: ncust_local
 
         integer mtype
 
         lmax = 1
+	ncust = 0
 
         read(iu,end=98,err=99) mtype,nvers
 
-        if( mtype /= 367265 ) goto 97
-        if( nvers < 6 ) goto 95
-        read(iu) lmax,ncust
+        if( mtype /= lgr_mtype ) goto 97
+        if( nvers > lgr_nvers ) goto 95
+
+	if( nvers < 5 ) return
+
+        read(iu) lmax,ncust_local
+	ncust = ncust_local
+
+	if( nvers < 7 ) return
+
+        read(iu)
 
         return
    95   continue

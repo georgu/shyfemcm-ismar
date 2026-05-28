@@ -63,6 +63,7 @@
 ! 25.10.2018	ggu	changed VERS_7_5_51
 ! 16.02.2019	ggu	changed VERS_7_5_60
 ! 13.03.2019	ggu	changed VERS_7_5_61
+! 27.05.2026	ggu	update to lgr_write_header()
 !
 !*******************************************************************
 
@@ -664,20 +665,39 @@
 
 !*******************************************************************
 
-        subroutine lgr_write_header(iu,nlv,ncust)
+        subroutine lgr_write_header(iu,nlv,ncust_local)
+
+	use mod_lagrange
 
         implicit none
 
 	integer, intent(in) 		:: iu
 	integer, intent(in) 		:: nlv
-	integer, intent(in) 		:: ncust
+	integer, intent(in) 		:: ncust_local
 
-        integer, parameter      	:: nvers = 6
-        integer, parameter      	:: mtype = 367265
+        integer nvers,mtype
 
+	nvers = lgr_nvers
+	mtype = lgr_mtype
 
-        write(iu) mtype,nvers
-        write(iu) nlv,ncust                   !from version 5 on
+	if( ncust /= ncust_local ) stop 'error stop lgr_write_header: internal'
+
+	if( nvers < 1 ) then
+	  write(6,*) 'cannot write version ',nvers
+	  stop 'error stop lgr_write_header: unknown nvers'
+	else if( nvers < 5 ) then
+          write(iu) mtype,nvers
+	else if( nvers == 5 .or. nvers == 6 ) then
+          write(iu) mtype,nvers
+          write(iu) nlv,ncust                   !from version 5 on
+	else if( nvers == 7 ) then		!from version 7
+          write(iu) mtype,nvers
+          write(iu) nlv,ncust
+	  write(iu)
+	else
+	  write(6,*) 'cannot write version ',nvers
+	  stop 'error stop lgr_write_header: unknown nvers'
+	end if
 
         write(6,*) 'lgr file initialized...'
 

@@ -122,6 +122,8 @@
 ! 25.10.2018	ggu	changed VERS_7_5_51
 ! 16.02.2019	ggu	changed VERS_7_5_60
 ! 25.07.2024	ggu	new implementation of OMP
+! 27.05.2026	ggu	write lgr header with lgr_write_header()
+! 27.05.2026	ggu	new routine write_time()
 !
 !****************************************************************            
 
@@ -237,6 +239,9 @@
 	  if( dtlanf < dtanf ) dtlanf = dtanf
 	  if( dtlend > dtend ) dtlend = dtend
 
+	  call write_time('dtlanf',dtlanf)
+	  call write_time('dtlend',dtlend)
+
 !         ------------------------------------------------------
 !	  new release
 !         ------------------------------------------------------
@@ -248,6 +253,11 @@
 	  dtrnext = dtranf
 	  if( ddtl == 0.d0 ) ddtl = dtlend - dtlanf + 1	!release once at start
 	  if( ddtl < 0.d0 ) dtrnext = dtend + 1		!never release
+
+	  call write_time('dtranf',dtranf)
+	  call write_time('dtrend',dtrend)
+	  call write_time('dtrnext',dtrnext)
+	  write(6,*) 'ddtl = ',ddtl
 
 !         ------------------------------------------------------
 !	  initialize particle distribtuion from lgr file 
@@ -264,7 +274,7 @@
             call shyfem_init_lgr_file('lgr',nvar,b3d,id)
             da_lgr(4) = id
             call shy_get_iunit(id,iu)
-            write(iu) ncust
+	    call lgr_write_header(iu,nlv,ncust)
           end if
 	end if
          
@@ -1047,6 +1057,20 @@
         do ie=1,nel
          write(99,*) ie,i_count(ie),t_count(ie)
         enddo
+        end
+
+!**********************************************************************
+
+	subroutine write_time('text',time)
+
+	implicit none
+
+	character*(*) text
+	double precision time
+
+	call get_timeline(time,aline)
+	write(6,*) trim(text) // ' = ',aline
+
         end
 
 !**********************************************************************
