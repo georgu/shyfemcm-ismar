@@ -268,6 +268,7 @@ run_enkf() {
     read -p "--- [INPUT] Apply Localization? (0=No, 1=Yes): " DA_LOC
     read -p "--- [INPUT] Number of parallel threads (nomp): " DA_THREADS
     read -p "--- [INPUT] Save all members output (required for enKS Smoothing)? (0/1): " DA_OUT
+    read -p "--- [INPUT] Forecast execution engine (mpi|omp): " PMODE
 
     [ -f "$DET_DIR/lbound.dat" ] && cp "$DET_DIR/lbound.dat" "$DA_DIR/"
     
@@ -275,9 +276,9 @@ run_enkf() {
     if [ "$do_p" == "y" ]; then
        echo "Setup complete. Moving to $DA_DIR to launch the simulation."
        cd "$DA_DIR" 
-       bash "$ENKF_DIR/enKF.sh" "$DA_METHOD" "$DA_LOC" "$DA_THREADS" "$DA_OUT"
+       bash "$ENKF_DIR/enKF.sh" "$DA_METHOD" "$DA_LOC" "$DA_THREADS" "$DA_OUT" "$PMODE"
     else
-       echo "Go to the DA dir and run: $ENKF_DIR/enKF.sh $DA_METHOD $DA_LOC $DA_THREADS $DA_OUT"
+       echo "Go to the DA dir and run: $ENKF_DIR/enKF.sh $DA_METHOD $DA_LOC $DA_THREADS $DA_OUT" "$PMODE"
     fi
 }
 
