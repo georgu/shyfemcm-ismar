@@ -2,7 +2,7 @@
 # Copyright (C) 2017, Marco Bajo, CNR-ISMAR Venice, All rights reserved.
 #
 ################################################################################
-# EnKF Data Assimilation Module - Definitive Makefile
+# EnKF Data Assimilation Module - Makefile
 ################################################################################
 
 # --- Directory Paths ---
@@ -104,7 +104,7 @@ SHYOBJ = \
 	$(FEMSRC)/contrib/ecological/mercury/mercury_dummy.o \
 	$(FEMSRC)/contrib/ecological/bfm/bfm_dummy.o
 
-# --- SHYFEM Ensemble Base Objects (Original light list) ---
+# --- SHYFEM Ensemble Base Objects ---
 SHYOBJENS = \
 	$(SHYGENERIC)/dts.o \
 	$(SHYGENERIC)/file.o \
@@ -112,7 +112,7 @@ SHYOBJENS = \
 	$(SHYGENERIC)/iso8601.o \
 	$(SHYGENERIC)/convert.o
 
-# --- EnKF Native Objects (Restored from your original) ---
+# --- EnKF Objects ---
 ENKOBJ = m_analysis.o m_ensmean.o m_ensvar.o \
 	 m_mean_preserving_rotation.o \
 	 m_multa.o mod_anafunc.o
@@ -155,7 +155,7 @@ all: $(EXES)
 %.o: %.f
 	$(FC) $(FFLAGS) $(ENKF_OMP_FLAG) $(INCLUDE) -c $< -o $@
 
-# Phase 2: Final Linking commands using original structural recipes
+# Phase 2: Final Linking commands using structural recipes
 
 main: main.o $(ENSOBJ) $(SHYOBJ)
 	$(LINKER) $(FFLAGS) $(ENKF_OMP_FLAG) main.o $(ENSOBJ) $(SHYOBJ) $(LFLAGS) $(MATH_LIBS) $(NC_LIBS) -o $@

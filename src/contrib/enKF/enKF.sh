@@ -15,6 +15,12 @@ SCRIPTPATH=$(dirname $SCRIPT)
 SRCDIR=$SCRIPTPATH/../..	# Source directory
 SIMDIR=$(pwd)		# Current execution directory
 
+# Parallel simulations are scaled according to these parameters
+# MPI MODE: Allocates discrete MPI processes per member execution
+CORES_PER_MEMBER=2 
+# OPENMP MODE: Launches concurrent members utilizing localized multi-threading
+THREADS_PER_MEMBER=2
+
 #----------------------------------------------------------
 # Usage Information Function
 #----------------------------------------------------------
@@ -41,7 +47,7 @@ Check_file() {
 }
 
 #----------------------------------------------------------
-# Comprehensive Executables and Inputs Validation
+# Executables and Inputs Validation
 #----------------------------------------------------------
 Check_files() {
     echo "[INFO] Validating executables..."
@@ -179,7 +185,7 @@ Read_antime_list
 
 echo "Starting Assimilation Cycle..."
 
-# Clean old artifacts from previous workspace allocations
+# Clean from previous workspace allocations
 rm -f X5*.* X3*.* backKF_*.rst analKF_*.rst
 
 # Enforce full thread allocation for the initial EnKF Core processes
@@ -209,8 +215,6 @@ for (( na = 1; na <= nran; na++ )); do
 
       # --- DYNAMIC FORECAST PARALLELIZATION PARSING ---
       if [ "$parallel_mode" = "mpi" ]; then
-         # MPI MODE: Allocates discrete MPI processes per member execution
-         CORES_PER_MEMBER=4 
          
          export OMP_NUM_THREADS=1 
          JOBS_CONCURRENT=$(( nthreads / CORES_PER_MEMBER ))
@@ -228,8 +232,6 @@ for (( na = 1; na <= nran; na++ )); do
            " ::: an${naal}_en*b.str
 
       else
-         # OPENMP MODE: Launches concurrent members utilizing localized multi-threading
-         THREADS_PER_MEMBER=1
          
          export OMP_NUM_THREADS=$THREADS_PER_MEMBER
          JOBS_CONCURRENT=$(( nthreads / THREADS_PER_MEMBER ))
@@ -251,7 +253,7 @@ for (( na = 1; na <= nran; na++ )); do
       export OMP_NUM_THREADS=$nthreads
    fi
 
-   # --- CONSOLIDATE AND MERGE RESTART OUTPUT ARTIFACTS ---
+   # --- CONSOLIDATE AND MERGE RESTART OUTPUT ---
    nanl=$(printf "%05d" $na)
    for (( ne = 0; ne < $nrens; ne++ )); do
         nel=$(printf "%05d" $ne)

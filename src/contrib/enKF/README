@@ -30,8 +30,8 @@ There is an automatic script (run_DA.sh) to run DA in some minutes. You need:
    with all the observations that you want to assimilate.
 
 First download SHYFEMCM-ISMAR with enKF, you find it in the official Github.
-Compile SHYFEM with OpenMP (not MPI) and goes in src/contrib/enKF. Compile
-with make cleanall and make all.
+Compile SHYFEM, should work both OpenMP and MPI, and goes in src/contrib/enKF. Compile
+with make clean and make.
 
 Then the deterministic run must have a RST file with a state at the initial
 time of the DA run. You need also at least one observation at this time. A
@@ -107,13 +107,14 @@ Running the code
 
 To run the code, execute enKF.sh. The mandatory arguments are:
 
-Usage: enKF.sh [method] [localisation] [n] [out]
+Usage: enKF.sh [method] [localisation] [n] [out] [parallel_mode]
 
 - method = 11|12|13|21|22|23       (see analysis.f90)
 - localisation = 0 (disable), 1 (enable)
 - n = number of threads
 - out = 0 saves only mean and std restarts
         1 saves all restarts (required by enKS)
+- parallel_mode used in SHYFEM (mpi|omp)
 
 Before running enKF.sh, prepare the following files:
 
