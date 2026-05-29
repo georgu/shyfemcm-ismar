@@ -26,6 +26,7 @@
 ! revision log :
 !
 ! 03.11.2023	ggu	newly created
+! 29.05.2026	ggu	bug fix in color_elems() (ie not set)
 
 !==================================================================
         module mod_color
@@ -307,7 +308,7 @@
 
 	do ie1=1,nel
 	  do ii=1,3
-	    ie2 = ecv(ii,ie)
+	    ie2 = ecv(ii,ie1)
 	    id1 = ids(ie1)
 	    id2 = ids(ie2)
 	    if( id1 /= id2 ) then

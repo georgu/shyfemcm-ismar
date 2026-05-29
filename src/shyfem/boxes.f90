@@ -3505,6 +3505,7 @@
 
 	if( my_id /= 0 ) return
 
+	iu = 1
 	open(iu,file='boxes_matrix.txt',status='unknown',form='formatted')
 
 	write(iu,1000) 0,header(:)

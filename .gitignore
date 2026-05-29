@@ -152,6 +152,9 @@ demopost
 src/utils/shympi/MPI_NODE
 src/utils/shympi/MPI_NONE
 
+bin/check/test_nc.f
+bin/check/test_x11.c
+
 #-----------------------------------------------
 
 docs/P_*.tex

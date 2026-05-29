@@ -968,6 +968,7 @@
 	irec = 0	!records with data
 	nrec = 0	!records read (also ivar<0)
 	ivar_first = -999
+	dtime0 = -1.
 
 	do
 	  call shy_skip_record(id,dtime,ivar,n,m,lmax,ierr)

@@ -154,6 +154,7 @@
 ! 21.10.2021    ggu     set rhosa to a reasonable value (was infinite) (GGUBS)
 ! 21.10.2021    ggu     in call to get_sigma_info() protect nlv
 ! 23.10.2024    ggu     module definition taken out to mod_admin.f90
+! 29.05.2026    ggu     avoid compiler warning
 ! 
 !****************************************************************************
 
@@ -3036,6 +3037,7 @@
 !        -------------------------------------------------------------------
 
          gsa = 0.d0
+         gssold = 0.d0
          do is = 1,nscls
           gss = gs(is)
 	  if (is .gt. 1) then
