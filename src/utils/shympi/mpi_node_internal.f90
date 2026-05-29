@@ -55,6 +55,8 @@
 ! 04.12.2024    ggu     new routines shympi_gather_internal_r/i()
 ! 05.12.2024    ggu     renamed module from shympi_aux to shympi_internal
 ! 07.12.2024    ggu     big changes: check if arrays have same length for gather
+! 29.05.2026    ggu     avoid compiler warnings
+! 29.05.2026    ggu     disable FPE trapping to avoid floating point exception
 !
 !******************************************************************
 
@@ -200,6 +202,8 @@
 	subroutine shympi_init_internal(my_id,n_threads,binit)
 
 	use shympi_internal
+        use ieee_exceptions, only: ieee_divide_by_zero, ieee_invalid, &
+                      & ieee_overflow, ieee_set_halting_mode
 
 	implicit none
 
@@ -211,11 +215,21 @@
 
 	required = MPI_THREAD_MULTIPLE
 	required = MPI_THREAD_SERIALIZED
+        provided = 0
+
+	! the next code is needed because openmpi version 5
+	! throws a floating point exception when calling MPI_INIT
+	! this is clearly a bug in the openmpi library
+	! the only way to avoid this is the code below
+
+        ! Disable FPE trapping before MPI_Init
+        call ieee_set_halting_mode(ieee_divide_by_zero, .false.)
+        call ieee_set_halting_mode(ieee_invalid, .false.)
+        call ieee_set_halting_mode(ieee_overflow, .false.)
 
 	ierr = 0
-        if( binit ) call MPI_INIT_THREAD( required, provided, ierr )
-	!write(6,*) 'thread safety: ',required, provided
-	!write(6,*) 'initializing MPI: ',ierr
+        if( binit ) call MPI_INIT(ierr)
+        !if( binit ) call MPI_INIT_THREAD( required, provided, ierr )
 
 	call MPI_BARRIER( MPI_COMM_WORLD, iberr)
 	call shympi_error('shympi_init_internal','init',ierr)
@@ -225,6 +239,11 @@
 	call shympi_error('shympi_init_internal','size',ierr)
 	call MPI_BARRIER( MPI_COMM_WORLD, ierr)
 	call shympi_error('shympi_init_internal','barrier',ierr)
+
+        ! Re-enable FPE trapping
+        call ieee_set_halting_mode(ieee_divide_by_zero, .true.)
+        call ieee_set_halting_mode(ieee_invalid, .true.)
+        call ieee_set_halting_mode(ieee_overflow, .true.)
 
 	n_p_threads = n_threads
 	my_p_id = my_id
