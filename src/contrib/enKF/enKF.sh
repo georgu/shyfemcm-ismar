@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 #
 # Copyright (C) 2017-2026, Marco Bajo, CNR-ISMAR Venice, All rights reserved.
 #
@@ -9,7 +9,6 @@
 # See the README file for help
 #
 
-# --- PATH & ENVIRONMENT SETUP ---
 SCRIPT=$(realpath $0)
 SCRIPTPATH=$(dirname $SCRIPT)
 SRCDIR=$SCRIPTPATH/../..	# Source directory
@@ -17,9 +16,9 @@ SIMDIR=$(pwd)		# Current execution directory
 
 # Parallel simulations are scaled according to these parameters
 # MPI MODE: Allocates discrete MPI processes per member execution
-CORES_PER_MEMBER=2 
+CORES_PER_MEMBER=1
 # OPENMP MODE: Launches concurrent members utilizing localized multi-threading
-THREADS_PER_MEMBER=2
+THREADS_PER_MEMBER=1
 
 #----------------------------------------------------------
 # Usage Information Function
@@ -170,13 +169,30 @@ Run_ensemble_analysis() {
     done
 }
 
-# -------------------------------------------------------------------
-# ------------------------------ MAIN -------------------------------
-# -------------------------------------------------------------------
+#==========================================================
+# MAIN EXECUTION CORE
+#==========================================================
 
 # Ensure all 5 required input parameters are parsed
 [ $# -ne 5 ] && Usage
 rmode=$1; islocal=$2; nthreads=$3; out_verb=$4; parallel_mode=$5
+
+# --- DYNAMIC HARDWARE OVERLOAD PROTECTION ---
+# Automatically detect total physical CPU cores available on the system
+SYSTEM_CORES=$(lscpu -p | grep -v '^#' | sort -u -t, -k 2,4 | wc -l)
+
+# Fallback to nproc if lscpu parsing fails
+[ -z "$SYSTEM_CORES" ] || [ "$SYSTEM_CORES" -le 0 ] && SYSTEM_CORES=$(nproc)
+
+# Leave 2 cores free for OS and I/O tasks to guarantee system stability
+SAFE_CORES_LIMIT=$(( SYSTEM_CORES - 2 ))
+[ $SAFE_CORES_LIMIT -lt 2 ] && SAFE_CORES_LIMIT=2
+
+if [ "$nthreads" -gt "$SAFE_CORES_LIMIT" ]; then
+    echo "[WARNING] Requested $nthreads threads, but the safe limit for this machine is $SAFE_CORES_LIMIT cores."
+    echo "[WARNING] Automatically adjusting 'nthreads' to $SAFE_CORES_LIMIT to prevent MPI/RAM starvation."
+    nthreads=$SAFE_CORES_LIMIT
+fi
 
 # Initialize file structures and environment mapping
 Check_files
@@ -200,6 +216,7 @@ for (( na = 1; na <= nran; na++ )); do
    # 1. ANALYSIS STEP (Forced OpenMP inside compiled core)
    Run_ensemble_analysis "$na"
 
+
    # 2. FORECAST STEP (Only evaluated if a subsequent timestep is pending)
    if [ "$na" -ne "$nran" ]; then
       echo "[FORECAST] Advancing ensemble members... $na/$nran"
@@ -213,40 +230,60 @@ for (( na = 1; na <= nran; na++ )); do
          SkelStr "$name_sim" "${timeo[$na]}" "${timeo[$naa]}" "an${nal}_en${nel}a.rst" "${skel_file[$ne]}" "$strname"
       done
 
-      # --- DYNAMIC FORECAST PARALLELIZATION PARSING ---
+# --- DYNAMIC FORECAST PARALLELIZATION PARSING ---
       if [ "$parallel_mode" = "mpi" ]; then
-         
-         export OMP_NUM_THREADS=1 
+
+         export OMP_NUM_THREADS=1
          JOBS_CONCURRENT=$(( nthreads / CORES_PER_MEMBER ))
          [ $JOBS_CONCURRENT -lt 1 ] && JOBS_CONCURRENT=1
 
          echo "[INFO] [MPI MODE] Running $JOBS_CONCURRENT concurrent members via 'mpirun -np $CORES_PER_MEMBER'..."
-         
-         parallel --jobs "$JOBS_CONCURRENT" "
-           mpirun -np $CORES_PER_MEMBER $SRCDIR/shyfem/shyfem {} > {.}.log 2>&1
-           if [ -f fort.999 ]; then
-             mv fort.999 fort.999_{.}
-             echo 'Process {} failed: fort.999 backup generated.'
+
+         parallel --halt now,fail=1 --jobs "$JOBS_CONCURRENT" "
+           mpirun -np $CORES_PER_MEMBER $SRCDIR/shyfem/shyfem {} > {.}.log 2>&1 || true
+           
+           # Empirical success verification (ignoring Fortran exit code)
+           if [ -f fort.999 ] || ! grep -q '100.000 %' {.}.log; then
+             [ -f fort.999 ] && mv fort.999 fort.999_{.}
+             echo 'Process {} failed.'
              exit 1
+           else
+             exit 0
            fi
            " ::: an${naal}_en*b.str
 
+         # Check GNU Parallel
+         if [ $? -ne 0 ]; then
+             echo "[ERROR] Forecast step failed in MPI execution. Check the remaining .log files."
+             exit 1
+         fi
+
       else
-         
+
          export OMP_NUM_THREADS=$THREADS_PER_MEMBER
          JOBS_CONCURRENT=$(( nthreads / THREADS_PER_MEMBER ))
          [ $JOBS_CONCURRENT -lt 1 ] && JOBS_CONCURRENT=1
 
          echo "[INFO] [OMP MODE] Running $JOBS_CONCURRENT concurrent members, each restricted to $THREADS_PER_MEMBER OpenMP threads..."
-         
-         parallel --jobs "$JOBS_CONCURRENT" "
-           $SRCDIR/shyfem/shyfem {} > {.}.log 2>&1
-           if [ -f fort.999 ]; then
-             mv fort.999 fort.999_{.}
-             echo 'Process {} failed: fort.999 backup generated.'
+
+         parallel --halt now,fail=1 --jobs "$JOBS_CONCURRENT" "
+           $SRCDIR/shyfem/shyfem {} > {.}.log 2>&1 || true
+           
+           # Empirical success verification (ignoring Fortran exit code)
+           if [ -f fort.999 ] || ! grep -q '100.000 %' {.}.log; then
+             [ -f fort.999 ] && mv fort.999 fort.999_{.}
+             echo 'Process {} failed.'
              exit 1
+           else
+             exit 0
            fi
            " ::: an${naal}_en*b.str
+
+         # Check GNU Parallel
+         if [ $? -ne 0 ]; then
+             echo "[ERROR] Forecast step failed in OMP execution. Check the remaining .log files."
+             exit 1
+         fi
       fi
 
       # Restore maximum resource allocation threads for the subsequent EnKF Core analysis execution
@@ -281,8 +318,13 @@ for (( na = 1; na <= nran; na++ )); do
    cat $filename2 >> analKF_std.rst
 
    rm -f $filename1 $filename2
-   rm -f an*_en*b.inf an*_en*.log an*_en*b.str 
+   
+   # SELECTIVE CLEANUP: If execution reaches this point, timestep 'na' completed SUCCESSFULLY.
+   # Delete .log and .str files ONLY for this specific step to prevent clutter.
+   # If the cycle crashes earlier (in the error blocks above), logs are preserved on disk.
+   if [ "$na" -ne "$nran" ]; then
+       rm -f an${naal}_en*b.log an${naal}_en*b.str an${naal}_en*b.inf
+   fi
 done
 
 echo -e "\n[SUCCESS] Assimilation cycle complete. All final assets consolidated in the current workspace."
-
