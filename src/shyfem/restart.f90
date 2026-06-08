@@ -131,6 +131,7 @@
 ! 15.11.2025	ggu	check compatibility of concentrations
 ! 20.03.2026	ggu	new experimental version 18
 ! 29.04.2026	ggu	rst_get_vertical() re-introduced
+! 29.05.2026	ggu	avoid compiler warning for ibarcl
 !
 ! notes :
 !
@@ -1245,7 +1246,8 @@
 	id = id_bfm_rst
 	!call rst_add_flag(id,iflag)
 
-	ibarcl_rst = ibarcl
+	!ibarcl_rst = ibarcl
+	ibarcl_rst = 0
 	iwvert_rst = 0
 	iturb_rst = 0
 	ieco_rst = 0

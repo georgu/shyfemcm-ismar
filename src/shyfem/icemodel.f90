@@ -84,6 +84,7 @@
 ! 15.11.2020    ggu&riz new module ice_global
 ! 17.11.2020    ggu&riz bug fix freezing temperature
 ! 22.11.2020    ggu	added code for debugging ice model
+! 29.05.2026    ggu	avoid compiler warning for isi_it
 
 !--------------------------------------------------------------------------
 !--------------------------------------------------------------------------
@@ -3181,6 +3182,7 @@ double precision ISI_it
 !  write(500,*) 'debug ice temperature_case1_snow_meteoric_ice'
 !end if
 
+ISI_it = 0.
 I0_it=vis_fr*Fs*exp(-ks_snow*(hs_old+hs_prec_bucket));
 IM_it=I0_it*exp(-kmi_av*hmi_old);
 

@@ -31,6 +31,7 @@
 ! 13.11.2025    ggu     added burrying
 ! 06.02.2026    ggu     routine made more general (rates for single area codes)
 ! 05.05.2026    ggu     more documentation, bug fix for iconz == 1
+! 29.05.2026    ggu     avoid compiler warning
 !
 !**************************************************************
 
@@ -253,7 +254,8 @@
 	  allocate(cmax1(nvar),cmaxl(nvar),bmax(nvar),umax(nvar))
 	  do iv=1,nvar
 	    cmax1(iv) = maxval(conzv(1,:,iv))
-	    cmaxl(iv) = maxval(conzv(lmax,:,iv))
+	    !cmaxl(iv) = maxval(conzv(lmax,:,iv))	!this is not working
+	    cmaxl(iv) = 0.
 	    bmax(iv) = maxval(beach_value(:,iv))
 	    umax(iv) = maxval(burry_value(:,iv))
 	    cmax1(iv) = shympi_max(cmax1(iv))	!FIXME - too slow

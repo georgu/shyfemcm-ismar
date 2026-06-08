@@ -305,6 +305,7 @@
 	header = ' time                iv    ivar      is       l    lmax'
 
 	ierr_recs = 0
+	ib = 0
 
 !--------------------------------------------------
 ! open file(s)
@@ -450,7 +451,7 @@
 	return
    91	continue
 	do is=1,nsect
-	  write(6,*) is,nslayers(ib),nslayers2(ib)
+	  write(6,*) is,nslayers(is),nslayers2(is)
 	end do
 	call error_stop(routine,'incompatible nslayers')
    92	continue
