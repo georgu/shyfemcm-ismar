@@ -109,7 +109,8 @@
 	implicit none
 
 	logical bdebug
-	integer k,id,i,n,ncsmax,ia,ic,ie,ii,iu,iu5,iu6
+	integer k,id,i,n,ncsmax,ia,ic,ie,ii
+	integer iu,iu5,iu6
 	integer nc,nc_in,nc_out
 	integer iea,ies,iloop,id0
 	integer iext,kext
@@ -414,6 +415,7 @@
 	    write(iu6,*) i,ie,iext
 	  end do
 	end do
+	flush(iu)
 	flush(iu6)
 
 	end if
@@ -434,14 +436,12 @@
 	write(6,*) 'no elements in list',ia,nc,ie
 	write(6,*) ghost_elems_in(1:nc,ia)
 	write(6,*) ghost_elems_out(1:nc,ia)
-	flush(iu)
 	flush(iu5)
 	stop 'error stop ghost_make: internal error (8)'
    99	continue
 	write(6,*) 'iloop = ',iloop
 	write(6,*) 'my_id = ',my_id
 	write(6,*) ia,id,nc,ncsmax
-	flush(iu)
 	flush(iu5)
 	stop 'error stop ghost_make: internal error (7)'
 	end

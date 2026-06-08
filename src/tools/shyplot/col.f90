@@ -733,6 +733,8 @@
 
 	call read_colormap(cfile,cname,imap,coldim,coltab,berr)
 	if( berr ) then
+	  write(6,*) 'colfil: ',trim(cfile)
+	  write(6,*) 'coltab: ',trim(cname)
 	  stop 'error stop admin_color_table: reading colormap'
 	end if
 	call set_max_color(coldim,coltab,icmax)
