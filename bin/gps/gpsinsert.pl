@@ -35,9 +35,15 @@
 #
 #-------------------------------------------------------------------
 
+$::quiet = 0 unless $::quiet;
+
 $where = shift;
 $insertfile = shift;
 $psfile = shift;
+
+unless ( $::quiet ) {
+  print STDERR "Bounding Box PS: $bbps - Landscape: $landscape_ps\n";
+}
 
 open(EPS,"<$insertfile");
 @insertfile = <EPS>;
@@ -50,8 +56,10 @@ close(PS);
 ($bbps,$landscape_ps) = setbox(\@psfile);
 ($bbeps,$landscape_eps) = setbox(\@insertfile);
 
-print STDERR "Bounding Box PS: $bbps - Landscape: $landscape_ps\n";
-print STDERR "Bounding Box EPS: $bbeps - Landscape: $landscape_eps\n";
+unless ( $::quiet ) {
+  print STDERR "Bounding Box PS: $bbps - Landscape: $landscape_ps\n";
+  print STDERR "Bounding Box EPS: $bbeps - Landscape: $landscape_eps\n";
+}
 
 ($wx1,$wy1,$wx2,$wy2) = getbox($where);
 ($bx1,$by1,$bx2,$by2) = getbox($bbeps);
@@ -72,7 +80,9 @@ if( $landscape_ps ) {
 }
 
 if( $relative ) {
-  print STDERR "relative coordinates ... converting\n";
+  unless ( $::quiet ) {
+    print STDERR "relative coordinates ... converting\n";
+  }
   $wx1 = $px1 + $wx1 * ($px2 - $px1);
   $wx2 = $px1 + $wx2 * ($px2 - $px1);
   $wy1 = $py1 + $wy1 * ($py2 - $py1);
@@ -86,7 +96,9 @@ $dwy = $wy2 - $wy1;
 $sx = $dwx / $dbx;
 $sy = $dwy / $dby;
 
-print STDERR "before rectifying: $wx1 $wy1   $wx2 $wy2   $dwx $dwy\n";
+unless ( $::quiet ) {
+  print STDERR "before rectifying: $wx1 $wy1   $wx2 $wy2   $dwx $dwy\n";
+}
 
 #----------------------------------------------- rectify scale for dw<=0
 
@@ -105,8 +117,10 @@ if( $dwx <= 0 and $dwy <= 0 ) {
   $wy2 = $wy1 + $dwy;
 }
 
-print STDERR "insert window: $wx1 $wy1   $wx2 $wy2   $dwx $dwy\n";
-print STDERR "insert box:    $bx1 $by1   $bx2 $by2   $dbx $dby\n";
+unless ( $::quiet ) {
+  print STDERR "insert window: $wx1 $wy1   $wx2 $wy2   $dwx $dwy\n";
+  print STDERR "insert box:    $bx1 $by1   $bx2 $by2   $dbx $dby\n";
+}
 
 if( $landscape_ps ) {			# transform everything to physical
   ($px1,$py1) = swap($px1,$py1);
@@ -114,8 +128,10 @@ if( $landscape_ps ) {			# transform everything to physical
   ($wx1,$wy1) = land2port($wx1,$wy1);
   ($wx2,$wy2) = land2port($wx2,$wy2);
   ($dwx,$dwy) = swap($dwx,$dwy);
-  print STDERR "insert window: $wx1 $wy1   $wx2 $wy2   $dwx $dwy\n";
-  print STDERR "insert box:    $bx1 $by1   $bx2 $by2   $dbx $dby\n";
+  unless ( $::quiet ) {
+    print STDERR "insert window: $wx1 $wy1   $wx2 $wy2   $dwx $dwy\n";
+    print STDERR "insert box:    $bx1 $by1   $bx2 $by2   $dbx $dby\n";
+  }
 }
 
 #----------------------------------------------- start inserting
@@ -134,9 +150,13 @@ foreach (@psfile) {
     } elsif( $creator eq "gnuplot" ) { 
 	;
     } else {
+      unless ( $::quiet ) {
 	print STDERR "Unknown creator $creator - trying to insert\n";
+      }
     }
-    print STDERR "Creator: $creator\n";
+    unless ( $::quiet ) {
+      print STDERR "Creator: $creator\n";
+    }
   }
 
   if( /^%%EndProlog/ and not $in_epsf ) {	# insert code
@@ -253,7 +273,7 @@ sub setbox {
     }
   }
 
-  die "No bounding box found in insert file\n" unless $bb;
+  die "No bounding box found in insert file... aborting\n" unless $bb;
 
   return ($bb,$landscape);
 }
