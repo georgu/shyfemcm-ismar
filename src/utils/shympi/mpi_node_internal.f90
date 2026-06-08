@@ -212,6 +212,7 @@
 
 	integer ierr,iberr
 	integer required,provided
+	logical bzero, binvalid, boverflow
 
 	required = MPI_THREAD_MULTIPLE
 	required = MPI_THREAD_SERIALIZED
@@ -221,6 +222,11 @@
 	! throws a floating point exception when calling MPI_INIT
 	! this is clearly a bug in the openmpi library
 	! the only way to avoid this is the code below
+
+        ! Get FPE trapping flags
+        call ieee_get_halting_mode(ieee_divide_by_zero, bzero)
+        call ieee_set_halting_mode(ieee_invalid, binvalid)
+        call ieee_set_halting_mode(ieee_overflow, boverflow)
 
         ! Disable FPE trapping before MPI_Init
         call ieee_set_halting_mode(ieee_divide_by_zero, .false.)
@@ -241,9 +247,9 @@
 	call shympi_error('shympi_init_internal','barrier',ierr)
 
         ! Re-enable FPE trapping
-        call ieee_set_halting_mode(ieee_divide_by_zero, .true.)
-        call ieee_set_halting_mode(ieee_invalid, .true.)
-        call ieee_set_halting_mode(ieee_overflow, .true.)
+        call ieee_set_halting_mode(ieee_divide_by_zero, bzero)
+        call ieee_set_halting_mode(ieee_invalid, binvalid)
+        call ieee_set_halting_mode(ieee_overflow, boverflow)
 
 	n_p_threads = n_threads
 	my_p_id = my_id
