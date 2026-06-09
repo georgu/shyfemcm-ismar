@@ -1,4 +1,5 @@
 module m_analysis
+  implicit none
 
 contains
 
@@ -18,12 +19,17 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
   !    It performs:
   !      1. Pseudo-inversion of SS' + (N-1)R or SS'+EE' depending on mode
   !      2. Construction of X5 / representer matrix depending on data ratio
-  !      3. Final ensemble update A ← A + update
-  !      4. Optional inflation (multiplicative or adaptive)
+  !      3. Final ensemble update A <- A + update
+  !      4. Inflation (multiplicative or adaptive) and safety clipping
   !
-  !    All operations are performed in double precision.
+  !  THREAD SAFETY NOTE:
+  !    This routine is executed within an OpenMP parallel region during 
+  !    local analysis. All local variables and deferred-shape arrays (Z, eig)
+  !    are allocated on a per-thread basis, ensuring thread isolation.
+  !    Nested OpenMP parallel directives inside Step 4 have been removed 
+  !    to avoid thread collisions and severe performance degradation.
   !=======================================================================
-
+  
   use iso_fortran_env, only : dp => real64
   use mod_anafunc
   use m_multa
@@ -32,65 +38,59 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
   implicit none
 
   !---------------------- Arguments ----------------------
-  integer,  intent(in)    :: ndim        ! Dimension of model state vector
-  integer,  intent(in)    :: nrens       ! Number of ensemble members
-  integer,  intent(in)    :: nrobs       ! Number of observations
+  integer,  intent(in)    :: ndim        
+  integer,  intent(in)    :: nrens       
+  integer,  intent(in)    :: nrobs       
 
-  real(dp), intent(inout) :: A(ndim,nrens)  ! Ensemble matrix (modified)
-  real(dp), intent(inout) :: R(nrobs,nrobs) ! R is updated in some modes → must be INOUT
-  real(dp), intent(in)    :: D(nrobs,nrens) ! Perturbed measurement innovations (d + E - H*A)
-  real(dp), intent(in)    :: E(nrobs,nrens) ! Observation perturbations (used in mode 13 / 23)
-  real(dp), intent(in)    :: S(nrobs,nrens) ! HA' (observation operator applied to ensemble)
-  real(dp), intent(in)    :: innov(nrobs)   ! Innovation vector: d - H*mean(A)
+  real(dp), intent(inout) :: A(ndim,nrens)  
+  real(dp), intent(inout) :: R(nrobs,nrobs) 
+  real(dp), intent(in)    :: D(nrobs,nrens) 
+  real(dp), intent(in)    :: E(nrobs,nrens) 
+  real(dp), intent(in)    :: S(nrobs,nrens) 
+  real(dp), intent(in)    :: innov(nrobs)   
 
   logical, intent(in) :: verbose
-  real(dp), intent(in) :: truncation      ! Fraction of variance retained in pseudo-inversion
-  integer, intent(in) :: mode             ! 10/11/12/13 (EnKF) or 21/22/23 (sqrt)
+  real(dp), intent(in) :: truncation      
+  integer, intent(in) :: mode             
 
-  logical, intent(in) :: lrandrot         ! Random rotation for square-root updates
-  logical, intent(in) :: lupdate_randrot  ! True only when rotation is updated at this point
-  logical, intent(in) :: lsymsqrt         ! Use symmetric square-root (Sakov)
+  logical, intent(in) :: lrandrot         
+  logical, intent(in) :: lupdate_randrot  
+  logical, intent(in) :: lsymsqrt         
 
-  integer, intent(in) :: inflate          ! 0=Off, 1=Multiplicative, 2=Adaptive (Evensen 2009)
-  real(dp), intent(in) :: infmult         ! Inflation multiplier / adjustment
-  logical, intent(in) :: islocal          ! Local analysis
+  integer, intent(in) :: inflate          
+  real(dp), intent(in) :: infmult         
+  logical, intent(in) :: islocal          
 
   !---------------------- Local variables ----------------------
-  real(dp) :: X5(nrens,nrens)     ! Transformation matrix for ensemble perturbations
+  real(dp) :: X5(nrens,nrens)     
   real(dp) :: den
-  real(dp), parameter :: eps_inv = 1.0e-14_dp ! Stability floor
-  real(dp) :: inffac              ! Inflation factor
-  real(dp) :: ave(ndim)           ! Ensemble mean
+  real(dp), parameter :: eps_inv = 1.0e-14_dp 
+  real(dp) :: inffac              
+  real(dp) :: ave(ndim)           
 
-  ! Deferred-shape arrays must be allocatable to be allocated at runtime.
-  real(dp), allocatable :: eig(:), Z(:,:)      ! Eigenvalues/eigenvectors or SVD components
+  real(dp), allocatable :: eig(:), Z(:,:)      
   real(dp), allocatable :: X2(:,:), X3(:,:), Reps(:,:)
 
   integer  :: nrmin, i, j, iblkmax
-  logical  :: lreps               ! True → representer approach is used for few observations
+  logical  :: lreps               
 
   external :: dgemm
 
   lreps = .false.
 
+  if (nrobs <= 0) then
+     if (verbose) write(*,*) 'Warning: analysis called with 0 observations. Skipping.'
+     return
+  end if
+
   !=======================================================================
-  !  STEP 1: PSEUDO-INVERSION OF C = S*S' + (N-1)*R  OR  S*S' + E*E'
-  !
-  !  Modes:
-  !    10  = exact diagonal case
-  !    11  = eigenvalue pseudo-inversion   (C = SS' + (N-1)R)
-  !    12  = low-rank SVD pseudo-inversion (C = SS' + (N-1)R)
-  !    13  = low-rank SVD pseudo-inversion (C = SS' + EE')
-  !    21/22/23 = same as 11/12/13, but for deterministic square-root updates
+  !  STEP 1: PSEUDO-INVERSION OF C
   !=======================================================================
 
   if (nrobs == 1) then
-      ! C is scalar → invert directly
       nrmin = 1
       allocate(Z(1,1), eig(1))
-      !eig(1) = dot_product(S(1,:), S(1,:)) + real(nrens-1,dp)*R(1,1)
-      !eig(1) = 1.0_dp / eig(1)
-      ! Robust scalar inversion (use the old one if not good)
+      
       den = dot_product(S(1,:), S(1,:)) + real(nrens-1, dp)*R(1,1)
       if (den > eps_inv) then
           eig(1) = 1.0_dp / den
@@ -104,11 +104,9 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
       select case (mode)
 
       case (10)
-         ! Exact diagonal inversion (special case filter)
          call exact_diag_inversion(S, D, X5, nrens, nrobs)
 
       case (11, 21)
-         ! Full eigen-decomposition of C = SS' + (N-1)R
          nrmin = nrobs
          call dgemm('N','T', nrobs, nrobs, nrens, 1.0_dp, S, nrobs, S, nrobs, &
                     real(nrens-1,dp), R, nrobs)
@@ -117,13 +115,11 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
          call eigsign(eig, nrobs, truncation)
 
       case (12, 22)
-         ! Low-rank pseudo-inversion using SVD of C = SS' + (N-1)R
          nrmin = min(nrobs, nrens)
          allocate(Z(nrobs,nrmin), eig(nrmin))
          call lowrankCinv(S, R, nrobs, nrens, nrmin, Z, eig, truncation)
 
       case (13, 23)
-         ! SVD pseudo-inversion using EE' instead of R
          nrmin = min(nrobs, nrens)
          allocate(Z(nrobs,nrmin), eig(nrmin))
          call lowrankE(S, E, nrobs, nrens, nrmin, Z, eig, truncation)
@@ -144,7 +140,6 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
       ! X5 already produced by exact_diag_inversion
 
   case (11,12,13)
-      ! Build X3 from eig/Z/D
       allocate(X3(nrobs,nrens))
       if (nrobs > 1) then
           call genX3(nrens, nrobs, nrmin, eig, Z, D, X3)
@@ -152,25 +147,19 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
           X3 = D * eig(1)
       end if
 
-      ! Work estimate to choose between Representer or X5 approach
       if (2_8*ndim*nrobs < 1_8*nrens*(nrobs+ndim) .and. inflate /= 2) then
           if (verbose) print '(a)', 'analysis: Representer approach is used'
           lreps = .true.
           allocate(Reps(ndim,nrobs))
-          ! Reps = A * S'
           call dgemm('N','T', ndim, nrobs, nrens, 1.0_dp, A, ndim, S, nrobs, 0.0_dp, Reps, ndim)
       else
           if (verbose) print '(a)', 'analysis: X5 approach is used'
-          ! X5 = S' * X3
           call dgemm('T','N', nrens, nrens, nrobs, 1.0_dp, S, nrobs, X3, nrobs, 0.0_dp, X5, nrens)
-          ! Add Identity matrix to X5
           do i = 1, nrens
               X5(i,i) = X5(i,i) + 1.0_dp
           end do
       end if
 
-      ! MANDATORY FIX: If adaptive inflation (inflate=2) is requested, 
-      ! X5 must be computed even if the Representer approach was used for the update.
       if (inflate == 2 .and. lreps) then
           call dgemm('T','N', nrens, nrens, nrobs, 1.0_dp, S, nrobs, X3, nrobs, 0.0_dp, X5, nrens)
           do i = 1, nrens
@@ -179,14 +168,11 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
       end if
 
   case (21,22,23)
-      ! Mean update
       call meanX5(nrens, nrobs, nrmin, S, Z, eig, innov, X5)
 
-      ! Generate perturbation matrix X2
       allocate(X2(nrmin,nrens))
       call genX2(nrens, nrobs, nrmin, S, Z, eig, X2)
 
-      ! Construct full square-root transformation
       call X5sqrt(X2, nrobs, nrens, nrmin, X5, lrandrot, lupdate_randrot, mode, lsymsqrt)
   end select
 
@@ -197,67 +183,42 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
   if (verbose) print '(a)', 'analysis: final update'
 
   if (lreps) then
-      ! Representer update: A += Reps * X3
-      call dgemm('N','N', ndim, nrens, nrobs, 1.0_dp, Reps, ndim, X3, nrobs, 1.0_dp, A, ndim)
-      if (.not. islocal) call dumpX3(X3, S, nrobs, nrens)   ! no write for local analysis (omp) - mbj
+     call dgemm('N','N', ndim, nrens, nrobs, 1.0_dp, Reps, ndim, X3, nrobs, 1.0_dp, A, ndim)
+     if (.not. islocal) call dumpX3(X3, S, nrobs, nrens)   
   else
-      ! Full X5 transform: A = A * X5
-      iblkmax = min(ndim, 200)
-      call multa(A, X5, ndim, nrens, iblkmax)
-      if (.not. islocal) call dumpX5(X5, nrens)            ! no write for local analysis (omp) - mbj
+     iblkmax = min(ndim, 200)
+     call multa(A, X5, ndim, nrens, iblkmax)
+     if (.not. islocal) call dumpX5(X5, nrens)            
   end if
 
   if (verbose) print '(a)', 'analysis: final update done'
 
   !=======================================================================
-  !  STEP 4: INFLATION (optional)
+  !  STEP 4: INFLATION AND SAFETY CLIPPING
   !=======================================================================
-! Old code
-!  if (inflate == 1) then
-!      inffac = infmult
-!  elseif (inflate == 2) then
-!      call inflationfactor(X5, nrens, inffac)              ! adaptive inflation factor
-!      inffac = 1.0_dp + (inffac - 1.0_dp)*infmult          ! adjust adaptive factor
-!  end if
-!
-!  if (inflate > 0) then
-!      if (verbose) print '(a,f10.4)', 'analysis: inflation update with inflation factor= ', inffac
-!      call ensmean(A, ave, ndim, nrens)
-!      do j = 1, nrens
-!          do i = 1, ndim
-!              A(i,j) = ave(i) + (A(i,j) - ave(i))*inffac
-!          end do
-!      end do
-!  end if
-  call ensmean(A, ave, ndim, nrens) ! Update mean after analysis
+  call ensmean(A, ave, ndim, nrens) 
 
   if (inflate == 1) inffac = infmult
   if (inflate == 2) then
-      call inflationfactor(X5, nrens, inffac)
-      inffac = 1.0_dp + (inffac - 1.0_dp)*infmult
+     call inflationfactor(X5, nrens, inffac)
+     inffac = 1.0_dp + (inffac - 1.0_dp)*infmult
   end if
 
-!$omp parallel do private(i) shared(A, ave, nrens, ndim, inflate, inffac)
   do j = 1, nrens
-      do i = 1, ndim
-          ! Apply Multiplicative Inflation if requested
-          if (inflate > 0) A(i,j) = ave(i) + (A(i,j) - ave(i)) * inffac
+     do i = 1, ndim
+        if (inflate > 0) A(i,j) = ave(i) + (A(i,j) - ave(i)) * inffac
 
-          ! --- SELECTIVE SAFETY CLIPPING ---
-          ! 1. Remove NaNs or extreme overflows
-          if (A(i,j) /= A(i,j) .or. abs(A(i,j)) > 1.0e15_dp) then
-              A(i,j) = ave(i)
-              cycle
-          end if
+        ! --- SELECTIVE SAFETY CLIPPING ---
+        ! 1. Remove NaNs or extreme overflows
+        if (A(i,j) /= A(i,j) .or. abs(A(i,j)) > 1.0e15_dp) then
+           A(i,j) = ave(i)
+           cycle
+        end if
 
-          ! 2. Variable-dependent Clipping (Logic for T and S)
-          ! Replace i-range logic with your grid index logic if needed
-          ! Example: Temperature > -2.0 and < 45.0, Salinity > 0.0
-          if (abs(A(i,j)) > 1.0e5_dp) A(i,j) = ave(i) ! Generic cap for runaway members
-      end do
+        ! 2. Variable-dependent Clipping (Logic for T and S)
+        if (abs(A(i,j)) > 1.0e5_dp) A(i,j) = ave(i) 
+     end do
   end do
-!$omp end parallel do
-
 
   !=======================================================================
   !  STEP 5: DEALLOCATIONS

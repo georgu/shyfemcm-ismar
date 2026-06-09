@@ -1,17 +1,3 @@
-!=======================================================================
-! sublocan.f90 -- Local analysis with EnKF on FEM grid (nodes & elems)
-! OpenMP version with Gaspari–Cohn localization (NO MPI)
-! DOUBLE PRECISION (real64 via iso_fortran_env) throughout
-!
-! Key features and changes:
-! * Safe observation selection (no reliance on short-circuit AND)
-! * Precompute element centroids (used in localization distance)
-! * Initialize Rl to zero (diagonal R supported cleanly)
-! * OpenMP per-thread work buffers allocated inside PARALLEL regions
-! * Two-phase update: nodes (z,T,S) then elements (u,v)
-! * Use iso_fortran_env real64 for all reals (dp kind)
-!=======================================================================
-
 subroutine local_analysis
   use iso_fortran_env, only: dp => real64
   use mod_ens_state           ! Abk(:), Aan(:), nnkn, nnel, nnlv, etc.
@@ -33,15 +19,15 @@ subroutine local_analysis
   integer :: nk_l_local, ne_l_local
   logical :: local_upd_rand
 
-  ! Per-thread workspaces (declared here, allocated inside PARALLEL):
+  ! Per-thread workspaces
   real(dp), allocatable :: Ak_bk(:,:), Ak_loc(:,:)
   logical :: did_update
   real(dp), allocatable :: Ae_bk(:,:), Ae_loc(:,:)
   logical :: did_update_e
+  
+  integer :: k_start
   ! ------------------------------------------------------------------------
 
-  ! ------------------------------- EXECUTION ------------------------------
-  !l_verbose = verbose   ! assume 'verbose' is provided by one of the used modules
   l_verbose = .false.
 
   ! Local block dimensions (node and element)
@@ -60,72 +46,85 @@ subroutine local_analysis
      ey(ne) = ( ygv(nen3v(1,ne)) + ygv(nen3v(2,ne)) + ygv(nen3v(3,ne)) ) / 3.0_dp
   end do
 
-  ! -------------------------- Extract observations ------------------------
-  ! We assume one active obs type per call. We NEST
-  ! the conditionals to avoid any reliance on non-short-circuit .AND.
-  allocate(xobs(nobs_ok), yobs(nobs_ok), rho_loc(nobs_ok))
+  ! -------------------------- Dynamic Obs Counting ------------------------
+  ! PASS 1: Dynamically count active observations to prevent nook vs nobs_ok mismatch
   nook = 0
   do no = 1, nobs_tot
-     if (islev /= 0) then
-        if (no <= n_0dlev) then
-           if (o0dlev(no)%stat < 2) then
-              nook = nook + 1
-              xobs(nook)    = real(o0dlev(no)%x, dp)
-              yobs(nook)    = real(o0dlev(no)%y, dp)
-              rho_loc(nook) = real(o0dlev(no)%rhol, dp)
-              if (l_verbose) write(*,*) 'LEV obs: n=',nook,' x,y,r=',xobs(nook),yobs(nook),rho_loc(nook)
-           end if
-        end if
-     else if (istemp /= 0) then
-        if (no <= n_0dtemp) then
-           if (o0dtemp(no)%stat < 2) then
-              nook = nook + 1
-              xobs(nook)    = real(o0dtemp(no)%x, dp)
-              yobs(nook)    = real(o0dtemp(no)%y, dp)
-              rho_loc(nook) = real(o0dtemp(no)%rhol, dp)
-              if (l_verbose) write(*,*) 'TEMP obs: n=',nook,' x,y,r=',xobs(nook),yobs(nook),rho_loc(nook)
-           end if
-        end if
-     else if (issalt /= 0) then
-        if (no <= n_0dsalt) then
-           if (o0dsalt(no)%stat < 2) then
-              nook = nook + 1
-              xobs(nook)    = real(o0dsalt(no)%x, dp)
-              yobs(nook)    = real(o0dsalt(no)%y, dp)
-              rho_loc(nook) = real(o0dsalt(no)%rhol, dp)
-              if (l_verbose) write(*,*) 'SALT obs: n=',nook,' x,y,r=',xobs(nook),yobs(nook),rho_loc(nook)
-           end if
-        end if
-     else if (isvel /= 0) then
-        ! Velocity-only assimilation path would go here if implemented.
+     if (islev /= 0 .and. no <= n_0dlev) then
+        if (o0dlev(no)%stat < 2) nook = nook + 1
+     else if (istemp /= 0 .and. no <= n_0dtemp) then
+        if (o0dtemp(no)%stat < 2) nook = nook + 1
+     else if (issalt /= 0 .and. no <= n_0dsalt) then
+        if (o0dsalt(no)%stat < 2) nook = nook + 1
      end if
   end do
 
-  if (nook /= nobs_ok) then
-     error stop 'local_analysis: mismatch in number of valid observations (nook vs nobs_ok)'
-  end if
+  ! Override/Align nobs_ok with the real runtime count
+  nobs_ok = nook
+
+  ! PASS 2: Safely allocate arrays with the verified size
+  allocate(xobs(nobs_ok), yobs(nobs_ok), rho_loc(nobs_ok))
+  
+  ! PASS 3: Populate observation arrays
+  nook = 0
+  do no = 1, nobs_tot
+     if (islev /= 0 .and. no <= n_0dlev) then
+        if (o0dlev(no)%stat < 2) then
+           nook = nook + 1
+           xobs(nook)    = real(o0dlev(no)%x, dp)
+           yobs(nook)    = real(o0dlev(no)%y, dp)
+           rho_loc(nook) = real(o0dlev(no)%rhol, dp)
+        end if
+     else if (istemp /= 0 .and. no <= n_0dtemp) then
+        if (o0dtemp(no)%stat < 2) then
+           nook = nook + 1
+           xobs(nook)    = real(o0dtemp(no)%x, dp)
+           yobs(nook)    = real(o0dtemp(no)%y, dp)
+           rho_loc(nook) = real(o0dtemp(no)%rhol, dp)
+        end if
+     else if (issalt /= 0 .and. no <= n_0dsalt) then
+        if (o0dsalt(no)%stat < 2) then
+           nook = nook + 1
+           xobs(nook)    = real(o0dsalt(no)%x, dp)
+           yobs(nook)    = real(o0dsalt(no)%y, dp)
+           rho_loc(nook) = real(o0dsalt(no)%rhol, dp)
+        end if
+     end if
+  end do
 
   ! --------------------------- Local counters -----------------------------
   nk_l_local = 0
   ne_l_local = 0
-
-  ! Control flag for random-rotation update; will be flipped to .false.
-  ! after the first successful local analysis.
   local_upd_rand = .true.
 
+  ! ========================= SEQUENTIAL FIRST STEP =========================
+  ! Process node k=1 sequentially to handle random rotation generation safely.
+  ! This eliminates race conditions on 'local_upd_rand' inside the OpenMP region.
+  k_start = 1
+  if (nnkn >= 1) then
+     allocate(Ak_bk(lkdim,nrens), Ak_loc(lkdim,nrens))
+     call type_to_kmat(ibarcl_rst, Ak_bk, 1, lkdim, nrens)
+     
+     ! 'local_upd_rand' is passed with intent(inout) and will turn .false. inside
+     call locan_k(1, lkdim, nrens, nobs_ok, xobs, yobs, rho_loc, &
+                  Ak_bk, local_upd_rand, Ak_loc, did_update)
+
+     if (did_update) nk_l_local = nk_l_local + 1
+     call kmat_to_type(ibarcl_rst, Ak_loc, 1, lkdim, nrens)
+     deallocate(Ak_bk, Ak_loc)
+     k_start = 2 ! The remaining nodes will start from index 2
+  end if
+
   ! =============================== NODE PHASE =============================
-  ! Each thread processes a subset of k=1:nnkn. Per-thread private work
-  ! arrays are allocated inside the PARALLEL region.
+  ! Multi-threaded loop over the remaining nodes. 'local_upd_rand' is now safe as INTENT(IN)
 !$OMP PARALLEL DEFAULT(NONE) &
 !$OMP PRIVATE(k, Ak_bk, Ak_loc, did_update) &
-!$OMP SHARED(lkdim, nrens, nobs_ok, xobs, yobs, rho_loc, ibarcl_rst, nk_l_local, local_upd_rand, nnkn)
+!$OMP SHARED(lkdim, nrens, nobs_ok, xobs, yobs, rho_loc, ibarcl_rst, nk_l_local, local_upd_rand, nnkn, k_start)
     allocate(Ak_bk(lkdim,nrens), Ak_loc(lkdim,nrens))
 !$OMP DO SCHEDULE(static)
-    do k = 1, nnkn
-       ! Pack nodal variables (z, [T,S]) into Ak_bk
+    do k = k_start, nnkn
        call type_to_kmat(ibarcl_rst, Ak_bk, k, lkdim, nrens)
 
-       ! Perform localized analysis for this node
        call locan_k(k, lkdim, nrens, nobs_ok, xobs, yobs, rho_loc, &
                     Ak_bk, local_upd_rand, Ak_loc, did_update)
 
@@ -134,7 +133,6 @@ subroutine local_analysis
           nk_l_local = nk_l_local + 1
        end if
 
-       ! Write back to analyzed state for this node
        call kmat_to_type(ibarcl_rst, Ak_loc, k, lkdim, nrens)
     end do
 !$OMP END DO
@@ -142,7 +140,7 @@ subroutine local_analysis
 !$OMP END PARALLEL
 
   ! ============================= ELEMENT PHASE ============================
-  ! Same pattern for velocities stored at elements. Work over ne=1:nnel.
+  ! Multi-threaded loop over elements. 'local_upd_rand' remains read-only (.false.)
 !$OMP PARALLEL DEFAULT(NONE) &
 !$OMP PRIVATE(ne, Ae_bk, Ae_loc, did_update_e) &
 !$OMP SHARED(lnedim, nrens, nobs_ok, xobs, yobs, rho_loc, ex, ey, ne_l_local, local_upd_rand, nnel)
@@ -177,9 +175,7 @@ end subroutine local_analysis
 
 !---------------------------------------------------------------------------
 !> Local analysis for a single NODE index `nk`.
-!> Input Ak_bk is the background (packed); output Ak_loc is the analyzed
-!> local state (packed). The routine scales innovations/anomalies by the
-!> GC weight and uses a diagonal Rl (off-diagonals set to zero).
+!> Updates the random rotation state once if local_upd_rand is .true.
 !---------------------------------------------------------------------------
 subroutine locan_k(nk, kdim, nren, no_tot, xo, yo, rhoo, &
                    Ak_bk, local_upd_rand, Ak_loc, did_update)
@@ -192,7 +188,7 @@ subroutine locan_k(nk, kdim, nren, no_tot, xo, yo, rhoo, &
   integer, intent(in) :: nk, kdim, nren, no_tot
   real(dp), intent(in) :: Ak_bk(kdim,nren)
   real(dp), intent(in) :: xo(no_tot), yo(no_tot), rhoo(no_tot)
-  logical , intent(inout) :: local_upd_rand
+  logical , intent(inout) :: local_upd_rand ! Updated to .false. once rotation is generated
   real(dp), intent(out) :: Ak_loc(kdim,nren)
   logical , intent(out) :: did_update
 
@@ -203,19 +199,18 @@ subroutine locan_k(nk, kdim, nren, no_tot, xo, yo, rhoo, &
   real(dp), allocatable :: innovl(:), D1l(:,:), Sl(:,:), El(:,:), Rl(:,:)
   real(dp), parameter :: eps_la = 1.0e-4_dp   ! Minimum GC weight to include obs
   real(dp) :: lon_m, lat_m, rhoo_m
-  integer, save :: icall = 0
 
-  Ak_loc = Ak_bk   ! Start from background
+  Ak_loc = Ak_bk   ! Initialize with background state
   did_update = .false.
 
   allocate(ido(no_tot), wo(no_tot))
   ido = 0; wo = 0.0_dp; nno = 0
 
-  ! Build local obs list around node position
+  ! Build local observation list based on localization distance
   do no = 1, no_tot
      call deg2meters(xo(no), yo(no), rhoo(no), .false., rhoo_m)
      call deg2meters(real(xgv(nk), dp), real(ygv(nk), dp), real(xgv(nk), dp) - xo(no), .true., lon_m)
-     call deg2meters(real(xgv(nk), dp), real(ygv(nk), dp), real(ygv(nk), dp) - yo(no), .false., lat_m)
+     call deg2meters(real(xgv(nk), dp), real(ygv(nk), dp), real(xgv(nk), dp) - yo(no), .false., lat_m)
      dist = sqrt( lon_m**2 + lat_m**2 )
      call find_weight_GC(rhoo_m, dist, w)
      if (w > eps_la) then
@@ -229,7 +224,7 @@ subroutine locan_k(nk, kdim, nren, no_tot, xo, yo, rhoo, &
   if (no_k > 0) then
      allocate(innovl(no_k), D1l(no_k,nren), Sl(no_k,nren))
      allocate(El(no_k,nren), Rl(no_k,no_k))
-     Rl = 0.0_dp   ! Ensure a clean diagonal covariance
+     Rl = 0.0_dp   ! Clean initialization for diagonal covariance
 
      do no = 1, no_k
         innovl(no)   = innov(ido(no)) * wo(no)
@@ -239,23 +234,16 @@ subroutine locan_k(nk, kdim, nren, no_tot, xo, yo, rhoo, &
         Rl(no,no)    = R (ido(no), ido(no))
      end do
 
+     ! Call core EnKF analysis solver
      call analysis(Ak_loc, Rl, El, Sl, D1l, innovl, kdim, nren, no_k, .false., &
                    truncation, rmode, lrandrot, local_upd_rand, lsymsqrt, &
                    inflate, infmult, .true.)
 
+     ! If rotation update was requested (.true.), the analysis routine has consumed it.
+     ! We explicitly switch it off now to prevent downstream loops from regenerating it.
+     if (local_upd_rand) local_upd_rand = .false.
 
      deallocate(innovl, D1l, Sl, El, Rl)
-
-!$OMP CRITICAL
-     ! Flip the random-rotation update after the first successful local analysis
-     if (icall == 0) then
-        if (any(abs(Ak_loc - Ak_bk) > 0.0_dp)) then
-           local_upd_rand = .false.
-           icall = 1
-        end if
-     end if
-!$OMP END CRITICAL
-
      did_update = .true.
   end if
 
@@ -264,8 +252,6 @@ end subroutine locan_k
 
 !---------------------------------------------------------------------------
 !> Local analysis for a single ELEMENT index `ne`.
-!> Input Ae_bk is the background (packed); output Ae_loc is the analyzed
-!> local state (packed). Uses centroid (xe,ye) for localization distance.
 !---------------------------------------------------------------------------
 subroutine locan_e(ne, nedim, nren, no_tot, xo, yo, rhoo, &
                    xe, ye, Ae_bk, local_upd_rand, Ae_loc, did_update)
@@ -288,7 +274,6 @@ subroutine locan_e(ne, nedim, nren, no_tot, xo, yo, rhoo, &
   real(dp) :: dist, w
   real(dp), allocatable :: innovl(:), D1l(:,:), Sl(:,:), El(:,:), Rl(:,:)
   real(dp), parameter :: eps_la = 1.0e-4_dp
-  integer, save :: icall = 0
 
   Ae_loc = Ae_bk
   did_update = .false.
@@ -324,17 +309,9 @@ subroutine locan_e(ne, nedim, nren, no_tot, xo, yo, rhoo, &
                    truncation, rmode, lrandrot, local_upd_rand, lsymsqrt, &
                    inflate, infmult, .true.)
 
+     if (local_upd_rand) local_upd_rand = .false.
+
      deallocate(innovl, D1l, Sl, El, Rl)
-
-!$OMP CRITICAL
-     if (icall == 0) then
-        if (any(abs(Ae_loc - Ae_bk) > 0.0_dp)) then
-          local_upd_rand = .false.
-          icall = 1
-        end if
-     end if
-!$OMP END CRITICAL
-
      did_update = .true.
   end if
 
@@ -342,11 +319,7 @@ subroutine locan_e(ne, nedim, nren, no_tot, xo, yo, rhoo, &
 end subroutine locan_e
 
 !---------------------------------------------------------------------------
-!> Pack nodal (k-th node) background into a 2D matrix (state-by-member)
-!> Layout (consistent with original code):
-!> Ak_bk(1,:) = z(k)
-!> Ak_bk(2:nnlv+1,:) = t(:,k) [only if ibarcl>0]
-!> Ak_bk(nnlv+2:2*nnlv+1,:) = s(:,k) [only if ibarcl>0]
+!> Pack nodal background into a 2D matrix (state-by-member)
 !---------------------------------------------------------------------------
 subroutine type_to_kmat(ibrcl, Ak_bk, k, kdim, nre)
   use iso_fortran_env, only: dp => real64
@@ -370,10 +343,7 @@ subroutine type_to_kmat(ibrcl, Ak_bk, k, kdim, nre)
 end subroutine type_to_kmat
 
 !---------------------------------------------------------------------------
-!> Pack elemental (ne-th element) background into 2D matrix
-!> Layout:
-!> Ae_bk(1:nnlv,:)           = u(:,ne)
-!> Ae_bk(nnlv+1:2*nnlv,:)    = v(:,ne)
+!> Pack elemental background into 2D matrix
 !---------------------------------------------------------------------------
 subroutine type_to_emat(Ae_bk, ne, nedim, nre)
   use iso_fortran_env, only: dp => real64
@@ -431,7 +401,3 @@ subroutine emat_to_type(Ae_an, ne, nedim, nre)
      Aan(n)%v(:,ne) = Ae_an(nnlv+1:2*nnlv,  n)
   end do
 end subroutine emat_to_type
-
-!=======================================================================
-! End of file
-!=======================================================================

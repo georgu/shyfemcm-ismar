@@ -18,7 +18,7 @@ SIMDIR=$(pwd)		# Current execution directory
 # MPI MODE: Allocates discrete MPI processes per member execution
 CORES_PER_MEMBER=1
 # OPENMP MODE: Launches concurrent members utilizing localized multi-threading
-THREADS_PER_MEMBER=1
+THREADS_PER_MEMBER=2
 
 #----------------------------------------------------------
 # Usage Information Function
@@ -237,10 +237,15 @@ for (( na = 1; na <= nran; na++ )); do
          JOBS_CONCURRENT=$(( nthreads / CORES_PER_MEMBER ))
          [ $JOBS_CONCURRENT -lt 1 ] && JOBS_CONCURRENT=1
 
-         echo "[INFO] [MPI MODE] Running $JOBS_CONCURRENT concurrent members via 'mpirun -np $CORES_PER_MEMBER'..."
+         if [ $CORES_PER_MEMBER -eq "1" ]; then
+            runpr=''
+         else
+            runpr="mpirun -np $CORES_PER_MEMBER"
+         fi
+         echo "[INFO] [MPI MODE] Running $JOBS_CONCURRENT concurrent members via $runpr..."
 
          parallel --halt now,fail=1 --jobs "$JOBS_CONCURRENT" "
-           mpirun -np $CORES_PER_MEMBER $SRCDIR/shyfem/shyfem {} > {.}.log 2>&1 || true
+           $runpr $SRCDIR/shyfem/shyfem {} > {.}.log 2>&1 || true
            
            # Empirical success verification (ignoring Fortran exit code)
            if [ -f fort.999 ] || ! grep -q '100.000 %' {.}.log; then
