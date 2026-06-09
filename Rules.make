@@ -34,9 +34,9 @@
 #
 ##############################################
 
-#COMPILER_PROFILE = NORMAL
+COMPILER_PROFILE = NORMAL
 #COMPILER_PROFILE = CHECK
-COMPILER_PROFILE = SPEED
+#COMPILER_PROFILE = SPEED
 
 ##############################################
 # Compiler
@@ -112,8 +112,8 @@ INTEL_VERSION = IFORT
 PARALLEL_OMP = false
 #PARALLEL_OMP = true
 
-PARALLEL_MPI = NONE
-#PARALLEL_MPI = NODE
+#PARALLEL_MPI = NONE
+PARALLEL_MPI = NODE
 #PARALLEL_MPI = ELEM
 
 ##############################################
@@ -141,18 +141,17 @@ PARALLEL_MPI = NONE
 #
 ##############################################
 
-PARTS = NONE
-#PARTS = METIS
-#PARTS = PARMETIS
-METISDIR = 
+#PARTS = NONE
+PARTS = METIS
+PARTS = PARMETIS
+#METISDIR = 
+#METISDIR = /home/georg/lib/metis
 METISDIR = ${METIS_HOME}
-#METISDIR = /home/aron/opt/parmetis_gfortran
 #METISDIR = /usr/local
 #METISDIR = $(HOME)/lib/metis
 #METISDIR = $(LD_LIBRARY_PATH)
-PARMETISDIR =
+PARMETISDIR = 
 PARMETISDIR = ${PARMETIS_HOME}
-#PARMETISDIR = /home/aron/opt/parmetis_gfortran
 #PARMETISDIR = /usr/local
 #PARMETISDIR = $(HOME)/lib/parmetis
 #PARMETISDIR = $(LD_LIBRARY_PATH)
@@ -266,10 +265,10 @@ GPU=NONE
 ##############################################
 
 #NETCDF = false
-#NETCDF = true
+NETCDF = true
 #NETCDFDIR =
-NETCDFDIR = ${NETCDF_C_HOME}
-NETCDFFDIR =${NETCDF_FORTRAN_HOME}
+#NETCDFDIR = ${NETCDF_C_HOME}
+#NETCDFFDIR =${NETCDF_FORTRAN_HOME}
 
 ##############################################
 # GOTM library
@@ -341,10 +340,10 @@ BFMDIR=$(BFM_HOME)
 ##############################################
 
 WW3 = false
-#WW3 = true
+WW3 = true
 WW3DIR = ${WW3_HOME}
-#WW3DIR = /path/to/WW3
-#WW3SWITCH = switch_itedev
+WW3DIR = /disk2/georg/WW3
+WW3SWITCH = switch_ismar
 
 ##############################################
 # Experimental features
@@ -584,7 +583,7 @@ ifeq ($(COMPILER_PROFILE),SPEED)
   PROFILE = false
   DEBUG = false
   OPTIMIZE = HIGH
-  WARNING = true
+  WARNING = false
   BOUNDS = false
   XFLAG = -DSHYFEM_SPEED
 endif
@@ -673,6 +672,16 @@ endif
 # end of special treatment
 ##############################################
 
+TRAP_LIST = none
+TRAP_LIST = zero,invalid,overflow
+
+FGNU_EXTRA =
+ifeq ($(WW3),true)
+  TRAP_LIST = none
+  FGNU_EXTRA = -ffree-line-length-none
+  FGNU_allow-argument-mismatch = -fallow-argument-mismatch
+endif
+
 FGNU_GENERAL = -cpp -std=f95
 ifdef MODDIR
   FGNU_GENERAL = -cpp -J$(MODDIR)
@@ -704,13 +713,19 @@ ifeq ($(WARNING),true)
   ARON_UNUSED = -Wno-unused  -Wno-unused-dummy-argument -Werror=unused-value
   ARON_PEDANTIC = -Werror=pedantic -pedantic-errors
   ARON_STRICT = -Wextra -Wconversion -pedantic-errors
-  GGU_INIT = -finit-integer=98765432 -finit-real=snan -finit-logical=true
+
+  GGU_INIT =
+  GGU_INIT = -Wuninitialized
   GGU_INIT = -finit-integer=98765432 -finit-real=inf -finit-logical=true
-  #GGU_INIT =
+
+  FGNU_TRAP = -ffpe-trap=$(TRAP_LIST)
+  ifeq ($(TRAP_LIST),none)
+    FGNU_TRAP = 
+  endif
 
   FGNU_WARNING = -Wall $(WTABS) -Wno-conversion \
 		$(ARON_GENERAL) $(ARON_UNUSED) \
-		$(GGU_INIT) -ffpe-trap=zero,invalid,overflow
+		$(GGU_INIT) $(FGNU_TRAP)
 
 #			-Wconversion #-pedantic-errors
 #			-Wconversion -Wdo-subscript
@@ -729,22 +744,16 @@ endif
 
 FGNU_NOOPT = 
 ifeq ($(DEBUG),true)
-  TRAP_LIST = zero,invalid,overflow,underflow,denormal
-  TRAP_LIST = zero
-  TRAP_LIST = zero,invalid,overflow,denormal
-  TRAP_LIST = zero,invalid,overflow
   FGNU_NOOPT = -g
-  #FGNU_NOOPT = -g -fbacktrace -ffpe-trap=$(TRAP_LIST)
-  FGNU_NOOPT = -g -fbacktrace -ffpe-trap=$(TRAP_LIST) $(FGNU_BOUNDS)
+  FGNU_NOOPT = -g -fbacktrace $(FGNU_BOUNDS) $(FGNU_TRAP)
 endif
 
-#AR: -ffree-line-length-none required everywhere — WW3 has long continuation lines
-FGNU_OPT   = -O -ffree-line-length-none
+FGNU_OPT   = -O
 ifeq ($(OPTIMIZE),HIGH)
-  FGNU_OPT   = -O3 -ffree-line-length-none
+  FGNU_OPT   = -O3
 endif
 ifeq ($(OPTIMIZE),NONE)
-  FGNU_OPT   = -ffree-line-length-none
+  FGNU_OPT   = 
 endif
 
 FGNU_OMP   =
@@ -760,9 +769,10 @@ ifeq ($(FORTRAN_COMPILER),GNU_G77)
   F77		= $(FGNU)
   F95		= $(FGNU95)
   LINKER	= $(F77)
-  LFLAGS	= $(FGNU_OPT) $(FGNU_PROFILE) $(FGNU_OMP)
+  LFLAGS	= $(FGNU_OPT) $(FGNU_PROFILE) $(FGNU_OMP) $(FGNU_EXTRA)
   FFLAGS	= $(LFLAGS) $(FGNU_NOOPT) $(FGNU_WARNING)
-  FFLAG_SPECIAL	= $(LFLAGS) $(FGNU_WARNING) $(FGNU_allow-argument-mismatch)
+  FFLAGS	+= $(FGNU_allow-argument-mismatch)
+  FFLAG_SPECIAL	= $(LFLAGS) $(FGNU_WARNING)
   FINFOFLAGS	= --version
   MAJOR 	= $(GMV)
 endif
@@ -779,8 +789,8 @@ ifeq ($(FORTRAN_COMPILER),GNU_GFORTRAN)
   LINKER	= $(F77)
   LFLAGS	= $(FGNU_OPT) $(FGNU_PROFILE) $(FGNU_OMP)
   FFLAGS	= $(LFLAGS) $(FGNU_NOOPT) $(FGNU_WARNING) $(FGNU_GENERAL)
-  FFLAG_SPECIAL	= $(LFLAGS) $(FGNU_WARNING) $(FGNU_GENERAL) \
-				$(FGNU_allow-argument-mismatch)
+  FFLAGS	+= $(FGNU_allow-argument-mismatch)
+  FFLAG_SPECIAL	= $(LFLAGS) $(FGNU_WARNING) $(FGNU_GENERAL)
   FINFOFLAGS	= --version
   MAJOR 	= $(GMV)
 endif
