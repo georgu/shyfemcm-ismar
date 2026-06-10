@@ -215,12 +215,18 @@
 
 	character*(*) file
 
+	logical bexist
 	integer iunit
 	double precision atime
 	integer nvers,nrec
 	integer nk,ne,nl,iflag,ierr
 
 	iunit = 1
+	inquire(file=file,exist=bexist)
+	if( .not. bexist ) then
+	  write(6,*) '   *** file does not exists: trim(file)'
+	  stop 'error stop open_for_read: no such file'
+	end if
 	open(iunit,file=file,status='old',form='unformatted')
 	call rst_skip_record(iunit,atime,nvers,nrec &
      &					,nk,ne,nl,iflag,ierr)

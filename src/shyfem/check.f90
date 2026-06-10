@@ -315,6 +315,7 @@
 
 	character*16 text
 	
+	integer nocheck
 	real, parameter :: zero = 0.
 	real, parameter :: zmax = 10.
 	real, parameter :: vmax = 10.
@@ -324,6 +325,11 @@
 	real, parameter :: smax = 70.
 	real, parameter :: tmin = -30.
 	real, parameter :: tmax = 70.
+
+	real getpar
+
+        nocheck = nint(getpar('nocheck'))
+	if( nocheck > 0 ) return
 
 	text = '*** check_values'
 

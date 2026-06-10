@@ -1,8 +1,10 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -s
 #
 # reformats log of git files
 #
 #--------------------------------------------------------
+
+$::long = 0 unless $::long;
 
 make_dev_names();
 
@@ -37,15 +39,17 @@ sub print_commit
 {
   return unless $commit;
 
+  my $ll = 52;	# this creates a line fitting in 80 chars
+
   $commit = substr($commit,0,10);
   my $acron = make_author_acronym($author);
 
   if( $file ) {
     my $l = length($file);
-    $comment = substr($comment,0,42-1-$l);
+    $comment = substr($comment,0,$ll-1-$l) unless $long;
     print "$commit $date $acron  $file $comment\n";
   } else {
-    $comment = substr($comment,0,42);
+    $comment = substr($comment,0,$ll) unless $long;
     print "$commit $date $acron  $comment\n";
   }
 }

@@ -1375,6 +1375,8 @@
 
 !c custom call
 
+	call addpar('nocheck',0.)	!do not call check routines
+
 	call addpar('icust',0.)		!call custom routine
 	call addpar('tcust',0.)		!time for custom routine
 

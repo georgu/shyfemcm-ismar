@@ -961,14 +961,17 @@
 	logical, parameter :: be = .true.
 	logical, parameter :: bn = .false.
 
-	logical rst_want_restart
+	logical rst_want_restart, haspar
 	real getpar
 
         read(iunit,end=97) idfile,nvers,nrec
         if( nvers .lt. 3 ) goto 98
 
         ierr = 0
-	iconz = nint(getpar('iconz'))
+	iconz = 0
+	if( haspar('iconz') ) then
+	  iconz = nint(getpar('iconz'))
+	end if
 
 	nvers_rst = nvers
 
@@ -993,7 +996,7 @@
           if( nelaux .ne. nel_global ) goto 99
           if( nlvaux .ne. nlv_global ) goto 99
 
-	  call rst_read_vertical(iunit,nvers,nkn,nel,nlv)
+	  call rst_read_vertical(iunit,nvers,nkn,nel,nlvaux)
 
 	  id = id_hydro_rst
 	  call rst_add_flag(id,iflag)
@@ -1279,7 +1282,7 @@
 	logical, parameter :: bn = .false.
 
 	if( .not. allocated(hlvrst) ) then
-	  allocate(hlvrst(nlv_global))
+	  allocate(hlvrst(nlv))
 	  allocate(ilhrst(nel))
 	  allocate(ilhkrst(nkn))
 	  hlvrst = 0.

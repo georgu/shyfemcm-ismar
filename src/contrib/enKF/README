@@ -1,0 +1,273 @@
+============================================
+This is the README file for the ensemble
+Kalman Filter for the SHYFEM model
+============================================
+
+    Copyright (c) 2017-2026 by
+
+    Marco Bajo
+    Oceanography, ISMAR-CNR
+    Arsenale Tesa 104, Castello 2737/F
+    30122 Venezia
+    Italy
+
+    Tel.   : +39-041-2407934
+    Fax    : +39-041-2407940
+    E-Mail : marco.bajo@ismar.cnr.it
+
+
+    This code is distributed under the conditions of the
+    GNU General Public License.
+    See <http://www.gnu.org/licenses/>.
+
+-------------------------------------------------------------------------------
+ HOWTO RUN DA:
+-------------------------------------------------------------------------------
+There is an automatic script (run_DA.sh) to run DA in some minutes. You need:
+
+ - A deterministic simulation covering the period of the DA run;
+ - A folder, inside the folder of the det simulation, named "observations"
+   with all the observations that you want to assimilate.
+
+First download SHYFEMCM-ISMAR with enKF, you find it in the official Github.
+Compile SHYFEM, should work both OpenMP and MPI, and goes in src/contrib/enKF. Compile
+with make clean and make.
+
+Then the deterministic run must have a RST file with a state at the initial
+time of the DA run. You need also at least one observation at this time. A
+.bas and a .str file must be present in this folder, as well. Avoid multiple
+str, bas or rst files in this folder. You can also prepare obs_list.txt in the
+folder observations (see below how to do it), otherwise you can do it
+interactiveley with the script. Remember also that only one type of
+observation (TEM, SAL, LEV) can be assimilated at each analysis step. You can
+stagger them in time. Also a odd number of ensemble members (even + 1 control)
+must be used.
+At this point go to the deterministic folder and run run_DA.sh. A new folder
+containing everything, named sim_DA, will be created. If this folder exists it
+will be overwritten.
+At the end of the DA run you will have RST files of the ensemble mean and std.
+You can use rst2shy to convert them in shy files.
+Other useful scripts are described below.
+The observations implemented must be timeseries in SHYFEM format .dat or .txt,
+the 2D .fem files are experimental. The forcings must be .dat .txt or .fem.
+In the creation of the perturbations be careful with the STD and red noise. It is
+suggested a null value for rain and cloudiness. Solar radiation perturbations
+are set null when the control is null. Plot all the perturbed files for checking.
+
+-------------------------------------------------------------------------------
+ SCRIPT AND UTILITY:
+-------------------------------------------------------------------------------
+
+ - enKF.sh                     : Main script to orchestrate the assimilation run.
+ - prepare_enssim_from_DA.sh   : Prepare an ensemble of str files without DA.
+                                 It uses the DA files to retrieve info. Then
+                                 use run_ens_shyfem_noDA.sh.
+ - run_ens_shyfem_noDA.sh      : Runs multiple SHYFEM simulations using different 
+                                 STR files (common basename) without DA.
+ - process_ext.sh:               Splits DA or noDA .ext files, merges them by 
+                                 variable, and generates ensemble statistics.
+ - process_shy_analysis.sh     : Utility to merge all .shy files in analysis.
+ - perturbe_state              : Generates an ensemble of perturbed RST files
+ - perturbe_ts                 : Generates an ensemble of perturbed timeseries
+                                 with one valyue and SHYFEM time notation
+ - perturbe_ts_wind_press.sh   : Generates an ensemble of perturbed timeseries
+                                 with wind/pressure files and SHYFEM time notation
+ - perturbe_ts_heat.sh         : Generates an ensemble of perturbed timeseries
+                                 with heat files and SHYFEM time notation
+ - perturbe_fem_wind_press     : Generates an ensemble of perturbed FEM files
+                                 from a wind&pressure FEM file
+ - perturbe_fem_heat           : Generates an ensemble of perturbed FEM files
+                                 from a heat FEM file
+ - perturbe_fem_scalar         : Generates an ensemble of perturbed FEM files
+                                 from a scalar (2D/3D) file (e.g., rain)
+ - make_antime_list            : Creates the antime_list.txt for time series
+                                 from obs_list.txt
+ - enKF2enKS                   : Kalman Smoother from Filter output. 
+                                 NOTE: Incompatible with localization.
+ - fem2nc                      : Converts a FEM file into a NetCDF file.
+ - run_DA.sh                   : Interactive script that makes a DA simulation
+                                 in a new folder. You need a dir with a deterministic 
+                                 simulation made, and a folder named "observations" 
+                                 with the observations for DA
+
+-------------------------------------------------------------------------------
+
+Before running the code
+===================
+
+Install all packages required to compile SHYFEM, compile the model, then
+install the following software:
+- parallel;
+- liblapack-dev;
+- libfftw3-dev.
+
+
+Running the code
+===================
+
+To run the code, execute enKF.sh. The mandatory arguments are:
+
+Usage: enKF.sh [method] [localisation] [n] [out] [parallel_mode]
+
+- method = 11|12|13|21|22|23       (see analysis.f90)
+- localisation = 0 (disable), 1 (enable)
+- n = number of threads
+- out = 0 saves only mean and std restarts
+        1 saves all restarts (required by enKS)
+- parallel_mode used in SHYFEM (mpi|omp)
+
+Before running enKF.sh, prepare the following files:
+
+
+----------
+ens_list.txt
+----------
+List of SKEL files (used to create STR files) and initial restart files.
+
+Example with one restart per member:
+
+medit_73830_S6_000.skel restart_000.rst
+medit_73830_S6_001.skel restart_001.rst
+medit_73830_S6_002.skel restart_002.rst
+...
+
+Example using the same restart for the whole initial ensemble:
+
+medit_73830_S6_000.skel restart_000.rst
+medit_73830_S6_001.skel restart_000.rst
+medit_73830_S6_002.skel restart_000.rst
+...
+
+
+----------
+obs_list.txt
+----------
+Each line contains:
+- a flag describing the observation type;
+- the file name.
+- x y z coordinates
+- STD
+- Rho (for local analysis and superobs)
+
+Example:
+
+0DLEV Ancona_obs_ass.dat 13.49 43.63 0. 0.1 1.
+0DLEV Bari_obs_ass.dat 16.88 41.15 0. 0.1 1.
+...
+
+Supported flags:
+- 0DLEV : sea level time series;
+- 0DTEM : surface temperature time series;
+- 0DSAL : surface salinity time series;
+- 2DVEL : FEM-file with 2D surface currents (e.g., HF radar).
+
+
+----------
+antime_list.txt
+----------
+This file contains the analysis schedule.
+
+First row: SHYFEM time and number of observation files
+Second row: a 0-1 mask selecting observations used at that step
+Following rows: same format for subsequent analysis times (in ascending order)
+
+Use make_antime_list to generate this file automatically.
+If unused, prescribe a mask of all 1 values for each time step.
+
+
+----------
+lbound.dat (optional)
+----------
+Recommended.
+Controls how the analysis behaves near open boundaries:
+
+- full background at boundary nodes;
+- full analysis beyond a specified distance (G-C function).
+
+Format:
+first line : number of nodes
+next lines : node_id   radius
+
+
+----------
+mod_err.info (optional - experimental)
+----------
+Enable by setting mode_an = 1 in mod_para.f90.
+
+Defines red-noise model error parameters through an augmented state.
+
+Warning: routine make_2Dpert currently gives a segmentation fault.
+
+Format (one row):
+
+  nx ny fmult theta rerror dt tau
+
+Meaning:
+- nx, ny   : grid size for pseudo-random fields
+- fmult    : factor to create a supersample
+- theta    : rotation angle (0 = East, anticlockwise)
+- rerror   : relative model error (currently only water levels)
+- dt       : time between observation steps
+- tau      : e-folding time of the red noise
+
+
+----------
+skel files
+----------
+Skeleton files used to generate STR files during each analysis step.
+They must match the restart file settings exactly.
+
+Required content:
+
+In section $title :
+  the second line must contain the string: NAMESIM
+
+In section $para :
+  itanf  = 'ITANF'
+  itend  = 'ITEND'
+  itrst  = 'ITANF'
+  idtrst = IDTRST     (no quotation marks)
+
+In section $name :
+  restrt = 'RESTRT'
+
+To save results during the analysis, add in $para :
+  itrst  = 'ITANF'
+  itout  = 'ITANF'
+  itext  = 'ITANF'
+  itcon  = 'ITANF'
+  itmflx = 'ITANF'
+
+You can also use the SHYFEM utility rst2shy to generate SHY files from restarts.
+
+
+----------
+Initial restart files
+----------
+Each restart file must contain one record at the first analysis time.
+
+The first restart is the control (unperturbed) run, i.e. ensemble member 0.
+
+To create a good initial ensemble, run multiple simulations with perturbed
+forcings and/or boundary conditions and save the restart at the first
+analysis step.
+The ensemble should be centered: mean approximately equal to control.
+
+
+----------
+Observation files
+----------
+
+1) Sea level time series:
+string-time1 value1
+string-time2 value2
+...
+
+2) Surface current fields (FEM-file):
+Bad or missing values must be flagged with -999.
+
+
+Parameters of the assimilation
+===================
+
+See the file mod_para.f90 for all assimilation parameters.

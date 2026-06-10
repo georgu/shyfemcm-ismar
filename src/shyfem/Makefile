@@ -256,7 +256,7 @@ OBJ = \
       befor_after.o iostr.o const.o \
       test_zeta.o \
       suboi.o \
-      assimil_admin.o assimil.o beaching.f90 \
+      assimil_admin.o assimil.o beaching.o \
 	$(SOLVER_OBJ) \
 	$(HEAT_OBJ) \
 	substress.o \
