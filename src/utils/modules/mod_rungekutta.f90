@@ -94,7 +94,7 @@
           deallocate(wrk_reg)
         end if
 
-	!The classical ARK(1,1,1) method of Ascher,Ruuth&Spiteri:
+	!The classical ARK(1,1,1) method of Ascher,Ruuth\&Spiteri:
 	!It is composed of the pair theta−method and Forward Euler.
 	!The theta-method uses a coefficient $am$ read from file.
 	!Notice that for vertical viscous terms uses a different coefficient
@@ -157,7 +157,7 @@
 
 	  c_rk(1)  = 1.
 
-	!The classical ARK(2,2,2) method of Ascher,Ruuth&Spiteri:
+	!The classical ARK(2,2,2) method of Ascher,Ruuth\&Spiteri:
 	!It is composed of the pair second order DIRK22 and its
 	!explicit companion scheme ERK22. The same implicit scheme
 	!is used for all the stiff terms.
