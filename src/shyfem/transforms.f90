@@ -553,9 +553,10 @@
 
 !******************************************************************
 
-	subroutine copy_uvz
+	subroutine copy_uvz(curr_stage)
 
-! copies u/v/z to old time step
+! for the first runge-kutta stage only: copies u/v/z to old time step
+! for all stages: copy u/v/z to the current stage
 
 	use mod_hydro_baro
 	use mod_hydro_print
@@ -564,11 +565,19 @@
 
 	implicit none
 
-	zov   = znv
-	zeov  = zenv
+	integer curr_stage
 
-	utlov = utlnv
-	vtlov = vtlnv
+        if (curr_stage == 1) then !stage is first
+	  zeov  = zenv
+	  utlov = utlnv
+	  vtlov = vtlnv
+        end if
+
+        zecv   = zenv		  !update of current stage prognostic vars
+        utlcv = utlnv
+        vtlcv = vtlnv
+
+	zov   = znv		  !update of current stage diagnostic vars
 	wlov  = wlnv
 
 	uov   = unv			!$$UVBARO
@@ -659,6 +668,7 @@
 
 ! initializes uvz values from zenv, utlnv, vtlnv, hdenv
 
+	use mod_rungekutta, only : a_erk,a_irk
 	use basin
 
 	implicit none
@@ -667,7 +677,10 @@
 	real dzeta(nkn)
 
 	if( .not. rst_use_restart(5) ) then
-	  call hydro_vertical(dzeta)	!vertical velocities
+	  call hydro_vertical(1,     &
+     &			      a_erk(1,:), &
+     &			      a_irk(1,:), &
+     &			      dzeta)	!vertical velocities !lrp-imex:check
 	end if
 
 	call compute_velocities

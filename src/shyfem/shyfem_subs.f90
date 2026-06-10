@@ -191,6 +191,8 @@
 ! 09.03.2025    ggu	write compiler profile
 ! 10.03.2025    ggu	write local commit
 ! 28.04.2026    ggu	insert more timing calls
+! 04.05.2026    ggu     use routine set_act_dtime() to set time level and t_act
+! 10.06.2026    lrp     imex and advection scheme with numerical flux
 !
 !*****************************************************************
 !
@@ -438,10 +440,12 @@
 	!call setznv		! -> change znv since zenv has changed
 	zov = znv
 	zeov = zenv
-	utlnv = 0
-	vtlnv = 0
 	utlov = 0
+	utlnv = 0
 	vtlov = 0
+	vtlnv = 0
+	!utlov = utlnv
+	!vtlov = vtlnv
 	wlov = 0
 	wlnv = 0
 
@@ -577,12 +581,19 @@
 	use mod_shyfem
 	use mod_shyfem_intern
 	use mod_info_output
+	use mod_rungekutta, only : n_rkstages,get_rungekutta_weights
 
 	implicit none
 
 	double precision dtstep		!time step to run, 0: run to end
 
 	double precision dtmax		!run to this time
+
+	integer kstage			!runge-kutta stage
+	real crk			!runge-kutta weights
+	real aerk(n_rkstages)
+	real airk(n_rkstages+1)
+	real asrk(n_rkstages+1)
 
 	call cpu_time_start(2)
 
@@ -614,37 +625,46 @@
 	   call trace_point_0('set_timestep')
            call set_timestep(dtmax)		!sets dt and t_act
            call get_timestep(dt)
-	   call get_act_dtime(dtime)
 
-	   call trace_point_0('do_befor')
-	   call do_befor
+	   do kstage=1,n_rkstages       !runge-kutta current stage
+	     call get_rungekutta_weights(kstage, &
+     &	     				 crk,   &
+     &	     				 aerk,  &
+     &	     				 airk,  &
+     &	     				 asrk)
+             call set_act_dtime(crk)
+	     call get_act_dtime(dtime)
 
-	   call trace_point_0('before copy')
-	   call copy_uvz		!copies new to old time level
-	   call nonhydro_copy   	!copies non hydrostatic pressure terms
-	   call copy_layer_depth	!copies layer depth to old
-	   call trace_point_0('after copy')
+	     call trace_point_0('do_befor')
+	     call do_befor
 
-	   call handle_offline(2)	!read from offline file
-	   call trace_point_0('before sp111')
-	   call sp111(2)		!boundary conditions
-	   call trace_point_0('after sp111')
-           call read_wwm		!wwm wave model
-	   call trace_point_0('after wwm')
+	     call trace_point_0('before copy')
+	     call copy_uvz(kstage)	!copies new to old time level
+	     call nonhydro_copy   	!copies non hydrostatic pressure terms
+	     call copy_layer_depth	!copies layer depth to old
+	     call trace_point_0('after copy')
+
+	     call handle_offline(2)	!read from offline file
+	     call trace_point_0('before sp111')
+	     call sp111(2)		!boundary conditions
+	     call trace_point_0('after sp111')
+             call read_wwm		!wwm wave model
+	     call trace_point_0('after wwm')
 	   
-           if(bmpi_debug) call shympi_check_all(1)	!checks arrays
+             if(bmpi_debug) call shympi_check_all(1)	!checks arrays
 
-	   call trace_point_0('hydro')
-	   call cpu_time_start(7)
-	   call hydro			!hydro
-	   call cpu_time_end(7)
+	     call trace_point_0('hydro')
+	     call cpu_time_start(7)
+	     call hydro(kstage,aerk,airk,asrk)!hydro
+	     call cpu_time_end(7)
 
-	   call trace_point_0('run_scalar')
-	   call cpu_time_start(8)
-	   call run_scalar
-	   call cpu_time_end(8)
+	     call trace_point_0('run_scalar')
+	     call cpu_time_start(8)
+	     call run_scalar
+	     call cpu_time_end(8)
+	   end do			!all additional modules are not resolved with runge-kutta
 
-           call turb_closure
+           call turb_closure		!turbulence model
 
            call parwaves                !parametric wave model
            call sedi                    !sediment transport
@@ -998,6 +1018,7 @@
 	use mod_hydro_print
 	use mod_hydro_vel
 	use mod_hydro
+	use mod_rungekutta
 	use levels, only : nlvdi,nlv
 	use basin, only : nkn,nel,ngr,mbw
 	use mod_info_output
@@ -1007,6 +1028,8 @@
 	integer nlvddi
 
 	nlvddi = nlvdi
+
+	call mod_rungekutta_init(nkn,nel,nlvddi)
 
 	call mod_hydro_init(nkn,nel,nlvddi)
 	call mod_hydro_vel_init(nkn,nel,nlvddi)

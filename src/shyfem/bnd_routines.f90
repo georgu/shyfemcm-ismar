@@ -424,6 +424,8 @@
 	call setznv		!adjusts znv
 
 	call set_area		!initializes area	!bugfix MPI_SET_AREA
+	!call initialize_layer_depth
+	!call init_uvt           !initializes utlnv, vtlnv
 	call init_z0		!initializes surface and bottom roughness
 
 !	-----------------------------------------------------

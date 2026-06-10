@@ -40,6 +40,7 @@
 ! ...                   according to element type--> node
 ! 22.11.2020    ggu     some more on restart
 ! 21.03.2023    ggu     cleaning code
+! 04.05.2026    ggu     time variables cleaned
 !
 !********************************************************************
 !
@@ -93,14 +94,11 @@
 
 ! general interface to mercury module
 
-	use femtime
-
         implicit none
 
         real dt
 
-
-	dt = dt_act
+	call get_timestep(dt)
         call mercury3d(dt)
 
         end
@@ -115,7 +113,6 @@
 	use levels
 	use basin
 	use mercury
-	use femtime
  
 	implicit none
 
@@ -136,7 +133,6 @@
 
 	real epela(npstate)
 	real esedi(nsstate)
-
 
 	real esolw(nsolwst)
 	real esols(nsolsst)
@@ -256,8 +252,7 @@
 	  if( icall .le. -1 ) return
 	  icall = 1
 
-           call get_first_dtime(dtime0)
-        dtime0=itanf
+          call get_first_dtime(dtime0)
 
 !       ___________________________________________________
 !        initialization data transformed to variables units
@@ -407,6 +402,8 @@
 ! normal call
 !-------------------------------------------------------------------
 
+	call get_act_dtime(dtime)
+
 	wsink = 0.
         Shgsil=0
         Shgpom=0
@@ -440,11 +437,11 @@
         t0 = 0.
         dtday = dt / 86400.
 
-        tsec = it
-        tday = it / 86400. + t0         !time in days, FEM 0 is day t0
+        tsec = dtime
+        tday = dtime / 86400. + t0         !time in days, FEM 0 is day t0
 
 
-       if( it .le.dtime0+dt ) then
+       if( dtime .le. dtime0+dt ) then
          do fortfilenum=250,282
             write(fortfilenum, &
      &       "(2(a10,','),4(a15,','))") &
@@ -453,7 +450,7 @@
        endif
 
 
-       if( it .le.dtime0+dt ) then
+       if( dtime .le. dtime0+dt ) then
          do fortfilenum=350,382
             write(fortfilenum, &
      &       "(2(a10,','),4(a15,','))") &
@@ -592,7 +589,6 @@
 !	advection and diffusion
 !	-------------------------------------------------------------------
 
-	dtime = it
 	call bnds_read_new(what,idmerc,dtime)
 
 !$OMP PARALLEL PRIVATE(i)

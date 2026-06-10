@@ -650,8 +650,32 @@
 	call addpar('idtmin',1.)
 	call addpar('tfact',0.)		!still to comment FIXME
 
-! These parameters define the weighting of time level in the 
-! semi-implicit algorithm. With these parameters the damping
+! The next parameter choose the Additive Runge-Kutta (ARK) time integrator which
+! is identified by the triplet $(s, \sigma, p)$ as in (Ascher,Ruuth and Spiteri,1997):
+! $s$ is the number of non-trivial stages of the implicit scheme,
+! $\sigma$ is the number of non-trivial stages of the explicit scheme and
+! $p$ is the combined order of accuracy.
+!
+! |rkscheme|	The Runge-Kutta triplet (Default 111):
+!		\begin{description}
+!		\item[111] the classical ARK(1,1,1) method of
+!		(Ascher,Ruuth and Spiteri,1997). It is composed of the pair
+!		theta method for the implicit terms and Forward Euler for the
+!		explicit terms. Different weighting levels
+!		can be tuned with the parameters |ampar| and |atpar|, defined
+!		in the next paragraph.
+!		The default choice corresponds to a Cranck-Nicholson scheme
+!		|ampar=0.5| for the the acoustic wave and Coriolis term and an
+!		L-stable Backward Euler scheme |atpar=1.0| for the vertical
+!		viscous terms.
+!		\item[222] High-order ARK schemes (Experimental)
+!	        \end{description}
+
+	call addpar('rkscheme',111.)		!type of runge-kutta scheme
+
+
+! These parameters define the weighting of time level in the
+! ImEx algorithm |rkscheme=111|. With these parameters the damping
 ! of gravity or Rossby waves can be controlled. Only modify them if
 ! you know what you are doing.
 !
@@ -685,6 +709,15 @@
 	call addpar('atpar',1.0)	!time weighting for vertical viscosity
 	call addpar('adpar',1.0)	!time weighting for vertical diffusion
 	call addpar('aapar',1.0)	!time weighting for vertical advection
+
+! This parameter define the time level of the first stage in the
+! ImEx algorithm |rkscheme=222|. The scheme is stiffly accurate
+! for the default value.
+!
+! |gapar|	Weighting of the first stage level for the Runge-Kutta scheme
+!		|rkscheme=222|. (Default $\frac{2-sqrt{2}}{2}$)
+
+	call addpar('gapar',0.292893219)!free parameter for |rkscheme=222|
 
 !c------------------------------------------------------------------------
 
@@ -1028,10 +1061,18 @@
 
 	call addpar('dhpar',0.)		!diffusion parameter
 
-! The next parameters deal with the control of the scalar transport 
-! and diffusion equation. You have possibility to prescribe the tvd scheme
-! desired and to limit the Courant number.
-!
+! The next parameters deal with the discretization of nonlinear advection
+! terms. For the momentum equation you only have first order upwind flux,
+! and you can choose between two discretizations: upwinding by node or
+! by face. For scalar, you have the possibility to prescribe the tvd
+! scheme desired and to limit the Courant number.
+
+! |imtvd|	Type of the horizontal advection scheme used for 
+!		momentum equation. You can choose between
+!		two upwind schemes. With 0 you have the default SHYFEM
+!		advection scheme where upwinding is introduced by node.
+!		With 1 you have standard numerical flux by face.
+!		(Default 0)
 ! |itvd|	Type of the horizontal advection scheme used for 
 !		the transport and diffusion
 !		equation. Normally an upwind scheme is used (0), but setting
@@ -1051,8 +1092,9 @@
 !		(marginal stability). You can set |rstol| to a smaller value 
 !		if you think there are stability problems. (Default 1)
 
-	call addpar('itvd',0.)		!horizontal TVD scheme?
-	call addpar('itvdv',0.)		!vertical TVD scheme?
+	call addpar('imtvd',0.)		!momentum horizontal scheme
+	call addpar('itvd',0.)		!scalar horizontal TVD scheme?
+	call addpar('itvdv',0.)		!scalar vertical TVD scheme?
 	call addpar('rstol',1.)		!limit time step to this Courant number
 
 !c------------------------------------------------------------------------

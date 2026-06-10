@@ -29,6 +29,10 @@
 !not used module aquabc_II_wc_ini 
 !module aquabc_II_sed_ini
 
+! revision log :
+!
+! 04.05.2026    ggu     get actual time step with call to get_ddt
+
 !==================================================================
        module aquabc_II_vars
 !==================================================================
@@ -433,6 +437,7 @@ end module aquabc_II_layers_data
       
       integer isedi   
                    
+	double precision ddt
       double precision  sed_levels(noslay+1)  ! levels for aquabc BS
       double precision  sed_centers(noslay)   ! sedimen layer centers for aquabc model
       
@@ -527,7 +532,7 @@ end module aquabc_II_layers_data
        
 
       
-      
+      call get_ddt(ddt)		!time step in double precision
       
       
           
@@ -563,7 +568,7 @@ end module aquabc_II_layers_data
        !eroded/deposited mass per time step:
        call dvanode(1,k,-1,depth,volold,area)        !gets old depth, volume and area
                                                      ! Is the area the same fo all layers? fixme             
-       SED_ERODEP = total_load*dt_act/area
+       SED_ERODEP = total_load*ddt/area
        
        !eroded/deposited thickness per time step:              
        H_ERODEP_fast(k)   = SED_ERODEP/bed_dens(1) !> 0 - erosion, < 0 - deposition
@@ -584,7 +589,7 @@ end module aquabc_II_layers_data
          print *, 'H_ERODEP:', H_ERODEP
          print *, 'SED_DEPTHS_fast(k,1):', SED_DEPTHS_fast(k,1)
          print *, 'total_load ', total_load 
-         print *, 'dt_act     ', dt_act     
+         print *, 'ddt        ', ddt     
          print *, 'SED_ERODEP ', SED_ERODEP 
          print *, 'bed_dens(1)', bed_dens(1)
          print *, '*********All sediment properties returned by GET_SEDIM_PROP:'
@@ -651,7 +656,7 @@ end module aquabc_II_layers_data
        print *, '*********Sediment properties calculated for AQUABC, node 2265:******' 
        print *, 'H_ERODEP:', H_ERODEP_fast(k)
        print *, 'SED_LAYER_THICKNESS:', SED_DEPTHS_fast(k,:)
-       print *, 'time step:     ', dt_act     
+       print *, 'time step:     ', ddt     
        print *, 'Bed load per time step: ', SED_ERODEP 
        print *, 'SED_POROSITIES=', SED_POROSITIES_fast(k,:)
        print *, 'SED_WET_DENSITIES', SED_DENSITIES_fast (k,:)     

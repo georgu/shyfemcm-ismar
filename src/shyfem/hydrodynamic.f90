@@ -27,16 +27,16 @@
 !
 !--------------------------------------------------------------------------
 
-! assembling linear system routine
+! routine for the hydrodynamics step
 !
 ! contents :
 !
-! subroutine hydro			administrates one time step
-! subroutine hydro_zeta(vqv)		assemble matrix
-! subroutine hydro_transports		computes transports (temporary)
-! subroutine hydro_transports_final	computes transports (final)
-! subroutine hydro_vertical(dzeta)	computes vertical velocities
-! subroutine correct_zeta(dzeta)	corrects zeta values
+! subroutine hydro(curr_stage,coeff_rk)			administrates one time step
+! subroutine hydro_zeta(curr_stage,coeff_rk,vqv)	assemble matrix
+! subroutine hydro_transports(curr_stage,coeff_rk)	computes transports (temporary)
+! subroutine hydro_transports_final(curr_stage,coeff_rk)computes transports (final)
+! subroutine hydro_vertical(curr_stage,dzeta,coeff_rk)	computes vertical velocities
+! subroutine correct_zeta(dzeta)			corrects zeta values
 !
 ! notes :
 !
@@ -280,13 +280,15 @@
 ! 25.07.2024    ggu     new implementation of OMP for hydro
 ! 21.04.2026    ggu     use vqv to deal with dry nodes, also in hydro_vertical()
 ! 28.04.2026    ggu     insert more timing calls
+! 10.06.2026    lrp     imex and advection scheme with numerical flux
 !
 !******************************************************************
 
-	subroutine hydro
+	subroutine hydro(curr_stage,coeff_erk,coeff_irk,coeff_srk)
 
 ! administrates one hydrodynamic time step for system to solve
 
+	use mod_rungekutta, only : n_rkstages
 	use mod_depth
 	use mod_bound_dynamic
 	use mod_geom_dynamic
@@ -306,6 +308,12 @@
 
 	implicit none
 
+! arguments
+	integer curr_stage
+	real coeff_erk(n_rkstages)
+	real coeff_irk(n_rkstages+1)
+	real coeff_srk(n_rkstages+1)
+! local
 	logical boff
 	logical bzcorr
 	integer i,l,ie,ier,ii
@@ -315,7 +323,6 @@
 	integer nmat
 	integer kspecial
 	!integer iwhat
-	real azpar,ampar
 	real dzeta(nkn)
 	real vqv(nkn)
 	double precision dtime
@@ -342,14 +349,6 @@
 	call nonhydro_get_flag(bnohyd)
         iwvel = nint(getpar('iwvel')) !DWNH
 	call get_act_dtime(dtime)
-
-	azpar = getpar('azpar')
-	ampar = getpar('ampar')
-	if( azpar == 0. .and. ampar == 1. ) then
-	  call system_set_explicit
-	else if( azpar == 1. .and. ampar == 0. ) then
-	  call system_set_explicit
-	end if
 
 !-----------------------------------------------------------------
 ! dry areas
@@ -385,33 +384,38 @@
 
 	iloop = 0
 
-	do 				!loop over changing domain
+	do 					!loop over changing domain
 
 	  iloop = iloop + 1
 
 	  call compute_dry_elements(iloop)
 
-	  call hydro_transports		!compute intermediate transports
+	  call hydro_transports(curr_stage, &
+     &	  		  	coeff_erk,  &
+     &	  		  	coeff_irk,  &
+     &	  		  	coeff_srk)	!compute intermediate transports
 
-	  call setnod			!set info on dry nodes
-	  call set_link_info		!information on areas, islands, etc..
+	  call setnod				!set info on dry nodes
+	  call set_link_info			!information on areas, islands, etc..
 
-	  call system_init		!initializes matrix
+	  call system_init			!initializes matrix
 	  call trace_point('hydro_zeta')
-	  call hydro_zeta(vqv)		!assemble system matrix for z
+	  call hydro_zeta(curr_stage, &
+     &	  		  coeff_irk,  &
+     &	  		  vqv)			!assemble system matrix for z
 	  call cpu_time_start(3)
 	  call trace_point('system_solve')
-	  call system_solve(nkn,znv)	!solves system matrix for z
+	  call system_solve(nkn,znv)		!solves system matrix for z
 	  call cpu_time_end(3)
 	  call trace_point('system_get')
-	  call system_get(nkn,znv)	!copies solution to new z
+	  call system_get(nkn,znv)		!copies solution to new z
 
 	  if( trim(solver_type) /= 'PETSc' ) then
 	    call trace_point('exchange_znv')
             call shympi_exchange_2d_node(znv)
           endif
 
-	  call setweg(1,iw)		!controll intertidal flats
+	  call setweg(1,iw)			!controll intertidal flats
 	  iw = shympi_sum(iw)
 	  if( iw == 0 ) exit
 
@@ -422,7 +426,8 @@
 	call cpu_time_start(11)
 
 	call trace_point('hydro_transports_final')
-	call hydro_transports_final	!final transports (also barotropic)
+	call hydro_transports_final(curr_stage, &
+     &	  		  	    coeff_irk)	!final transports (also barotropic)
 
 	if( bextra_exchange ) then
 	  call shympi_exchange_3d_elem(utlnv)
@@ -435,13 +440,13 @@
 ! end of solution for hydrodynamic variables
 !-----------------------------------------------------------------
 
-        call setzev			!copy znv to zenv
-        call setuvd			!set velocities in dry areas
-	call baro2l 			!sets transports in dry areas
+        call setzev				!copy znv to zenv
+        call setuvd				!set velocities in dry areas
+	call baro2l 				!sets transports in dry areas
 
 	call trace_point('make_new_depth')
 	call make_new_layer_depth
-	call check_volume		!checks for negative volume 
+	call check_volume			!checks for negative volume 
 	call trace_point('arper')
         call arper
 
@@ -456,8 +461,11 @@
 
 	call cpu_time_start(12)
 	call trace_point('hydro_vertical')
-	call hydro_vertical(dzeta)		!compute vertical velocities
-	call cpu_time_end(12)
+	call hydro_vertical(curr_stage, &
+     &	  		    coeff_erk,  &
+     &	  		    coeff_irk,  &
+			    dzeta)	!compute vertical velocities
+        call cpu_time_end(12)
 
 	if (bnohyd .or. (iwvel .eq. 1)) then
 	  call nh_handle_output(dtime)!DWNH
@@ -473,7 +481,10 @@
 	  call correct_zeta(dzeta)
           call setzev     !znv -> zenv
 	  call make_new_layer_depth
-	  call hydro_vertical(dzeta)		!$$VERVEL
+	  call hydro_vertical(curr_stage, &
+     &	  		      coeff_erk,  &
+     &	  		      coeff_irk,  &
+			      dzeta)		!$$VERVEL
 	end if
 
 !-----------------------------------------------------------------
@@ -481,8 +492,8 @@
 !-----------------------------------------------------------------
 
 	call trace_point('vol_mass')
-	call vol_mass(1)		!computes and writes total volume
-	call mass_conserve		!check mass balance
+	call vol_mass(1)			!computes and writes total volume
+	call mass_conserve			!check mass balance
 
 !-----------------------------------------------------------------
 ! compute velocities on elements and nodes
@@ -506,7 +517,7 @@
 
 !******************************************************************
 
-	subroutine hydro_zeta(vqv)
+	subroutine hydro_zeta(curr_stage,coeff_irk,vqv)
 
 ! assembles linear system matrix
 !
@@ -514,6 +525,7 @@
 !
 ! semi-implicit scheme for 3d model
 
+	use mod_rungekutta, only : n_rkstages,urk_reg,vrk_reg
 	use mod_nudging
 	use mod_internal
 	use mod_geom_dynamic
@@ -531,30 +543,31 @@
          
 	implicit none
 
+! arguments
+	integer curr_stage
+	real coeff_irk(n_rkstages+1)
 	real vqv(nkn)
-
+! local
 	double precision drittl
 	parameter (drittl=1./3.)
 
         integer afix            !chao dbf
 	logical bcolin
 	logical bdebug
+	integer jstage
 	integer ie,i,j,j1,j2,n,m,kk,l,k,ie_mpi
 	integer ngl
 	integer ilevel,jlevel
 	integer ju,jv
         integer nel_loop
 
-	real azpar,ampar
-	real dt
+	real dt,a_ll,c_l
 
 	double precision aj,rw,ddt
 	double precision amatr(3,3)
 	double precision delta,h11,hh999
 	double precision z(3)
 	double precision andg,zndg(3)
-	double precision zm
-	double precision az,am,af
 	double precision b(3),c(3)
 	double precision acu
 	double precision uold,vold
@@ -580,12 +593,9 @@
 
 	bcolin=nint(getpar('iclin')).ne.0
 
-	call getazam(azpar,ampar)
-	az=azpar
-	am=ampar
-	af=getpar('afpar')
 	call get_timestep(dt)
 	ddt = dt
+	a_ll=coeff_irk(curr_stage+1)
 
 	ngl=nkn
 
@@ -611,7 +621,6 @@
 !	compute level gradient
 !	------------------------------------------------------
 
-	zm=0.
 	do i=1,3
 		kk=nen3v(i,ie)
 		kn(i)=kk
@@ -620,23 +629,14 @@
 		!z(i)=zov(kk)
 		z(i)=zeov(i,ie)		!ZEONV
 		zndg(i) = andgzv(kk)	!nudging
-		zm=zm+z(i)
 	end do
-
-	zm=zm*drittl
-
-	!if(bcolin) then
-	!	ht=hev(ie)
-	!else
-	!	ht=hev(ie)+zm
-	!end if
 
 	ilevel=ilhv(ie)
 	jlevel=jlhv(ie)
 	aj=ev(10,ie)
         afix=1-iuvfix(ie)      !chao dbf
 
-        delta=ddt*ddt*az*am*grav*afix         !ASYM_OPSPLT        !chao dbf
+        delta=ddt*ddt*a_ll*a_ll*grav*afix         !ASYM_OPSPLT        !chao dbf
 
 !	------------------------------------------------------
 !	compute contribution from H^x and H^y
@@ -656,7 +656,7 @@
 	end do
 
 !	------------------------------------------------------
-!	compute barotropic transport
+!	barotropic mass flux contribution at current stage
 !	------------------------------------------------------
 
 	uold = 0.
@@ -665,14 +665,25 @@
 	vhat = 0.
 
 	do l=jlevel,ilevel
-	  uold = uold + utlov(l,ie)
-	  vold = vold + vtlov(l,ie)
+	  uold = uold + utlcv(l,ie)
+	  vold = vold + vtlcv(l,ie)
 	  uhat = uhat + utlnv(l,ie)
 	  vhat = vhat + vtlnv(l,ie)
 	end do
 
-	ut = az * uhat + (1.-az) * uold
-	vt = az * vhat + (1.-az) * vold
+	ut = a_ll * uhat + coeff_irk(curr_stage) * uold
+	vt = a_ll * vhat + coeff_irk(curr_stage) * vold
+
+!	------------------------------------------------------
+!	barotropic mass flux contribution at previous stages
+!	------------------------------------------------------
+
+	do jstage=1,curr_stage-1
+	  do l=jlevel,ilevel
+	    ut = ut + coeff_irk(jstage) * urk_reg(l,ie,jstage)
+	    vt = vt + coeff_irk(jstage) * vrk_reg(l,ie,jstage)
+	  end do
+	end do
 
 !	------------------------------------------------------
 !	set element matrix and RHS
@@ -685,7 +696,7 @@
 	    h11 = delta*( abn + acn )			!ASYM_OPSPLT_CH
 	    hia(n,m) = aj * (amatr(n,m) + 12.*h11)
 	  end do
-	  acu = hia(n,1)*z(1) + hia(n,2)*z(2) + hia(n,3)*z(3)
+	  acu = aj * (amatr(n,1)*z(1) + amatr(n,2)*z(2) + amatr(n,3)*z(3))
 	  andg = 4.*aj*ddt*zndg(n)
 	  !hia(n,n) = hia(n,n) + 4 * ddt * aj / tau
 	  hik(n) = acu + andg + 12.*aj*ddt*( ut*b(n) + vt*c(n) )	!ZNEW
@@ -753,9 +764,17 @@
 
 !-------------------------------------------------------------
 ! Add additional flux boundary condition values to the rhs vector
+! Notice that we treat flux bc with a simple implicit scheme
+! which is first-order accurate. Enough, given the uncertainty
+! associated with bc data
 !-------------------------------------------------------------
 
-	call system_add_rhs(dt,nkn,vqv)
+	c_l = 0.
+	do jstage=1,curr_stage+1
+	  c_l = c_l + coeff_irk(jstage)
+	end do
+
+	call system_add_rhs(dt*c_l,nkn,vqv)
 
 	call cpu_time_end(5)
 
@@ -767,28 +786,33 @@
 
 !******************************************************************
 
-	subroutine hydro_transports
+	subroutine hydro_transports(curr_stage, coeff_erk, &
+     &				      coeff_irk, coeff_srk)
 
+	use mod_rungekutta, only : n_rkstages 
 	use basin, only : nkn,nel,ngr,mbw
 	use pkonst
 !$	use omp_lib
 
 	implicit none
 
+! arguments
+	integer curr_stage
+	real coeff_erk(n_rkstages)
+	real coeff_irk(n_rkstages+1)
+	real coeff_srk(n_rkstages+1)
+! local
 	integer ie
 	integer ies,iend
 	integer ith
 	integer chunk,nt
 	integer ibaroc
-	integer ilin,itlin
 	integer num_threads,myid,el_do,rest_do,init_do,end_do
 	integer nchunk,nthreads
 	integer, allocatable :: its(:)
 	real time,difftime
 	real, save :: atime = 0
 	logical bcolin,baroc
-	real az,am,af,at,av,azpar,ampar
-	real rlin,radv
 	real vismol,rrho0
 	real dt
 
@@ -808,23 +832,8 @@
 	ibaroc = nint(getpar('ibarcl'))		! baroclinic contributions
         vismol  = getpar('vismol')		! molecular viscosity
 	bcolin = nint(getpar('iclin')).ne.0	! linearized conti
-	itlin = nint(getpar('itlin'))		! advection scheme
-	ilin = nint(getpar('ilin'))		! non-linear terms?
-	rlin = getpar('rlin')			! non-linear strength?
 
 	baroc = ibaroc .eq. 1 .or. ibaroc .eq. 2
-
-	call getazam(azpar,ampar)
-	az=azpar			! weighting in continuity
-	am=ampar			! weighting in momentum
-	af=getpar('afpar')		! weighting of coriolis term
-	at=getpar('atpar')		! weighting of vertical viscosity
-	av=getpar('avpar')		! weighting of advective terms
-
-	radv = 0.
-	if( ilin .eq. 0 .and. itlin .eq. 0 ) then	!need non-lin terms
-	  radv = rlin * av	!strength * implicit factor
-	end if
 
 	call get_timestep(dt)
     
@@ -853,14 +862,19 @@
 	!allocate(its(0:nthreads-1))
 	!its = 0
 
-!$OMP PARALLEL DO FIRSTPRIVATE(bcolin,baroc,az,am,af,at,radv       &
+	call get_clock_time(time)
+
+!$OMP PARALLEL DO FIRSTPRIVATE(  &
+!$OMP &             curr_stage,coeff_erk,coeff_irk,coeff_srk,bcolin,baroc
 !$OMP &            ,vismol,rrho0,dt) PRIVATE(ie,rmsdif,ith)  &
 !$OMP &     SHARED(nel,nchunk,its)   DEFAULT(NONE)
 
  	  do ie=1,nel
 	    !call openmp_get_thread_num(ith)
 	    !its(ith) = its(ith) + 1
-	    call hydro_intern(ie,bcolin,baroc,az,am,af,at,radv &
+	    call hydro_intern( &
+     &	    		 curr_stage,coeff_erk,coeff_irk,coeff_srk &
+     &	    		,ie,bcolin,baroc &
      &			,vismol,rrho0,dt,rmsdif)
 	    if( rmsdif > 1.D-10 ) then
 	      write(6,*) 'rmsdif: ',rmsdif
@@ -886,13 +900,16 @@
 
 !******************************************************************
 
-	subroutine hydro_intern(ie,bcolin,baroc,az,am,af,at,radv &
+	subroutine hydro_intern(curr_stage,coeff_erk,coeff_irk &
+     &			,coeff_srk,ie,bcolin,baroc &
      &			,vismol,rrho0,dt,rmsdif)
 
 ! assembles vertical system matrix
 !
 ! semi-implicit scheme for 3d model
 
+	use mod_rungekutta, only : n_rkstages, &
+     &				   uverk_reg,uvirk_reg,uvsrk_reg
 	use tide
 	use mod_meteo
 	use mod_waves
@@ -914,10 +931,13 @@
 
 	implicit none
 
+! arguments
+	integer curr_stage
+	real coeff_erk(n_rkstages)
+	real coeff_irk(n_rkstages+1)
+	real coeff_srk(n_rkstages+1)
 	integer ie
 	logical bcolin,baroc
-	real az,am,af,at
-	real radv			!non-linear implicit contribution
 	real vismol,rrho0
 	real dt
 	double precision rmsdif
@@ -936,6 +956,7 @@
 	logical debug,bdebug
         logical bdebggu
 	integer kn(3)
+        integer jstage
 	integer kk,ii,l,ju,jv,ierr
 	integer ngl,mbb
 	integer ilevel,jlevel,ier,ilevmin
@@ -952,10 +973,10 @@
 	real rfric
 	real aust
 	real fact                       !$$BCHAO - not used
-        real rhp,rhm,aus
+        real rhp,rhm
 	real hzg,gcz
         real xmin,xmax
-        real xadv,yadv,fm,uc,vc,f,um,vm,up,vp
+        real fm,uc,vc,f,um,vm,up,vp
 	real rraux,cdf,dtafix
 	real ss
 	logical b2d
@@ -963,12 +984,12 @@
 
 	double precision b(3),c(3)
 	double precision bpres,cpres,presx,presy
-	double precision zz,zm,zmm
+	double precision zmm
 	double precision bz,cz
+	double precision bzeq,czeq
 	double precision taux,tauy,rdist,rcomp,ruseterm
-	double precision gravx,gravy,wavex,wavey
+	double precision gravx,gravy,wavex,wavey,zeqx,zeqy
 	double precision vis
-	double precision uuadv,uvadv,vuadv,vvadv
 
 !-----------------------------------------
 	real hact(0:nlvdi+1)
@@ -981,8 +1002,9 @@
 	double precision rvec(6*nlvdi)		!ASYM (3 systems to solve)
 	double precision rvecp(6*nlvdi)		!ASYM (3 systems to solve)
 	double precision solv(6*nlvdi)		!ASYM (3 systems to solve)
-	double precision ppx,ppy
-	double precision ppx_aux,ppy_aux
+	double precision ggx,ggy
+	double precision llx,lly
+        double precision ssx,ssy
 !-----------------------------------------
 ! function
 	integer locssp
@@ -1020,6 +1042,8 @@
 	mbb=2
 	if(ngl.eq.2) mbb=1
 	b2d = (ngl == 2)
+        afix=1-iuvfix(ie)       	!chao dbf
+        dtafix = dt * afix
 
 !-------------------------------------------------------------
 ! compute barotropic terms (wind, atmospheric pressure, water level
@@ -1031,9 +1055,10 @@
 
 	bz=0.
 	cz=0.
+	bzeq=0.
+	czeq=0.
 	bpres=0.
 	cpres=0.
-	zm=0.
 	zmm=0.
 	taux=0.
 	tauy=0.
@@ -1043,20 +1068,18 @@
 	  b(ii)=ev(ii+3,ie)
 	  c(ii)=ev(ii+6,ie)
 
-	  zz = zeov(ii,ie) - zeqv(kk)	!tide
+	  zmm = zmm + zecv(ii,ie)		!ZEONV
 
-          zm = zm + zz
-	  zmm = zmm + zeov(ii,ie)		!ZEONV
-
-	  bz=bz+zz*b(ii)
-	  cz=cz+zz*c(ii)
+	  bz=bz+zecv(ii,ie)*b(ii)
+	  cz=cz+zecv(ii,ie)*c(ii)
+	  bzeq=bzeq+zeqv(kk)*b(ii)
+	  czeq=czeq+zeqv(kk)*c(ii)
 	  bpres=bpres+ppv(kk)*b(ii)
 	  cpres=cpres+ppv(kk)*c(ii)
 	  taux=taux+tauxnv(kk)
 	  tauy=tauy+tauynv(kk)
 	end do
 
-	zm=zm*drittl
 	zmm=zmm*drittl
 	taux=rcomp*taux*drittl
 	tauy=rcomp*tauy*drittl
@@ -1066,7 +1089,7 @@
 !-------------------------------------------------------------
 
 	gammat=fcorv(ie)*ruseterm
-        gamma=af*dt*gammat
+        gamma=dt*coeff_irk(curr_stage+1) * fcorv(ie)*ruseterm
 
 !-------------------------------------------------------------
 ! reset vertical system 
@@ -1150,13 +1173,13 @@
 	lp = min(l+1,ilevel)
 	lm = max(l-1,jlevel)
 
-	uui = utlov(l,ie)
-	uuip = utlov(lp,ie)
-	uuim = utlov(lm,ie)
+	uui = utlcv(l,ie)
+	uuip = utlcv(lp,ie)
+	uuim = utlcv(lm,ie)
 
-	vvi = vtlov(l,ie)
-	vvip = vtlov(lp,ie)
-	vvim = vtlov(lm,ie)
+	vvi = vtlcv(l,ie)
+	vvip = vtlcv(lp,ie)
+	vvim = vtlcv(lm,ie)
         
 	hhi = hact(l)
 	hhip = hact(l+1)
@@ -1177,71 +1200,34 @@
 	  end if
 	end if
         
-!	aus = afact * alev(l)
-!	aux = dt * at * aus
-
-	aus = 1.
-	aux = dt * at
+	aux = dt * coeff_srk(curr_stage+1)
 
 	aa  = aux * rhact(l) * ( rhm + rhp )
-	aat = aus * rhact(l) * ( rhm + rhp )
+	aat = rhact(l) * ( rhm + rhp )
 	bb  = aux * rhact(l+1) * rhp
-	bbt = aus * rhact(l+1) * rhp
+	bbt = rhact(l+1) * rhp
 	cc  = aux * rhact(l-1) * rhm
-	cct = aus * rhact(l-1) * rhm
+	cct = rhact(l-1) * rhm
 
 !	------------------------------------------------------
 !	boundary conditions for stress on surface and bottom
 !	------------------------------------------------------
 
-	ppx = 0.
-	ppy = 0.
+	ggx = 0.
+	ggy = 0.
 	if( bfirst ) then
-	  ppx = ppx - taux
-	  ppy = ppy - tauy
+	  ggx = ggx - taux
+	  ggy = ggy - tauy
 	end if
 	if( blast ) then
 	  rfric = rfricv(ie)
 	  if( rcomp /= 1. ) rfric = rfric_max * (1.-rcomp) + rfric * rcomp
-	  aa  = aa + dt * rfric
+	  aa  = aa  + aux * rfric
 	  aat = aat + rfric
 	end if
 
 	aa  = aa + dt * ifricv(l,ie)		!internal friction for turbines
 	aat = aat + ifricv(l,ie)
-
-!	------------------------------------------------------
-!	implicit advective contribution
-!	------------------------------------------------------
-
-	uuadv = 0.
-	uvadv = 0.
-	vuadv = 0.
-	vvadv = 0.
-
-	aux = dt * radv * ruseterm	!implicit contribution
-
-	if( aux .gt. 0. ) then		!implict treatment of non-linear terms
-
-	uc = uui/hhi
-	vc = vvi/hhi
-
-	do ii=1,3
-          k = nen3v(ii,ie)
-          up = momentxv(l,k) / hhi
-          vp = momentyv(l,k) / hhi
-          f = uui * b(ii) + vvi * c(ii)
-          if( f .lt. 0. ) then    !flux out of node => into element
-	    uuadv = uuadv + aux*b(ii)*( up - uc )
-	    uvadv = uvadv + aux*c(ii)*( up - uc )
-	    vuadv = vuadv + aux*b(ii)*( vp - vc )
-	    vvadv = vvadv + aux*c(ii)*( vp - vc )
-            !xadv = xadv + f * ( up - uc )
-            !yadv = yadv + f * ( vp - vc )
-          end if
-	end do
-
-	end if
 
 !	------------------------------------------------------
 !	explicit contribution (non-linear, baroclinic, diffusion)
@@ -1259,21 +1245,24 @@
 	gravx = rcomp * grav*hhi*bz		!barotropic pressure
 	gravy = rcomp * grav*hhi*cz
 
+	zeqx  = rcomp * grav*hhi*bzeq		!tidal potential
+	zeqy  = rcomp * grav*hhi*czeq
+
 !	------------------------------------------------------
-!	ppx/ppy is contribution on the left side of equation
-!	ppx corresponds to -F^x_l in the documentation
-!	ppy corresponds to -F^y_l in the documentation
+!	momentum equation right side F^x_l and F^y_l:
+!	ggx/ggy is explicit contribution G^x_l, G^y_l
+!	llx/lly is implicit contribution L^x_l, L^y_l
+!	ssx/ssy is stiffly implicit contribution S^x_l, S^y_l
 !	------------------------------------------------------
 
-	ppx_aux = aat*uui - bbt*uuip - cct*uuim - gammat*vvi  &
-     &			+ gravx + (hhi/rowass)*presx + xexpl  &
-     &  		+ wavex
-	ppy_aux = aat*vvi - bbt*vvip - cct*vvim + gammat*uui  &
-     &			+ gravy + (hhi/rowass)*presy + yexpl  &
-     &  		+ wavey
+	ssx = aat*uui - bbt*uuip - cct*uuim
+	ssy = aat*vvi - bbt*vvip - cct*vvim
 
-	ppx = ppx + ppx_aux	!INTEL_BUG
-	ppy = ppy + ppy_aux
+        llx = - gammat*vvi + gravx
+	lly = + gammat*uui + gravy
+
+	ggx = ggx + (hhi/rowass)*presx + xexpl + wavex - zeqx	!INTEL_BUG
+	ggy = ggy + (hhi/rowass)*presy + yexpl + wavey - zeqy
 
 	!below INTEL_BUG_OLD
 !	ppx = ppx + aat*uui - bbt*uuip - cct*uuim - gammat*vvi  &
@@ -1291,23 +1280,23 @@
 	jv=l+l
 	ju=jv-1
 
-	rmat(locssp(ju,ju,ngl,mbb)) = 1. + aa + uuadv
-	rmat(locssp(jv,jv,ngl,mbb)) = 1. + aa + vvadv
-	rmat(locssp(jv,ju,ngl,mbb)) =  gamma  + vuadv
-	rmat(locssp(ju,jv,ngl,mbb)) = -gamma  + uvadv
+	rmat(locssp(ju,ju,ngl,mbb)) = 1. + aa
+	rmat(locssp(jv,jv,ngl,mbb)) = 1. + aa
+	rmat(locssp(jv,ju,ngl,mbb)) =  gamma
+	rmat(locssp(ju,jv,ngl,mbb)) = -gamma
 
 	if( b2d ) then
-	  s2dmat(0,ju) = 1. + aa + uuadv
-	  s2dmat(0,jv) = 1. + aa + vvadv
-	  s2dmat(-1,jv) =  gamma  + vuadv
-	  s2dmat(+1,ju) = -gamma  + uvadv
+	  s2dmat(0,ju) = 1. + aa
+	  s2dmat(0,jv) = 1. + aa
+	  s2dmat(-1,jv) =  gamma
+	  s2dmat(+1,ju) = -gamma
 	  !s2dmat(-1,jv) = -gamma  + vuadv
 	  !s2dmat(+1,ju) =  gamma  + uvadv
 	else
-	  smat(0,ju) = 1. + aa + uuadv
-	  smat(0,jv) = 1. + aa + vvadv
-	  smat(-1,jv) =  gamma  + vuadv
-	  smat(+1,ju) = -gamma  + uvadv
+	  smat(0,ju) = 1. + aa
+	  smat(0,jv) = 1. + aa
+	  smat(-1,jv) =  gamma
+	  smat(+1,ju) = -gamma
 	end if
 
 	if(.not.blast) then
@@ -1324,11 +1313,41 @@
         end if
 
 !	------------------------------------------------------
-!	set up right hand side -F^x and -F^y 
+!	set up current stage right hand side F^x and F^y
 !	------------------------------------------------------
 
-	rvec(ju) = ppx
-	rvec(jv) = ppy
+	rvec(ju) = utlov(l,ie) - dtafix*( &
+     &	  coeff_erk(curr_stage)*ggx + coeff_irk(curr_stage)*llx + coeff_srk(curr_stage)*ssx )
+	rvec(jv) = vtlov(l,ie) - dtafix*( &
+     &	  coeff_erk(curr_stage)*ggy + coeff_irk(curr_stage)*lly + coeff_srk(curr_stage)*ssy )
+
+!	------------------------------------------------------
+!	set up previous stage right hand side F^x and F^y
+!	------------------------------------------------------
+
+	do jstage=1,curr_stage-1
+          rvec(ju) = rvec(ju) - dtafix*( &
+     &      coeff_erk(jstage) * uverk_reg(ju,ie,jstage) + &
+     &      coeff_irk(jstage) * uvirk_reg(ju,ie,jstage) + &
+     &      coeff_srk(jstage) * uvsrk_reg(ju,ie,jstage) )
+	  rvec(jv) = rvec(jv) - dtafix*( &
+     &      coeff_erk(jstage) * uverk_reg(jv,ie,jstage) + &
+     &      coeff_irk(jstage) * uvirk_reg(jv,ie,jstage) + &
+     &      coeff_srk(jstage) * uvsrk_reg(jv,ie,jstage) )
+        end do
+
+!	------------------------------------------------------
+!	save current stage right hand side F^x and F^y
+!	------------------------------------------------------
+
+        if (curr_stage .ne. n_rkstages) then !if (not last stage)
+          uverk_reg(ju,ie,curr_stage) = ggx
+          uverk_reg(jv,ie,curr_stage) = ggy
+          uvirk_reg(ju,ie,curr_stage) = llx
+          uvirk_reg(jv,ie,curr_stage) = lly
+          uvsrk_reg(ju,ie,curr_stage) = ssx
+          uvsrk_reg(jv,ie,curr_stage) = ssy
+        end if
 
 !	------------------------------------------------------
 !	set up H^x and H^y
@@ -1398,17 +1417,14 @@
 	!end if
 
 !-------------------------------------------------------------
-! compute u^hat (negative sign because ppx/ppy was -F^x/-F^y)
+! compute u^hat (negative sign because ggx/ggy was -F^x/-F^y)
 !-------------------------------------------------------------
 
-        afix=1-iuvfix(ie)       !chao dbf
-
 	if( afix /= 0. ) then
-	  dtafix = dt * afix
 	  !ierr = ieee_handler( 'set', 'exception', SIGFPE_IGNORE )
 	  do l=jlevel,ilevel
-	    utlnv(l,ie) = utlov(l,ie) - dtafix * rvec(2*l-1)
-	    vtlnv(l,ie) = vtlov(l,ie) - dtafix * rvec(2*l)
+	    utlnv(l,ie) = rvec(2*l-1)
+	    vtlnv(l,ie) = rvec(2*l)
 	  end do
 	  !ierr = ieee_handler( 'set', 'exception', SIGFPE_ABORT )
 	end if
@@ -1486,10 +1502,11 @@
 
 !******************************************************************
 
-	subroutine hydro_transports_final
+	subroutine hydro_transports_final(curr_stage,coeff_irk)
 
 ! post processing of time step
 
+	use mod_rungekutta, only : n_rkstages,urk_reg,vrk_reg
 	use mod_internal
 	use mod_depth
 	use mod_hydro_baro
@@ -1503,15 +1520,18 @@
 
 	implicit none
 
+! arguments
+	integer curr_stage
+	real coeff_irk(n_rkstages+1)
+! local
 	logical bcolin,bdebug
 	integer ie,ii,l,kk,ie_mpi
 	integer ilevel,jlevel
 	integer ju,jv
         integer afix            !chao dbf
-	real dt,azpar,ampar
-	double precision az,am,beta
+	real dt
+	double precision beta
 	double precision bz,cz,um,vm
-	double precision dz
 	double precision du,dv
 	double precision rfix,rcomp
 ! function
@@ -1527,11 +1547,8 @@
 	bdebug = .false.
 
 	call get_timestep(dt)
-	call getazam(azpar,ampar)
-	az=azpar
-	am=ampar
 
-	beta = dt * grav * am 
+	beta = dt * grav * coeff_irk(curr_stage+1)
 
 !-------------------------------------------------------------
 ! start loop on elements
@@ -1557,9 +1574,8 @@
 	cz=0.
 	do ii=1,3
 	  kk=nen3v(ii,ie)
-	  dz = znv(kk) - zeov(ii,ie)
-	  bz = bz + dz * ev(ii+3,ie)
-	  cz = cz + dz * ev(ii+6,ie)
+	  bz = bz + znv(kk) * ev(ii+3,ie)
+	  cz = cz + znv(kk) * ev(ii+6,ie)
 	end do
 
 !	------------------------------------------------------
@@ -1594,6 +1610,15 @@
 
 	end do
 
+!	------------------------------------------------------
+!	save current stage transports
+!	------------------------------------------------------
+
+        if (curr_stage .ne. n_rkstages) then !if (not last stage)
+          urk_reg(:,:,curr_stage) = utlcv
+          vrk_reg(:,:,curr_stage) = vtlcv
+	end if
+
 !-------------------------------------------------------------
 ! end of routine
 !-------------------------------------------------------------
@@ -1604,7 +1629,8 @@
 
 !******************************************************************
 
-	subroutine hydro_vertical(dzeta)
+	subroutine hydro_vertical(curr_stage,coeff_erk, &
+     &			coeff_irk,dzeta)
 
 ! computes vertical velocities
 !
@@ -1632,6 +1658,8 @@
 ! wlnv (dvol)   aux array for volume difference
 ! vv            aux array for area
 
+	use mod_rungekutta, only: n_rkstages, &
+     &				  urk_reg,vrk_reg,wrk_reg
 	use mod_bound_geom
 	use mod_geom_dynamic
 	use mod_bound_dynamic
@@ -1646,18 +1674,21 @@
 	implicit none
 
 ! arguments
+	integer curr_stage
+	real coeff_erk(n_rkstages)
+	real coeff_irk(n_rkstages+1)
 	real dzeta(nkn)
 ! local
 	logical debug
 	logical bdry
+	integer jstage
 	integer k,ie,ii,kk,l,lmax,lmin,ie_mpi
 	integer ilevel,jlevel
         integer ibc,ibtyp
 	integer kext,kint
-	real aj,wbot,wdiv,ff,atop,abot,wfold
+	real aj,wbot,wdiv,ff,atop,abot,wfold,wlpv
 	real b,c
-	real am,az,azt,azpar,ampar
-	real ffn,ffo
+	real ffn,ffo,ffp
 	real volo,voln,dt,dvdt,q
 	real dzmax,dz
 	real, allocatable :: vf(:,:)
@@ -1678,41 +1709,46 @@
 
 ! initialize
 
-	call getazam(azpar,ampar)
-	az=azpar
-	am=ampar
-	azt = 1. - az
 	call get_timestep(dt)
 
 	allocate(vf(nlvdi,nkn),va(nlvdi,nkn))
 	vf = 0.
 	va = 0.
 
-! compute difference of velocities for each layer
+!	------------------------------------------------------
+!	Layerwise mass flux at current and previous stages
+!	------------------------------------------------------
 !
 ! f(ii) > 0 ==> flux into node ii
 ! aj * ff -> [m**3/s]     ( ff -> [m/s]   aj -> [m**2]    b,c -> [1/m] )
 
 	do ie_mpi=1,nel
-         ie = ip_sort_elem(ie_mpi)
-	 !if( isein(ie) ) then		!FIXME
+
+          ie = ip_sort_elem(ie_mpi)
+	  !if( isein(ie) ) then		!FIXME
 	  aj=4.*ev(10,ie)		!area of triangle / 3
 	  ilevel = ilhv(ie)
 	  jlevel = jlhv(ie)
+
 	  do l=jlevel,ilevel
 	    do ii=1,3
 		kk=nen3v(ii,ie)
 		b = ev(ii+3,ie)
 		c = ev(ii+6,ie)
 		ffn = utlnv(l,ie)*b + vtlnv(l,ie)*c
-		ffo = utlov(l,ie)*b + vtlov(l,ie)*c
-		ff = ffn * az + ffo * azt
+		ffo = utlcv(l,ie)*b + vtlcv(l,ie)*c
+		ff = ffn * coeff_irk(curr_stage+1) + ffo * coeff_irk(curr_stage)
+		do jstage=1,curr_stage-1
+		  ffp = urk_reg(l,ie,jstage)*b + vrk_reg(l,ie,jstage)*c
+		  ff = ff + ffp * coeff_irk(jstage)
+		end do
 		!ff = ffn
 		vf(l,kk) = vf(l,kk) + 3. * aj * ff
 		va(l,kk) = va(l,kk) + aj
 	    end do
 	  end do
-	 !end if
+
+	  !end if
 	end do
 
 	if( shympi_partition_on_elements() ) then
@@ -1721,6 +1757,10 @@
           call shympi_exchange_and_sum_3d_nodes(va)
 	end if
 
+!	------------------------------------------------------
+!	Finalize vertical velocity
+!	------------------------------------------------------
+!
 ! from vel difference get absolute velocity (w_bottom = 0)
 !	-> wlnv(nlv,k) is already in place !
 !	-> wlnv(nlv,k) = 0 + wlnv(nlv,k)
@@ -1754,9 +1794,13 @@
 	    q = mfluxv(l,k)
 	    if( bdry ) q = 0.
 	    wdiv = vf(l,k) + q
+	    wlpv = 0.
+	    do jstage=1,curr_stage-1
+	      wlpv = wlpv + coeff_erk(jstage) * (wrk_reg(l-1,k,jstage)-wrk_reg(l,k,jstage))
+	    end do
 	    !wfold = azt * (atop*wlov(l-1,k)-abot*wlov(l,k))
 	    !wlnv(l-1,k) = wlnv(l,k) + (wdiv-dvdt+wfold)/az
-	    wlnv(l-1,k) = wlnv(l,k) + wdiv - dvdt
+	    wlnv(l-1,k) = wlnv(l,k) + 1./coeff_erk(curr_stage) * (wdiv - dvdt - wlpv)
 	    abot = atop
 	    if( debug ) then
 		write(670,*) k,l
@@ -1786,9 +1830,10 @@
 	  end do
 	end do
 
-! set w to zero at open boundary nodes (new 14.08.1998)
-!
-! FIXME	-> only for ibtyp = 1,2 !!!!
+!	------------------------------------------------------
+!	set w to zero at open boundary nodes
+! 	FIXME	-> only for ibtyp = 1,2 !!!!
+!	------------------------------------------------------
 
 	do k=1,nkn
           !if( is_external_boundary(k) ) then	!bug fix 10.03.2010
@@ -1804,6 +1849,14 @@
 	  !call shympi_comment('exchanging wlnv')
           call shympi_exchange_3d0_node(wlnv)
 	  !call shympi_barrier
+	end if
+
+!	------------------------------------------------------
+!	save current stage w-velocity
+!	------------------------------------------------------
+
+        if (curr_stage .ne. n_rkstages) then !if (not last stage)
+          wrk_reg(:,:,curr_stage) = wlnv
 	end if
 
 	end

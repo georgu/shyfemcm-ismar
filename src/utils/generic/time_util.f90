@@ -123,6 +123,8 @@
 ! 24.10.2025	ggu	new routine is_time_absolute()
 ! 29.04.2026	ggu	new routines for cpu_time_ routines
 ! 05.05.2026	ggu	adjusted overflow for d1000
+! 04.05.2026	ggu	new routine set_act_dtime()
+! 10.06.2026    lrp     imex and advection scheme with numerical flux
 !
 !**********************************************************************
 !**********************************************************************
@@ -136,9 +138,10 @@
 
         integer, save :: itunit,idtorig
 
-	double precision, save :: t_act,dt_act,dt_orig,atime0,dtanf,dtend
-	double precision, parameter :: secs_in_year = 365*86400
-	double precision, parameter :: d1000 = 1000*secs_in_year
+	double precision, save :: t_new		!new time level
+	double precision, save :: t_act		!actual time level
+	double precision, save :: dt_act,dt_orig,atime0,dtanf,dtend
+	double precision, parameter :: d1000 = 1000*365*86400
 
 	logical, save :: bsync
 
@@ -199,6 +202,23 @@
 	logical blast
 
 	blast = t_act .eq. dtend
+
+	end
+
+!**********************************************************************
+
+        subroutine set_act_dtime(crk)
+
+! sets actual time level and timeline given crk
+
+	use femtime
+
+        implicit none
+
+	real crk
+
+	t_act = t_new - (1.-crk)*dt_act
+        call get_timeline(t_act,aline_act)
 
 	end
 
@@ -274,7 +294,7 @@
 
         subroutine get_absolute_ref_time(atime_ref)
 
-! returns actual time
+! returns reference time
 
 	use femtime
 

@@ -113,6 +113,7 @@
 ! 13.10.2024    ggu     bug fix for INTEL_BUG
 ! 01.12.2024    ggu     in momentum_advective_stability() do not reduce
 ! 24.04.2025    ggu     handle new value for ibarcl == 5
+! 12.05.2026    lrp     new upwind advection scheme by face with numerical flux
 !
 ! notes :
 !
@@ -632,8 +633,8 @@
 	  lmin = jlhv(ie)
 	  do l=lmin,lmax
             h = hdeov(l,ie)
-	    ut = utlov(l,ie)
-	    vt = vtlov(l,ie)
+	    ut = utlcv(l,ie)
+	    vt = vtlcv(l,ie)
             do ii=1,3
                 k = nen3v(ii,ie)
                 b = ev(3+ii,ie)
@@ -682,6 +683,44 @@
 
 !******************************************************************
 
+        subroutine set_momentum_numerical_flux(utc,vtc,uc,vc,  &
+     &    utn,vtn,un,vn,nx,ny,fx,fy)
+
+! compute numerical flux for momentum advection
+
+
+        implicit none
+
+	real, intent(in)  :: utc,vtc,uc,vc	!internal state x-dir
+	real, intent(in)  :: utn,vtn,un,vn	!external state y-dir
+	real, intent(in)  :: nx,ny		!normal (outward)
+	real, intent(out) :: fx			!momentum flux in x-direction
+	real, intent(out) :: fy			!momentum flux in y-direction
+
+	real udotn
+
+!---------------------------------------------------------------
+! Use a simple upwind flux
+!---------------------------------------------------------------
+
+	udotn = 0.5*(uc+un)*nx + 0.5*(vc+vn)*ny
+
+	if ( udotn > 0. ) then
+	  fx = utc*udotn
+	  fy = vtc*udotn
+	else
+	  fx = utn*udotn
+	  fy = vtn*udotn
+	end if
+
+!---------------------------------------------------------------
+! end of routine
+!---------------------------------------------------------------
+
+	end
+
+!******************************************************************
+
         subroutine set_advective(rlin)
 
 	use mod_internal
@@ -689,6 +728,7 @@
 	use mod_hydro_print
 	use mod_hydro_vel
 	use mod_hydro
+	use mod_geom
 	use evgeom
 	use levels
 	use basin
@@ -701,33 +741,43 @@
 	real zxadv,zyadv
 	real wtop,wbot
 
-        integer ihwadv  	! vertical advection for momentum
+        integer imtvd,ihwadv  	!advection for momentum
         integer ii,ie,k,l,lmax,lmin,ie_mpi
         real b,c
-        real ut,vt
+	real utc,vtc
+	real utn,vtn
         real uc,vc
-        real up,vp
-        real um,vm
-        real f,h
+        real un,vn
+        real f,h,fact
 	real xadv,yadv
-	real area,vol
+	real area
         real getpar
         real wlay,dzbb,dz,dztt,ubot,utop,vbot,vtop
 	real rdist,rcomp,ruseterm
 
-	!write(6,*) 'set_advective called...'
+	integer ien
+	real nx,ny
+	real fx,fy
+
+	integer ii1_bnd,ii2_bnd,k1_bnd,k2_bnd
+	real h_bnd,u_bnd,v_bnd,udotn_bnd
 
 !---------------------------------------------------------------
 ! initialization
 !---------------------------------------------------------------
 
+        imtvd = nint(getpar('imtvd'))
         ihwadv = nint(getpar('ihwadv'))
+	udotn_bnd = -999		!flux across the bnd from internal state
+	!udotn_bnd = 1.			!lrp: flux across the bnd for vortex test
 
 !---------------------------------------------------------------
 ! accumulate momentum that flows into nodes (weighted by flux)
 !---------------------------------------------------------------
 
-        call set_momentum_flux	!sets aux arrays momentx/yv
+        if( imtvd == 0 ) then
+          call set_momentum_flux	!sets aux arrays momentx/yv
+	end if
 
 !---------------------------------------------------------------
 ! compute advective contribution
@@ -738,6 +788,7 @@
 
 	do ie_mpi=1,nel
 	  ie = ip_sort_elem(ie_mpi)
+	  area = 12. * ev(10,ie)
           wtop = 0.0
 	  lmax = ilhv(ie)
 	  lmin = jlhv(ie)
@@ -752,34 +803,77 @@
 !	    horizontal advection
 !	    ---------------------------------------------------------------
 
-	    area = 12. * ev(10,ie)
+! utc,vtc are transports of central (this) element
+! uc,vc are velocity of central (this) element
+! utn,vnt are transports of neiboring (there) element
+! un,vn are velocities of neiboring (there) element
+
             h = hdeov(l,ie)
-	    vol = area * h
-  	    ut = utlov(l,ie)
-  	    vt = vtlov(l,ie)
-	    !this throws a floating point exception with PGI (PGI_ggguuu)
-	    !write(6,*) 'PGI_ggguuu adv a ',ie,l,lmax,h
-	    !write(6,*) 'PGI_ggguuu adv h = ',h
-	    !write(6,*) 'PGI_ggguuu adv b ',ut,vt,uc,vc
-	    !write(6,*) 'PGI_ggguuu adv c ',ut*h,vt*h
-	    !write(6,*) 'PGI_ggguuu adv d ',ut/h,vt/h
-	    !flush(6)	!PGI_ggguuu
-            uc = ut / h
-            vc = vt / h
+	    utc = utlcv(l,ie)
+	    vtc = vtlcv(l,ie)
+            uc = ulov(l,ie)
+            vc = vlov(l,ie)
 	    xadv = 0.
 	    yadv = 0.
 	    wbot = 0.
-            do ii=1,3
+
+            do ii=1,3				!loop over element faces/nodes
                 k = nen3v(ii,ie)
                 b = ev(3+ii,ie)
                 c = ev(6+ii,ie)
+
 		wbot = wbot + wlov(l,k)
-                up = momentxv(l,k) / h		!NEW
-                vp = momentyv(l,k) / h
-                f = ut * b + vt * c
-                if( f .lt. 0. ) then	!flux out of node => into element
-                  xadv = xadv + f * ( up - uc )
-                  yadv = yadv + f * ( vp - vc )
+
+		if( imtvd == 1 ) then		!advection scheme by face
+
+		  nx = -2.*b			!outward normal (scaled by element area)
+		  ny = -2.*c
+		  ien = ieltv(ii,ie)		!neibor element
+
+		  if ( ien > 0 ) then		!internal edge: resolve with numerical flux
+		    utn = utlcv(l,ien)
+		    vtn = vtlcv(l,ien)
+		    un = ulov(l,ien)
+		    vn = vlov(l,ien)
+
+		    call set_momentum_numerical_flux(    &
+     &		      utc,vtc,uc,vc,utn,vtn,un,vn,nx,ny, &
+     &    	      fx,fy)
+		  else if ( ien == 0 ) then	!wall boundary: zero flux
+		    fx = 0.
+		    fy = 0.
+		  else				!open boundary: we should impose proper bc for ibtyp=2
+		    if ( udotn_bnd <= -999 .or. uc*nx+vc*ny > 0. ) then
+		      call set_momentum_numerical_flux(    &	!for simplicity we impose an outflow,
+     &		        utc,vtc,uc,vc,utc,vtc,uc,vc,nx,ny, &	!or a constant flow from the internal state.
+     &    	        fx,fy)
+		    else
+		      ii1_bnd = mod(ii, 3) + 1			!for some special case we impose also the inflow
+		      ii2_bnd = mod(ii+1, 3) + 1
+		      k1_bnd = nen3v(ii1_bnd,ie)
+		      k2_bnd = nen3v(ii2_bnd,ie)
+		      h_bnd = 0.5*hdkov(l,k1_bnd)+0.5*hdkov(l,k2_bnd)
+		      u_bnd = udotn_bnd * nx
+		      v_bnd = udotn_bnd * ny
+
+		      fx = h_bnd*u_bnd* udotn_bnd
+		      fy = h_bnd*v_bnd* udotn_bnd
+		    end if
+		  end if
+
+                  xadv = xadv + fx
+                  yadv = yadv + fy
+
+		else				!advection scheme by node
+
+		  un = momentxv(l,k) / h
+                  vn = momentyv(l,k) / h
+		  f = utc * b + vtc * c
+                  if( f .lt. 0. ) then		!flux out of node => into element
+                    xadv = xadv + f * ( un - uc )
+                    yadv = yadv + f * ( vn - vc )
+		  end if
+
                 end if
             end do
 	    
@@ -846,9 +940,9 @@
 !	    total contribution
 !	    ---------------------------------------------------------------
 
-	    f = rlin * ruseterm
-	    fxv(l,ie) = fxv(l,ie) + f * (xadv + zxadv)
-	    fyv(l,ie) = fyv(l,ie) + f * (yadv + zyadv)
+	    fact = rlin * ruseterm
+	    fxv(l,ie) = fxv(l,ie) + fact * (xadv + zxadv)
+	    fyv(l,ie) = fyv(l,ie) + fact * (yadv + zyadv)
 	  end do
 	end do
 

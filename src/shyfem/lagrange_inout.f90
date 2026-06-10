@@ -102,6 +102,7 @@
 
 	integer ip
 	double precision xx,yy,xi(3)
+	double precision dtime,ddt
 
 	bdebug = .true.
 	bdebug = .false.
@@ -114,7 +115,10 @@
 	if( nbdymax > 0 .and. nbdy .gt. nbdymax ) goto 99
 	call mod_lagrange_handle_alloc(nbdy)
 
-        lgr_ar(nbdy)%init%time = t_act - dt_act*(1.-rtime)
+	call get_act_dtime(dtime)
+	call get_ddt(ddt)
+
+        lgr_ar(nbdy)%init%time = dtime - ddt*(1.-rtime)
         lgr_ar(nbdy)%actual%time = lgr_ar(nbdy)%init%time
 
 	if( ie .eq. 0 ) then

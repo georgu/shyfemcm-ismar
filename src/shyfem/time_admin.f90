@@ -127,6 +127,7 @@
 ! 02.04.2023    ggu     only master writes to iuinfo
 ! 12.12.2023    ggu     introduced dtmax (maximum time to run to)
 ! 10.11.2025    ggu     introduced dtlim (time step limiter at start of sim)
+! 04.05.2026    ggu     set also t_new together with t_act
 !
 !**********************************************************************
 !**********************************************************************
@@ -808,6 +809,7 @@
 
 	dt_act = dt
 	t_act = dtime
+	t_new = dtime
 	idt = dt
 	!it = t_act
 

@@ -351,7 +351,7 @@
 !	---------------------------------------------------------
 
 	if( bhydro ) then
-	  call copy_uvz
+	  call copy_uvz(1)
 	  call copy_layer_depth
 	end if
 
