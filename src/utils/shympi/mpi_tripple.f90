@@ -42,6 +42,7 @@
 ! 23.10.2023    ggu     in exchange_areas() eliminated dependency from evgeom
 ! 13.04.2024    ggu     introduced buffer_tripple_in, elim hydro dependency
 ! 21.11.2024    ggu     test for external neigbor was wrong
+! 29.05.2026    ggu     avoid compiler warnings
 !
 !******************************************************************
 
@@ -584,6 +585,7 @@
 	  iext = iexch(5,i)
 	  ide = -1
 	  iexch(6,i) = ide	!domain of neighbor element
+	  lmax = 0
 	  if( iext == 0 ) cycle	!tripple point on boundary
 	  do ie=1,nel_global
 	    if( ip_ext_elem(ie) == iext ) then
@@ -682,6 +684,7 @@
 	k1 = 0
 	k2 = 0
 	i0 = 0
+	ineigh = 0
 	do ii=1,3
 	  k = nen3v(ii,ie)
 	  if( id_node(k) == my_id ) then

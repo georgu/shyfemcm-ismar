@@ -178,20 +178,26 @@ zip:	cleanall
 ../../../lib/mod/shyutil.mod: shy_util1.o
 bnd_admin.o: ../../../lib/mod/mod_bnd.mod \
 		../../../lib/mod/mod_bound_geom.mod \
+		../../../lib/mod/mod_info_output.mod \
 		../../../lib/mod/nls.mod ../../../lib/mod/para.mod \
 		../../../lib/mod/shympi.mod 
 coordinates.o: ../../../lib/mod/basin.mod \
+		../../../lib/mod/mod_info_output.mod \
 		../../../lib/mod/shympi.mod 
 depth_util.o: ../../../lib/mod/basin.mod \
 		../../../lib/mod/mod_depth.mod \
+		../../../lib/mod/mod_info_output.mod \
 		../../../lib/mod/shympi.mod 
-info_output.o: ../../../lib/mod/shympi.mod
-intp_fem_file.o: ../../../lib/mod/shympi.mod
+info_output.o: ../../../lib/mod/mod_shyfem.mod \
+		../../../lib/mod/shympi.mod 
+intp_fem_file.o: ../../../lib/mod/mod_info_output.mod \
+		../../../lib/mod/shympi.mod 
 io_off.o: ../../../lib/mod/basin.mod \
 		../../../lib/mod/mod_trace_point.mod \
 		../../../lib/mod/shympi.mod 
 mod_restart.o: ../../../lib/mod/shympi.mod
 shy_util.o: ../../../lib/mod/basin.mod ../../../lib/mod/levels.mod \
+		../../../lib/mod/mod_info_output.mod \
 		../../../lib/mod/mod_trace_point.mod \
 		../../../lib/mod/shyfile.mod \
 		../../../lib/mod/shympi.mod \

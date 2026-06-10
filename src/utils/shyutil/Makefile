@@ -218,6 +218,7 @@ fem_util.o: ../../../lib/mod/basin.mod
 find.o: ../../../lib/mod/basin.mod ../../../lib/mod/evgeom.mod \
 		../../../lib/mod/mod_geom.mod 
 grdutil.o: ../../../lib/mod/basin.mod ../../../lib/mod/grd.mod
+io_lgr.o: ../../../lib/mod/mod_lagrange.mod
 line_util.o: ../../../lib/mod/basin.mod
 lnku.o: ../../../lib/mod/basin.mod ../../../lib/mod/mod_geom.mod
 quad_tree.o: ../../../lib/mod/basin.mod ../../../lib/mod/stack.mod
@@ -230,5 +231,6 @@ topological.o: ../../../lib/mod/basin.mod \
 		../../../lib/mod/mod_connect.mod \
 		../../../lib/mod/mod_geom.mod 
 zadaptutil.o: ../../../lib/mod/basin.mod \
-		../../../lib/mod/levels.mod 
+		../../../lib/mod/levels.mod \
+		../../../lib/mod/mod_shyfem.mod 
 

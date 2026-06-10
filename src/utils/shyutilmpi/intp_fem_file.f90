@@ -120,6 +120,7 @@
 ! 07.11.2025    ggu     set time array out of iff_space_interpolate()
 ! 10.11.2025    ggu     introduced iuout, better info writing
 ! 08.05.2026    ggu     new routine iff_ts_has_data()
+! 29.05.2026    ggu     bug fix in iff_file_has_data() (bok not set)
 !
 !****************************************************************
 !
@@ -2533,6 +2534,7 @@
 	if( t > tlast .and. pinfo(id)%eof ) return
 	if( t < tfirst ) return
 
+	bok = .true.
         tc = tcomp(t,nintp,ilast,pinfo(id)%time)
 
         do while( tc < t )

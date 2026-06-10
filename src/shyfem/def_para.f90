@@ -1487,23 +1487,26 @@
 
         call addpar('ipvert',0.)
 
-! |linbot|	Set the bottom layer for vertical releases (Default -1, bottom layer)
+! |linbot|	Set the bottom layer for vertical releases.
+!		(Default -1, bottom layer)
 
         call addpar('linbot',-1.)
 
-! |lintop|	Set the top layer for vertical releases (Default 1, surface layer)
+! |lintop|	Set the top layer for vertical releases.
+!		(Default 1, surface layer)
+
         call addpar('lintop',1.)
 
 ! |stkpar|	Calibration parameter for parameterizing the stokes drift 
 !		induced by waves (and wind). Only affect particle of the sea
 !		surface (layer = 1). The wind file is needed even in offline 
-!		mode (Default 0). 
+!		mode. (Default 0) 
 
         call addpar('stkpar',0.)
 
 ! |dripar|	Parameter to account for drifter inertia by multiplying
 !		the advective transports. Usually it assumes values between 
-!		0.9 and 1.2 (Default 1). 
+!		0.9 and 1.2. (Default 1).
 
         call addpar('dripar',1.)
 

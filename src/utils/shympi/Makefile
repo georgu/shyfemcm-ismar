@@ -237,6 +237,7 @@ mpi_node_internal.o: ../../../lib/mod/shympi.mod
 mpi_tripple.o: ../../../lib/mod/basin.mod \
 		../../../lib/mod/levels.mod \
 		../../../lib/mod/mod_geom.mod \
+		../../../lib/mod/mod_shyfem.mod \
 		../../../lib/mod/shympi.mod 
 mpi_tvd.o: ../../../lib/mod/basin.mod ../../../lib/mod/levels.mod \
 		../../../lib/mod/mod_quad_tree.mod \

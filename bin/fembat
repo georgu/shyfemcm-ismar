@@ -84,7 +84,7 @@ echo "FEM routine          :  $program"
 echo "input parameter file :  $strfile"
 echo " "
 echo "compiler version     :"
-$FEMDIR/femcheck/identify_compiler.sh
+$FEMDIR/bin/check/identify_compiler.sh
 echo " "
 
 #strings $program | grep -i "intel fortran" | head -1

@@ -36,6 +36,7 @@
 ! 16.02.2019	ggu	changed VERS_7_5_60
 ! 21.05.2019	ggu	changed VERS_7_5_62
 ! 31.01.2020	ggu	integrated parts from connectivity
+! 27.05.2026	ggu	new variables lgr_nvers, lgr_mtype
 
 !**************************************************************************
 
@@ -57,6 +58,9 @@
 
         integer, save :: nbdymax = 0		!max number of particles
         integer, save :: ncust = 1		!number of custom properties
+
+	integer, save :: lgr_nvers = 7		!last version
+	integer, save :: lgr_mtype = 367265	!id of lgr file
 
 	!---------------------------------------------
 	! particle info
@@ -255,7 +259,7 @@
 
         if( nbdy == nbdy_lagr ) return
 
-	call cpu_time(time1)
+	!call cpu_time(time1)
 
 	if( nbdy_lagr == 0 ) then		!first time
 	  nbdy_lagr = nbdy
@@ -269,9 +273,9 @@
           call move_alloc(paux,lgr_ar)
 	end if
 
-	call cpu_time(time2)
+	!call cpu_time(time2)
 	!write(lunit,*) 'alloc_lagr: ',nbdy,nbdy_lagr,time2-time1
-	write(6,*) 'alloc_lagr: ',nbdy,nbdy_lagr,time2-time1
+	!write(6,*) 'alloc_lagr: ',nbdy,nbdy_lagr,time2-time1
 
         nbdy_lagr = nbdy
 
