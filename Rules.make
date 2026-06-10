@@ -142,16 +142,16 @@ PARALLEL_MPI = NODE
 ##############################################
 
 #PARTS = NONE
-PARTS = METIS
+#PARTS = METIS
 PARTS = PARMETIS
 #METISDIR = 
 #METISDIR = /home/georg/lib/metis
-METISDIR = ${METIS_HOME}
+#METISDIR = ${METIS_HOME}
 #METISDIR = /usr/local
 #METISDIR = $(HOME)/lib/metis
 #METISDIR = $(LD_LIBRARY_PATH)
-PARMETISDIR = 
-PARMETISDIR = ${PARMETIS_HOME}
+#PARMETISDIR = 
+#PARMETISDIR = ${PARMETIS_HOME}
 #PARMETISDIR = /usr/local
 #PARMETISDIR = $(HOME)/lib/parmetis
 #PARMETISDIR = $(LD_LIBRARY_PATH)
@@ -339,10 +339,10 @@ BFMDIR=$(BFM_HOME)
 #
 ##############################################
 
-WW3 = false
+#WW3 = false
 WW3 = true
-WW3DIR = ${WW3_HOME}
-WW3DIR = /disk2/georg/WW3
+#WW3DIR = ${WW3_HOME}
+WW3DIR = ${HOME}/WW3
 WW3SWITCH = switch_ismar
 
 ##############################################

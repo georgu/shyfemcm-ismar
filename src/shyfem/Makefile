@@ -34,9 +34,22 @@ ifeq ($(SOLVER),PETSC)
 endif
 
 ifeq ($(NETCDF),true)
-  ifneq ($(NETCDFDIR),)
-    INCLUDE += -I$(NETCDFDIR)/include
-  endif
+ # 1. If the user manually specified NETCDFDIR, prioritize that path
+ ifneq ($(NETCDFDIR),)
+   INCLUDE += -I$(NETCDFDIR)/include
+ else
+   # 2. If NETCDFDIR is empty, try to auto-detect paths using the system's nf-config utility
+   NF_CONFIG := $(shell command -v nf-config 2> /dev/null)
+   ifneq ($(NF_CONFIG),)
+     INCLUDE += $(shell nf-config --fflags)
+     # Note: If you encounter linker errors later, you can also append:
+     # LIBS += $(shell nf-config --flibs)
+   else
+     # 3. Fallback for default package manager installations (e.g., Debian, Ubuntu, Fedora)
+     # Includes standard paths and multiarch directory layouts where gfortran stores .mod files
+     INCLUDE += -I/usr/include -I/usr/include/fortran -I/usr/lib/x86_64-linux-gnu/fortran/gfortran-mod-15
+   endif
+ endif
 endif
 
 ifeq ($(NUOPC),true)
