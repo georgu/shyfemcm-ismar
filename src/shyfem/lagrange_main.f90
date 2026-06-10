@@ -1061,12 +1061,14 @@
 
 !**********************************************************************
 
-	subroutine write_time('text',time)
+	subroutine write_time(text,time)
 
 	implicit none
 
 	character*(*) text
 	double precision time
+
+	character*20 aline
 
 	call get_timeline(time,aline)
 	write(6,*) trim(text) // ' = ',aline
