@@ -240,20 +240,23 @@
 
 !**************************************************************************
 
-	subroutine get_rungekutta_weights(kstage,crk,aerk,airk,asrk)
+	subroutine get_rungekutta_weights(curr_stage,crk,coeff_erk, &
+     &    coeff_irk,coeff_srk)
 
-! returns c_rk for desired stage
+! returns Butcher Tableaux coefficients
+! c_rk and a_rk for inner stages
+! c_rk and b_rk for final stage
 
-	integer, intent(in) :: kstage
+	integer, intent(in) :: curr_stage
 	real, intent(out) :: crk
-	real, dimension(n_rkstages), intent(out) :: aerk
-	real, dimension(n_rkstages+1), intent(out) :: airk
-	real, dimension(n_rkstages+1), intent(out) :: asrk
+	real, dimension(n_rkstages), intent(out) :: coeff_erk
+	real, dimension(n_rkstages+1), intent(out) :: coeff_irk
+	real, dimension(n_rkstages+1), intent(out) :: coeff_srk
 
-	crk  = c_rk(kstage)
-	aerk = a_erk(kstage,:)
-	airk = a_irk(kstage,:)
-	asrk = a_srk(kstage,:)
+	crk  = c_rk(curr_stage)
+	coeff_erk = a_erk(curr_stage,:)
+	coeff_irk = a_irk(curr_stage,:)
+	coeff_srk = a_srk(curr_stage,:)
 
 	end subroutine get_rungekutta_weights
 
