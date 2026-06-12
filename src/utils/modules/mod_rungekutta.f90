@@ -61,7 +61,7 @@
         integer nkn, nel, nlv
 
 	integer rk_triplet
-	double precision am,at,az,af,av,gamma
+	double precision am,at,az,af,av,gamma,chi,a32
 	real getpar
 
 	!The ImEx triplet $(s, \sigma, p)$ identifies a scheme where:
@@ -70,9 +70,10 @@
 	!3/ $p$ is the combined order of accuracy.
 	rk_triplet = nint(getpar('rkscheme'))
 
-        if( rk_triplet .ne. 111 .and.  &
-     &      rk_triplet .ne. 222 .and.  &
-     &      rk_triplet .ne. 2221 ) then
+        if( rk_triplet .ne. 111  .and.  &
+     &      rk_triplet .ne. 222  .and.  &
+     &      rk_triplet .ne. 2221 .and.  &
+     &      rk_triplet .ne. 232 ) then
           write(6,*) 'runge-kutta triplet: ', rk_triplet
           stop 'error stop mod_rungekutta_init: incompatible params'
         end if
@@ -164,11 +165,11 @@
 	else if (rk_triplet == 222) then
 	  gamma=getpar('gapar')
 	  if( gamma <= 0. .or. gamma >= 1. ) then
-            write(6,*) 'You are using th rkscheme=222 with:'
+            write(6,*) 'You are using the rkscheme=222 with:'
             write(6,*) 'gapar: ', gamma
 	    write(6,*) 'this parameter is not allowed'
 	    write(6,*) 'Please use'
-	    write(6,*) '  gapar>0 and ga<1'
+	    write(6,*) '  gapar>0 and gapar<1'
             stop 'error stop mod_rungekutta_init: incompatible params'
           end if
 
@@ -262,6 +263,94 @@
 
 	  c_rk(1)  = 0.5
 	  c_rk(2)  = 1.
+
+	!The ARK(2,3,2) where the implicit scheme is TR-BDF2 introduced
+	!in (Bank,1985) and analysed in (Hosea,1996) and the explicit scheme
+	!is designed to match the coupling and order conditions (Giraldo,2013).
+	!This scheme preserve invariants and it is L-stable.
+	else if (rk_triplet == 232) then
+	  chi=getpar('chipar')
+	  if( chi <= 0. .or. chi >= 1. ) then
+            write(6,*) 'You are using th rkscheme=232 with:'
+            write(6,*) 'chipar: ', chi
+	    write(6,*) 'this parameter is not allowed'
+	    write(6,*) 'Please use'
+	    write(6,*) '  chipar>0 and chipar<1'
+            stop 'error stop mod_rungekutta_init: incompatible params'
+          end if
+	  a32=getpar('a32par')
+	  if( a32 <= 0. .or. a32 >= 1. ) then
+            write(6,*) 'You are using th rkscheme=232 with:'
+            write(6,*) 'a32par: ', a32
+	    write(6,*) 'this parameter is not allowed'
+	    write(6,*) 'Please use'
+	    write(6,*) '  a32par>0 and a32par<1'
+            stop 'error stop mod_rungekutta_init: incompatible params'
+          end if
+
+          n_rkstages = 3
+
+          allocate (a_erk(n_rkstages,n_rkstages))
+          allocate (a_irk(n_rkstages,n_rkstages+1))
+          allocate (a_srk(n_rkstages,n_rkstages+1))
+          allocate (b_erk(n_rkstages))
+          allocate (b_irk(n_rkstages+1))
+          allocate (b_srk(n_rkstages+1))
+          allocate (c_rk(n_rkstages))
+
+	  a_erk(1,1) = 2.*chi
+	  a_erk(1,2) = 0.
+	  a_erk(1,3) = 0.
+	  a_erk(2,1) = 1.-a32
+	  a_erk(2,2) = a32
+	  a_erk(2,3) = 0.
+	  a_erk(3,1) = 1.-(1.-2.*chi)/(4.*chi)-chi
+	  a_erk(3,2) = (1.-2.*chi)/(4.*chi)
+	  a_erk(3,3) = chi
+
+	  a_irk(1,1) = chi
+	  a_irk(1,2) = chi
+	  a_irk(1,3) = 0.
+	  a_irk(1,4) = 0.
+	  a_irk(2,1) = 1.-(1.-2.*chi)/(4.*chi)-chi
+	  a_irk(2,2) = (1.-2.*chi)/(4.*chi)
+	  a_irk(2,3) = chi
+	  a_irk(2,4) = 0.
+	  a_irk(3,1) = 1.-(1.-2.*chi)/(4.*chi)-chi
+	  a_irk(3,2) = (1.-2.*chi)/(4.*chi)
+	  a_irk(3,3) = chi
+	  a_irk(3,4) = 0.
+
+	  a_srk(1,1) = chi
+	  a_srk(1,2) = chi
+	  a_srk(1,3) = 0.
+	  a_srk(1,4) = 0.
+	  a_srk(2,1) = 1.-(1.-2.*chi)/(4.*chi)-chi
+	  a_srk(2,2) = (1.-2.*chi)/(4.*chi)
+	  a_srk(2,3) = chi
+	  a_srk(2,4) = 0.
+	  a_srk(3,1) = 1.-(1.-2.*chi)/(4.*chi)-chi
+	  a_srk(3,2) = (1.-2.*chi)/(4.*chi)
+	  a_srk(3,3) = chi
+	  a_srk(3,4) = 0.
+
+	  b_erk(1)  = 1.-(1.-2.*chi)/(4.*chi)-chi
+	  b_erk(2)  = (1.-2.*chi)/(4.*chi)
+	  b_erk(3)  = chi
+
+	  b_irk(1)  = 1.-(1.-2.*chi)/(4.*chi)-chi
+	  b_irk(2)  = (1.-2.*chi)/(4.*chi)
+	  b_irk(3)  = chi
+	  b_irk(4)  = 0.
+
+	  b_srk(1)  = 1.-(1.-2.*chi)/(4.*chi)-chi
+	  b_srk(2)  = (1.-2.*chi)/(4.*chi)
+	  b_srk(3)  = chi
+	  b_srk(4)  = 0.
+
+	  c_rk(1)  = 2*chi
+	  c_rk(2)  = 1.
+	  c_rk(3)  = 1.
 	end if
 
         if ( n_rkstages > 1 ) then

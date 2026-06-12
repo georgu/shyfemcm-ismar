@@ -590,6 +590,8 @@
 
 	call addpar('rlin',1.)
 
+! DOCS	TERMS		Time discretization parameters
+!
 ! The next parameters allow for a variable time step in the
 ! hydrodynamic computations. This is especially important for the
 ! non-linear model (|ilin=0|) because in this case the criterion
@@ -666,8 +668,8 @@
 !		can be tuned with the parameters |ampar| and |atpar|, defined
 !		in the next paragraph.
 !		The default choice corresponds to a Cranck-Nicholson scheme
-!		|ampar=0.5| for the the acoustic wave and Coriolis term and an
-!		L-stable Backward Euler scheme |atpar=1.0| for the vertical
+!		(|ampar=0.5|) for the the acoustic wave and Coriolis term and an
+!		L-stable Backward Euler scheme (|atpar=1.0|) for the vertical
 !		viscous terms.
 !		\item[222] the ARK(2,2,2) method of (Ascher,Ruuth and Spiteri,1997).
 !		It is composed of the pair second order DIRK22 for the implicit
@@ -675,13 +677,19 @@
 !		terms. The same implicit scheme is used for all the stiff terms.
 !		The weighting level for the first stage can be tuned with the
 !		the paramter |gapar|.
-!		The default choice |gapar|=$\frac{2-sqrt{2}}{2}$ corresponds to
+!		The default choice |gapar|=$\frac{2-\sqrt{2}}{2}$ corresponds to
 !		an L-stable scheme. (Experimental)
-!		\item[2221] the ARK(2,2,2) method of (Noelle.2014). The implicit
+!		\item[2221] the ARK(2,2,2) method of (Noelle,2014). The implicit
 !		scheme is composed of a first stage with Heun’s method followed by
 !		a second stage of the Cranck-Nicholson scheme and the explicit
 !		method is the midpoint scheme. The scheme is not L-stable but
-!		conserves the energy of of inertial oscillation. (Experimental)
+!		conserves the energy of inertial oscillation. (Experimental)
+!		\item[232] the ARK(2,3,2) method of (Giraldo,2013). It is
+!		composed of the implicit TR-BDF2 introduced in (Bank,1985) and
+!		analysed in (Hosea,1996). The explicit scheme
+!		is designed to match the coupling and order conditions (Giraldo,2013).
+!		This scheme preserves invariants and it is L-stable for the default
+!		parameters |chipar| and |a32par|. (Experimental)
 !	        \end{description}
 
 	call addpar('rkscheme',111.)		!type of runge-kutta scheme
@@ -723,7 +731,7 @@
 	call addpar('adpar',1.0)	!time weighting for vertical diffusion
 	call addpar('aapar',1.0)	!time weighting for vertical advection
 
-! This parameter define the time level of the first stage in the
+! This parameter defines the time level of the first stage in the
 ! ImEx algorithm |rkscheme=222|. The scheme is stiffly accurate
 ! for the default value.
 !
@@ -731,6 +739,19 @@
 !		|rkscheme=222|. (Default $\frac{2-\sqrt{2}}{2}$)
 
 	call addpar('gapar',0.292893219)!free parameter for |rkscheme=222|
+
+! The next parameters are the tuning parameters for the ImEx
+! algorithm|rkscheme=232|. The scheme is stiffly accurate
+! for the default values.
+!
+! |chipar|	time level of the first stage in the Runge-Kutta scheme
+!		|rkscheme=232|. (Default $\frac{2-\sqrt{2}}{2}$)
+! |a32par|	free parameter for second stage of the explicit method
+!		in the Runge-Kutta scheme |rkscheme=232|. The default value
+!		maximize the monotonicity region. (Default $0.5$)
+
+	call addpar('chipar',0.292893219)!free parameter for |rkscheme=232|
+	call addpar('a32par',0.5)	 !free parameter for |rkscheme=232|
 
 !c------------------------------------------------------------------------
 
