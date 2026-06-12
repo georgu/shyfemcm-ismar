@@ -654,7 +654,8 @@
 ! is identified by the triplet $(s, \sigma, p)$ as in (Ascher,Ruuth and Spiteri,1997):
 ! $s$ is the number of non-trivial stages of the implicit scheme,
 ! $\sigma$ is the number of non-trivial stages of the explicit scheme and
-! $p$ is the combined order of accuracy.
+! $p$ is the combined order of accuracy. In case of different schemes with the same
+! triplet, we add a last digit to the triplet to distinguish the schemes.
 !
 ! |rkscheme|	The Runge-Kutta triplet (Default 111):
 !		\begin{description}
@@ -668,7 +669,19 @@
 !		|ampar=0.5| for the the acoustic wave and Coriolis term and an
 !		L-stable Backward Euler scheme |atpar=1.0| for the vertical
 !		viscous terms.
-!		\item[222] High-order ARK schemes (Experimental)
+!		\item[222] the ARK(2,2,2) method of (Ascher,Ruuth and Spiteri,1997).
+!		It is composed of the pair second order DIRK22 for the implicit
+!		terms and its explicit companion scheme ERK22 for the explicit
+!		terms. The same implicit scheme is used for all the stiff terms.
+!		The weighting level for the first stage can be tuned with the
+!		the paramter |gapar|.
+!		The default choice |gapar|=$\frac{2-sqrt{2}}{2}$ corresponds to
+!		an L-stable scheme. (Experimental)
+!		\item[2221] the ARK(2,2,2) method of (Noelle.2014). The implicit
+!		scheme is composed of a first stage with Heun’s method followed by
+!		a second stage of the Cranck-Nicholson scheme and the explicit
+!		method is the midpoint scheme. The scheme is not L-stable but
+!		conserves the energy of of inertial oscillation. (Experimental)
 !	        \end{description}
 
 	call addpar('rkscheme',111.)		!type of runge-kutta scheme
@@ -715,7 +728,7 @@
 ! for the default value.
 !
 ! |gapar|	Weighting of the first stage level for the Runge-Kutta scheme
-!		|rkscheme=222|. (Default $\frac{2-sqrt{2}}{2}$)
+!		|rkscheme=222|. (Default $\frac{2-\sqrt{2}}{2}$)
 
 	call addpar('gapar',0.292893219)!free parameter for |rkscheme=222|
 

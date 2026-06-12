@@ -71,7 +71,8 @@
 	rk_triplet = nint(getpar('rkscheme'))
 
         if( rk_triplet .ne. 111 .and.  &
-     &      rk_triplet .ne. 222 ) then
+     &      rk_triplet .ne. 222 .and.  &
+     &      rk_triplet .ne. 2221 ) then
           write(6,*) 'runge-kutta triplet: ', rk_triplet
           stop 'error stop mod_rungekutta_init: incompatible params'
         end if
@@ -133,7 +134,7 @@
           allocate (a_erk(n_rkstages,n_rkstages))
           allocate (a_irk(n_rkstages,n_rkstages+1))
           allocate (a_srk(n_rkstages,n_rkstages+1))
-          allocate (b_erk(n_rkstages+1))
+          allocate (b_erk(n_rkstages))
           allocate (b_irk(n_rkstages+1))
           allocate (b_srk(n_rkstages+1))
           allocate (c_rk(n_rkstages))
@@ -147,7 +148,6 @@
 	  a_srk(1,2) = at
 
 	  b_erk(1)  = 1.
-	  b_erk(2)  = 0.
 
 	  b_irk(1)  = 1.-am
 	  b_irk(2)  = am
@@ -177,7 +177,7 @@
           allocate (a_erk(n_rkstages,n_rkstages))
           allocate (a_irk(n_rkstages,n_rkstages+1))
           allocate (a_srk(n_rkstages,n_rkstages+1))
-          allocate (b_erk(n_rkstages+1))
+          allocate (b_erk(n_rkstages))
           allocate (b_irk(n_rkstages+1))
           allocate (b_srk(n_rkstages+1))
           allocate (c_rk(n_rkstages))
@@ -203,7 +203,6 @@
 
 	  b_erk(1)  = 1.-1./(2.*gamma)
 	  b_erk(2)  = 1./(2.*gamma)
-	  b_erk(3)  = 0.
 
 	  b_irk(1)  = 0.
 	  b_irk(2)  = 1.-gamma
@@ -214,6 +213,54 @@
 	  b_srk(3)  = gamma
 
 	  c_rk(1)  = gamma
+	  c_rk(2)  = 1.
+
+	!Another ARK(2,2,2) of (Noelle.2014). The implicit scheme is
+	!composed of a first stage with Heun’s method followed by a
+	!second stage of the Cranck-Nicholson scheme and the explicit
+	!method is the midpoint scheme.
+	else if (rk_triplet == 2221) then
+          n_rkstages = 2
+
+          allocate (a_erk(n_rkstages,n_rkstages))
+          allocate (a_irk(n_rkstages,n_rkstages+1))
+          allocate (a_srk(n_rkstages,n_rkstages+1))
+          allocate (b_erk(n_rkstages))
+          allocate (b_irk(n_rkstages+1))
+          allocate (b_srk(n_rkstages+1))
+          allocate (c_rk(n_rkstages))
+
+	  a_erk(1,1) = 0.5
+	  a_erk(1,2) = 0.
+	  a_erk(2,1) = 0.
+	  a_erk(2,2) = 1.
+
+	  a_irk(1,1) = 0.
+	  a_irk(1,2) = 0.5
+	  a_irk(1,3) = 0.
+	  a_irk(2,1) = 0.5
+	  a_irk(2,2) = 0.
+	  a_irk(2,3) = 0.5
+
+	  a_srk(1,1) = 0.
+	  a_srk(1,2) = 0.5
+	  a_srk(1,3) = 0.
+	  a_srk(2,1) = 0.5
+	  a_srk(2,2) = 0.
+	  a_srk(2,3) = 0.5
+
+	  b_erk(1)  = 0.
+	  b_erk(2)  = 1.
+
+	  b_irk(1)  = 0.5
+	  b_irk(2)  = 0.
+	  b_irk(3)  = 0.5
+
+	  b_srk(1)  = 0.5
+	  b_srk(2)  = 0.
+	  b_srk(3)  = 0.5
+
+	  c_rk(1)  = 0.5
 	  c_rk(2)  = 1.
 	end if
 
@@ -254,9 +301,15 @@
 	real, dimension(n_rkstages+1), intent(out) :: coeff_srk
 
 	crk  = c_rk(curr_stage)
-	coeff_erk = a_erk(curr_stage,:)
-	coeff_irk = a_irk(curr_stage,:)
-	coeff_srk = a_srk(curr_stage,:)
+	if ( curr_stage < n_rkstages ) then
+	  coeff_erk = a_erk(curr_stage,:)
+	  coeff_irk = a_irk(curr_stage,:)
+	  coeff_srk = a_srk(curr_stage,:)
+	else
+	  coeff_erk = b_erk(:)
+	  coeff_irk = b_irk(:)
+	  coeff_srk = b_srk(:)
+	end if
 
 	end subroutine get_rungekutta_weights
 
