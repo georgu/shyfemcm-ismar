@@ -113,7 +113,8 @@ end subroutine write_ensemble
 ! Check and correct ensemble fields near boundaries and ensure values
 ! remain physical (no NaN, no large increments, no out-of-range).
 !
-! This routine is OpenMP-parallel and now thread-safe.
+! Outer-loop OMP parallelization ensures zero thread-overhead.
+! Physically consistent damping applied to all variables before checks.
 !=======================================================================
 subroutine bc_val_check_correct()
    implicit none
@@ -128,6 +129,10 @@ subroutine bc_val_check_correct()
    integer, allocatable :: bcid(:)
    real(dp), allocatable :: bcrho(:)
    real(dp) :: w
+
+   ! Hardcoded safe physical limits for currents to prevent CFL explosion
+   real(dp), parameter :: UV_MAX = 3.0_dp
+   real(dp), parameter :: UV_MIN = -3.0_dp
 
    nbc = 1
    inquire(file='lbound.dat', exist=file_exists)
@@ -148,71 +153,77 @@ subroutine bc_val_check_correct()
    otot = 0 ; ntot = 0 ; btot = 0
 
    !===================================================================
-   ! Loop over ensemble members
+   ! Loop over ensemble members - OMP parallelized at highest level
    !===================================================================
+!$OMP PARALLEL DO PRIVATE(ne, k, nl, ie, w) &
+!$OMP PRIVATE(znan, zout, zbig, snan, sout, sbig, tnan, tout, tbig, uvnan, uvout, uvbig) &
+!$OMP SHARED(nrens, Abk, Aan, file_exists, nbc, bcid, bcrho) &
+!$OMP SHARED(nnkn, nnel, nnlv) &
+!$OMP REDUCTION(+:otot, ntot, btot)
    do ne = 1, nrens
 
       zout = 0 ; uvout = 0 ; sout = 0 ; tout = 0
       znan = 0 ; uvnan = 0 ; snan = 0 ; tnan = 0
       zbig = 0 ; uvbig = 0 ; sbig = 0 ; tbig = 0
+      uvnan = 0 ; uvbig = 0
 
       !===============================================================
       ! NODE-BASED FIELDS: z, T, S
       !===============================================================
-!$OMP PARALLEL DO PRIVATE(k,nl,w)                  &
-!$OMP PRIVATE(znan,zout,snan,sout,tnan,tout,zbig,tbig,sbig,uvbig) &
-!$OMP SHARED(ne,Abk,Aan,file_exists,nbc,bcid,bcrho)
       do k = 1, nnkn
 
-         ! Boundary weight w(k)
+         ! Compute spatial boundary weight
          if (file_exists) then
             call bc_correction('node', k, nbc, bcid, bcrho, w)
          else
             w = 0.0_dp
          end if
 
-         !-------------------------
-         ! Free-surface elevation z
-         !-------------------------
+         ! Apply boundary relaxation weight BEFORE physical check
+         Aan(ne)%z(k) = w * Abk(ne)%z(k) + (1.0_dp - w) * Aan(ne)%z(k)
+
+         ! Validate physical thresholds and metric increments for SSH
          call check_one_val( &
+            vtype = 'Z', &
             va = Aan(ne)%z(k), &
             vb = Abk(ne)%z(k), &
             vmax = SSH_MAX, &
             vmin = SSH_MIN, &
             vnan = znan, vout = zout, vbig = zbig )
 
-         Aan(ne)%z(k) = w * Abk(ne)%z(k) + (1.0_dp - w) * Aan(ne)%z(k)
-
          !-------------------------
          ! Temperature & salinity
          !-------------------------
          do nl = 1, nnlv
 
+            ! Apply boundary relaxation to Salinity
+            Aan(ne)%s(nl,k) = w * Abk(ne)%s(nl,k) + (1.0_dp - w) * Aan(ne)%s(nl,k)
+
+            ! Validate Salinity
             call check_one_val( &
+               vtype = 'S', &
                va = Aan(ne)%s(nl,k), &
                vb = Abk(ne)%s(nl,k), &
                vmax = SAL_MAX, vmin = SAL_MIN, &
                vnan = snan, vout = sout, vbig = sbig)
 
-            Aan(ne)%s(nl,k) = w * Abk(ne)%s(nl,k) + (1.0_dp - w) * Aan(ne)%s(nl,k)
+            ! Apply boundary relaxation to Temperature
+            Aan(ne)%t(nl,k) = w * Abk(ne)%t(nl,k) + (1.0_dp - w) * Aan(ne)%t(nl,k)
 
+            ! Validate Temperature
             call check_one_val( &
+               vtype = 'T', &
                va = Aan(ne)%t(nl,k), &
                vb = Abk(ne)%t(nl,k), &
                vmax = TEM_MAX, vmin = TEM_MIN, &
                vnan = tnan, vout = tout, vbig = tbig)
-
-            Aan(ne)%t(nl,k) = w * Abk(ne)%t(nl,k) + (1.0_dp - w) * Aan(ne)%t(nl,k)
          end do
 
       end do
-!$OMP END PARALLEL DO
-
 
       !===============================================================
-      ! ELEMENT-BASED FIELDS: u, v
+      ! ELEMENT-BASED FIELDS: u, v (Velocity Vectors)
       !===============================================================
-!$OMP PARALLEL DO PRIVATE(ie,nl,w) SHARED(ne,Abk,Aan,file_exists,nbc,bcid,bcrho)
       do ie = 1, nnel
 
          if (file_exists) then
@@ -222,23 +233,34 @@ subroutine bc_val_check_correct()
          end if
 
          do nl = 1, nnlv
+            ! Apply boundary relaxation to U and V currents
             Aan(ne)%u(nl,ie) = w * Abk(ne)%u(nl,ie) + (1.0_dp - w) * Aan(ne)%u(nl,ie)
             Aan(ne)%v(nl,ie) = w * Abk(ne)%v(nl,ie) + (1.0_dp - w) * Aan(ne)%v(nl,ie)
+
+            ! PHYSICAL FIX: Validate currents to suppress non-physical kinetic energy spikes
+            call check_one_val( &
+               vtype = 'V', &
+               va = Aan(ne)%u(nl,ie), &
+               vb = Abk(ne)%u(nl,ie), &
+               vmax = UV_MAX, vmin = UV_MIN, &
+               vnan = uvnan, vout = uvout, vbig = uvbig)
+
+            call check_one_val( &
+               vtype = 'V', &
+               va = Aan(ne)%v(nl,ie), &
+               vb = Abk(ne)%v(nl,ie), &
+               vmax = UV_MAX, vmin = UV_MIN, &
+               vnan = uvnan, vout = uvout, vbig = uvbig)
          end do
       end do
-!$OMP END PARALLEL DO
 
-      if (verbose) then
-         if (zout>0 .or. sout>0 .or. tout>0 .or. uvout>0) then
-            write(*,*) 'Member', ne, ' out of range counts = ', zout, sout, tout, uvout
-         end if
-      end if
-
+      ! Safe reduction accumulation at the end of each member loop
       otot = otot + zout + sout + tout + uvout
       ntot = ntot + znan + snan + tnan + uvnan
       btot = btot + zbig + sbig + tbig + uvbig
 
    end do
+!$OMP END PARALLEL DO
 
    if (otot > 0) write(*,*) 'Total values out of range: ', otot
    if (ntot > 0) write(*,*) 'Total NaN values: ', ntot
@@ -249,8 +271,8 @@ end subroutine bc_val_check_correct
 
 !=======================================================================
 ! Read boundary condition file (two-stage read)
-! icall==0 → read number of BC nodes
-! icall==1 → read list of BC nodes and radii
+! icall==0 -> read number of BC nodes
+! icall==1 -> read list of BC nodes and radii
 !=======================================================================
 subroutine read_bc_file(icall, bcfile, nbc, bcid, bcrho)
    implicit none
@@ -281,6 +303,7 @@ end subroutine read_bc_file
 
 !=======================================================================
 ! Compute weight for boundary damping based on distance from BC node.
+! Thread-safe: accesses global arrays in a read-only manner.
 !=======================================================================
 subroutine bc_correction(stype, id, nbc, bcid, bcrho, w)
    implicit none
@@ -307,7 +330,7 @@ subroutine bc_correction(stype, id, nbc, bcid, bcrho, w)
       x = xgv(id)
       y = ygv(id)
    else
-      ! element → average vertices
+      ! element -> average vertices
       do i = 1, 3
          k = nen3v(i, id)
          x = x + xgv(k)
@@ -336,44 +359,57 @@ end subroutine bc_correction
 !=======================================================================
 
 !=======================================================================
-! Check a single scalar:
-! - replace NaN with background
-! - limit increment to 80%
-! - ensure value stays within physical bounds
+! Check a single scalar value (Thread-safe, no shared variables)
 !=======================================================================
-subroutine check_one_val(va, vb, vmax, vmin, vnan, vout, vbig)
+subroutine check_one_val(vtype, va, vb, vmax, vmin, vnan, vout, vbig)
    implicit none
+   character(len=1), intent(in) :: vtype
    real(dp), intent(inout) :: va
    real(dp), intent(in) :: vb, vmin, vmax
    integer, intent(inout) :: vnan, vout, vbig
-   real(dp), parameter :: max_inc = 0.8_dp
+
+   real(dp), parameter :: max_rel_inc = 0.8_dp  ! 80% for T and S
+   real(dp), parameter :: max_abs_ssh = 0.4_dp  ! Max 40 cm for SSH
+   real(dp), parameter :: max_abs_uv  = 0.5_dp  ! Max 50 cm/s increment for currents
    real(dp) :: inc, rel_inc
 
-   ! Replace NaN
-   if (isnan(va) .and. .not. isnan(vb)) then
+   ! 1. Remove NaNs
+   if (va /= va) then
       va = vb
-!$OMP ATOMIC
       vnan = vnan + 1
+      return
    end if
 
-   ! Limit increment
+   ! 2. Bound increments using variable-specific physics
    inc = va - vb
-   if (abs(vb) > 0.0_dp) then
-      rel_inc = abs(inc) / abs(vb)
-   else
-      rel_inc = 0.0_dp
-   end if
 
-   if (rel_inc > max_inc) then
-      va = vb + inc * (max_inc / rel_inc)
-!$OMP ATOMIC
-      vbig = vbig + 1
-   end if
+   select case (vtype)
+   case ('Z')
+      ! SSH: Metric bounds to avoid gravity wave triggers
+      if (abs(inc) > max_abs_ssh) then
+         va = vb + sign(max_abs_ssh, inc)
+         vbig = vbig + 1
+      end if
+   case ('V')
+      ! VELOCITY: Metric absolute bounds to secure CFL stability
+      if (abs(inc) > max_abs_uv) then
+         va = vb + sign(max_abs_uv, inc)
+         vbig = vbig + 1
+      end if
+   case default
+      ! T & S: Proportional scaling for tracer consistency
+      if (abs(vb) > 1.0e-6_dp) then
+         rel_inc = abs(inc) / abs(vb)
+         if (rel_inc > max_rel_inc) then
+            va = vb + inc * (max_rel_inc / rel_inc)
+            vbig = vbig + 1
+         end if
+      end if
+   end select
 
-   ! Enforce bounds
+   ! 3. Enforce hard physical grid constraints
    if (va >= vmax .or. va <= vmin) then
       va = vb
-!$OMP ATOMIC
       vout = vout + 1
    end if
 
