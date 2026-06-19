@@ -149,10 +149,12 @@ program main
 
    end select
 
+   ! Better to remove it if not necessary. Do not assimilate data near the open
+   ! boundaries!
    !--------------------------------------------------------------------------
    ! Apply boundary-condition corrections and physical-range checks
    !--------------------------------------------------------------------------
-   call bc_val_check_correct
+   !call bc_val_check_correct
 
    !--------------------------------------------------------------------------
    ! Compute analysis (posterior) statistics
