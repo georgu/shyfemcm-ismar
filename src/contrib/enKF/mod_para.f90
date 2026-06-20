@@ -81,7 +81,7 @@ module mod_para
 
   ! Check on observations
   logical, parameter  ::  OBSCHK = .true.
-  real(dp), parameter  :: THRSTD = 5.   ! threshold multiplier for std (e.g., 3.0). 
+  real(dp), parameter  :: THRSTD = 500. ! threshold multiplier for std (e.g., 3.0). 
                                         ! Not recommended, use a very high value to disable.
   real(dp), parameter  :: THRABS = 1.   ! relative threshold (0.1 - 0.5 typical). Absolute value.
 
@@ -98,9 +98,10 @@ module mod_para
   real(dp), parameter :: OFLAG = -999.0
 
   ! Min/max QC bounds for observations
-  real(dp), parameter :: TEM_MIN = -20.0, TEM_MAX = 60.0
-  real(dp), parameter :: SAL_MIN =  -0.5, SAL_MAX = 60.0
+  real(dp), parameter :: TEM_MIN = -5.0, TEM_MAX = 40.0
+  real(dp), parameter :: SAL_MIN =  0., SAL_MAX = 60.0
   real(dp), parameter :: SSH_MIN =  -8.0, SSH_MAX =  8.0
-  real(dp), parameter :: VEL_MIN = -90000.0, VEL_MAX = 90000.0
+  ! Valid for 2D transport, should be scaled
+  real(dp), parameter :: VEL_MIN = -40000.0, VEL_MAX = 40000.0
 
 end module mod_para

@@ -137,6 +137,9 @@ subroutine bc_val_check_correct()
    nbc = 1
    inquire(file='lbound.dat', exist=file_exists)
 
+   ! Switch off the boundary correction:
+   file_exists = .false.
+
    if (file_exists) then
       allocate(bcid(nbc), bcrho(nbc))
       call read_bc_file(0, 'lbound.dat', nbc, bcid, bcrho)
@@ -147,7 +150,7 @@ subroutine bc_val_check_correct()
 
       write(*,*) 'Boundary value correction active.'
    else
-      write(*,*) 'Warning: lbound.dat not found - no boundary correction applied.'
+      write(*,*) 'No boundary correction applied.'
    end if
 
    otot = 0 ; ntot = 0 ; btot = 0
@@ -262,9 +265,9 @@ subroutine bc_val_check_correct()
    end do
 !$OMP END PARALLEL DO
 
-   if (otot > 0) write(*,*) 'Total values out of range: ', otot
-   if (ntot > 0) write(*,*) 'Total NaN values: ', ntot
-   if (btot > 0) write(*,*) 'Total excessive increments: ', btot
+   if (otot > 0) write(*,*) 'Mean total values out of range per member: ', otot/nrens
+   if (ntot > 0) write(*,*) 'Mean total NaN values per member: ', ntot/nrens
+   if (btot > 0) write(*,*) 'Mean total excessive increments per member: ', btot/nrens
 
 end subroutine bc_val_check_correct
 !=======================================================================
