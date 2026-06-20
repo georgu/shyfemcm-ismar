@@ -86,9 +86,9 @@ program main
    ! Prepare analysis matrix Amat according to analysis mode.
    !
    ! mode_an:
-   !   0 → standard state EnKF
-   !   1 → augmented state (state + model error)
-   !   2 → parameters (not implemented)
+   !   0 standard state EnKF
+   !   1 augmented state (state + model error)
+   !   2 parameters (not implemented)
    !--------------------------------------------------------------------------
    select case (mode_an)
 
@@ -149,12 +149,12 @@ program main
 
    end select
 
-   ! Better to remove it if not necessary. Do not assimilate data near the open
+   ! Only check on values, no bc correction. Do not assimilate data near the open
    ! boundaries!
    !--------------------------------------------------------------------------
    ! Apply boundary-condition corrections and physical-range checks
    !--------------------------------------------------------------------------
-   !call bc_val_check_correct
+   call bc_val_check_correct
 
    !--------------------------------------------------------------------------
    ! Compute analysis (posterior) statistics
