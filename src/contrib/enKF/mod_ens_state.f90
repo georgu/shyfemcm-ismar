@@ -137,9 +137,6 @@ subroutine bc_val_check_correct()
    nbc = 1
    inquire(file='lbound.dat', exist=file_exists)
 
-   ! Switch off the boundary correction:
-   file_exists = .false.
-
    if (file_exists) then
       allocate(bcid(nbc), bcrho(nbc))
       call read_bc_file(0, 'lbound.dat', nbc, bcid, bcrho)
