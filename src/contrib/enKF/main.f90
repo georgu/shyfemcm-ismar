@@ -149,8 +149,8 @@ program main
 
    end select
 
-   ! Only check on values, no bc correction. Do not assimilate data near the open
-   ! boundaries!
+   ! Check values, and bc correction. However, better do not assimilate data 
+   ! near the open boundaries
    !--------------------------------------------------------------------------
    ! Apply boundary-condition corrections and physical-range checks
    !--------------------------------------------------------------------------
