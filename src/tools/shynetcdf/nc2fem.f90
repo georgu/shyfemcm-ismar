@@ -55,6 +55,7 @@
 ! 25.04.2025    ggu     new option -rfact
 ! 19.06.2025    ggu     check file format with nc_check_file_format()
 ! 13.11.2025    ggu     increase length of var
+! 09.06.2026    ggu     new option -coordinfo
 !
 ! notes :
 !
@@ -142,6 +143,7 @@
 	logical bverb,bcoords,btime,binfo,bvars,bwrite,bdebug,bsilent
 	logical binvertdepth,binvertslm,bunform,bquiet,blist
 	logical bregular,bsingle,babout,btcorrect
+	logical bcoordinfo
         logical binvert,bx_invert,by_invert
 	logical exists_var
 
@@ -176,6 +178,8 @@
         call clo_add_option('debug',.false.,'produce debug information')
         call clo_add_option('varinfo',.false.                           &
      &          ,'list variables contained in file')
+        call clo_add_option('coordinfo',.false.                         &
+     &          ,'list dims and coords contained in file')
         call clo_add_option('list',.false.                              &
      &          ,'list possible names for description')
 
@@ -247,6 +251,7 @@
 	call clo_get_option('silent',bsilent)
 	call clo_get_option('debug',bdebug)
 	call clo_get_option('varinfo',bvars)
+	call clo_get_option('coordinfo',bcoordinfo)
 	call clo_get_option('list',blist)
 	call clo_get_option('time',btime)
 	call clo_get_option('coords',bcoords)
@@ -307,6 +312,10 @@
         call ncnames_get_dims_and_coords(ncid,bwrite                    &
      &                  ,nt,nx,ny,nz                                    &
      &                  ,tcoord,xcoord,ycoord,zcoord)
+
+	if( bcoordinfo ) then
+	  call ncnames_write_info
+	end if
 
 	nxdim = max(1,nx)
 	nydim = max(1,ny)

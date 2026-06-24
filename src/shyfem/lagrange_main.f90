@@ -124,6 +124,7 @@
 ! 25.07.2024	ggu	new implementation of OMP
 ! 27.05.2026	ggu	write lgr header with lgr_write_header()
 ! 27.05.2026	ggu	new routine write_time()
+! 09.06.2026	ggu	compiler error in write_time()
 !
 !****************************************************************            
 
@@ -1061,12 +1062,14 @@
 
 !**********************************************************************
 
-	subroutine write_time('text',time)
+	subroutine write_time(text,time)
 
 	implicit none
 
 	character*(*) text
 	double precision time
+
+	character*20 aline
 
 	call get_timeline(time,aline)
 	write(6,*) trim(text) // ' = ',aline

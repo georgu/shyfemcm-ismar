@@ -50,6 +50,7 @@
 ! 24.04.2025	ggu	new routine ncnames_get_dim_coord_info()
 ! 17.06.2025	ggu	deal with description == 'unknown'
 ! 22.04.2026	ggu	new vertical coordinate height_2
+! 09.06.2026	ggu	new routine ncnames_write_info()
 !
 ! notes :
 !
@@ -612,6 +613,29 @@
 	  end if
 	end do
 
+	end
+
+!*****************************************************************
+
+	subroutine ncnames_write_info
+
+	use ncnames
+
+	implicit none
+
+	integer i
+	character*4, save :: string = 'txyz'
+	character*1 w
+
+        write(6,*) 'i  what  dim_size             dim_name   coord_name'
+
+	do i=0,3
+	  w = string(i+1:i+1)
+          write(6,1000) i,w,idims(2,i),trim(cdims(i)),trim(ccoords(i))
+	end do
+
+	return
+ 1000   format(i2,5x,a1,2x,i8,1x,a20,3x,a)
 	end
 
 !*****************************************************************

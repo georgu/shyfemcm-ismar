@@ -57,6 +57,7 @@
 ! 07.12.2024    ggu     big changes: check if arrays have same length for gather
 ! 29.05.2026    ggu     avoid compiler warnings
 ! 29.05.2026    ggu     disable FPE trapping to avoid floating point exception
+! 09.06.2026    ggu     added ieee_get_halting_mode
 !
 !******************************************************************
 
@@ -203,7 +204,8 @@
 
 	use shympi_internal
         use ieee_exceptions, only: ieee_divide_by_zero, ieee_invalid, &
-                      & ieee_overflow, ieee_set_halting_mode
+                      & ieee_overflow, &
+			& ieee_set_halting_mode, ieee_get_halting_mode
 
 	implicit none
 

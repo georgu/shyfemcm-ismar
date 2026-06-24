@@ -82,6 +82,7 @@
 ! 01.10.2025	ggu	accept different reference date
 ! 15.01.2026	ggu	better error message in nc_define_3d_reg()
 ! 06.05.2026	ggu	new routine nc_get_quiet()
+! 09.06.2026	ggu	introduced bcomperror for handling compiler error
 !
 ! notes :
 !
@@ -1314,6 +1315,7 @@
 	double precision t
 
 	logical bdebug
+	logical, parameter :: bcomperror = .false.
 	integer retval
 	character*80 time,time_d,time_v
 	character*80 name
@@ -1374,6 +1376,9 @@
 	  ntime_recs = crecs
 	  btime_is_char = .true.
 
+	  if( bcomperror ) then
+	    write(6,*) 'correcting compiler error'
+	  end if
 	end if
 	icall = icall + 1
 
@@ -1401,7 +1406,15 @@
 	t = 0
 	if( irec == 0 ) return
 
+	if( bcomperror ) then	! here we have to read time records again
+	  if( allocated(ctimes) ) deallocate(ctimes)
+	  allocate(character(LEN=clen) ::  ctimes(ntime_recs))
+	  retval = nf_get_var_text(ncid,time_id,ctimes)
+	  call nc_handle_err(retval,'get_time_rec')
+	end if
+
 	string = ctimes(irec)
+	if( string == ' ' ) goto 99
 	iu = index(string,'_')
 	it = index(string,'T')
 	if( iu > 0 ) then
@@ -1422,7 +1435,12 @@
 
 	t = atime
 
-	!stop 'forced stop in handle_time_string'
+	return
+  99	continue
+	write(6,*) 'time string for record ',irec,' is empty'
+	write(6,*) 'probable compiler error for ctimes'
+	write(6,*) 'please set bcomperror=.true. in handle_time_string()'
+	stop 'error stop handle_time_string: compiler error'
 	end
 
 !*****************************************************************
