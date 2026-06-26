@@ -50,6 +50,8 @@
 !	n					total number of values
 !	values(n)				values to be inserted
 !	value					single value to be inserted
+!	ac(nbin)				center value of bins
+!	ic(nbin)				count in bins
 !
 !       call histo_init(nbin,bin0,dbin)
 !       call histo_init(nbin,rbin)
@@ -103,6 +105,10 @@
         MODULE PROCEDURE histo_insert_value , histo_insert_values
         END INTERFACE
 
+        INTERFACE histo_info
+        MODULE PROCEDURE histo_info_std , histo_info_unit
+        END INTERFACE
+
 	public :: histo_init , histo_insert &
      &			, histo_return , histo_make , histo_info
 
@@ -125,16 +131,22 @@
 
 !****************************************************************
 
-	subroutine histo_info
+	subroutine histo_info_std
+	call histo_info_unit(6)
+	end
+
+	subroutine histo_info_unit(iu)
+
+	integer iu
 
 	integer i
 
-	write(6,*) 'histo info:'
-	write(6,*) 'ncbin = ',ncbin
+	write(iu,*) 'histo info:'
+	write(iu,*) 'ncbin = ',ncbin
 	do i=1,ncbin
-	  write(6,*) i,abin(i),acenter(i),icount(i)
+	  write(iu,*) i,abin(i),acenter(i),icount(i)
 	end do
-	write(6,*) 'end histo info:'
+	write(iu,*) 'end histo info:'
 
 	end
 
