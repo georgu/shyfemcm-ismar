@@ -657,7 +657,7 @@
 	  lmax = ilhkv(k)
 	  lmin = jlhkv(k)
 	  do l=lmin,lmax
-            h = hdkov(l,k)
+            h = hdkcv(l,k)
 	    if( saux(l,k) .gt. 0 ) then		!flux into node
 	      momentxv(l,k) = momentxv(l,k) / saux(l,k)
 	      momentyv(l,k) = momentyv(l,k) / saux(l,k)
@@ -852,7 +852,7 @@
 		      ii2_bnd = mod(ii+1, 3) + 1
 		      k1_bnd = nen3v(ii1_bnd,ie)
 		      k2_bnd = nen3v(ii2_bnd,ie)
-		      h_bnd = 0.5*hdkov(l,k1_bnd)+0.5*hdkov(l,k2_bnd)
+		      h_bnd = 0.5*hdkcv(l,k1_bnd)+0.5*hdkcv(l,k2_bnd)
 		      u_bnd = udotn_bnd * nx
 		      v_bnd = udotn_bnd * ny
 
@@ -1401,7 +1401,7 @@
 	    hkk=0.
 	    hkk=-zov(k)		!ggu
 	    do l=1,lmax
-	      hkk=hkk+hdkov(l,k)
+	      hkk=hkk+hdkcv(l,k)
 	      hkko(l,k)=hkk
 	      hkkom(l,k)=(hkko(l,k)+hkko(l-1,k))/2.
             end do

@@ -611,9 +611,9 @@
 	     call do_befor
 
 	     call trace_point_0('before copy')
-	     call copy_uvz(kstage)	!copies new to old time level
+	     call copy_uvz(kstage)	!copies new to old/stage time level
 	     call nonhydro_copy   	!copies non hydrostatic pressure terms
-	     call copy_layer_depth	!copies layer depth to old
+	     call copy_layer_depth(kstage)!copies layer depth to old/stage
 	     call trace_point_0('after copy')
 
 	     call handle_offline(2)	!read from offline file

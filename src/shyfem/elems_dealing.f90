@@ -804,7 +804,8 @@
 !***********************************************************
 !***********************************************************
 
-	subroutine copylayerdepth(levdim,hdkn,hdko,hden,hdeo)
+	subroutine copylayerdepth(curr_stage,levdim, &
+     &                             hdkn,hdko,hdkc,hden,hdeo)
 
 ! copies layer depths from new to old
 
@@ -812,21 +813,31 @@
 
 	implicit none
 
+	integer curr_stage
 	integer levdim
 	real hdkn(levdim,nkn)	!depth at node, new time level
 	real hdko(levdim,nkn)	!depth at node, old time level
+	real hdkc(levdim,nkn)	!depth at node, current stage
 	real hden(levdim,nel)	!depth at element, new time level
 	real hdeo(levdim,nel)	!depth at element, old time level
 
 	integer k,ie,l
 
-	do k=1,nkn
+        if (curr_stage == 1) then !stage is first
+	  do k=1,nkn		!update of old nodal depth (diagnostic)
+	    do l=1,levdim
+	      hdko(l,k) = hdkn(l,k)
+	    end do
+	  end do
+	end if
+
+	do k=1,nkn		!update of current stage nodal depth (diagnostic)
 	  do l=1,levdim
-	    hdko(l,k) = hdkn(l,k)
+	    hdkc(l,k) = hdkn(l,k)
 	  end do
 	end do
 
-	do ie=1,nel
+	do ie=1,nel		!update of current stage element depth (diagnostic)
 	  do l=1,levdim
 	    hdeo(l,ie) = hden(l,ie)
 	  end do
@@ -836,7 +847,7 @@
 
 !***********************************************************
 
-	subroutine copy_layer_depth
+	subroutine copy_layer_depth(curr_stage)
 
 ! shell (helper) for copylayerdepth
 
@@ -845,7 +856,10 @@
 
 	implicit none
 
-	call copylayerdepth(nlvdi,hdknv,hdkov,hdenv,hdeov)
+	integer curr_stage
+
+	call copylayerdepth(curr_stage,nlvdi, &
+     &    hdknv,hdkov,hdkcv,hdenv,hdeov)
 
 	end
 
