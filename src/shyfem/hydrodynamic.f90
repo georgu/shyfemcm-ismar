@@ -1687,7 +1687,7 @@
 
 	call get_timestep(dt)
 
-	allocate(vf(nlvdi,nkn),va(nlvdi,nkn))
+	allocate(vf(nlvdi,nkn),va(nlvdi+1,nkn))
 	vf = 0.
 	va = 0.
 
@@ -1714,6 +1714,7 @@
 		ffn = utlnv(l,ie)*b + vtlnv(l,ie)*c
 		ffo = utlcv(l,ie)*b + vtlcv(l,ie)*c
 		ff = ffn * coeff_irk(curr_stage+1) + ffo * coeff_irk(curr_stage)
+! horizontal mass at previous stages
 		do jstage=1,curr_stage-1
 		  ffp = urk_reg(l,ie,jstage)*b + vrk_reg(l,ie,jstage)*c
 		  ff = ff + ffp * coeff_irk(jstage)
@@ -1721,6 +1722,7 @@
 		!ff = ffn
 		vf(l,kk) = vf(l,kk) + 3. * aj * ff
 		va(l,kk) = va(l,kk) + aj
+		if (l==ilevel) va(ilevel+1,kk) = va(ilevel+1,kk) + aj !bottom interface
 	    end do
 	  end do
 
@@ -1742,6 +1744,8 @@
 !	-> wlnv(nlv,k) = 0 + wlnv(nlv,k)
 ! w of bottom of last layer must be 0 ! -> shift everything up
 ! wlnv(nlv,k) is always 0
+!
+! subtracting vertical mass flux at previous stages: -[wrk_reg * va]
 !
 ! dividing wlnv [m**3/s] by area [vv] gives vertical velocity
 !
@@ -1770,9 +1774,11 @@
 	    q = mfluxv(l,k)
 	    if( bdry ) q = 0.
 	    wdiv = vf(l,k) + q
+! vertical mass flux at previous stages:
 	    wlpv = 0.
 	    do jstage=1,curr_stage-1
-	      wlpv = wlpv + coeff_erk(jstage) * (wrk_reg(l-1,k,jstage)-wrk_reg(l,k,jstage))
+	      wlpv = wlpv + coeff_erk(jstage) &
+     &	        * (wrk_reg(l-1,k,jstage)*atop-wrk_reg(l,k,jstage)*va(l+1,k))
 	    end do
 	    !wfold = azt * (atop*wlov(l-1,k)-abot*wlov(l,k))
 	    !wlnv(l-1,k) = wlnv(l,k) + (wdiv-dvdt+wfold)/az
