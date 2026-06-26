@@ -568,16 +568,16 @@
 	integer curr_stage
 
         if (curr_stage == 1) then !stage is first
-	  zeov  = zenv
+	  zeov  = zenv		  !update of old prognostic hydro vars
 	  utlov = utlnv
 	  vtlov = vtlnv
         end if
 
-        zecv   = zenv		  !update of current stage prognostic vars
+        zecv   = zenv		  !update of current stage prognostic hydro vars
         utlcv = utlnv
         vtlcv = vtlnv
 
-	zov   = znv		  !update of current stage diagnostic vars
+	zov   = znv		  !update of current stage diagnostic hydro vars
 	wlov  = wlnv
 
 	uov   = unv			!$$UVBARO
