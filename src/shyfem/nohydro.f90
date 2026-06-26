@@ -939,7 +939,7 @@
         if (inhwrt .gt. 0) then
           if (iwrt .eq. inhwrt ) then
 	    if( iwvel .gt. 0 ) then
-              call shy_write_scalar_record(id,dtime,14,nlvdi,wprv)
+              call shy_write_scalar_record(id,dtime,17,nlvdi,wprv)
 	    end if
 	    if( iqpnv .gt. 0 ) then
               call shy_write_scalar_record(id,dtime,15,nlvdi,qpnv)
@@ -950,7 +950,7 @@
 	else
 	  if( next_output_d(da_out) ) then
 	    if( iwvel .gt. 0 ) then
-              call shy_write_scalar_record(id,dtime,14,nlvdi,wprv)
+              call shy_write_scalar_record(id,dtime,17,nlvdi,wprv)
 	    end if
 	    if( iqpnv .gt. 0 ) then
               call shy_write_scalar_record(id,dtime,15,nlvdi,qpnv)
