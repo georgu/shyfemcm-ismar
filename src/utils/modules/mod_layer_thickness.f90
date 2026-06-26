@@ -42,6 +42,7 @@
         
         real, allocatable, target, save :: hdknv(:,:)
         real, allocatable, target, save :: hdkov(:,:)
+	real, allocatable, target, save :: hdkcv(:,:)
         real, allocatable, target, save :: hdenv(:,:)
         real, allocatable, target, save :: hdeov(:,:)
 
@@ -69,6 +70,7 @@
 	if( nkn_layer_thickness > 0 ) then
           deallocate(hdknv)
           deallocate(hdkov)
+          deallocate(hdkcv)
           deallocate(hdenv)
           deallocate(hdeov)
         end if
@@ -81,11 +83,13 @@
         
         allocate(hdknv(nlv,nkn))
         allocate(hdkov(nlv,nkn))
+        allocate(hdkcv(nlv,nkn))
         allocate(hdenv(nlv,nel))
         allocate(hdeov(nlv,nel))
 
 	hdknv = 0.
 	hdkov = 0.
+	hdkcv = 0.
 	hdenv = 0.
 	hdeov = 0.
 
