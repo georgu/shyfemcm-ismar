@@ -119,9 +119,33 @@ Read_antime_list() {
 # Simulation Skeleton Input Customization (sed replacement)
 #----------------------------------------------------------
 SkelStr() {
-    sed -e "s|NAMESIM|$1|g" -e "s|ITANF|$2|g" \
-        -e "s|ITEND|$3|g" -e "s|RESTRT|$4|g" \
-        -e "s|IDTRST|-1|g" "$5" > "$6"
+    # Localize arguments for clarity and to prevent variable bleeding
+    local pefile="$6"
+    local sed_args=()
+    local col1 col2 dummy
+
+    # Check if the parameter file exists and is not empty
+    if [ -s "$pefile" ]; then
+        # Read the file line by line
+        # The 'dummy' variable captures and discards all remaining columns (STD, MIN, MAX)
+        while read -r col1 col2 dummy || [ -n "$col1" ]; do
+            # Skip empty lines, incomplete lines, or lines starting with a comment character (#)
+            [[ -z "$col1" || -z "$col2" || "$col1" == \#* ]] && continue
+            
+            # Dynamically append the sed substitution expression using only the first two columns
+            sed_args+=("-e" "s|${col1}|${col2}|g")
+        done < "$pefile"
+    fi
+
+    # Execute sed combining the dynamic array replacements with the fixed substitutions
+    # Input file is $5, and the output is redirected to $7
+    sed "${sed_args[@]}" \
+        -e "s|NAMESIM|$1|g" \
+        -e "s|ITANF|$2|g" \
+        -e "s|ITEND|$3|g" \
+        -e "s|RESTRT|$4|g" \
+        -e "s|IDTRST|-1|g" \
+        "$5" > "$7"
 }
 
 #----------------------------------------------------------
@@ -222,12 +246,14 @@ for (( na = 1; na <= nran; na++ )); do
       echo "[FORECAST] Advancing ensemble members... $na/$nran"
       
       # Generate modified configuration files (.str) for every ensemble member
+      # if the parameter files are presents use them to write the str
       for (( ne = 0; ne < nrens; ne++ )); do
          nel=$(printf "%05d" "$ne"); nal=$(printf "%05d" "$na")
          naa=$((na + 1)); naal=$(printf "%05d" "$naa")
          name_sim="an${naal}_en${nel}b"
+         pefile="pe_parameters_an${nal}_en${nel}.dat"
          strname="${name_sim}.str"
-         SkelStr "$name_sim" "${timeo[$na]}" "${timeo[$naa]}" "an${nal}_en${nel}a.rst" "${skel_file[$ne]}" "$strname"
+         SkelStr "$name_sim" "${timeo[$na]}" "${timeo[$naa]}" "an${nal}_en${nel}a.rst" "${skel_file[$ne]}" "$pefile" "$strname"
       done
 
 # --- DYNAMIC FORECAST PARALLELIZATION PARSING ---

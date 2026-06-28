@@ -25,11 +25,13 @@ program main
    use mod_mod_err
    use mod_restart, only : ibarcl_rst
    use m_analysis
+   use mod_pestimation
+   use mod_ens_state !, only: tystate_pe_to_matrix, matrix_to_tystate
    implicit none
 
    real(dp), allocatable :: Amat(:,:)
    integer :: istat, ndim
-
+   integer :: ndim_pe = 0
 
    !--------------------------------------------------------------------------
    ! Init a random seed and save in random_seed.dat, or read it from this file
@@ -45,6 +47,11 @@ program main
    write(*,*) '***'
    write(*,*) '*** Analysis method code: ', rmode
    write(*,*) '***'
+
+   !--------------------------------------------------------------------------
+   ! If they exist, reads the parameter files for the parameter estimation
+   !--------------------------------------------------------------------------
+   call read_pe_files(mode_an, ndim_pe)
 
    !--------------------------------------------------------------------------
    ! Load prior ensemble into module arrays (e.g., Abk)
@@ -82,23 +89,28 @@ program main
    if (nrens <= 0) error stop 'main: nrens must be > 0'
    if (nobs_ok < 0) error stop 'main: nobs_ok must be >= 0'
 
+   ! Add pe_dimension
+   ndim = ndim + ndim_pe
+
    !--------------------------------------------------------------------------
    ! Prepare analysis matrix Amat according to analysis mode.
    !
    ! mode_an:
    !   0 standard state EnKF
    !   1 augmented state (state + model error)
-   !   2 parameters (not implemented)
+   !   2 parameters estimation
    !--------------------------------------------------------------------------
    select case (mode_an)
 
    case (0)   ! Standard EnKF on state only
+
       allocate(Amat(ndim, nrens), stat=istat)
       if (istat /= 0) error stop 'main: allocation failed (Amat, mode 0)'
 
-      call tystate_to_matrix(ibarcl_rst, nrens, ndim, Abk, Amat)
+      call tystate_to_matrix(ibarcl_rst, nrens, ndim, Abk, ndim_pe, Amat=Amat)
 
    case (1)   ! Augmented state with model error
+
       call info_moderr
       call push_aug
 
@@ -107,8 +119,12 @@ program main
 
       call tyqstate_to_matrix(ibarcl_rst, nrens, 2*ndim, Abk_aug, Amat)
 
-   case (2)
-      error stop 'main: analysis mode 2 (parameters) is TODO'
+   case (2)  ! Parameters estimation
+
+      allocate(Amat(ndim, nrens), stat=istat)
+      if (istat /= 0) error stop 'main: allocation failed (Amat, mode 0)'
+
+      call tystate_to_matrix(ibarcl_rst, nrens, ndim, Abk, ndim_pe, pe_mat, Amat)
 
    end select
 
@@ -118,13 +134,16 @@ program main
    select case (mode_an)
 
    case (0)   ! Standard EnKF
+
+      write(*,*) 'Running analysis, no parameter estimation'
+
       if (is_local == 0) then
          ! Global analysis on Amat
          call analysis(Amat, R, E, S, D1, innov, ndim, nrens, nobs_ok, verbose, &
                        truncation, rmode, lrandrot, lupdate_randrot, lsymsqrt, &
                        inflate, infmult, .false.)
 
-         call matrix_to_tystate(ibarcl_rst, nrens, ndim, Amat, Aan)
+         call matrix_to_tystate(ibarcl_rst, nrens, ndim, Amat, ndim_pe, A=Aan)
          deallocate(Amat)
 
          call save_X5(atime_an)
@@ -132,20 +151,49 @@ program main
          ! Local analysis: convert first, then run location-wise update
          write(*,*) 'Running local analysis...'
 
-         call matrix_to_tystate(ibarcl_rst, nrens, ndim, Amat, Aan)
+         call matrix_to_tystate(ibarcl_rst, nrens, ndim, Amat, ndim_pe, A=Aan)
          deallocate(Amat)
 
          call local_analysis
       end if
 
-   case (1)   ! Augmented state path
+   case (1)   ! Augmented state
+
+      write(*,*) 'Running analysis, state augmented with model errors'
+
+      call analysis(Amat, R, E, S, D1, innov, 2*ndim, nrens, nobs_ok, verbose, &
+                    truncation, rmode, lrandrot, lupdate_randrot, lsymsqrt, &
+                    inflate, infmult, .false.)
+
       call matrix_to_tyqstate(ibarcl_rst, nrens, 2*ndim, Amat, Abk_aug)
       deallocate(Amat)
       call pull_aug
 
-   case (2)
-      ! Not implemented
-      continue
+   case (2)  ! Parameters estimation
+
+      write(*,*) 'Running analysis with parameter estimation'
+
+      if (is_local == 0) then
+         ! Global analysis on Amat
+         call analysis(Amat, R, E, S, D1, innov, ndim, nrens, nobs_ok, verbose, &
+                       truncation, rmode, lrandrot, lupdate_randrot, lsymsqrt, &
+                       inflate, infmult, .false.)
+
+         call matrix_to_tystate(ibarcl_rst, nrens, ndim, Amat, ndim_pe, pe_mat, A=Aan)
+         deallocate(Amat)
+
+         call save_X5(atime_an)
+      else
+         ! Local analysis: convert first, then run location-wise update
+         write(*,*) 'Running local analysis...'
+
+         call matrix_to_tystate(ibarcl_rst, nrens, ndim, Amat, ndim_pe, pe_mat, A=Aan)
+         deallocate(Amat)
+
+         call local_analysis
+      end if
+
+      call check_pe_bounds(ndim_pe)
 
    end select
 
@@ -165,5 +213,10 @@ program main
    ! Write the updated ensemble to output/restart
    !--------------------------------------------------------------------------
    call write_ensemble
+
+   !--------------------------------------------------------------------------
+   ! If they exist, write the parameter files for the parameter estimation
+   !--------------------------------------------------------------------------
+   call write_pe_files(ndim_pe)
 
 end program main

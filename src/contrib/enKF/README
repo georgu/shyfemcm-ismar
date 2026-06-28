@@ -55,6 +55,25 @@ suggested a null value for rain and cloudiness. Solar radiation perturbations
 are set null when the control is null. Plot all the perturbed files for checking.
 
 -------------------------------------------------------------------------------
+ PARAMETER ESTIMATION
+-------------------------------------------------------------------------------
+To run the parameter estimation, first prepare a normal DA run, without
+executing it. Then modify the *000.skel file, changing with a uppercase
+flag the numbers that you want to estimate. Beware that the parameter
+must be the only thing in that row.
+Then, create a file "pe_parameters.dat", with these rows as example:
+001_DCB 10 1 0 100
+002_DCB 12 1 0 100
+
+002_DCB is the flag that must be present in the skel file, 12 is the initial
+value, 1 is the standard deviation, 0 is the minimum limit, 100 is the maximum
+limit.
+When you have these two files modified, you must execute:
+- perturbe_pe.sh to create nrens perturbed pe files;
+- modify_skels_pe.sh to modify all the skel files accordingly to the first
+  skel file and the pe parameters in the pe file.
+
+-------------------------------------------------------------------------------
  SCRIPT AND UTILITY:
 -------------------------------------------------------------------------------
 

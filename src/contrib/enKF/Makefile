@@ -123,7 +123,7 @@ SAMPOBJ = m_pseudo2D.o m_fixsample2D.o m_newton2D.o m_newtonfunc2D.o \
           
 ENSOBJ = $(ENKOBJ) $(SAMPOBJ) subenkf.o mod_mod_err.o mod_enkf.o \
 	 mod_ens_state.o mod_init_enkf.o mod_manage_obs.o mod_mod_states.o \
-	 mod_obs_states.o mod_para.o sublocan.o
+	 mod_obs_states.o mod_para.o sublocan.o mod_pestimation.o
 
 # Executables list
 EXES = main \
@@ -208,6 +208,7 @@ fem2nc: fem2nc.o $(SHYOBJENS)
 ../../../lib/mod/mod_obs_states.mod: mod_obs_states.o
 ../../../lib/mod/mod_para.mod: mod_para.o
 ../../../lib/mod/m_analysis.mod: m_analysis.o
+../../../lib/mod/mod_pestimation.mod: mod_pestimation.o
 
 m_analysis.o: ../../../lib/mod/m_ensmean.mod ../../../lib/mod/m_ensvar.mod ../../../lib/mod/m_multa.mod ../../../lib/mod/mod_anafunc.mod 
 analysis2_EnOI.o: ../../../lib/mod/m_multa.mod
@@ -216,7 +217,7 @@ m_newton2D.o: ../../../lib/mod/m_newtonfunc2d.mod
 m_pseudo2D.o: ../../../lib/mod/m_newton2d.mod ../../../lib/mod/mod_fftw3.mod 
 m_sample2D.o: ../../../lib/mod/m_fixsample2d.mod ../../../lib/mod/m_pseudo2d.mod ../../../lib/mod/m_randrot.mod 
 
-main.o: ../../../lib/mod/mod_enkf.mod ../../../lib/mod/mod_mod_err.mod ../../../lib/mod/mod_restart.mod ../../../lib/mod/m_set_random_seed2.mod ../../../lib/mod/m_analysis.mod
+main.o: ../../../lib/mod/mod_enkf.mod ../../../lib/mod/mod_mod_err.mod ../../../lib/mod/mod_restart.mod ../../../lib/mod/m_set_random_seed2.mod ../../../lib/mod/m_analysis.mod ../../../lib/mod/mod_pestimation.mod
 make_antime_list.o: ../../../lib/mod/iso8601.mod
 mod_anafunc.o: ../../../lib/mod/m_ensmean.mod ../../../lib/mod/m_mean_preserving_rotation.mod ../../../lib/mod/m_multa.mod ../../../lib/mod/m_random.mod ../../../lib/mod/m_randrot.mod 
 

@@ -628,12 +628,14 @@ end subroutine pull_state
 !=======================================================================
 
 !=======================================================================
-! Conversion routines between ensemble of states and matrices
+! Conversion routines between ensemble of states and matrices, adding
+! parameter estimation
 !=======================================================================
-subroutine tystate_to_matrix(ibrcl, nens, ndim, A, Amat)
+subroutine tystate_to_matrix(ibrcl, nens, ndim, A, ndim_pe, pe_mat, Amat)
    implicit none
-   integer, intent(in) :: ibrcl, nens, ndim
+   integer, intent(in) :: ibrcl, nens, ndim, ndim_pe
    type(states), intent(in) :: A(nens)
+   real(dp), intent(in), optional :: pe_mat(ndim_pe, nens) ! optional
    real(dp), intent(out) :: Amat(ndim, nens)
    integer :: i, dimuv, dimts, dimz
 
@@ -641,28 +643,42 @@ subroutine tystate_to_matrix(ibrcl, nens, ndim, A, Amat)
    dimuv = nnlv * nnel
    dimts = nnlv * nnkn
 
-   do i = 1, nens
-      Amat(1:dimuv, i) = reshape(A(i)%u, (/dimuv/))
+   ! 1. Copy base hydrodynamic components (U, V, Z) for all ensembles
+   do i = 1, nens         
+      Amat(1:dimuv, i) = reshape(A(i)%u, (/dimuv/))        
       Amat(dimuv+1:2*dimuv, i) = reshape(A(i)%v, (/dimuv/))
-      Amat(2*dimuv+1:2*dimuv+dimz, i) = A(i)%z
-   end do
-
+      Amat(2*dimuv+1:2*dimuv+dimz, i) = A(i)%z    
+   end do             
+                      
+   ! 2. Handle baroclinic components (T, S) and append PE data
    if (ibrcl > 0) then
       do i = 1, nens
          Amat(2*dimuv+dimz+1 : 2*dimuv+dimz+dimts, i) = reshape(A(i)%t, (/dimts/))
          Amat(2*dimuv+dimz+dimts+1 : 2*dimuv+dimz+2*dimts, i) = reshape(A(i)%s, (/dimts/))
+         
+         ! Append pe_mat vector only if present and allocated
+         if (ndim_pe > 0 .and. present(pe_mat)) then
+            Amat(2*dimuv+dimz+2*dimts+1 : 2*dimuv+dimz+2*dimts+ndim_pe, i) = pe_mat(1:ndim_pe, i)
+         end if
       end do
+   else
+      ! If baroclinic is inactive but PE is required, append PE right after Z
+      if (ndim_pe > 0 .and. present(pe_mat)) then
+         do i = 1, nens
+             print*, pe_mat(1:ndim_pe, i)
+            Amat(2*dimuv+dimz+1 : 2*dimuv+dimz+ndim_pe, i) = pe_mat(1:ndim_pe, i)
+         end do
+      end if
    end if
+
 end subroutine tystate_to_matrix
-!=======================================================================
-
-
 
 !=======================================================================
-subroutine matrix_to_tystate(ibrcl, nens, ndim, Amat, A)
+subroutine matrix_to_tystate(ibrcl, nens, ndim, Amat, ndim_pe, pe_mat, A)
    implicit none
-   integer, intent(in) :: ibrcl, nens, ndim
+   integer, intent(in) :: ibrcl, nens, ndim, ndim_pe
    real(dp), intent(in) :: Amat(ndim, nens)
+   real(dp), intent(out), optional :: pe_mat(ndim_pe, nens) ! <-- Added optional
    type(states), intent(inout) :: A(nens)
    integer :: i, dimuv, dimts, dimz
 
@@ -670,23 +686,37 @@ subroutine matrix_to_tystate(ibrcl, nens, ndim, Amat, A)
    dimuv = nnlv * nnel
    dimts = nnlv * nnkn
 
+   ! 1. Extract base hydrodynamic components (U, V, Z) for all ensembles
    do i = 1, nens
       A(i)%u = reshape(Amat(1:dimuv, i), (/nnlv, nnel/))
       A(i)%v = reshape(Amat(dimuv+1:2*dimuv, i), (/nnlv, nnel/))
       A(i)%z = Amat(2*dimuv+1:2*dimuv+dimz, i)
    end do
 
+   ! 2. Handle baroclinic components (T, S) and extract PE data
    if (ibrcl > 0) then
       do i = 1, nens
          A(i)%t = reshape(Amat(2*dimuv+dimz+1 : 2*dimuv+dimz+dimts, i), (/nnlv, nnkn/))
          A(i)%s = reshape(Amat(2*dimuv+dimz+dimts+1 : 2*dimuv+dimz+2*dimts, i), (/nnlv, nnkn/))
+         
+         ! Extract PE data vector only if present and allocated
+         if (ndim_pe > 0 .and. present(pe_mat)) then
+            pe_mat(1:ndim_pe, i) = Amat(2*dimuv+dimz+2*dimts+1 : 2*dimuv+dimz+2*dimts+ndim_pe, i)
+         end if
       end do
+   else
+      ! If baroclinic is inactive but PE is required, extract PE right after Z
+      if (ndim_pe > 0 .and. present(pe_mat)) then
+         do i = 1, nens
+            pe_mat(1:ndim_pe, i) = Amat(2*dimuv+dimz+1 : 2*dimuv+dimz+ndim_pe, i)
+         end do
+      end if
    end if
+
 end subroutine matrix_to_tystate
-!=======================================================================
 
 !=======================================================================
-! Convert ensemble of qstates → matrix (2*ndim x nens)
+! Convert ensemble of qstates to matrix (2*ndim x nens)
 ! The first block holds q-fields, the second block holds state fields.
 !=======================================================================
 subroutine tyqstate_to_matrix(ibrcl, nens, ndim, A, Amat)
@@ -734,7 +764,7 @@ end subroutine tyqstate_to_matrix
 !=======================================================================
 
 !=======================================================================
-! Convert matrix (2*ndim x nens) → ensemble of qstates
+! Convert matrix (2*ndim x nens) to ensemble of qstates
 !=======================================================================
 subroutine matrix_to_tyqstate(ibrcl, nens, ndim, Amat, A)
    implicit none
