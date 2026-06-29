@@ -116,6 +116,8 @@
 	  call keps_shell
 	else if( iturb .eq. 3 ) then	!Munk Anderson
 	  call munk_anderson_shell
+	else if( iturb .eq. 4 ) then	!parabolic eddy viscosity
+	  call parabolic_shell
 	else
 	  write(6,*) 'Value iturb not possible: ',iturb
 	  stop 'error stop turb_closure: iturb'
@@ -246,6 +248,143 @@
 !------------------------------------------------------
 ! end of routine
 !------------------------------------------------------
+
+	end
+
+!**************************************************************
+
+	subroutine parabolic_shell
+
+! computes turbulent viscosity with a prescribed parabolic profile
+!
+! nu_{l} = kappa * ustar * h_{l} * ( 1 - h_{l} / H )
+!
+! where h_{l} is the layer bottom interface and H is the total depth.
+! SHYFEM layer indices used here are the same as in gotm_shell:
+! l=1 is the bottom interface of the first layer and l=nlev-1 is
+! the top interface of the bottom layer.
+
+	use mod_diff_visc_fric
+	use mod_layer_thickness
+	use levels, only : nlvdi,nlv
+	use basin
+	use shympi
+	use mod_hydro_print
+	use mod_info_output
+
+	implicit none
+
+	real, parameter :: kappa = 0.41
+	real, parameter :: prandtl_t = 10.0
+
+	real h(nlvdi)
+	real czdef
+	real depth,zbot,sigma
+	real z0b,dz0,rr
+	real ubot,vbot,ustar
+	real num,nuh
+
+	integer k,l
+	integer nlev,flev
+	integer ireib
+	integer, save :: icall = 0
+	real, save :: avmin, prt
+	real getpar
+	logical bw
+
+!------------------------------------------------------
+! initialization
+!------------------------------------------------------
+
+	if( icall .lt. 0 ) return
+
+	bw = print_not_quiet_once()
+
+	if( icall .eq. 0 ) then
+	  if( nlv_global <= 1 ) icall = -1
+	  if( icall < 0 ) return
+
+	  if( bw ) write(*,*) 'starting parabolic turbulence model'
+
+	  ! optional floor; set vistur=0 in the parameter file for no floor
+	  avmin = getpar('vistur')
+	  ireib = nint(getpar('ireib'))
+
+	  if (ireib .ne. 6) then 
+	     write(6,*) 'Value ireib not possible: ',ireib
+	     write(6,*) 'iturb = 4 works only with ireib = 6'
+	     stop 'error stop turb_closure: '
+	  end if
+
+	  prt = prandtl_t
+
+	  icall = 1
+	end if
+
+	icall = icall + 1
+
+	z0b = getpar('czdef')
+
+!------------------------------------------------------
+! compute parabolic viscosity for each water column
+!------------------------------------------------------
+
+	do k=1,nkn
+
+	  nlev = nlvdi
+	  call dep3dnod(k,+1,flev,nlev,h)
+
+	  if( count( h(flev:nlev) <= 0. ) > 0 ) goto 97
+
+	  depth = 0.
+	  do l=flev,nlev
+	    depth = depth + h(l)
+	  end do
+
+	  if( depth <= 0. ) goto 97
+
+	  ! bottom friction velocity, same estimate used in gotm_shell
+	  ubot = uprv(nlev,k)
+	  vbot = vprv(nlev,k)
+	  dz0 = h(nlev)/z0b
+	  rr = kappa / ( log( (1.+0.5*dz0) ) )
+	  ustar = rr*sqrt( ubot*ubot + vbot*vbot )
+
+	  zbot = 0.
+	  do l=flev,nlev-1
+
+	    ! bottom interface l
+	    zbot = zbot + h(l)
+	    sigma = (depth-zbot)/depth
+
+	    ! a bit of paranoia
+	    if( sigma > 0. .and. sigma < 1. ) then
+	      num = kappa * ustar * zbot * sigma
+	    else
+	      num = 0.
+	    end if
+
+	    num = max(num,avmin)
+	    nuh = num/prt
+
+	    visv(l,k) = num
+	    difv(l,k) = nuh
+
+	  end do
+	end do
+
+	if( bextra_exchange ) then
+	  call shympi_exchange_3d0_node(visv)
+	  call shympi_exchange_3d0_node(difv)
+	end if
+
+	return
+
+   97	continue
+	write(6,*) 'layers without depth in parabolic_shell'
+	write(6,*) k,nlev
+	write(6,*) h(flev:nlev)
+	stop 'error stop parabolic_shell: no layer'
 
 	end
 

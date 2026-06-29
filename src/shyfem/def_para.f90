@@ -1069,9 +1069,11 @@
 ! A value of 0 uses no turbulence scheme. In this case be sure that 
 ! |vistur| and |diftur| have been set manually. |iturb=1| uses the GOTM
 ! routines for turbulence. In order to use this value |SHYFEM| has to be
-! compiled with GOTM support. |iturb=2| uses a k-epsilon module, and a value
-! of 3 uses the Munk-Anderson model. The recommended value for |iturb| 
-! is 1 (GOTM module). (Default 0)
+! compiled with GOTM support. |iturb=2| uses a k-epsilon module, a value
+! of 3 uses the Munk-Anderson model and a value of 4 uses a simple parabolic 
+! eddy viscosity. With the parabolic model the bottom friction model must be
+! set to |ireib=6|. The recommended value for |iturb| is 1 (GOTM module).
+! (Default 0)
 
 	call addpar('iturb',0.)		!use turbulence closure scheme
 
