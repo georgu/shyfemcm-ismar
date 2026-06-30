@@ -73,7 +73,8 @@
         if( rk_triplet .ne. 111  .and.  &
      &      rk_triplet .ne. 222  .and.  &
      &      rk_triplet .ne. 2221 .and.  &
-     &      rk_triplet .ne. 232 ) then
+     &      rk_triplet .ne. 232  .and.  &
+     &      rk_triplet .ne. 33 ) then
           write(6,*) 'runge-kutta triplet: ', rk_triplet
           stop 'error stop mod_rungekutta_init: incompatible params'
         end if
@@ -351,6 +352,78 @@
 	  c_rk(1)  = 2*chi
 	  c_rk(2)  = 1.
 	  c_rk(3)  = 1.
+
+	!The third order Strong Stability Preserving SSP scheme.
+	!The implicit scheme is coded as the explicit one with zero
+	!element on the diagonal of the Butcher Tableux. Being fully
+	!explicit this scheme is highly inefficient and it is used
+	!only for testing or computing reference solutions. It is
+	!not documented in the manual.
+	else if (rk_triplet == 33) then
+          n_rkstages = 3
+
+          allocate (a_erk(n_rkstages,n_rkstages))
+          allocate (a_irk(n_rkstages,n_rkstages+1))
+          allocate (a_srk(n_rkstages,n_rkstages+1))
+          allocate (b_erk(n_rkstages))
+          allocate (b_irk(n_rkstages+1))
+          allocate (b_srk(n_rkstages+1))
+          allocate (c_rk(n_rkstages))
+
+	  a_erk(1,1) = 1.
+	  a_erk(1,2) = 0.
+	  a_erk(1,3) = 0.
+	  a_erk(2,1) = 1./4.
+	  a_erk(2,2) = 1./4.
+	  a_erk(2,3) = 0.
+	  a_erk(3,1) = 1./6.
+	  a_erk(3,2) = 1./6.
+	  a_erk(3,3) = 2./3.
+
+	  a_irk(1,1) = 1.
+	  a_irk(1,2) = 0.
+	  a_irk(1,3) = 0.
+	  a_irk(1,4) = 0.
+	  a_irk(2,1) = 1./4.
+	  a_irk(2,2) = 1./4.
+	  a_irk(2,3) = 0.
+	  a_irk(2,4) = 0.
+	  a_irk(3,1) = 1./6.
+	  a_irk(3,2) = 1./6.
+	  a_irk(3,3) = 2./3.
+	  a_irk(3,4) = 0.
+
+	  a_srk(1,1) = 1.
+	  a_srk(1,2) = 0.
+	  a_srk(1,3) = 0.
+	  a_srk(1,4) = 0.
+	  a_srk(2,1) = 1./4.
+	  a_srk(2,2) = 1./4.
+	  a_srk(2,3) = 0.
+	  a_srk(2,4) = 0.
+	  a_srk(3,1) = 1./6.
+	  a_srk(3,2) = 1./6.
+	  a_srk(3,3) = 2./3.
+	  a_srk(3,4) = 0.
+
+	  b_erk(1)  = 1./6.
+	  b_erk(2)  = 1./6.
+	  b_erk(3)  = 2./3.
+
+	  b_irk(1)  = 1./6.
+	  b_irk(2)  = 1./6.
+	  b_irk(3)  = 2./3.
+	  b_irk(4)  = 0.
+
+	  b_srk(1)  = 1./6.
+	  b_srk(2)  = 1./6.
+	  b_srk(3)  = 2./3.
+	  b_srk(4)  = 0.
+
+	  c_rk(1)  = 1.
+	  c_rk(2)  = 1./2.
+	  c_rk(3)  = 1.
+
 	end if
 
         if ( n_rkstages > 1 ) then
