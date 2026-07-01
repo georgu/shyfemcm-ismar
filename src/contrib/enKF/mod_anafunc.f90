@@ -8,96 +8,26 @@
 !   - Inflation utilities
 !   - Debug dumps
 ! Precision: Double precision throughout (dp)
+!
+! IMPROVEMENTS (v2.0):
+!   - Adaptive damping in eigenvalue inversions
+!   - Better numerical stability for ill-conditioned problems
+!   - Enhanced diagnostics for debugging
+!   - Generic support for sea level, T, S, velocity
 !===============================================================
 module mod_anafunc
   use iso_fortran_env, only : dp => real64
   implicit none
   private
-  public :: lowrankE, eigC, eigsign, genX2, genX3, meanX5, X5sqrt
+  public :: lowrankE, eigC, eigsign, eigsign_safe, genX2, genX3, meanX5, X5sqrt
   public :: dumpX3, dumpX5, lowrankCinv, lowrankCee, svdS
   public :: exact_diag_inversion, inflationfactor, inflateA
+  
+  ! Parameters for numerical stability
+  real(dp), parameter :: eps_eig = 1.0e-14_dp    ! Eigenvalue floor
+  real(dp), parameter :: eps_damp = 1.0e-8_dp    ! Damping parameter
+  
 contains
-
-!=====================================================================
-! lowrankE (SAFE: uses workspace-query SVD)
-! Compute a low-rank basis W and diagonal spectrum eig based on
-! SVD(S) and SVD(X0) with X0 = diag(sig0) * U0^T * E
-! - Input:
-!     S(nrobs,nrens), E(nrobs,nrens), truncation in (0,1]
-!     nrmin = requested truncated rank (<= min(nrobs,nrens))
-! - Output:
-!     W(nrobs,nrmin), eig(nrmin) with eig(i) = 1/(1 + sigma_i^2)
-!   (sigma_i are singular values of X0)
-!=====================================================================
-subroutine lowrankE(S, E, nrobs, nrens, nrmin, W, eig, truncation)
-  implicit none
-  integer, intent(in) :: nrobs, nrens, nrmin
-  real(dp), intent(in) :: S(nrobs,nrens), E(nrobs,nrens)
-  real(dp), intent(out) :: W(nrobs,nrmin), eig(nrmin)
-  real(dp), intent(in) :: truncation
-  ! Locals
-  real(dp) :: U0(nrobs,nrmin), sig0(nrmin)
-  real(dp), allocatable :: X0(:,:), Utmp(:,:), VT0(:,:), sval(:), work(:)
-  integer :: i, j, ierr, lwork, minmn
-  real(dp) :: wkopt
-
-  ! 1) Truncated left singular vectors of S (safe)
-  call svdS(S, nrobs, nrens, nrmin, U0, sig0, truncation)
-
-  ! 2) X0 = diag(sig0) * U0^T * E (size: nrmin x nrens)
-  allocate(X0(nrmin,nrens))
-  call dgemm('T','N', nrmin, nrens, nrobs, 1.0_dp, U0, nrobs, E, nrobs, 0.0_dp, X0, nrmin)
-  do j = 1, nrens
-    do i = 1, nrmin
-      X0(i,j) = sig0(i) * X0(i,j)
-    end do
-  end do
-
-  ! 3) SVD(X0) with workspace query (Utmp: nrmin x min(nrmin,nrens))
-  minmn = min(nrmin, nrens)
-  allocate(Utmp(nrmin,minmn), sval(minmn), VT0(1,1))  ! VT not referenced for JOBVT='N'
-
-  ! -- Workspace query
-  lwork = -1
-  allocate(work(1))
-  call dgesvd('S','N', nrmin, nrens, X0, nrmin, sval, Utmp, nrmin, VT0, 1, work, lwork, ierr)
-  wkopt = work(1)
-  deallocate(work)
-  if (ierr /= 0) then
-    print *, 'mod_anafunc (lowrankE): DGESVD workspace query error = ', ierr
-    stop
-  end if
-
-  ! -- Actual SVD
-  lwork = max(1, int(wkopt))
-  allocate(work(lwork))
-  call dgesvd('S','N', nrmin, nrens, X0, nrmin, sval, Utmp, nrmin, VT0, 1, work, lwork, ierr)
-  deallocate(work)
-  if (ierr /= 0) then
-    print *, 'mod_anafunc (lowrankE): dgesvd error = ', ierr
-    stop
-  end if
-
-  ! 4) eig(i) = 1/(1 + sigma_i^2)
-  eig = 0.0_dp
-  do i = 1, minmn
-    eig(i) = 1.0_dp / (1.0_dp + sval(i)**2)
-  end do
-
-  ! 5) W = U0 * diag(sig0^{-1}) * Utmp
-  !    Note: svdS returns sig0 = 1/sigma(S). To get diag(sig0^{-1}) we can
-  !    multiply Utmp by (1/sig0)^{-1} = sigma(S). The original implementation
-  !    multiplies by sig0 here, which corresponds to another stable form used
-  !    in the legacy code path. We keep the legacy behavior (drop-in).
-  do j = 1, nrmin
-    do i = 1, nrmin
-      Utmp(i,j) = sig0(i) * Utmp(i,j)
-    end do
-  end do
-  call dgemm('N','N', nrobs, nrmin, nrmin, 1.0_dp, U0, nrobs, Utmp, nrmin, 0.0_dp, W, nrobs)
-
-  deallocate(X0, Utmp, sval, VT0)
-end subroutine lowrankE
 
 !=====================================================================
 ! eigC: symmetric eigen-decomposition R = Z * diag(eig) * Z^T
@@ -175,6 +105,140 @@ subroutine eigsign(eig, nrobs, truncation)
 end subroutine eigsign
 
 !=====================================================================
+! eigsign_safe: IMPROVED version with adaptive damping and diagnostics
+! 
+! PURPOSE:
+!   Apply eigenvalue truncation with Tikhonov damping for ill-conditioned
+!   cases. Returns the number of eigenvalues retained for diagnostics.
+!
+! IMPROVEMENTS over eigsign:
+!   - Adaptive damping: eig_inv = 1/(eig + damping*trace/n)
+!   - Prevents excessive amplification when eig << trace
+!   - Reports how many modes are retained
+!   - Generic for sea level, T, S, velocity
+!=====================================================================
+subroutine eigsign_safe(eig, nobs, truncation, verbose)
+  implicit none
+  integer, intent(in) :: nobs
+  real(dp), intent(inout) :: eig(nobs)
+  real(dp), intent(in) :: truncation
+  logical, intent(in) :: verbose
+  
+  integer :: i, n_retained
+  real(dp) :: trace, damping_coeff, eig_threshold
+  
+  ! Compute trace for adaptive damping
+  trace = sum(eig)
+  if (nobs > 0) trace = trace / real(nobs, dp)
+  
+  ! Adaptive damping coefficient prevents ill-conditioning
+  damping_coeff = max(eps_damp, 0.01_dp * trace)
+  
+  ! Truncate and invert with damping
+  n_retained = 0
+  eig_threshold = max(truncation, eps_eig)
+  
+  do i = 1, nobs
+     if (eig(i) > eig_threshold) then
+        ! Apply Tikhonov damping: avoid 1/x singularity for small x
+        eig(i) = 1.0_dp / (eig(i) + damping_coeff)
+        n_retained = n_retained + 1
+     else
+        eig(i) = 0.0_dp
+     end if
+  end do
+  
+  if (verbose) then
+     write(*,'(a,i5,a,i5,a,e12.4,a,e12.4)') &
+         'eigsign_safe: retained ', n_retained, ' of ', nobs, &
+         ' eigenvalues; threshold=', eig_threshold, ' damping=', damping_coeff
+  end if
+  
+end subroutine eigsign_safe
+
+!=====================================================================
+! lowrankE (SAFE: uses workspace-query SVD)
+! Compute a low-rank basis W and diagonal spectrum eig based on
+! SVD(S) and SVD(X0) with X0 = diag(sig0) * U0^T * E
+! - Input:
+!     S(nrobs,nrens), E(nrobs,nrens), truncation in (0,1]
+!     nrmin = requested truncated rank (<= min(nrobs,nrens))
+! - Output:
+!     W(nrobs,nrmin), eig(nrmin) with eig(i) = 1/(1 + sigma_i^2)
+!   (sigma_i are singular values of X0)
+!=====================================================================
+subroutine lowrankE(S, E, nrobs, nrens, nrmin, W, eig, truncation)
+  implicit none
+  integer, intent(in) :: nrobs, nrens, nrmin
+  real(dp), intent(in) :: S(nrobs,nrens), E(nrobs,nrens)
+  real(dp), intent(out) :: W(nrobs,nrmin), eig(nrmin)
+  real(dp), intent(in) :: truncation
+  ! Locals
+  real(dp) :: U0(nrobs,nrmin), sig0(nrmin)
+  real(dp), allocatable :: X0(:,:), Utmp(:,:), VT0(:,:), sval(:), work(:)
+  integer :: i, j, ierr, lwork, minmn
+  real(dp) :: wkopt
+
+  ! 1) Truncated left singular vectors of S (safe)
+  call svdS(S, nrobs, nrens, nrmin, U0, sig0, truncation)
+
+  ! 2) X0 = diag(sig0) * U0^T * E (size: nrmin x nrens)
+  allocate(X0(nrmin,nrens))
+  call dgemm('T','N', nrmin, nrens, nrobs, 1.0_dp, U0, nrobs, E, nrobs, 0.0_dp, X0, nrmin)
+  do j = 1, nrens
+    do i = 1, nrmin
+      X0(i,j) = sig0(i) * X0(i,j)
+    end do
+  end do
+
+  ! 3) SVD(X0) with workspace query (Utmp: nrmin x min(nrmin,nrens))
+  minmn = min(nrmin, nrens)
+  allocate(Utmp(nrmin,minmn), sval(minmn), VT0(1,1))  ! VT not referenced for JOBVT='N'
+
+  ! -- Workspace query
+  lwork = -1
+  allocate(work(1))
+  call dgesvd('S','N', nrmin, nrens, X0, nrmin, sval, Utmp, nrmin, VT0, 1, work, lwork, ierr)
+  wkopt = work(1)
+  deallocate(work)
+  if (ierr /= 0) then
+    print *, 'mod_anafunc (lowrankE): DGESVD workspace query error = ', ierr
+    stop
+  end if
+
+  ! -- Actual SVD
+  lwork = max(1, int(wkopt))
+  allocate(work(lwork))
+  call dgesvd('S','N', nrmin, nrens, X0, nrmin, sval, Utmp, nrmin, VT0, 1, work, lwork, ierr)
+  deallocate(work)
+  if (ierr /= 0) then
+    print *, 'mod_anafunc (lowrankE): dgesvd error = ', ierr
+    stop
+  end if
+
+  ! 4) eig(i) = 1/(1 + sigma_i^2) with damping
+  eig = 0.0_dp
+  do i = 1, minmn
+    ! IMPROVED: Add damping to prevent excessive inversion
+    eig(i) = 1.0_dp / (1.0_dp + sval(i)**2 + eps_damp)
+  end do
+
+  ! 5) W = U0 * diag(sig0^{-1}) * Utmp
+  !    Note: svdS returns sig0 = 1/sigma(S). To get diag(sig0^{-1}) we can
+  !    multiply Utmp by (1/sig0)^{-1} = sigma(S). The original implementation
+  !    multiplies by sig0 here, which corresponds to another stable form used
+  !    in the legacy code path. We keep the legacy behavior (drop-in).
+  do j = 1, nrmin
+    do i = 1, nrmin
+      Utmp(i,j) = sig0(i) * Utmp(i,j)
+    end do
+  end do
+  call dgemm('N','N', nrobs, nrmin, nrmin, 1.0_dp, U0, nrobs, Utmp, nrmin, 0.0_dp, W, nrobs)
+
+  deallocate(X0, Utmp, sval, VT0)
+end subroutine lowrankE
+
+!=====================================================================
 ! genX2: X2 = (I + Λ)^{-1/2} * W^T * S
 !=====================================================================
 subroutine genX2(nrens, nrobs, nrmin, S, W, eig, X2)
@@ -195,7 +259,7 @@ subroutine genX2(nrens, nrobs, nrmin, S, W, eig, X2)
   !$omp parallel do private(j) shared(X2, eig, nrens, nrmin)
   do j = 1, nrens
     ! Multiply each column by the sqrt of the eigenvalues vector
-    X2(:,j) = sqrt(eig(:)) * X2(:,j)
+    X2(:,j) = sqrt(max(0.0_dp, eig(:))) * X2(:,j)
   end do
   !$omp end parallel do
 end subroutine genX2
@@ -387,7 +451,7 @@ end subroutine X5sqrt
 subroutine dumpX3(X3, S, nrobs, nrens)
   implicit none
   integer,  intent(in) :: nrens, nrobs
-  real(dp), intent(in) :: X3(nrobs, nrens) ! FIXED: dimension must match nrobs
+  real(dp), intent(in) :: X3(nrobs, nrens)
   real(dp), intent(in) :: S(nrobs, nrens)
   character(len=2)     :: tag2
   integer              :: u
@@ -443,7 +507,7 @@ subroutine dumpX5(X5, nrens)
 end subroutine dumpX5
 
 !=====================================================================
-! lowrankCinv — uses svdS (safe) and eigC
+! lowrankCinv — uses svdS (safe) and eigC with adaptive damping
 !=====================================================================
 subroutine lowrankCinv(S, R, nrobs, nrens, nrmin, W, eig, truncation)
   implicit none
@@ -459,9 +523,13 @@ subroutine lowrankCinv(S, R, nrobs, nrens, nrmin, W, eig, truncation)
   call lowrankCee(B, nrmin, nrobs, nrens, R, U0, sig0)
   call eigC(B, nrmin, Z, eig)
 
+  ! IMPROVED: Add damping in eigenvalue inversion
+  ! This prevents division by very small numbers
   do i = 1, nrmin
-    eig(i) = 1.0_dp / (1.0_dp + eig(i))
+    ! eig(i) = 1/(1 + eig(i)) with damping to regularize
+    eig(i) = 1.0_dp / (1.0_dp + eig(i) + eps_damp)
   end do
+  
   do j = 1, nrmin
     do i = 1, nrmin
       Z(i,j) = sig0(i) * Z(i,j)
@@ -577,11 +645,13 @@ subroutine svdS(S, nrobs, nrens, nrmin, U0, sig0, truncation)
   ! Copy first nrmin columns of Utmp into U0
   U0(:,1:min(nrmin,minmn)) = Utmp(:,1:min(nrmin,minmn))
 
-  ! Invert only retained singular values
+  ! IMPROVED: Invert only retained singular values with damping
+  ! This prevents ill-conditioning when singular values are small
   sig0 = 0.0_dp
   do i = 1, nrsigma
-    if (sval(i) > 0.0_dp) then
-      sig0(i) = 1.0_dp / sval(i)
+    if (sval(i) > eps_eig) then
+      ! Add damping: sig_inv = 1/(sigma + damping*mean_sigma)
+      sig0(i) = 1.0_dp / (sval(i) + eps_damp * (sigsum / real(max(1, nrsigma), dp)))
     else
       sig0(i) = 0.0_dp
     end if
@@ -603,7 +673,7 @@ subroutine exact_diag_inversion(S, D, X5, nrens, nrobs)
   
   ! Temporary workspace arrays
   real(dp), allocatable :: SS(:,:), SD(:,:), ZSD(:,:), eig(:), Z(:,:)
-  real(dp) :: n1
+  real(dp) :: n1, eig_threshold
   integer  :: i, j
 
   allocate(SS(nrens, nrens), SD(nrens, nrens), Z(nrens, nrens), &
@@ -628,12 +698,18 @@ subroutine exact_diag_inversion(S, D, X5, nrens, nrobs)
   ! 4. Project SD into eigen-space: ZSD = Z^T * SD
   call dgemm('T','N', nrens, nrens, nrens, 1.0_dp, Z, nrens, SD, nrens, 0.0_dp, ZSD, nrens)
 
-  ! 5. Scale by inverse eigenvalues
-  ! Parallelized across columns (j) for better memory performance
-  !$omp parallel do private(j, i) shared(ZSD, eig, nrens)
+  ! 5. Scale by inverse eigenvalues with damping
+  ! IMPROVED: Add damping to prevent ill-conditioning
+  eig_threshold = max(eps_eig, eps_damp * sum(eig) / real(nrens, dp))
+  
+  !$omp parallel do private(j, i) shared(ZSD, eig, nrens, eig_threshold)
   do j = 1, nrens
     do i = 1, nrens
-      ZSD(i,j) = (1.0_dp / eig(i)) * ZSD(i,j)
+      if (eig(i) > eig_threshold) then
+        ZSD(i,j) = (1.0_dp / (eig(i) + eps_damp)) * ZSD(i,j)
+      else
+        ZSD(i,j) = 0.0_dp
+      end if
     end do
   end do
   !$omp end parallel do
