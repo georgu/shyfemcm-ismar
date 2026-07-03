@@ -31,42 +31,60 @@ end module mod_perturbations
 ! ======================================================================
 
 ! ======================================================================
-subroutine init_shyfem(basinf, nnlv)
-   use basin
-   use levels
+subroutine init_shyfem(basfile, nnlv)
+
    use mod_geom_dynamic
    use mod_hydro
    use mod_hydro_vel
    use mod_ts
-   use mod_restart
-   use shympi
+   use mod_conz
    use mod_gotm_aux
+   use mod_restart
+   use mod_layer_thickness
+   use sigma
+   use mod_area
+   use evgeom
+   use mod_depth
+   use shympi
+   use levels
+   use basin
+   use mod_init_enkf, only : nanal
    implicit none
-      
-   character(len=*), intent(in) :: basinf
+
+   character(len=80), intent(in) :: basfile
    integer, intent(in) :: nnlv
    integer :: ios
-      
-   open(21,file=basinf,status="old",form="unformatted",iostat=ios)
-   if (ios/=0) error stop "Cannot open basin"
+
+   !-----------------------------
+   ! Read basin file
+   !-----------------------------
+   open(21,file=basfile,status="old",form="unformatted",iostat=ios)
+   if (ios/=0) error stop "init_shyfem: Cannot open basin file"
    call basin_read_by_unit(21)
    close(21)
-      
+
    nlv = nnlv
    nlvdi = nnlv
 
-   call mod_geom_dynamic_init(nkn,nel)
-   call mod_hydro_init(nkn,nel,nlv)
-   call mod_hydro_vel_init(nkn,nel,nlv)
-   call mod_ts_init(nkn,nlv)
-   call levels_init(nkn,nel,nlv)
-   call mod_gotm_aux_init(nkn, nlv)
-   call shympi_set_hlv(nlv, hlv)
+   ! Initialize SHYFEM modules BEFORE reading restart
+   call mod_geom_dynamic_init(nkn, nel)
+   call mod_hydro_init(nkn, nel, nnlv)
+   call mod_hydro_vel_init(nkn, nel, nnlv)
+   call mod_ts_init(nkn, nnlv)
+   call levels_init(nkn, nel, nnlv)
+   call mod_gotm_aux_init(nkn, nnlv)
+   call shympi_set_hlv(nnlv, hlv)
    call shympi_init(.false.)
+   call mod_layer_thickness_init(nkn, nel, nnlv)
+   call init_sigma_info(nnlv,hlv)
+   call mod_area_init(nkn,nnlv)
+   call ev_init(nel)
+   call mod_depth_init(nkn,nel)
 
    nkn_global = nkn
    nel_global = nel
    nlv_global = nlv
+
 end subroutine init_shyfem
 
 ! ======================================================================

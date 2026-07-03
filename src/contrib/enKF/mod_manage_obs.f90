@@ -902,84 +902,124 @@ subroutine screen_observation(obs, x_ens, nmem, obs_std, k_std, k_rel, accept_ob
 
 end subroutine screen_observation
 
-!=======================================================================
-!  check_spread - Adaptive R inflation (Sakov 2012)
-!=======================================================================
+!======================================================================
 subroutine check_spread(d, stdv, mval, mvalm)
+    use levels
     use mod_ens_state
     implicit none
-    
-    real(dp), intent(in)    :: d, mvalm
-    real(dp), intent(in)    :: mval(nrens)
-    real(dp), intent(inout) :: stdv
-    
+
+    ! Input/Output
+    real(dp), intent(in)    :: d          ! Innovation (Observation - Ensemble Mean)
+    real(dp), intent(in)    :: mvalm      ! Ensemble mean at the specific node
+    real(dp), intent(in)    :: mval(nrens)! Values for all ensemble members
+    real(dp), intent(inout) :: stdv       ! Observation error (Standard Deviation)
+
+    ! Local variables
     integer :: ne
     integer, save :: icall = 0
-    real(dp) :: var_e, var_o, var_o_new, d2
-    real(dp), parameter :: tiny_spread = 1.0e-12_dp
+    real(dp) :: var_e, var_o, var_o_new, d2, total_var_expected
+    real(dp), parameter :: tiny_spread = 1.0e-12_dp ! Guard against zero ens_spread
 
     if (icall == 0) then
-        write(*,'(a,f8.3)') 'EnKF: R-adaptive inflation (Sakov 2012), KSTD = ', KSTD
+        write(*,*) 'EnKF: R-adaptive inflation active (Sakov 2012), KSTD = ', KSTD
         icall = 1
     end if
 
+    ! Exit if KSTD is not set or invalid
     if (KSTD <= 0.0_dp) return
 
-    ! 1. Calculate ensemble variance
+    ! 1. Calculate Ensemble Variance (var_e)
     var_e = 0.0_dp
     do ne = 1, nrens
         var_e = var_e + (mval(ne) - mvalm)**2
     end do
-    var_e = var_e / real(max(1, nrens-1), dp)
+    var_e = var_e / real(nrens - 1, dp)
 
-    ! 2. Innovation squared
+    ! Clean background variance step
+    if (var_e < tiny_spread) var_e = tiny_spread
+
+    ! 2. Square the innovation and get current observation variance (var_o)
     d2 = d**2
     var_o = stdv**2
 
-    ! 3. Sakov (2012) adaptive inflation
-    if (d2 > (KSTD**2 * var_e)) then
-        if (var_e < tiny_spread) var_e = tiny_spread
-        
-        var_o_new = sqrt((var_e + var_o)**2 + (d2 * var_e / KSTD**2)) - var_e
-        
-        ! Safety cap
+    ! 3. Correct Sakov (2012) logic
+    ! Expected total variance scaled by KSTD
+    total_var_expected = KSTD**2 * (var_e + var_o)
+
+    ! Condition: If innovation exceeds the scaled expected total variance
+    if (d2 > total_var_expected) then
+
+        ! Formula standard: la nuova varianza di osservazione compensa il deficit
+        var_o_new = (d2 / KSTD**2) - var_e
+
+        ! Safety cap: Prevent the error from growing indefinitely (max 100x)
         if (var_o_new > 100.0_dp * var_o) var_o_new = 100.0_dp * var_o
-        
+
+        ! Update the standard deviation (ensure it never shrinks below original)
         stdv = sqrt(max(var_o_new, var_o))
     end if
+
+!    if (abs(d) > 1.0_dp) then
+!       write(*,*) 'DEBUG Sakov: inn=', d, ' std_o=', stdv, ' var_e=', var_e, ' thresh=', KSTD**2 * (var_e + stdv**2)
+!    end if
 
 end subroutine check_spread
 
 !=======================================================================
-!  check_spread_speed - Adaptive R inflation for velocity components
+!  check_spread_speed - Robust Vectorial R-adaptive inflation for velocity
 !=======================================================================
 subroutine check_spread_speed(d1, d2, stdv, um, vm, umm, vmm)
-    use mod_ens_state
+    use iso_fortran_env, only : dp => real64
     implicit none
-    
-    real(dp), intent(in)    :: d1, d2
-    real(dp), intent(inout) :: stdv
-    real(dp), intent(in)    :: um(nrens), vm(nrens), umm, vmm
-    
-    real(dp) :: cs(nrens), csm, inn, ens_std, stdv_new
-    integer :: ne
 
-    if (KSTD <= 0.0_dp) return
+    real(dp), intent(in)    :: d1, d2   ! Innovations for U and V components (obs - model)
+    real(dp), intent(inout) :: stdv     ! Observation error standard deviation for velocity
+    real(dp), intent(in)    :: um(:), vm(:) ! Ensemble arrays for U and V
+    real(dp), intent(in)    :: umm, vmm ! Ensemble means for U and V
 
-    cs  = sqrt(um**2 + vm**2)
-    csm = sqrt(umm**2 + vmm**2)
+    real(dp) :: var_e, var_o, var_o_new, inn2, total_variance_threshold
+    real(dp), parameter :: tiny_spread = 1.0e-12_dp
+    real(dp) :: KSTD_local
+    integer  :: ne, nrens
 
-    ens_std = 0.0_dp
+    ! Hardcoded KSTD fallback if not globally shared via an inherited module
+    KSTD_local = 2.0_dp 
+
+    if (KSTD_local <= 0.0_dp) return
+    nrens = size(um)
+
+    !=======================================================================
+    ! FIX: Compute true 2D vector variance by summing the individual 
+    ! variances of the U and V components. This preserves direction 
+    ! uncertainty, preventing the magnitude-subtraction cancellation bug.
+    !=======================================================================
+    var_e = 0.0_dp
     do ne = 1, nrens
-        ens_std = ens_std + (cs(ne) - csm)**2
+        var_e = var_e + (um(ne) - umm)**2 + (vm(ne) - vmm)**2
     end do
-    ens_std = sqrt(ens_std / real(max(1, nrens-1), dp))
+    var_e = var_e / real(max(1, nrens-1), dp)
+    if (var_e < tiny_spread) var_e = tiny_spread
 
-    inn = sqrt(d1**2 + d2**2)
+    ! 2. Compute squared magnitudes of innovation and observation error
+    inn2  = d1**2 + d2**2  ! Total squared vector innovation
+    var_o = stdv**2        ! Baseline observational variance
 
-    if (abs(inn) > KSTD * ens_std .and. ens_std > 0.0_dp) then
-        stdv_new = sqrt(sqrt((ens_std**2 + stdv**2)**2 + ((1.0_dp/KSTD) * ens_std * inn)**2) - ens_std**2)
-        stdv = stdv_new
+    ! 3. Vectorial Sakov (2012) Criteria check
+    total_variance_threshold = KSTD_local**2 * (var_e + var_o)
+
+    if (inn2 > total_variance_threshold) then
+        !=======================================================================
+        ! FIX: Applied the corrected algebraic Sakov 2012 formulation 
+        ! for vector velocity. When model and data heavily mismatch, 
+        ! expand var_o proportionally to the vector innovation.
+        !=======================================================================
+        var_o_new = (inn2 / KSTD_local**2) - var_e
+
+        ! Safety ceiling clamp: Prevent R from expanding beyond 100 times the baseline
+        if (var_o_new > 100.0_dp * var_o) var_o_new = 100.0_dp * var_o
+
+        ! Safeguard the update step against variance contraction
+        stdv = sqrt(max(var_o_new, var_o))
     end if
 
 end subroutine check_spread_speed

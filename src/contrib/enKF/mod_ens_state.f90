@@ -44,6 +44,11 @@ subroutine read_ensemble()
    use mod_conz
    use mod_gotm_aux
    use mod_restart
+   use mod_layer_thickness
+   use sigma
+   use mod_area
+   use evgeom
+   use mod_depth
    implicit none
 
    character(len=5) :: nrel, nal
@@ -72,6 +77,11 @@ subroutine read_ensemble()
    call mod_gotm_aux_init(nnkn, nnlv)
    call shympi_set_hlv(nnlv, hlv)
    call shympi_init(.false.)
+   call mod_layer_thickness_init(nnkn, nnel, nnlv)
+   call init_sigma_info(nnlv,hlv)
+   call mod_area_init(nnkn,nnlv)
+   call ev_init(nnel)
+   call mod_depth_init(nnkn,nnel)
 
    ! Allocate ensemble
    call allocate_all()
@@ -149,6 +159,11 @@ subroutine bc_val_check_correct()
 
    nbc = 1
    inquire(file='lbound.dat', exist=file_exists)
+
+   ! Disable boundary correction. Not valid for transports.
+   ! DO NOT USE IT! WORKS BADLY AND IT IS NOT NECESSARY. 
+   ! DO NOT ASSIMILATE OBSERVATIONS NEAR THE OPEN BOUNDARIES
+   file_exists = .false.
 
    if (file_exists) then
       allocate(bcid(nbc), bcrho(nbc))
@@ -238,35 +253,35 @@ subroutine bc_val_check_correct()
       !===============================================================
       ! ELEMENT-BASED FIELDS: u, v (Velocity Vectors)
       !===============================================================
-      do ie = 1, nnel
-
-         if (file_exists) then
-            call bc_correction('elem', ie, nbc, bcid, bcrho, w)
-         else
-            w = 0.0_dp
-         end if
-
-         do nl = 1, nnlv
-            ! Apply boundary relaxation to U and V currents
-            Aan(ne)%u(nl,ie) = w * Abk(ne)%u(nl,ie) + (1.0_dp - w) * Aan(ne)%u(nl,ie)
-            Aan(ne)%v(nl,ie) = w * Abk(ne)%v(nl,ie) + (1.0_dp - w) * Aan(ne)%v(nl,ie)
-
-            ! PHYSICAL FIX: Validate currents to suppress non-physical kinetic energy spikes
-            call check_one_val( &
-               vtype = 'V', &
-               va = Aan(ne)%u(nl,ie), &
-               vb = Abk(ne)%u(nl,ie), &
-               vmax = UV_MAX, vmin = UV_MIN, &
-               vnan = uvnan, vout = uvout, vbig = uvbig)
-
-            call check_one_val( &
-               vtype = 'V', &
-               va = Aan(ne)%v(nl,ie), &
-               vb = Abk(ne)%v(nl,ie), &
-               vmax = UV_MAX, vmin = UV_MIN, &
-               vnan = uvnan, vout = uvout, vbig = uvbig)
-         end do
-      end do
+!      do ie = 1, nnel
+!
+!         if (file_exists) then
+!            call bc_correction('elem', ie, nbc, bcid, bcrho, w)
+!         else
+!            w = 0.0_dp
+!         end if
+!
+!         do nl = 1, nnlv
+!            ! Apply boundary relaxation to U and V currents
+!            Aan(ne)%u(nl,ie) = w * Abk(ne)%u(nl,ie) + (1.0_dp - w) * Aan(ne)%u(nl,ie)
+!            Aan(ne)%v(nl,ie) = w * Abk(ne)%v(nl,ie) + (1.0_dp - w) * Aan(ne)%v(nl,ie)
+!
+!            ! PHYSICAL FIX: Validate currents to suppress non-physical kinetic energy spikes
+!            call check_one_val( &
+!               vtype = 'V', &
+!               va = Aan(ne)%u(nl,ie), &
+!               vb = Abk(ne)%u(nl,ie), &
+!               vmax = UV_MAX, vmin = UV_MIN, &
+!               vnan = uvnan, vout = uvout, vbig = uvbig)
+!
+!            call check_one_val( &
+!               vtype = 'V', &
+!               va = Aan(ne)%v(nl,ie), &
+!               vb = Abk(ne)%v(nl,ie), &
+!               vmax = UV_MAX, vmin = UV_MIN, &
+!               vnan = uvnan, vout = uvout, vbig = uvbig)
+!         end do
+!      end do
 
       ! Safe reduction accumulation at the end of each member loop
       otot = otot + zout + sout + tout + uvout
@@ -278,9 +293,9 @@ subroutine bc_val_check_correct()
 
    if (file_exists) deallocate(bcid, bcrho)
 
-   if (otot > 0) write(*,'(a,i8)') 'Total out-of-range corrections:', otot
-   if (ntot > 0) write(*,'(a,i8)') 'Total NaN corrections: ', ntot
-   if (btot > 0) write(*,'(a,i8)') 'Total excessive increment corrections:', btot
+   if (otot > 0) write(*,'(a,i8)') 'Total out-of-range corrections per member:', otot/nrens
+   if (ntot > 0) write(*,'(a,i8)') 'Total NaN corrections per member: ', ntot/nrens
+   if (btot > 0) write(*,'(a,i8)') 'Total excessive increment corrections per member:', btot/nrens
 
 end subroutine bc_val_check_correct
 !=======================================================================
@@ -558,8 +573,10 @@ end subroutine read_state
 
 !=======================================================================
 subroutine push_state(A4)
+   use mod_layer_thickness
    use mod_hydro
    use mod_hydro_vel
+   use levels
    use mod_ts
    use mod_conz
    use mod_restart
@@ -583,10 +600,20 @@ subroutine push_state(A4)
    end if
 
    !-----------------------------
-   ! (2) Copy values to A4 (single precision container)
+   ! (2) Compute the velocities from the transports
    !-----------------------------
-   A4%u = utlnv
-   A4%v = vtlnv
+   ulnv = 0.
+   vlnv = 0.
+   where( hdenv > 0. )
+       ulnv = utlnv / hdenv
+       vlnv = vtlnv / hdenv
+   end where
+
+   !-----------------------------
+   ! (3) Copy values to A4 (single precision container)
+   !-----------------------------
+   A4%u = ulnv
+   A4%v = vlnv
    A4%z = znv
 
    if (ibarcl_rst /= 0) then
@@ -607,8 +634,10 @@ end subroutine push_state
 !  This is the symmetric counterpart of push_state.
 !=======================================================================
 subroutine pull_state(A4)
+   use mod_layer_thickness
    use mod_hydro
    use mod_hydro_vel
+   use levels
    use mod_ts
    use mod_conz
    use mod_restart
@@ -616,8 +645,8 @@ subroutine pull_state(A4)
 
    type(states4), intent(in) :: A4
 
-   utlnv = A4%u
-   vtlnv = A4%v
+   ulnv = A4%u
+   vlnv = A4%v
    znv   = A4%z
 
    if (ibarcl_rst /= 0) then
@@ -625,6 +654,11 @@ subroutine pull_state(A4)
       saltv = A4%s
    end if
 
+   !-----------------------------
+   ! Compute the the transports
+   !-----------------------------
+   utlnv = ulnv * hdenv
+   vtlnv = vlnv * hdenv
 end subroutine pull_state
 !=======================================================================
 

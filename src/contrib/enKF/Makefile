@@ -78,6 +78,7 @@ SHYOBJ = \
 	$(SHYGENERIC)/time_util.o \
 	$(SHYGENERIC)/round.o \
 	$(SHYGENERIC)/sort_util.o \
+	$(SHYGENERIC)/subsort.o \
 	$(SHYUTIL)/basin.o \
 	$(SHYUTIL)/levels.o \
 	$(SHYUTIL)/find.o \
@@ -87,7 +88,11 @@ SHYOBJ = \
 	$(SHYUTIL)/evgeom.o \
 	$(SHYUTIL)/geom_dynamic.o \
 	$(SHYUTIL)/defnames.o \
+	$(SHYUTIL)/depth.o \
+	$(SHYUTIL)/sigma.o \
+	$(SHYUTIL)/zadaptutil.o \
 	$(SHYMOD)/mod_hydro.o \
+	$(SHYMOD)/mod_area.o \
 	$(SHYMOD)/mod_hydro_vel.o \
 	$(SHYMOD)/mod_ts.o \
 	$(SHYMOD)/mod_shyfem.o \
@@ -96,11 +101,14 @@ SHYOBJ = \
 	$(SHYSHYFEM)/restart.o \
 	$(SHYUTILMPI)/mod_restart.o \
 	$(SHYUTILMPI)/info_output.o \
+	$(SHYUTILMPI)/depth_util.o \
 	$(SHY_MPI_OBJS) \
 	$(SHYMPI)/mpi_general.o \
+	$(SHYSHYFEM)/elems_dealing.o \
 	$(SHYSHYFEM)/conz_common.o \
 	$(SHYSHYFEM)/ecological_dummy.o \
 	$(SHYSHYFEM)/gotm_aux.o \
+	$(FEMSRC)/contrib/check_dummy.o \
 	$(FEMSRC)/contrib/ecological/mercury/mercury_dummy.o \
 	$(FEMSRC)/contrib/ecological/bfm/bfm_dummy.o
 

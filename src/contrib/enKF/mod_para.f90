@@ -17,6 +17,8 @@ module mod_para
   use iso_fortran_env, only : dp => real64
   implicit none
 
+  integer, save :: mode_an = 0
+
   !--------------------------------------------------------------------
   ! Analysis method selector
   !--------------------------------------------------------------------
@@ -41,12 +43,6 @@ module mod_para
   integer, save :: is_local = 0        ! 0=off, 1=enabled
 
   !--------------------------------------------------------------------
-  ! Innovation limiter
-  !--------------------------------------------------------------------
-  integer, save :: mode_an   = 0
-  real(dp),    parameter :: inn_alpha = 5.0
-
-  !--------------------------------------------------------------------
   ! Initial ensemble generation
   !--------------------------------------------------------------------
   integer, parameter :: fmult_init   = 10   ! supersampling factor
@@ -66,7 +62,7 @@ module mod_para
   !--------------------------------------------------------------------
   ! Observation quality-control and processing
   !--------------------------------------------------------------------
-  real(dp), parameter :: KSTD = 2.0       ! std limiter factor (<=0 disables)
+  real(dp), parameter :: KSTD = 1.5       ! std limiter factor (<=0 disables)
 
   ! Makes superobservations, depending on the local analysis radius
   logical, parameter  :: SUPEROBS = .true.
@@ -98,10 +94,9 @@ module mod_para
   real(dp), parameter :: OFLAG = -999.0
 
   ! Min/max QC bounds for observations
-  real(dp), parameter :: TEM_MIN = -5.0, TEM_MAX = 40.0
-  real(dp), parameter :: SAL_MIN =  0., SAL_MAX = 60.0
-  real(dp), parameter :: SSH_MIN =  -8.0, SSH_MAX =  8.0
-  ! Valid for 2D transport, should be scaled
-  real(dp), parameter :: VEL_MIN = -40000.0, VEL_MAX = 40000.0
+  real(dp), parameter :: TEM_MIN = -25.0, TEM_MAX = 60.0
+  real(dp), parameter :: SAL_MIN = -1.0,  SAL_MAX = 60.0
+  real(dp), parameter :: SSH_MIN = -8.0,  SSH_MAX =  8.0
+  real(dp), parameter :: VEL_MIN = -8.0,  VEL_MAX = 8.0
 
 end module mod_para
