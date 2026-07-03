@@ -250,45 +250,60 @@ module mod_enks_analysis
 contains
 
 ! ======================================================================
-subroutine init_shyfem(basinf, nnlv)
-   use basin
-   use levels
+subroutine init_shyfem(basfile, nnlv)
+
    use mod_geom_dynamic
    use mod_hydro
    use mod_hydro_vel
    use mod_ts
-   use mod_restart
-   use shympi
+   use mod_conz
    use mod_gotm_aux
+   use mod_restart
+   use mod_layer_thickness
+   use sigma
+   use mod_area
+   use evgeom
+   use mod_depth
+   use shympi
+   use levels
+   use basin
+   use mod_init_enkf, only : nanal
    implicit none
-      
-   character(len=*), intent(in) :: basinf
+
+   character(len=80), intent(in) :: basfile
    integer, intent(in) :: nnlv
    integer :: ios
-      
-   open(21,file=basinf,status="old",form="unformatted",iostat=ios)
+
+   !-----------------------------
+   ! Read basin file
+   !-----------------------------
+   open(21,file=basfile,status="old",form="unformatted",iostat=ios)
    if (ios/=0) error stop "init_shyfem: Cannot open basin file"
    call basin_read_by_unit(21)
    close(21)
-      
+
    nlv = nnlv
    nlvdi = nnlv
-
-   call mod_geom_dynamic_init(nkn,nel)
-   call mod_hydro_init(nkn,nel,nlv)
-   call mod_hydro_vel_init(nkn,nel,nlv)
-   call mod_ts_init(nkn,nlv)
-   call levels_init(nkn,nel,nlv)
-   call mod_gotm_aux_init(nkn, nlv)
-   call shympi_set_hlv(nlv, hlv)
+   
+   ! Initialize SHYFEM modules BEFORE reading restart
+   call mod_geom_dynamic_init(nkn, nel)
+   call mod_hydro_init(nkn, nel, nnlv)
+   call mod_hydro_vel_init(nkn, nel, nnlv)
+   call mod_ts_init(nkn, nnlv)
+   call levels_init(nkn, nel, nnlv)
+   call mod_gotm_aux_init(nkn, nnlv)
+   call shympi_set_hlv(nnlv, hlv)
    call shympi_init(.false.)
+   call mod_layer_thickness_init(nkn, nel, nnlv)
+   call init_sigma_info(nnlv,hlv)
+   call mod_area_init(nkn,nnlv)
+   call ev_init(nel)
+   call mod_depth_init(nkn,nel)
 
    nkn_global = nkn
    nel_global = nel
    nlv_global = nlv
-   
-   write(*,'(a,i8,a,i8,a,i5)') &
-       'init_shyfem: nkn=', nkn, ' nel=', nel, ' nlv=', nlv
+
 end subroutine init_shyfem
 
 ! ======================================================================
@@ -305,99 +320,116 @@ subroutine num2str(num, str)
 end subroutine num2str
 
 ! ======================================================================
-subroutine read_rst(rstname, atimea)
-   use iso_fortran_env, only : dp=>real64
-   use mod_restart
-   use levels, only : nlvdi, nlv, hlv, ilhv, ilhkv
-   use shympi
-   use mod_enks_data, only : equal_time
-   implicit none
+subroutine read_rst(rstname, atimea, nnlv)
+  use iso_fortran_env, only : dp => real64
+  use mod_restart
+  use levels, only : nlvdi, nlv, hlv, ilhv, ilhkv
+  use shympi
+  use mod_layer_thickness
+  use elabutil
+  use basin, only : nkn, nel, nen3v, hm3v
+  use mod_depth
+  use shyfile
+  use zadapt
+  implicit none
+  integer, intent(in) :: nnlv
+  character(len=*), intent(in) :: rstname
+  real(dp),        intent(in) :: atimea
+  integer :: ierr, iflag, ios
+  real(dp) :: atimef
+  integer, save :: icall = 0
+  ! Single-precision parameters expected by addpar/daddpar (restart flags)
+  real*4 :: ibarcl4, iconz4, imerc4, iturb4, iwvert_rst4, ieco_rst4, zero4
 
-   character(len=*), intent(in) :: rstname
-   real(dp), intent(in) :: atimea
-      
-   integer :: ierr, iflag, ios
-   real(dp) :: atimef
-   integer, save :: icall = 0
-   real*4 :: ibarcl4, iconz4, imerc4, iturb4, iwvert_rst4, ieco_rst4, zero4
-   zero4 = 0.0
-      
-   open(24,file=trim(rstname),status='old',form='unformatted',action='read',iostat=ios)
-   if (ios /= 0) then
-      write(*,'(a,a)') "ERROR: read_rst: cannot open file: ", trim(rstname)
-      error stop
-   end if
-      
-   do 
-      call rst_read_record(24, atimef, iflag, ierr)
-      if (ierr /= 0) then
-         close(24)
-         write(*,'(a,f12.6,a,a)') &
-             "ERROR: read_rst: time ", atimea, " not found in ", trim(rstname)
-         error stop
-      end if
-      if (equal_time(atimef, atimea)) exit
-   end do
-   close(24)
+  zero4 = 0.0
 
-   if (icall==0) then
-      hlv        = hlvrst
-      hlv_global = hlvrst
-      ilhv       = ilhrst
-      ilhkv      = ilhkrst
+  open(24, file=trim(rstname), status='old', form='unformatted', action='read', iostat=ios)
+  if (ios /= 0) error stop 'rst_read: error opening restart file'
 
-      ibarcl4     = ibarcl_rst
-      iwvert_rst4 = iwvert_rst
-      ieco_rst4   = ieco_rst
-      iconz4      = iconz_rst
-      imerc4      = imerc_rst
-      iturb4      = iturb_rst
+  do
+     call rst_read_record(24, atimef, iflag, ierr)
+     if (ierr /= 0) then
+        close(24)
+        write(*,*) 'Error in the restart file. Is the analysis time present among restart records?'
+        error stop
+     end if
+     if (abs(atimef - atimea) < epsilon(atimea)) exit   ! exact match
+  end do
+  close(24)
 
-      call addpar("ibarcl",ibarcl4)
-      call addpar("iconz", iconz4)
-      call addpar("iwvert",iwvert_rst4)
-      call addpar("ieco"  ,ieco_rst4)
-      call addpar("ibio"  ,zero4)
-      call addpar("ibfm"  ,zero4)
-      call addpar("imerc" ,imerc4)
-      call addpar("iturb" ,iturb4)
+  ! On first call, publish restart meta/flags
+  if (icall == 0) then
+     if (nnlv /= nlv) error stop 'Bad vertical dimensions'
+     hlv        = hlvrst
+     hlv_global = hlvrst
+     ilhv       = ilhrst
+     ilhkv      = ilhkrst
 
-      call daddpar("date",0.0_dp)
-      call daddpar("time",0.0_dp)
-      
-      write(*,*) 'SHYFEM flags from restart:'
-      write(*,*) 'nvers = ', nvers_rst
-      write(*,*) 'nvmax = ', nvmax
-      write(*,*) 'ibarcl = ', ibarcl_rst
-      write(*,*) 'iconz  = ', iconz_rst
-      write(*,*) 'iwvert = ', iwvert_rst
-      write(*,*) 'ieco   = ', ieco_rst
-      write(*,*) 'imerc  = ', imerc_rst
-      write(*,*) 'iturb  = ', iturb_rst
-      write(*,*) 'nlv   = ', nlv
+     ibarcl4     = ibarcl_rst
+     iwvert_rst4 = iwvert_rst
+     ieco_rst4   = ieco_rst
+     iconz4      = iconz_rst
+     imerc4      = imerc_rst
+     iturb4      = iturb_rst
 
-   end if
+     call addpar('ibarcl', ibarcl4)
+     call addpar('iconz' , iconz4 )
+     call addpar('iwvert', iwvert_rst4)
+     call addpar('ieco'  , ieco_rst4)
+     call addpar('ibio'  , zero4)
+     call addpar('ibfm'  , zero4)
+     call addpar('imerc' , imerc4)
+     call addpar('iturb' , iturb4)
 
-   icall = icall + 1
+     call addpar('nzadapt' , 0.) ! THIS SHOULD BE SAVED IN THE RST
+
+     call daddpar('date', 0.0_dp)
+     call daddpar('time', 0.0_dp)
+
+     write(*,*) 'SHYFEM flags from restart:'
+     write(*,*) 'nvers = ', nvers_rst
+     write(*,*) 'nvmax = ', nvmax
+     write(*,*) 'ibarcl = ', ibarcl_rst
+     write(*,*) 'iconz  = ', iconz_rst
+     write(*,*) 'iwvert = ', iwvert_rst
+     write(*,*) 'ieco   = ', ieco_rst
+     write(*,*) 'imerc  = ', imerc_rst
+     write(*,*) 'iturb  = ', iturb_rst
+     write(*,*) 'nlv   = ', nlv
+     !write(*,*) 'hlvrst = ', hlvrst(1:nlv)
+     write(*,*) 'hlv    = ', hlv(1:nlv)
+
+     call set_ev
+     call set_area
+     call set_depth
+     call init_zadaptation
+     call make_new_layer_depth
+
+  end if
+
+  icall = icall + 1
+
 end subroutine read_rst
 
 ! ======================================================================
 subroutine rst_write_rec(atimea, iunit)
+
   use iso_fortran_env, only : dp => real64
   use mod_hydro
   use mod_hydro_vel
   use mod_geom_dynamic, only : iwetv
   implicit none
-  integer, intent(in) :: iunit
   real(dp),        intent(in) :: atimea
+  integer, intent(in)         :: iunit
   integer :: ios
 
   iwetv = 0
   zov = znv
+  zeov = zenv
   utlov = utlnv
   vtlov = vtlnv
-  zeov = zenv
 
+  if (ios /= 0) error stop 'rst_write: error opening restart for write'
   call rst_write_record(atimea, iunit)
 
 end subroutine rst_write_rec
@@ -405,21 +437,33 @@ end subroutine rst_write_rec
 ! ======================================================================
 subroutine push_matrix(sdim, nrens, nre, Amat)
    use iso_fortran_env, only: dp=>real64
+   use mod_layer_thickness
    use mod_hydro
    use mod_hydro_vel
+   use levels
    use mod_ts
-   use mod_restart,   only: ibarcl_rst
+   use mod_conz
+   use mod_restart
+   use basin, only : nkn, nel
    implicit none
 
    integer, intent(in) :: sdim, nrens, nre
    real(dp), intent(inout) :: Amat(sdim,nrens)
-   integer :: d_uv, d_z, d_ts, nnkn, nnel, nnlv
+   integer :: d_uv, d_z, d_ts
 
-   nnkn = size(znv)
-   nnel = size(utlnv, 2)
-   nnlv = size(utlnv, 1)
-   d_uv = nnlv * nnel
-   d_z  = nnkn
+   !-----------------------------
+   ! (1) Check that SHYFEM arrays are allocated
+   !-----------------------------
+   if (.not. allocated(znv)) stop 'ERROR: push_state: znv not allocated'
+   if (.not. allocated(utlnv)) stop 'ERROR: push_state: utlnv not allocated'
+   if (.not. allocated(vtlnv)) stop 'ERROR: push_state: vtlnv not allocated'
+   if (ibarcl_rst /= 0) then
+      if (.not. allocated(tempv)) stop 'ERROR: push_state: tempv not allocated'
+      if (.not. allocated(saltv)) stop 'ERROR: push_state: saltv not allocated'
+   end if  
+
+   d_uv = nlv * nel
+   d_z  = nkn
 
    ! IMPROVED: Bounds checking
    if (2*d_uv + d_z > sdim) then
@@ -428,9 +472,19 @@ subroutine push_matrix(sdim, nrens, nre, Amat)
       error stop
    end if
 
+   !-----------------------------
+   ! Compute the velocities from the transports
+   !-----------------------------
+   ulnv = 0.
+   vlnv = 0.
+   where( hdenv > 0. )
+       ulnv = utlnv / hdenv
+       vlnv = vtlnv / hdenv
+   end where
+
    ! Correct mapping for SHYFEM state vector
-   Amat(1:d_uv, nre) = reshape(real(utlnv,dp), [d_uv])
-   Amat(d_uv+1:2*d_uv, nre) = reshape(real(vtlnv,dp), [d_uv])
+   Amat(1:d_uv, nre) = reshape(real(ulnv,dp), [d_uv])
+   Amat(d_uv+1:2*d_uv, nre) = reshape(real(vlnv,dp), [d_uv])
    Amat(2*d_uv+1:2*d_uv+d_z, nre) = real(znv,dp)
 
    if (ibarcl_rst /= 0) then
@@ -448,21 +502,22 @@ end subroutine push_matrix
 ! ======================================================================
 subroutine pull_matrix(sdim, nrens, nre, Amat)
    use iso_fortran_env, only: dp=>real64
+   use mod_layer_thickness
    use mod_hydro
    use mod_hydro_vel
+   use levels
    use mod_ts
-   use mod_restart,   only: ibarcl_rst
+   use mod_conz
+   use mod_restart
+   use basin, only : nkn, nel
    implicit none
 
    integer, intent(in) :: sdim, nrens, nre
    real(dp), intent(in) :: Amat(sdim,nrens)
-   integer :: d_uv, d_z, d_ts, nnkn, nnel, nnlv
+   integer :: d_uv, d_z, d_ts
 
-   d_z   = size(znv)
-   d_uv  = size(utlnv, 1) * size(utlnv, 2)
-   nnkn  = size(znv)
-   nnel  = size(utlnv, 2)
-   nnlv  = size(utlnv, 1)
+   d_z   = nkn
+   d_uv  = nel * nlv
 
    ! IMPROVED: Bounds checking
    if (2*d_uv + d_z > sdim) then
@@ -471,8 +526,8 @@ subroutine pull_matrix(sdim, nrens, nre, Amat)
       error stop
    end if
 
-   utlnv = reshape(real(Amat(1:d_uv, nre), dp), [nnlv, nnel])
-   vtlnv = reshape(real(Amat(d_uv+1:2*d_uv, nre), dp), [nnlv, nnel])
+   ulnv = reshape(real(Amat(1:d_uv, nre), dp), [nlv, nel])
+   vlnv = reshape(real(Amat(d_uv+1:2*d_uv, nre), dp), [nlv, nel])
    znv   = real(Amat(2*d_uv+1:2*d_uv+d_z, nre), dp)
 
    if (ibarcl_rst /= 0) then
@@ -482,9 +537,16 @@ subroutine pull_matrix(sdim, nrens, nre, Amat)
                                   2*d_uv+d_z+2*d_ts, ' > sdim:', sdim
          error stop
       end if
-      tempv = reshape(real(Amat(2*d_uv+d_z+1:2*d_uv+d_z+d_ts, nre), dp), [nnlv, nnkn])
-      saltv = reshape(real(Amat(2*d_uv+d_z+d_ts+1:2*d_uv+d_z+2*d_ts, nre), dp), [nnlv, nnkn])
+      tempv = reshape(real(Amat(2*d_uv+d_z+1:2*d_uv+d_z+d_ts, nre), dp), [nlv, nkn])
+      saltv = reshape(real(Amat(2*d_uv+d_z+d_ts+1:2*d_uv+d_z+2*d_ts, nre), dp), [nlv, nkn])
    end if
+
+   !-----------------------------
+   ! Compute the the transports
+   !-----------------------------
+   utlnv = ulnv * hdenv
+   vtlnv = vlnv * hdenv
+
 end subroutine pull_matrix
 
 ! ======================================================================
@@ -658,16 +720,16 @@ program enKF2enKS
     call get_command_argument(4, lnlag)
 
     if (len_trim(lnlag) == 0) then
-       write(*,*) "USAGE: enKF2enKS [basinf] [nlv] [nrens] [nlag]"
+       write(*,*) "USAGE: enKF2enKS [basinf] [nnlv] [nrens] [nlag]"
        write(*,*) "  basinf : basin file"
-       write(*,*) "  nlv    : number of vertical levels"
+       write(*,*) "  nnlv    : number of vertical levels"
        write(*,*) "  nrens  : number of ensemble members"
        write(*,*) "  nlag   : lag (in analysis steps, -1 for all future)"
        error stop
     end if
 
     read(lnnlv, *, iostat=ios) nnlv
-    if (ios /= 0) error stop "Cannot parse nlv"
+    if (ios /= 0) error stop "Cannot parse nnlv"
     read(lnrens, *, iostat=ios) nrens
     if (ios /= 0) error stop "Cannot parse nrens"
     read(lnlag, *, iostat=ios) nlag
@@ -721,7 +783,7 @@ program enKF2enKS
           call num2str(nre-1, nrel)
 
           ! Read the specific restart for this member and time
-          call read_rst("analKF_en"//nrel//".rst", atime)
+          call read_rst("analKF_en"//nrel//".rst", atime, nnlv)
 
           ! Allocate matrices on the first successful read
           if (.not. allocated(Astate)) then

@@ -25,6 +25,12 @@ subroutine rst_read(rstname, atimea)
   use mod_restart
   use levels, only : nlvdi, nlv, hlv, ilhv, ilhkv
   use shympi
+  use mod_layer_thickness
+  use elabutil
+  use basin, only : nkn, nel, nen3v, hm3v
+  use mod_depth
+  use shyfile
+  use zadapt
   implicit none
   character(len=*), intent(in) :: rstname
   real(dp),        intent(in) :: atimea
@@ -73,6 +79,8 @@ subroutine rst_read(rstname, atimea)
      call addpar('imerc' , imerc4)
      call addpar('iturb' , iturb4)
 
+     call addpar('nzadapt' , 0.) ! THIS SHOULD BE SAVED IN THE RST
+
      call daddpar('date', 0.0_dp)
      call daddpar('time', 0.0_dp)
 
@@ -88,6 +96,13 @@ subroutine rst_read(rstname, atimea)
      write(*,*) 'nlv   = ', nlv
      !write(*,*) 'hlvrst = ', hlvrst(1:nlv)
      write(*,*) 'hlv    = ', hlv(1:nlv)
+
+     call set_ev
+     call set_area
+     call set_depth
+     call init_zadaptation
+     call make_new_layer_depth
+
   end if
 
   icall = icall + 1
