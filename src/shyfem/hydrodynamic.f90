@@ -1687,7 +1687,7 @@
 
 	call get_timestep(dt)
 
-	allocate(vf(nlvdi,nkn),va(nlvdi+1,nkn))
+	allocate(vf(nlvdi,nkn),va(nlvdi,nkn))
 	vf = 0.
 	va = 0.
 
@@ -1722,7 +1722,6 @@
 		!ff = ffn
 		vf(l,kk) = vf(l,kk) + 3. * aj * ff
 		va(l,kk) = va(l,kk) + aj
-		if (l==ilevel) va(ilevel+1,kk) = va(ilevel+1,kk) + aj !bottom interface
 	    end do
 	  end do
 
@@ -1765,7 +1764,7 @@
 	    write(670,*) va(lmin:lmax,k)
 	    write(670,*) vf(lmin:lmax,k)
 	  end if
-	  abot = 0.
+	  abot = va(lmax,k)
 	  do l=lmax,lmin,-1
 	    atop = va(l,k)
             voln = volnode(l,k,+1)
@@ -1778,7 +1777,7 @@
 	    wlpv = 0.
 	    do jstage=1,curr_stage-1
 	      wlpv = wlpv + coeff_erk(jstage) &
-     &	        * (wrk_reg(l-1,k,jstage)*atop-wrk_reg(l,k,jstage)*va(l+1,k))
+     &	        * (wrk_reg(l-1,k,jstage)*atop-wrk_reg(l,k,jstage)*abot)
 	    end do
 	    !wfold = azt * (atop*wlov(l-1,k)-abot*wlov(l,k))
 	    !wlnv(l-1,k) = wlnv(l,k) + (wdiv-dvdt+wfold)/az
