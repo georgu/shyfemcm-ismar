@@ -668,7 +668,7 @@
 !		can be tuned with the parameters |ampar| and |atpar|, defined
 !		in the next paragraph.
 !		The default choice corresponds to a Cranck-Nicholson scheme
-!		(|ampar=0.5|) for the the acoustic wave and Coriolis term and an
+!		(|ampar=0.5|) for the the gravity waves and Coriolis term and an
 !		L-stable Backward Euler scheme (|atpar=1.0|) for the vertical
 !		viscous terms.
 !		\item[222] the ARK(2,2,2) method of (Ascher,Ruuth and Spiteri,1997).
