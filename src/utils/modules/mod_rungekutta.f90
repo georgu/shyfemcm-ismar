@@ -196,12 +196,7 @@
 	  a_irk(2,2) = 1.-gamma
 	  a_irk(2,3) = gamma
 
-	  a_srk(1,1) = 0.
-	  a_srk(1,2) = gamma
-	  a_srk(1,3) = 0.
-	  a_srk(2,1) = 0.
-	  a_srk(2,2) = 1.-gamma
-	  a_srk(2,3) = gamma
+	  a_srk = a_irk
 
 	  b_erk(1)  = 1.-1./(2.*gamma)
 	  b_erk(2)  = 1./(2.*gamma)
@@ -210,9 +205,7 @@
 	  b_irk(2)  = 1.-gamma
 	  b_irk(3)  = gamma
 
-	  b_srk(1)  = 0.
-	  b_srk(2)  = 1.-gamma
-	  b_srk(3)  = gamma
+	  b_srk  = b_irk
 
 	  c_rk(1)  = gamma
 	  c_rk(2)  = 1.
@@ -244,12 +237,7 @@
 	  a_irk(2,2) = 0.
 	  a_irk(2,3) = 0.5
 
-	  a_srk(1,1) = 0.
-	  a_srk(1,2) = 0.5
-	  a_srk(1,3) = 0.
-	  a_srk(2,1) = 0.5
-	  a_srk(2,2) = 0.
-	  a_srk(2,3) = 0.5
+	  a_srk = a_irk
 
 	  b_erk(1)  = 0.
 	  b_erk(2)  = 1.
@@ -258,9 +246,7 @@
 	  b_irk(2)  = 0.
 	  b_irk(3)  = 0.5
 
-	  b_srk(1)  = 0.5
-	  b_srk(2)  = 0.
-	  b_srk(3)  = 0.5
+	  b_srk  = b_irk
 
 	  c_rk(1)  = 0.5
 	  c_rk(2)  = 1.
@@ -322,18 +308,7 @@
 	  a_irk(3,3) = chi
 	  a_irk(3,4) = 0.
 
-	  a_srk(1,1) = chi
-	  a_srk(1,2) = chi
-	  a_srk(1,3) = 0.
-	  a_srk(1,4) = 0.
-	  a_srk(2,1) = 1.-(1.-2.*chi)/(4.*chi)-chi
-	  a_srk(2,2) = (1.-2.*chi)/(4.*chi)
-	  a_srk(2,3) = chi
-	  a_srk(2,4) = 0.
-	  a_srk(3,1) = 1.-(1.-2.*chi)/(4.*chi)-chi
-	  a_srk(3,2) = (1.-2.*chi)/(4.*chi)
-	  a_srk(3,3) = chi
-	  a_srk(3,4) = 0.
+	  a_srk = a_irk
 
 	  b_erk(1)  = 1.-(1.-2.*chi)/(4.*chi)-chi
 	  b_erk(2)  = (1.-2.*chi)/(4.*chi)
@@ -344,10 +319,7 @@
 	  b_irk(3)  = chi
 	  b_irk(4)  = 0.
 
-	  b_srk(1)  = 1.-(1.-2.*chi)/(4.*chi)-chi
-	  b_srk(2)  = (1.-2.*chi)/(4.*chi)
-	  b_srk(3)  = chi
-	  b_srk(4)  = 0.
+	  b_srk  = b_irk
 
 	  c_rk(1)  = 2*chi
 	  c_rk(2)  = 1.
@@ -393,18 +365,7 @@
 	  a_irk(3,3) = 2./3.
 	  a_irk(3,4) = 0.
 
-	  a_srk(1,1) = 1.
-	  a_srk(1,2) = 0.
-	  a_srk(1,3) = 0.
-	  a_srk(1,4) = 0.
-	  a_srk(2,1) = 1./4.
-	  a_srk(2,2) = 1./4.
-	  a_srk(2,3) = 0.
-	  a_srk(2,4) = 0.
-	  a_srk(3,1) = 1./6.
-	  a_srk(3,2) = 1./6.
-	  a_srk(3,3) = 2./3.
-	  a_srk(3,4) = 0.
+	  a_srk = a_irk
 
 	  b_erk(1)  = 1./6.
 	  b_erk(2)  = 1./6.
@@ -415,10 +376,7 @@
 	  b_irk(3)  = 2./3.
 	  b_irk(4)  = 0.
 
-	  b_srk(1)  = 1./6.
-	  b_srk(2)  = 1./6.
-	  b_srk(3)  = 2./3.
-	  b_srk(4)  = 0.
+	  b_srk  = b_irk
 
 	  c_rk(1)  = 1.
 	  c_rk(2)  = 1./2.
