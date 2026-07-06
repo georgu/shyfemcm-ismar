@@ -34,6 +34,7 @@
 
 	implicit none
 
+!Butcher tableaux
         real, allocatable, save :: a_erk(:,:)	    !explicit A matrix
         real, allocatable, save :: a_irk(:,:)       !implicit A matrix
         real, allocatable, save :: a_srk(:,:)       !stiffly implicit A matrix
@@ -41,7 +42,10 @@
         real, allocatable, save :: b_irk(:)	    !implicit b vector
         real, allocatable, save :: b_srk(:)	    !stiffly implicit b vector
         real, allocatable, save :: c_rk(:)	    !implicit/explicit c vectors:
-                                                    !they are equal for additive runge-kutta
+                                                    !they are equal for all im/ex schemes in additive runge-kutta
+!specific Butcher tableaux for concentrations
+        real, allocatable, save :: a_crk(:,:)       !generic A matrix for conc. vert adv (can be im or ex)
+        real, allocatable, save :: b_crk(:)	    !generic b vector for conc. vert adv (can be im or ex)
 
 	integer, save :: n_rkstages = 0		    !number of (non-trivial) stages
 
@@ -61,7 +65,7 @@
         integer nkn, nel, nlv
 
 	integer rk_triplet
-	double precision am,at,az,af,av,gamma,chi,a32
+	double precision am,at,az,af,av,ad,aa,gamma,chi,a32
 	real getpar
 
 	!The ImEx triplet $(s, \sigma, p)$ identifies a scheme where:
@@ -83,9 +87,11 @@
           deallocate(a_erk)
           deallocate(a_irk)
           deallocate(a_srk)
+          deallocate(a_crk)
           deallocate(b_erk)
           deallocate(b_irk)
           deallocate(b_srk)
+          deallocate(b_crk)
           deallocate(c_rk)
 
           deallocate(uverk_reg)
@@ -106,6 +112,7 @@
 	if (rk_triplet == 111) then
 	  am=getpar('ampar')
 	  at=getpar('atpar')
+	  aa=getpar('aapar')
 
 	  az = getpar('azpar')
 	  if( az .ne. am ) then
@@ -130,15 +137,25 @@
             write(6,*) 'avpar must be zero.'
             stop 'error stop mod_rungekutta_init: incompatible params'
           end if
+          ad = getpar('adpar')
+	  if( ad .ne. at ) then
+            write(6,*) 'You are using an obsolete configuration with:'
+            write(6,*) 'adpar: ', ad
+            write(6,*) 'atpar: ', at
+            write(6,*) 'adpar and atpar must be equal.'
+            stop 'error stop mod_rungekutta_init: incompatible params'
+          end if
 
           n_rkstages = 1
 
           allocate (a_erk(n_rkstages,n_rkstages))
           allocate (a_irk(n_rkstages,n_rkstages+1))
           allocate (a_srk(n_rkstages,n_rkstages+1))
+          allocate (a_crk(n_rkstages,n_rkstages+1))
           allocate (b_erk(n_rkstages))
           allocate (b_irk(n_rkstages+1))
           allocate (b_srk(n_rkstages+1))
+          allocate (b_crk(n_rkstages+1))
           allocate (c_rk(n_rkstages))
 
 	  a_erk(1,1) = 1.
@@ -149,6 +166,9 @@
 	  a_srk(1,1) = 1.-at
 	  a_srk(1,2) = at
 
+	  a_crk(1,1) = 1.-aa
+	  a_crk(1,2) = aa
+
 	  b_erk(1)  = 1.
 
 	  b_irk(1)  = 1.-am
@@ -156,6 +176,9 @@
 
 	  b_srk(1)  = 1.-at
 	  b_srk(2)  = at
+
+	  b_crk(1)  = 1.-aa
+	  b_crk(2)  = aa
 
 	  c_rk(1)  = 1.
 
@@ -179,9 +202,11 @@
           allocate (a_erk(n_rkstages,n_rkstages))
           allocate (a_irk(n_rkstages,n_rkstages+1))
           allocate (a_srk(n_rkstages,n_rkstages+1))
+          allocate (a_crk(n_rkstages,n_rkstages+1))
           allocate (b_erk(n_rkstages))
           allocate (b_irk(n_rkstages+1))
           allocate (b_srk(n_rkstages+1))
+          allocate (b_crk(n_rkstages+1))
           allocate (c_rk(n_rkstages))
 
 	  a_erk(1,1) = gamma
@@ -197,6 +222,7 @@
 	  a_irk(2,3) = gamma
 
 	  a_srk = a_irk
+	  a_crk = a_srk
 
 	  b_erk(1)  = 1.-1./(2.*gamma)
 	  b_erk(2)  = 1./(2.*gamma)
@@ -206,6 +232,7 @@
 	  b_irk(3)  = gamma
 
 	  b_srk  = b_irk
+	  b_crk  = b_srk
 
 	  c_rk(1)  = gamma
 	  c_rk(2)  = 1.
@@ -220,9 +247,11 @@
           allocate (a_erk(n_rkstages,n_rkstages))
           allocate (a_irk(n_rkstages,n_rkstages+1))
           allocate (a_srk(n_rkstages,n_rkstages+1))
+          allocate (a_crk(n_rkstages,n_rkstages+1))
           allocate (b_erk(n_rkstages))
           allocate (b_irk(n_rkstages+1))
           allocate (b_srk(n_rkstages+1))
+          allocate (b_crk(n_rkstages+1))
           allocate (c_rk(n_rkstages))
 
 	  a_erk(1,1) = 0.5
@@ -238,6 +267,7 @@
 	  a_irk(2,3) = 0.5
 
 	  a_srk = a_irk
+	  a_crk = a_srk
 
 	  b_erk(1)  = 0.
 	  b_erk(2)  = 1.
@@ -247,6 +277,7 @@
 	  b_irk(3)  = 0.5
 
 	  b_srk  = b_irk
+	  b_crk  = b_srk
 
 	  c_rk(1)  = 0.5
 	  c_rk(2)  = 1.
@@ -280,9 +311,11 @@
           allocate (a_erk(n_rkstages,n_rkstages))
           allocate (a_irk(n_rkstages,n_rkstages+1))
           allocate (a_srk(n_rkstages,n_rkstages+1))
+          allocate (a_crk(n_rkstages,n_rkstages+1))
           allocate (b_erk(n_rkstages))
           allocate (b_irk(n_rkstages+1))
           allocate (b_srk(n_rkstages+1))
+          allocate (b_crk(n_rkstages+1))
           allocate (c_rk(n_rkstages))
 
 	  a_erk(1,1) = 2.*chi
@@ -309,6 +342,7 @@
 	  a_irk(3,4) = 0.
 
 	  a_srk = a_irk
+	  a_crk = a_srk
 
 	  b_erk(1)  = 1.-(1.-2.*chi)/(4.*chi)-chi
 	  b_erk(2)  = (1.-2.*chi)/(4.*chi)
@@ -320,6 +354,7 @@
 	  b_irk(4)  = 0.
 
 	  b_srk  = b_irk
+	  b_crk  = b_srk
 
 	  c_rk(1)  = 2*chi
 	  c_rk(2)  = 1.
@@ -337,9 +372,11 @@
           allocate (a_erk(n_rkstages,n_rkstages))
           allocate (a_irk(n_rkstages,n_rkstages+1))
           allocate (a_srk(n_rkstages,n_rkstages+1))
+          allocate (a_crk(n_rkstages,n_rkstages+1))
           allocate (b_erk(n_rkstages))
           allocate (b_irk(n_rkstages+1))
           allocate (b_srk(n_rkstages+1))
+          allocate (b_crk(n_rkstages+1))
           allocate (c_rk(n_rkstages))
 
 	  a_erk(1,1) = 1.
@@ -366,6 +403,7 @@
 	  a_irk(3,4) = 0.
 
 	  a_srk = a_irk
+	  a_crk = a_srk
 
 	  b_erk(1)  = 1./6.
 	  b_erk(2)  = 1./6.
@@ -377,6 +415,7 @@
 	  b_irk(4)  = 0.
 
 	  b_srk  = b_irk
+	  b_crk  = b_srk
 
 	  c_rk(1)  = 1.
 	  c_rk(2)  = 1./2.
