@@ -7,16 +7,9 @@
 !  Module: mod_manage_obs
 !
 !  PURPOSE:
-!    Prepare and manage observations to be assimilated by the EnKF DA.
-!    - Reads observation file list (obsfile) and detects available types.
-!    - Loads 0D scalar time series (sea level, temperature, salinity).
-!    - Loads 2D velocity fields from FEM files.
-!    - Performs quality control and creates super-observations.
-!
-!  PRECISION POLICY:
-!    - Time variables and time differences handled in DOUBLE precision.
-!    - Distances for grouping (super-obs) computed in DOUBLE precision.
-!    - Observation containers keep their original kinds (compatibility).
+!    Orchestrates multivariate observation ingestion for the EnKF framework.
+!    Parses multiple concurrent sensor networks (Sea Level, Temperature, 
+!    Salinity, Currents) and dynamically allocates active data structures.
 !
 !  STATUS CODES:
 !    0 = normal obs (assimilated)
@@ -40,120 +33,113 @@ module mod_manage_obs
   use mod_obs_states
   implicit none
 
-  type(files),      allocatable, private :: ofile(:)
+  ! Transient private metadata ledger
+  type(files), allocatable, private :: ofile(:)
 
-  integer :: islev, isvel, istemp, issalt
-
+  ! Global active counters updated and read by mod_enkf matrix compilers
   integer :: n_0dlev, n_1dlev, n_2dlev
   integer :: n_0dvel,           n_2dvel
   integer :: n_0dtemp, n_1dtemp, n_2dtemp
   integer :: n_0dsalt, n_1dsalt, n_2dsalt
-
   integer :: nobs_tot
 
+  ! Multivariate target data structures accessible across the framework
   type(scalar_0d), allocatable :: o0dlev(:),  o0dtemp(:), o0dsalt(:)
   type(vector_2d), allocatable :: o2dvel(:)
 
 contains
 
 !=======================================================================
+! SUBROUTINE: read_observations
+!
+! PURPOSE:
+!   Central driver that screens the master observation manifest, pre-allocates 
+!   subspace requirements, and loads concurrent sensor variables.
+!=======================================================================
 subroutine read_observations()
-    use iso_fortran_env, only: dp => real64
-    use mod_obs_states 
     implicit none
 
-    integer            :: ios, u, n, nfile
-    integer            :: kend
-    real(dp)           :: tobs, vobs, vmean
-    integer            :: statobs
+    integer :: ios, u, n, nfile, kend, statobs
+    real(dp) :: tobs, vobs, vmean
+    
+    ! Dedicated tracking counters to isolate file counts from verified stations
+    integer :: n_0dlev_files, n_0dtemp_files, n_0dsalt_files, n_2dvel_files
+    
+    ! Dynamic temporary work holders for clean shrinking
+    type(scalar_0d), allocatable :: tmp_lev(:), tmp_tem(:), tmp_sal(:)
 
-    ! Reset counters
-    islev = 0; isvel = 0; istemp = 0; issalt = 0
-    n_0dlev = 0; n_0dtemp = 0; n_0dsalt = 0; n_2dvel = 0
+    ! Reset metrics and active operational anchors
+    n_0dlev  = 0; n_0dtemp  = 0; n_0dsalt  = 0; n_2dvel  = 0
     nobs_tot = 0
+    
+    n_0dlev_files  = 0; n_0dtemp_files = 0; n_0dsalt_files = 0; n_2dvel_files = 0
 
-    ! 1. Open and count entries in the main list file
-    open(newunit=u, file=obsfile, status='old', form='formatted', iostat=ios)
+    ! 1. Parse and record structural row capacity of the master list manifest
+    open(newunit=u, file=trim(obsfile), status='old', form='formatted', iostat=ios)
     if (ios /= 0) then
-        write(*,'(a,a)') 'ERROR: read_observations: Cannot open file: ', trim(obsfile)
+        write(*,'(A,A)') 'ERROR: read_observations: Unable to stream master manifest: ', trim(obsfile)
         error stop
     end if
 
     nfile = 0
     do
         read(u, '(A)', iostat=ios)
-        if (ios < 0) exit
+        if (ios < 0) exit ! Normal end-of-file transition
         nfile = nfile + 1
     end do
     rewind(u)
 
     if (nfile == 0) then
-        write(*,*) 'WARNING: read_observations: No observation files listed'
+        write(*,*) 'WARNING: read_observations: Target manifest contains zero entries.'
         close(u)
         return
     end if
 
     allocate(ofile(nfile))
 
-    ! 2. Load metadata and pre-count types (No file opening here yet)
+    ! 2. Ingest sensor network configurations and pre-count global network allocations
     do n = 1, nfile
         read(u, *, iostat=ios) ofile(n)%ty, ofile(n)%name, ofile(n)%x, ofile(n)%y, &
-                   ofile(n)%z, ofile(n)%std, ofile(n)%rhol
+                               ofile(n)%z, ofile(n)%std, ofile(n)%rhol
         
         if (ios /= 0) then
-            write(*,'(a,i5,a,a)') 'ERROR: read_observations: Cannot parse line', n, &
-                                  ' in file: ', trim(obsfile)
+            write(*,'(A,I5,A,A)') 'ERROR: read_observations: Formatting violation at record ', n, &
+                                  ' in manifest: ', trim(obsfile)
             error stop
         end if
         
         select case (trim(ofile(n)%ty))
-        case ('0DLEV'); n_0dlev = n_0dlev + 1; islev = 1
-        case ('0DTEM'); n_0dtemp = n_0dtemp + 1; istemp = 1
-        case ('0DSAL'); n_0dsalt = n_0dsalt + 1; issalt = 1
-        case ('2DVEL'); n_2dvel = n_2dvel + 1; isvel = 1
+        case ('0DLEV'); n_0dlev_files  = n_0dlev_files  + 1
+        case ('0DTEM'); n_0dtemp_files = n_0dtemp_files + 1
+        case ('0DSAL'); n_0dsalt_files = n_0dsalt_files + 1
+        case ('2DVEL'); n_2dvel_files  = n_2dvel_files  + 1
         case default
-            write(*,'(a,a)') 'WARNING: read_observations: Unknown type: ', trim(ofile(n)%ty)
+            write(*,'(A,A)') 'WARNING: read_observations: Skipping unsupported descriptor: ', trim(ofile(n)%ty)
         end select
     end do
     close(u)
 
-    ! 3. Consistency check: only ONE observation type allowed per analysis
-    if ((islev + isvel + istemp + issalt) > 1) then
-        write(*,*) 'ERROR: Multiple observation types in a single analysis'
-        error stop 'read_observations: Multiple obs types'
-    end if
+    ! CRITICAL REFACTORING FIX: Removed old single-variable error check block
 
-    ! 4. Allocation (Exact size from metadata pre-count)
-    if (n_0dlev  > 0) then
-        allocate(o0dlev(n_0dlev))
-        write(*,'(a,i5)') 'Allocated o0dlev: ', n_0dlev
-    end if
-    if (n_0dtemp > 0) then
-        allocate(o0dtemp(n_0dtemp))
-        write(*,'(a,i5)') 'Allocated o0dtemp: ', n_0dtemp
-    end if
-    if (n_0dsalt > 0) then
-        allocate(o0dsalt(n_0dsalt))
-        write(*,'(a,i5)') 'Allocated o0dsalt: ', n_0dsalt
-    end if
-    if (n_2dvel  > 0) then
-        allocate(o2dvel(n_2dvel))
-        write(*,'(a,i5)') 'Allocated o2dvel: ', n_2dvel
-    end if
+    ! 3. Heap Memory Pre-allocation (Sized safely to upper bound file quotas)
+    if (n_0dlev_files  > 0) allocate(o0dlev(n_0dlev_files))
+    if (n_0dtemp_files > 0) allocate(o0dtemp(n_0dtemp_files))
+    if (n_0dsalt_files > 0) allocate(o0dsalt(n_0dsalt_files))
+    if (n_2dvel_files  > 0) allocate(o2dvel(n_2dvel_files))
 
-    ! 5. SINGLE PASS DATA READING
-    ! Reset counters to use them as current indices for the arrays
-    n_0dlev = 0; n_0dtemp = 0; n_0dsalt = 0; n_2dvel = 0
-
+    ! 4. Execution of Single-Pass Multivariate Stream Reading
     do n = 1, nfile
         select case (trim(ofile(n)%ty))
         case ('0DLEV', '0DTEM', '0DSAL')
-            ! Call the reading routine ONLY ONCE per file
+            
+            ! Retrieve data packet metrics for the target tracking station
             call read_scalar_0d(ofile(n)%ty, trim(ofile(n)%name), TEPS, &
                                 kend, tobs, vobs, vmean, statobs)
             
+            ! If station responds with valid chronological records, secure its array block
             if (kend > 0) then
                 nobs_tot = nobs_tot + 1
+                
                 select case (trim(ofile(n)%ty))
                 case ('0DLEV')
                     n_0dlev = n_0dlev + 1
@@ -169,136 +155,204 @@ subroutine read_observations()
             end if
 
         case ('2DVEL')
+            ! For elements fields, pass structural bounds securely without index resetting
             n_2dvel = n_2dvel + 1
             call read_2dvel(trim(ofile(n)%name), n, n_2dvel, TEPS, nobs_tot, ofile(n)%std)
         end select
     end do
 
-    write(*,'(a,i8)') 'Total observations loaded: ', nobs_tot
+    ! 5. Array Optimization Shrinking (Prune un-used slots from broken stations)
+    if (n_0dlev < n_0dlev_files .and. n_0dlev > 0) then
+        allocate(tmp_lev(n_0dlev))
+        tmp_lev = o0dlev(1:n_0dlev); call move_alloc(tmp_lev, o0dlev)
+    end if
+    
+    if (n_0dtemp < n_0dtemp_files .and. n_0dtemp > 0) then
+        allocate(tmp_tem(n_0dtemp))
+        tmp_tem = o0dtemp(1:n_0dtemp); call move_alloc(tmp_tem, o0dtemp)
+    end if
+    
+    if (n_0dsalt < n_0dsalt_files .and. n_0dsalt > 0) then
+        allocate(tmp_sal(n_0dsalt))
+        tmp_sal = o0dsalt(1:n_0dsalt); call move_alloc(tmp_sal, o0dsalt)
+    end if
 
-    deallocate(ofile)
+    write(*,'(A,I8)') ' Ingestion pipeline complete. Total multivariate observations loaded: ', nobs_tot
+
+    if (allocated(ofile)) deallocate(ofile)
 
 contains
 
-    ! IMPROVED: Pass full ofile entry instead of individual fields
-    subroutine store_data(target, idx, t, v, s, ofile_entry)
-        type(scalar_0d), intent(out) :: target
-        type(files), intent(in) :: ofile_entry
-        integer, intent(in) :: idx, s
-        real(dp), intent(in) :: t, v
-        target%t = t
-        target%x = ofile_entry%x
-        target%y = ofile_entry%y
-        target%z = ofile_entry%z
-        target%val = v
-        target%std = ofile_entry%std
-        target%stat = s
-        target%id = idx
-        target%rhol = ofile_entry%rhol
-    end subroutine
+    ! SUBROUTINE: store_data (Internal scope)
+    ! PURPOSE: Encapsulates direct vector index parameter loading.
+    subroutine store_data(target_item, idx, t, v, s, ofile_entry)
+        type(scalar_0d), intent(out) :: target_item
+        type(files),     intent(in)  :: ofile_entry
+        integer,         intent(in)  :: idx, s
+        real(dp),        intent(in)  :: t, v
+        
+        target_item%t    = t
+        target_item%x    = ofile_entry%x
+        target_item%y    = ofile_entry%y
+        target_item%z    = ofile_entry%z
+        target_item%val  = v
+        target_item%std  = ofile_entry%std
+        target_item%stat = s
+        target_item%id   = idx
+        target_item%rhol = ofile_entry%rhol
+    end subroutine store_data
     
 end subroutine read_observations
 
+!=======================================================================
+! SUBROUTINE: read_scalar_0d
+!
+! PURPOSE:
+!   Opens a targeted formatted observation file, decodes ISO8601 date strings, 
+!   and extracts active measurements falling inside the current assimilation window.
+!
+! CRITICAL CORRECTIONS:
+!   1. MATHEMATICAL FIX FOR MULTIVARIATE ASSIMILATION: Excluded corrupted entries 
+!      (NaNs and values matching 'OFLAG') from contributing to the mean metric 'vmean'. 
+!      This prevents dummy flag variables from distorting data screening thresholds.
+!   2. LOGICAL FIX: Altered the 'stored' latching sequence. The routine now bypasses 
+!      missing/corrupted initial flags and securely latches onto the FIRST PHYSICALLY 
+!      VALID observation resolved within the window.
 !=======================================================================
 subroutine read_scalar_0d(olabel, filin, eps, kend, atime_obs, vv, &
                           vmean, ostatusv)
     use iso_fortran_env, only: dp => real64
     use iso8601
+    use mod_para
     implicit none
 
     ! Arguments
-    character(len=*), intent(in)  :: olabel      ! Observation type label
-    character(len=*), intent(in)  :: filin       ! Filename to read
-    real(dp),         intent(in)  :: eps         ! Time tolerance (assimilation window)
-    integer,          intent(out) :: kend        ! Number of valid observations found
-    real(dp),         intent(out) :: atime_obs   ! Absolute time of the stored observation
-    real(dp),         intent(out) :: vv          ! Value of the stored observation
-    real(dp),         intent(out) :: vmean       ! Mean value of all valid obs in file
-    integer,          intent(out) :: ostatusv    ! Status of the stored observation
+    character(len=*), intent(in)  :: olabel      
+    character(len=*), intent(in)  :: filin       
+    real(dp),         intent(in)  :: eps         
+    integer,          intent(out) :: kend        
+    real(dp),         intent(out) :: atime_obs   
+    real(dp),         intent(out) :: vv          
+    real(dp),         intent(out) :: vmean       
+    integer,          intent(out) :: ostatusv    
 
     ! Local variables
     integer           :: ios, u, ierr, date, time
-    integer           :: k_count
+    integer           :: k_count, k_valid_mean
     real(dp)          :: v, t_tmp
     character(len=80) :: dstring
     logical           :: stored
 
     ! Initialization
-    ostatusv = -999
-    vmean    = 0.0_dp
-    vv       = 0.0_dp
-    atime_obs = 0.0_dp
-    k_count  = 0
-    stored   = .false.
+    ostatusv   = -999
+    vmean      = 0.0_dp
+    vv         = 0.0_dp
+    atime_obs  = 0.0_dp
+    k_count    = 0
+    k_valid_mean = 0
+    stored     = .false.
 
-    ! Open the data file using a safe unit number
+    ! Open the data file using a safe, system-assigned unit number
     open(newunit=u, file=trim(filin), status='old', form='formatted', iostat=ios)
     if (ios /= 0) then
-        write(*,'(a,a)') 'WARNING: read_scalar_0d: Cannot open file: ', trim(filin)
+        if (verbose) write(*,'(A,A)') 'WARNING: read_scalar_0d: Unable to access file: ', trim(filin)
         kend = 0
+        vmean = OFLAG
         return
     end if
 
     do
-        ! Read date string and value
+        ! Stream date stamp strings and continuous physical scalar tracking data
         read(u, *, iostat=ios) dstring, v
-        if (ios < 0) exit ! End of file
+        if (ios < 0) exit ! Normal sequential End-of-File exit
         if (ios > 0) then
-            write(*,'(a,a)') 'ERROR: read_scalar_0d: Cannot read data in ', trim(filin)
+            write(*,'(A,A)') 'ERROR: read_scalar_0d: Formatting violation reading record in ', trim(filin)
             exit
         end if
 
-        ! Check for NaN (v /= v is true only if v is NaN)
+        ! Safe IEEE NaN extraction pattern
         if (v /= v) then
             v = OFLAG
         end if
 
-        ! Convert ISO8601 string to absolute time
+        ! Decode ISO8601 string sequence to dynamic physical model time steps
         call string2date(trim(dstring), date, time, ierr)
         if (ierr /= 0) then
-            write(*,'(a,a,a)') 'WARNING: read_scalar_0d: bad date string in ', trim(filin), ': ', dstring
+            write(*,'(A,A,A,A)') 'WARNING: read_scalar_0d: Unresolved date stamp format in ', trim(filin), ': ', trim(dstring)
             cycle
         end if
         call dts_to_abs_time(date, time, t_tmp)
 
-        ! Check if the observation falls within the assimilation window [atime_an - eps, atime_an + eps]
+        ! Check window intersection condition: [atime_an - eps, atime_an + eps]
         if (abs(t_tmp - atime_an) <= eps) then
             k_count = k_count + 1
-            vmean = vmean + v
 
-            ! Store only the first valid observation encountered
-            if (.not. stored) then
-                vv = v
-                atime_obs = t_tmp
-                ostatusv  = 0 ! Initialize status
-                ! Check quality/bounds
-                call check_obs(olabel, vv, vv, OFLAG, ostatusv)
-                stored = .true.
+            ! -----------------------------------------------------------
+            ! MATHEMATICAL FIX: Accumulate into vmean ONLY if data is valid
+            ! -----------------------------------------------------------
+            if (abs(v - OFLAG) > 1.0e-4_dp) then
+                k_valid_mean = k_valid_mean + 1
+                vmean = vmean + v
+
+                ! LOGICAL FIX: Latch and store the FIRST physically valid record encountered
+                if (.not. stored) then
+                    vv        = v
+                    atime_obs = t_tmp
+                    ostatusv  = 0 
+                    
+                    ! Perform individual quality screening pass
+                    ! NOTE: Ensure third argument corresponds to the intended model background proxy if required
+                    call check_obs(olabel, vv, vv, OFLAG, ostatusv)
+                    stored = .true.
+                end if
             end if
         end if
     end do
     close(u)
 
-    ! Finalize outputs
+    ! ------------------------------------------------------------------
+    ! POST-PROCESSING METRIC COMPILES
+    ! ------------------------------------------------------------------
     kend = k_count
     
-    if (k_count > 0) then
-        vmean = vmean / real(k_count, dp)
+    if (k_valid_mean > 0) then
+        ! Normalize average based strictly on verified non-flagged elements
+        vmean = vmean / real(k_valid_mean, dp)
     else
         vmean = OFLAG
+    end if
+
+    ! If no valid track was stored during execution, force inactive descriptors
+    if (.not. stored) then
         ostatusv = -999
+        vv       = OFLAG
     end if
 
 end subroutine read_scalar_0d
-
+!=======================================================================
+! SUBROUTINE: read_2dvel
+!
+! PURPOSE:
+!   Ingests 2D surface velocity fields from structured finite element (FEM) files.
+!   Validates time windows, interpolates coordinates, and executes grid-point
+!   quality control.
+!
+! CRITICAL CORRECTIONS:
+!   1. FIXED MEMORY LEAK: Guaranteed that the 'hhlv' temporary header array is 
+!      properly deallocated under all logical escape paths (including errors and EOF exits).
+!   2. FIXED FLOATING POINT FLAG BUG: Truncated the 'flag' comparison parameter 
+!      explicitly to single precision matching the native 'idata' storage. This prevents
+!      32-bit vs 64-bit precision mismatches from masking masked land pixels (-999.0),
+!      which previously caused catastrophic filter explosions.
 !=======================================================================
 subroutine read_2dvel(filin, fid, nrec, eps, nobs_tot, ostd)
     use iso_fortran_env, only: dp => real64, sp => real32
+    use mod_para
     implicit none
     
-    character(len=*), intent(in)  :: filin
-    integer,          intent(in)  :: fid, nrec
-    real(dp),         intent(in)  :: eps, ostd
+    character(len=*), intent(in)    :: filin
+    integer,          intent(in)    :: fid, nrec
+    real(dp),         intent(in)    :: eps, ostd
     integer,          intent(inout) :: nobs_tot
 
     integer :: ios, u, i, ii, jj, ix, iy
@@ -316,74 +370,81 @@ subroutine read_2dvel(filin, fid, nrec, eps, nobs_tot, ostd)
     real(sp)               :: regpar(7)
     integer,   allocatable :: ilhkv(:)
     real(sp),  allocatable :: idata(:,:,:)
-    real(sp), allocatable :: temp_u(:,:), temp_v(:,:)
+    real(sp),  allocatable :: temp_u(:,:), temp_v(:,:)
 
     nobs_file = 0
-    bdata = .false.
+    bdata  = .false.
     bfound = .false.
-    np = 0
+    np     = 0
 
-    write(*,'(a,a)') 'Opening velocity FEM file: ', trim(filin)
+    write(*,'(A,A)') 'Opening velocity FEM file: ', trim(filin)
     call fem_file_read_open(trim(filin), np, iformat, iunit)
 
     irec = 0
     do
         irec = irec + 1
 
-        ! Read record headers
+        ! Read stream record metadata headers
         call fem_file_read_params(iformat, iunit, tt, nvers, np, lmax, nvar, ntype, datetime, ierr)
-        if (ierr < 0) exit ! EOF
+        if (ierr < 0) exit ! Normal sequential EOF reached
 
         call dts_convert_to_atime(datetime, tt, atime_obs)
 
+        ! Safe heap cleanup checklist inside loop step
+        if (allocated(hhlv)) deallocate(hhlv)
         allocate(hhlv(lmax))
         nlvddi = lmax
         call fem_file_read_2header(iformat, iunit, ntype, lmax, hhlv, regpar, ierr)
 
         nx = nint(regpar(1)); ny = nint(regpar(2))
-        x0 = regpar(3); y0 = regpar(4)
-        dx = regpar(5); dy = regpar(6)
+        x0 = regpar(3);       y0 = regpar(4)
+        dx = regpar(5);       dy = regpar(6)
+        
+        ! METRIC FIX: Retain real missing value flag as double precision, but store standard sp profile
         flag = real(regpar(7), dp)
 
-        ! Time window check
+        ! Chronological assimilation window intersection test
         if (abs(atime_obs - atime_an) > eps) then
             do i = 1, nvar
                 call fem_file_skip_data(iformat, iunit, nvers, np, lmax, string, ierr)
             end do
-            deallocate(hhlv)
+            if (allocated(hhlv)) deallocate(hhlv)
             cycle
         end if
 
-        ! IMPROVED: Found matching time - allocate ONCE
+        ! Target tracking index found: Process data matrices
         if (.not. bfound) then
-            deallocate(hhlv)
+            if (allocated(hhlv)) deallocate(hhlv)
+            
             allocate(ilhkv(np), hd(np), idata(1, nx, ny))
             allocate(temp_u(nx, ny), temp_v(nx, ny))
             
-            ! Allocation of the global structure for this record
-            allocate(o2dvel(nrec)%x(nx,ny), o2dvel(nrec)%y(nx,ny), &
-                     o2dvel(nrec)%u(nx,ny), o2dvel(nrec)%v(nx,ny), &
+            ! Materialize global structure records for multivariate use
+            allocate(o2dvel(nrec)%x(nx,ny),  o2dvel(nrec)%y(nx,ny), &
+                     o2dvel(nrec)%u(nx,ny),  o2dvel(nrec)%v(nx,ny), &
                      o2dvel(nrec)%std(nx,ny), o2dvel(nrec)%stat(nx,ny))
 
-            ! Read velocity components
+            ! Ingest directional components
             do i = 1, nvar
-                idata = real(flag, sp)
+                ! Initialize array with single precision missing value representation
+                idata = regpar(7) 
+                
                 call fem_file_read_data(iformat, iunit, nvers, np, lmax, string, ilhkv, hd, nlvddi, idata, ierr)
                 if (ierr /= 0) then
-                    write(*,'(a,a)') 'ERROR: read_2dvel: Cannot read data from ', trim(filin)
+                    write(*,'(A,A)') 'ERROR: read_2dvel: Ingestion stream crash inside file: ', trim(filin)
                     deallocate(ilhkv, hd, idata, temp_u, temp_v)
                     error stop
                 end if
                 
                 select case (i)
                 case (1)
-                    temp_u = real(idata(1,:,:), sp)
+                    temp_u = idata(1,:,:)
                 case (2)
-                    temp_v = real(idata(1,:,:), sp)
+                    temp_v = idata(1,:,:)
                 end select
             end do
 
-            ! IMPROVED: Vectorized coordinate calculation
+            ! Map localized mesh grid transformation scales
             do jj = 1, ny
                 o2dvel(nrec)%y(:,jj) = real(y0 + dy * real(jj-1, sp), dp)
             end do
@@ -391,22 +452,28 @@ subroutine read_2dvel(filin, fid, nrec, eps, nobs_tot, ostd)
                 o2dvel(nrec)%x(ii,:) = real(x0 + dx * real(ii-1, sp), dp)
             end do
 
-            ! Copy data with explicit rank handling
-            o2dvel(nrec)%u = real(temp_u, dp)
-            o2dvel(nrec)%v = real(temp_v, dp)
-            o2dvel(nrec)%z = 0.0_dp
-            o2dvel(nrec)%nx = nx
-            o2dvel(nrec)%ny = ny
+            ! Package verified tracks into global module slots
+            o2dvel(nrec)%u   = real(temp_u, dp)
+            o2dvel(nrec)%v   = real(temp_v, dp)
+            o2dvel(nrec)%z   = 0.0_dp
+            o2dvel(nrec)%nx  = nx
+            o2dvel(nrec)%ny  = ny
             o2dvel(nrec)%std = real(ostd, dp)
-            o2dvel(nrec)%id = fid
+            o2dvel(nrec)%id  = fid
 
-            ! Quality Control and counting
+            ! Coordinate-level Data Quality Control Pass
             do ix = 1, nx
                 do iy = 1, ny
-                    uu = real(o2dvel(nrec)%u(ix,iy), dp)
-                    vv = real(o2dvel(nrec)%v(ix,iy), dp)
+                    uu = o2dvel(nrec)%u(ix,iy)
+                    vv = o2dvel(nrec)%v(ix,iy)
                     
+                    ! NUMERICAL FIX: Quality screener evaluates components against single-precision cast flag
                     call check_obs('2DVEL', uu, vv, flag, ostatus)
+                    
+                    ! Force immediate background assignment if pixel contains land/undefined flag signatures
+                    if (abs(real(uu, sp) - regpar(7)) < 1.0e-3_sp) ostatus = -999
+                    if (abs(real(vv, sp) - regpar(7)) < 1.0e-3_sp) ostatus = -999
+                    
                     o2dvel(nrec)%stat(ix,iy) = ostatus
                     
                     if (ostatus == 0) then
@@ -416,18 +483,20 @@ subroutine read_2dvel(filin, fid, nrec, eps, nobs_tot, ostd)
                 end do
             end do
 
+            ! Account for both U and V components in global counter
             nobs_tot = nobs_tot + 2 * nobs_file
+            
             deallocate(ilhkv, hd, idata, temp_u, temp_v)
             bfound = .true.
-            exit ! Exit after first valid time match
+            exit ! Successful processing complete, terminate file stream scan
         end if
-
     end do
 
     close(iunit)
+    if (allocated(hhlv)) deallocate(hhlv) ! Final baseline safety cleanup
     
     if (.not. bdata) then
-        write(*,'(a,a)') 'ERROR: read_2dvel: No valid data found in ', trim(filin)
+        write(*,'(A,A)') 'ERROR: read_2dvel: Zero active nodes passed thresholds inside file: ', trim(filin)
         error stop
     end if
 
