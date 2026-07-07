@@ -108,7 +108,7 @@ SHYOBJ = \
 	$(SHYSHYFEM)/conz_common.o \
 	$(SHYSHYFEM)/ecological_dummy.o \
 	$(SHYSHYFEM)/gotm_aux.o \
-	$(FEMSRC)/contrib/check_dummy.o \
+	$(FEMSRC)/contrib/enKF/check_dummy.o \
 	$(FEMSRC)/contrib/ecological/mercury/mercury_dummy.o \
 	$(FEMSRC)/contrib/ecological/bfm/bfm_dummy.o
 

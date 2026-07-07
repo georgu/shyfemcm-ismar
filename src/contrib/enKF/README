@@ -195,20 +195,6 @@ If unused, prescribe a mask of all 1 values for each time step.
 
 
 ----------
-lbound.dat (optional)
-----------
-Recommended.
-Controls how the analysis behaves near open boundaries:
-
-- full background at boundary nodes;
-- full analysis beyond a specified distance (G-C function).
-
-Format:
-first line : number of nodes
-next lines : node_id   radius
-
-
-----------
 mod_err.info (optional - experimental)
 ----------
 Enable by setting mode_an = 1 in mod_para.f90.

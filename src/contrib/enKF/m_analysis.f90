@@ -4,7 +4,7 @@ module m_analysis
 
 contains
 
-subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncation, mode, &
+subroutine analysis(A, R, E, S, D1, innov, ndim, nrens, nrobs, verbose, truncation, mode, &
                     lrandrot, lupdate_randrot, lsymsqrt, inflate, infmult, islocal)
 
   !=======================================================================
@@ -44,7 +44,7 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
 
   real(dp), intent(inout) :: A(ndim,nrens)  
   real(dp), intent(inout) :: R(nrobs,nrobs) 
-  real(dp), intent(in)    :: D(nrobs,nrens) 
+  real(dp), intent(in)    :: D1(nrobs,nrens) 
   real(dp), intent(in)    :: E(nrobs,nrens) 
   real(dp), intent(in)    :: S(nrobs,nrens) 
   real(dp), intent(in)    :: innov(nrobs)   
@@ -138,7 +138,7 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
 
       case (10)
          ! IMPROVED: exact_diag_inversion should also employ adaptive damping internally
-         call exact_diag_inversion(S, D, X5, nrens, nrobs)
+         call exact_diag_inversion(S, D1, X5, nrens, nrobs)
 
       case (11, 21)
          !=======================================================================
@@ -220,9 +220,9 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
   case (11,12,13)
       allocate(X3(nrobs,nrens))
       if (nrobs > 1) then
-          call genX3(nrens, nrobs, nrmin, eig, Z, D, X3)
+          call genX3(nrens, nrobs, nrmin, eig, Z, D1, X3)
       else
-          X3 = D * eig(1)
+          X3 = D1 * eig(1)
       end if
 
       !=======================================================================
@@ -270,8 +270,6 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
   !  STEP 3: FINAL ENSEMBLE UPDATE
   !=======================================================================
 
-  if (verbose) print '(a)', 'analysis: final update'
-
   if (lreps) then
      !=======================================================================
      ! Correct additive update for stochastic EnKF (Modes 11, 12, 13)
@@ -289,7 +287,6 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
      if (.not. islocal) call dumpX5(X5, nrens)            
   end if
 
-  if (verbose) print '(a)', 'analysis: final update done'
   !=======================================================================
   !  DIAGNOSTIC: Monitor increment magnitude and ensemble variance growth
   !=======================================================================
@@ -321,8 +318,8 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
   end if
 
   ! Bounded inflation to prevent runaway variance growth
-  ! Clamp inflation factor to reasonable stable range [0.95, 1.20]
-  inffac = max(0.95_dp, min(1.20_dp, inffac))
+  ! Clamp inflation factor to reasonable stable range [0.8, 1.40]
+  !inffac = max(0.80_dp, min(1.40_dp, inffac))
 
   do j = 1, nrens
      do i = 1, ndim
@@ -337,6 +334,8 @@ subroutine analysis(A, R, E, S, D, innov, ndim, nrens, nrobs, verbose, truncatio
       var_ratio = var_after_scalar / max(var_before_scalar, 1.0e-20_dp)
       write(*,'(a,f8.4)') 'analysis: variance ratio (after/before):', var_ratio
   end if
+
+  if (verbose) print '(a)', 'analysis: final update done'
 
   !=======================================================================
   !  STEP 5: DEALLOCATIONS

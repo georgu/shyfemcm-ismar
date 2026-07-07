@@ -6,15 +6,13 @@
 # Ensemble Kalman Filter (EnKF) for SHYFEM
 # ------------------------------------------------------------------------------
 #
-# See the README file for help
-#
 
 SCRIPT=$(realpath $0)
 SCRIPTPATH=$(dirname $SCRIPT)
-SRCDIR=$SCRIPTPATH/../..	# Source directory
-SIMDIR=$(pwd)		# Current execution directory
+SRCDIR=$SCRIPTPATH/../..	# Source code base directory
+SIMDIR=$(pwd)		# Current run execution workspace directory
 
-# Parallel simulations are scaled according to these parameters
+# Parallel simulations scaling parameters
 # MPI MODE: Allocates discrete MPI processes per member execution
 CORES_PER_MEMBER=1
 # OPENMP MODE: Launches concurrent members utilizing localized multi-threading
@@ -119,26 +117,17 @@ Read_antime_list() {
 # Simulation Skeleton Input Customization (sed replacement)
 #----------------------------------------------------------
 SkelStr() {
-    # Localize arguments for clarity and to prevent variable bleeding
     local pefile="$6"
     local sed_args=()
     local col1 col2 dummy
 
-    # Check if the parameter file exists and is not empty
     if [ -s "$pefile" ]; then
-        # Read the file line by line
-        # The 'dummy' variable captures and discards all remaining columns (STD, MIN, MAX)
         while read -r col1 col2 dummy || [ -n "$col1" ]; do
-            # Skip empty lines, incomplete lines, or lines starting with a comment character (#)
             [[ -z "$col1" || -z "$col2" || "$col1" == \#* ]] && continue
-            
-            # Dynamically append the sed substitution expression using only the first two columns
             sed_args+=("-e" "s|${col1}|${col2}|g")
         done < "$pefile"
     fi
 
-    # Execute sed combining the dynamic array replacements with the fixed substitutions
-    # Input file is $5, and the output is redirected to $7
     sed "${sed_args[@]}" \
         -e "s|NAMESIM|$1|g" \
         -e "s|ITANF|$2|g" \
@@ -185,7 +174,6 @@ Run_ensemble_analysis() {
     "$SRCDIR/contrib/enKF/main"
     [ $? -ne 0 ] && echo "[ERROR] EnKF Core failed." && exit 1
 
-    # Quality check validation for the updated analysis outputs
     for (( ne = 0; ne < nrens; ne++ )); do
         nensl=$(printf "%05d" "$ne")
         filename="an${nanl}_en${nensl}a.rst"
@@ -196,7 +184,6 @@ Run_ensemble_analysis() {
 #==========================================================
 # MAIN EXECUTION CORE
 #==========================================================
-
 # Ensure all 5 required input parameters are parsed
 [ $# -ne 5 ] && Usage
 rmode=$1; islocal=$2; nthreads=$3; out_verb=$4; parallel_mode=$5
@@ -204,158 +191,217 @@ rmode=$1; islocal=$2; nthreads=$3; out_verb=$4; parallel_mode=$5
 # --- DYNAMIC HARDWARE OVERLOAD PROTECTION ---
 # Automatically detect total physical CPU cores available on the system
 SYSTEM_CORES=$(lscpu -p | grep -v '^#' | sort -u -t, -k 2,4 | wc -l)
-
-# Fallback to nproc if lscpu parsing fails
 [ -z "$SYSTEM_CORES" ] || [ "$SYSTEM_CORES" -le 0 ] && SYSTEM_CORES=$(nproc)
 
-# Leave 2 cores free for OS and I/O tasks to guarantee system stability
+# Reserve 2 cores for OS and asynchronous I/O operations to guarantee host stability
 SAFE_CORES_LIMIT=$(( SYSTEM_CORES - 2 ))
 [ $SAFE_CORES_LIMIT -lt 2 ] && SAFE_CORES_LIMIT=2
 
+# Throttle execution threads down to the safe threshold if over-allocated by user
 if [ "$nthreads" -gt "$SAFE_CORES_LIMIT" ]; then
     echo "[WARNING] Requested $nthreads threads, but the safe limit for this machine is $SAFE_CORES_LIMIT cores."
     echo "[WARNING] Automatically adjusting 'nthreads' to $SAFE_CORES_LIMIT to prevent MPI/RAM starvation."
     nthreads=$SAFE_CORES_LIMIT
 fi
 
-# Initialize file structures and environment mapping
+# Initialize file structures, list dimensions, and global arrays mapping
 Check_files
 Read_ens_list
 Read_antime_list
 
+# --- AUTOMATIC RESTRT INTEGRITY & SYNCHRONIZATION (SPIN-UP) ---
+echo "[INFO] Verifying if first observation record (${timeo[1]}) matches or exists in the initial restart..."
+
+# Query rstinf output via grep to check if the target assimilation timestamp is already present in the file history
+date_exists=$($SRCDIR/shyfem/rstinf $rstfile_init | grep -F "${timeo[1]}")
+
+if [ -n "$date_exists" ]; then
+    echo "[SUCCESS] First observation record (${timeo[1]}) is natively available in the restart history."
+    echo "[SUCCESS] SHYFEM will parse the index correctly. Skipping synchronization spin-up."
+else
+    echo "[WARNING] First observation record (${timeo[1]}) NOT found in the restart file."
+    # Extract the final calculated date record string from the initial restart file to use as the spin-up baseline
+    rst_date_final=$($SRCDIR/shyfem/rstinf $rstfile_init | awk '/Final time in file/ {print $6}')
+    echo "[SYNCHRONIZATION] Advancing all $nrens members from $rst_date_final to ${timeo[1]}..."
+
+    # 1. Generate synchronization skeleton files (.str) for all ensemble members
+    for (( ne = 0; ne < nrens; ne++ )); do
+        nel=$(printf "%05d" "$ne")
+        name_sim="sync_en${nel}b"
+        pefile="pe_parameters_init_en${nel}.dat" 
+        strname="${name_sim}.str"
+        
+        # Invoke SkelStr setting idtrst=-1. SHYFEM will output a clean, single-record restart at ITEND (timeo[1])
+        SkelStr "$name_sim" "$rst_date_final" "${timeo[1]}" "an00001_en${nel}b.rst" "${skel_file[$ne]}" "$pefile" "$strname"
+    done
+
+    # 2. Execute the parallel spin-up computational block (MPI vs OpenMP)
+    if [ "$parallel_mode" = "mpi" ]; then
+        export OMP_NUM_THREADS=1
+        JOBS_CONCURRENT=$(( nthreads / CORES_PER_MEMBER ))
+        [ $JOBS_CONCURRENT -lt 1 ] && JOBS_CONCURRENT=1
+        runpr=$([ $CORES_PER_MEMBER -eq "1" ] && echo "" || echo "mpirun -np $CORES_PER_MEMBER")
+
+        parallel --halt now,fail=1 --jobs "$JOBS_CONCURRENT" "
+            $runpr $SRCDIR/shyfem/shyfem {} > {.}.log 2>&1 || true
+            if ! grep -q '100.000 %' {.}.log; then
+                [ -f fort.999 ] && mv fort.999 fort.999_{.}
+                exit 1
+            else
+                [ -f fort.999 ] && rm -f fort.999; exit 0
+            fi
+        " ::: sync_en*b.str
+    else
+        export OMP_NUM_THREADS=$THREADS_PER_MEMBER
+        JOBS_CONCURRENT=$(( nthreads / THREADS_PER_MEMBER ))
+        [ $JOBS_CONCURRENT -lt 1 ] && JOBS_CONCURRENT=1
+
+        parallel --halt now,fail=1 --jobs "$JOBS_CONCURRENT" "
+            $SRCDIR/shyfem/shyfem {} > {.}.log 2>&1 || true
+            if ! grep -q '100.000 %' {.}.log; then
+                [ -f fort.999 ] && mv fort.999 fort.999_{.}
+                exit 1
+            else
+                [ -f fort.999 ] && rm -f fort.999; exit 0
+            fi
+        " ::: sync_en*b.str
+    fi
+
+    # Evaluate the global exit status of the synchronization execution
+    if [ $? -ne 0 ]; then
+        echo "[ERROR] Spin-up alignment failed. Check sync_en*.log execution outputs."
+        exit 1
+    fi
+
+    # 3. Splice newly generated single-record restarts into the execution core workspace
+    echo "[SYNCHRONIZATION] Splicing single-record synchronized restarts into execution core..."
+    for (( ne = 0; ne < nrens; ne++ )); do
+        nel=$(printf "%05d" "$ne")
+        Check_file "sync_en${nel}b.rst"
+
+        # Replace the initial symbolic link with the actual advanced single-record restart file
+        rm -f "an00001_en${nel}b.rst"
+        mv -f "sync_en${nel}b.rst" "an00001_en${nel}b.rst"
+        rm -f sync_en${nel}b.log sync_en${nel}b.str
+    done
+    echo "[SUCCESS] Spin-up completed. Workspace successfully aligned to ${timeo[1]}."
+fi
+
 echo "Starting Assimilation Cycle..."
 
-# Clean from previous workspace allocations
+# Purge leftover temporary structures from previous runs
 rm -f X5*.* X3*.* backKF_*.rst analKF_*.rst
 
-# Enforce full thread allocation for the initial EnKF Core processes
+# Maximize multi-threading allocation for the initialization phase of the EnKF compiled core
 export OMP_NUM_THREADS=$nthreads
 
+# --- MAIN ASSIMILATION LOOP ---
 for (( na = 1; na <= nran; na++ )); do
-   echo -e "\n--- Assimilation Cycle STEP $na OF $nran ---"
+    echo -e "\n--- Assimilation Cycle STEP $na OF $nran ---"
+    Write_obs_file "$na"
+    Write_info_file "$na"
 
-   Write_obs_file "$na"
-   Write_info_file "$na"
+    # 1. ANALYSIS STEP (Symmetric OpenMP multiprocessing within the Fortran binary core)
+    Run_ensemble_analysis "$na"
 
-   # 1. ANALYSIS STEP (Forced OpenMP inside compiled core)
-   Run_ensemble_analysis "$na"
+    # 2. FORECAST STEP (Evaluated exclusively if a subsequent timestep is pending)
+    if [ "$na" -ne "$nran" ]; then
+        echo "[FORECAST] Advancing ensemble members... $na/$nran"
 
+        # Generate custom simulation string configurations (.str) for each ensemble member
+        for (( ne = 0; ne < nrens; ne++ )); do
+            nel=$(printf "%05d" "$ne"); nal=$(printf "%05d" "$na")
+            naa=$((na + 1)); naal=$(printf "%05d" "$naa")
+            name_sim="an${naal}_en${nel}b"
+            pefile="pe_parameters_an${nal}_en${nel}.dat"
+            strname="${name_sim}.str"
+            SkelStr "$name_sim" "${timeo[$na]}" "${timeo[$naa]}" "an${nal}_en${nel}a.rst" "${skel_file[$ne]}" "$pefile" "$strname"
+        done
 
-   # 2. FORECAST STEP (Only evaluated if a subsequent timestep is pending)
-   if [ "$na" -ne "$nran" ]; then
-      echo "[FORECAST] Advancing ensemble members... $na/$nran"
-      
-      # Generate modified configuration files (.str) for every ensemble member
-      # if the parameter files are presents use them to write the str
-      for (( ne = 0; ne < nrens; ne++ )); do
-         nel=$(printf "%05d" "$ne"); nal=$(printf "%05d" "$na")
-         naa=$((na + 1)); naal=$(printf "%05d" "$naa")
-         name_sim="an${naal}_en${nel}b"
-         pefile="pe_parameters_an${nal}_en${nel}.dat"
-         strname="${name_sim}.str"
-         SkelStr "$name_sim" "${timeo[$na]}" "${timeo[$naa]}" "an${nal}_en${nel}a.rst" "${skel_file[$ne]}" "$pefile" "$strname"
-      done
+        # --- DYNAMIC FORECAST PARALLELIZATION PARSING ---
+        if [ "$parallel_mode" = "mpi" ]; then
+            # MPI Mode execution parameters mapping
+            export OMP_NUM_THREADS=1
+            JOBS_CONCURRENT=$(( nthreads / CORES_PER_MEMBER ))
+            [ $JOBS_CONCURRENT -lt 1 ] && JOBS_CONCURRENT=1
+            if [ $CORES_PER_MEMBER -eq "1" ]; then runpr='' ; else runpr="mpirun -np $CORES_PER_MEMBER" ; fi
 
-# --- DYNAMIC FORECAST PARALLELIZATION PARSING ---
-      if [ "$parallel_mode" = "mpi" ]; then
+            echo "[INFO] [MPI MODE] Running $JOBS_CONCURRENT concurrent members via $runpr..."
+            parallel --halt now,fail=1 --jobs "$JOBS_CONCURRENT" "
+                $runpr $SRCDIR/shyfem/shyfem {} > {.}.log 2>&1 || true
+                if ! grep -q '100.000 %' {.}.log; then
+                    [ -f fort.999 ] && mv fort.999 fort.999_{.}
+                    echo 'Process {} failed (100% not reached).'
+                    exit 1
+                else
+                    [ -f fort.999 ] && rm -f fort.999
+                    exit 0
+                fi
+            " ::: an${naal}_en*b.str
 
-         export OMP_NUM_THREADS=1
-         JOBS_CONCURRENT=$(( nthreads / CORES_PER_MEMBER ))
-         [ $JOBS_CONCURRENT -lt 1 ] && JOBS_CONCURRENT=1
+            if [ $? -ne 0 ]; then
+                echo "[ERROR] Forecast step failed in MPI execution. Check the remaining .log files."
+                exit 1
+            fi
+        else
+            # OpenMP Mode execution parameters mapping
+            export OMP_NUM_THREADS=$THREADS_PER_MEMBER
+            JOBS_CONCURRENT=$(( nthreads / THREADS_PER_MEMBER ))
+            [ $JOBS_CONCURRENT -lt 1 ] && JOBS_CONCURRENT=1
 
-         if [ $CORES_PER_MEMBER -eq "1" ]; then
-            runpr=''
-         else
-            runpr="mpirun -np $CORES_PER_MEMBER"
-         fi
-         echo "[INFO] [MPI MODE] Running $JOBS_CONCURRENT concurrent members via $runpr..."
+            echo "[INFO] [OMP MODE] Running $JOBS_CONCURRENT concurrent members, each restricted to $THREADS_PER_MEMBER OpenMP threads..."
+            parallel --halt now,fail=1 --jobs "$JOBS_CONCURRENT" "
+                $SRCDIR/shyfem/shyfem {} > {.}.log 2>&1 || true
+                if ! grep -q '100.000 %' {.}.log; then
+                    [ -f fort.999 ] && mv fort.999 fort.999_{.}
+                    echo 'Process {} failed (100% not reached).'
+                    exit 1
+                else
+                    [ -f fort.999 ] && rm -f fort.999
+                    exit 0
+                fi
+            " ::: an${naal}_en*b.str
 
-         parallel --halt now,fail=1 --jobs "$JOBS_CONCURRENT" "
-           $runpr $SRCDIR/shyfem/shyfem {} > {.}.log 2>&1 || true
-           
-           # Empirical success verification (ignoring Fortran exit code)
-           if [ -f fort.999 ] || ! grep -q '100.000 %' {.}.log; then
-             [ -f fort.999 ] && mv fort.999 fort.999_{.}
-             echo 'Process {} failed.'
-             exit 1
-           else
-             exit 0
-           fi
-           " ::: an${naal}_en*b.str
+            if [ $? -ne 0 ]; then
+                echo "[ERROR] Forecast step failed in OMP execution. Check the remaining .log files."
+                exit 1
+            fi
+        fi
 
-         # Check GNU Parallel
-         if [ $? -ne 0 ]; then
-             echo "[ERROR] Forecast step failed in MPI execution. Check the remaining .log files."
-             exit 1
-         fi
+        # Restore maximum available threads for the subsequent EnKF Core analysis execution
+        export OMP_NUM_THREADS=$nthreads
+    fi
 
-      else
-
-         export OMP_NUM_THREADS=$THREADS_PER_MEMBER
-         JOBS_CONCURRENT=$(( nthreads / THREADS_PER_MEMBER ))
-         [ $JOBS_CONCURRENT -lt 1 ] && JOBS_CONCURRENT=1
-
-         echo "[INFO] [OMP MODE] Running $JOBS_CONCURRENT concurrent members, each restricted to $THREADS_PER_MEMBER OpenMP threads..."
-
-         parallel --halt now,fail=1 --jobs "$JOBS_CONCURRENT" "
-           $SRCDIR/shyfem/shyfem {} > {.}.log 2>&1 || true
-           
-           # Empirical success verification (ignoring Fortran exit code)
-           if [ -f fort.999 ] || ! grep -q '100.000 %' {.}.log; then
-             [ -f fort.999 ] && mv fort.999 fort.999_{.}
-             echo 'Process {} failed.'
-             exit 1
-           else
-             exit 0
-           fi
-           " ::: an${naal}_en*b.str
-
-         # Check GNU Parallel
-         if [ $? -ne 0 ]; then
-             echo "[ERROR] Forecast step failed in OMP execution. Check the remaining .log files."
-             exit 1
-         fi
-      fi
-
-      # Restore maximum resource allocation threads for the subsequent EnKF Core analysis execution
-      export OMP_NUM_THREADS=$nthreads
-   fi
-
-   # --- CONSOLIDATE AND MERGE RESTART OUTPUT ---
-   nanl=$(printf "%05d" $na)
-   for (( ne = 0; ne < $nrens; ne++ )); do
+    # --- CONSOLIDATE AND MERGE RESTART OUTPUT ---
+    nanl=$(printf "%05d" $na)
+    for (( ne = 0; ne < $nrens; ne++ )); do
         nel=$(printf "%05d" $ne)
         filename1="an${nanl}_en${nel}b.rst"
         filename2="an${nanl}_en${nel}a.rst"
         Check_file $filename1
         Check_file $filename2
-        
-        # Save complete restart histories or preserve only the last time-slice
+
+        # Output verbosity check: append complete restart history or isolate the last time-slice
         if [ "$out_verb" -eq "1" ]; then
             cat $filename2 >> analKF_en$nel.rst
         else
             [[ "$na" -eq "$nran" ]] && mv -f $filename2 analKF_en$nel.rst
         fi
         rm -f $filename1 $filename2
-   done
+    done
 
-   filename1="an${nanl}_mean_a.rst"
-   filename2="an${nanl}_std_a.rst"
+    filename1="an${nanl}_mean_a.rst"
+    filename2="an${nanl}_std_a.rst"
+    Check_file $filename1
+    Check_file $filename2
+    cat $filename1 >> analKF_mean.rst
+    cat $filename2 >> analKF_std.rst
+    rm -f $filename1 $filename2
 
-   Check_file $filename1
-   Check_file $filename2
-
-   cat $filename1 >> analKF_mean.rst
-   cat $filename2 >> analKF_std.rst
-
-   rm -f $filename1 $filename2
-   
-   # SELECTIVE CLEANUP: If execution reaches this point, timestep 'na' completed SUCCESSFULLY.
-   # Delete .log and .str files ONLY for this specific step to prevent clutter.
-   # If the cycle crashes earlier (in the error blocks above), logs are preserved on disk.
-   if [ "$na" -ne "$nran" ]; then
-       rm -f an${naal}_en*b.log an${naal}_en*b.str an${naal}_en*b.inf
-   fi
+    # SELECTIVE CLEANUP: Clean up configuration logs and structures if current step succeeded
+    if [ "$na" -ne "$nran" ]; then
+        rm -f an${naal}_en*b.log an${naal}_en*b.str an${naal}_en*b.inf
+    fi
 done
 
 echo -e "\n[SUCCESS] Assimilation cycle complete. All final assets consolidated in the current workspace."

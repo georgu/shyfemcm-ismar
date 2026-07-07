@@ -317,11 +317,9 @@ subroutine genX3(nrens, nrobs, nrmin, eig, W, D, X3)
   allocate(X2(nrmin, nrens))
 
   ! 1. X1 = diag(eig) * W^T
-  !$omp parallel do private(i) shared(X1, eig, W, nrmin, nrobs)
   do i = 1, nrmin
     X1(i,:) = eig(i) * W(:,i)
   end do
-  !$omp end parallel do
 
   ! 2. X2 = X1 * D  -> (nrmin x nrens)
   call dgemm('N','N', nrmin, nrens, nrobs, 1.0_dp, X1, nrmin, D, nrobs, 0.0_dp, X2, nrmin)
@@ -500,7 +498,7 @@ subroutine dumpX3(X3, S, nrobs, nrens)
   ! file causes severe race conditions and file locking. We suppress or redirect 
   ! unformatted dumps unless explicitly managed. (Standard behavior: assumed rank-safe).
   tag2 = 'X3'
-  open(newunit=u, file='X3.uf', form='unformatted', status='replace')
+  open(newunit=u, file='analysis_stage.uf', form='unformatted', status='replace')
   write(u) tag2, nrens, nrobs
   write(u) X3
   write(u) S
@@ -518,7 +516,7 @@ subroutine dumpX5(X5, nrens)
   tag2 = 'X5'
 
   ! 1. Binary dump for the Smoother (Safe tracking channel)
-  open(newunit=u, file='X5.uf', form='unformatted', status='replace')
+  open(newunit=u, file='analysis_stage.uf', form='unformatted', status='replace')
   write(u) tag2, nrens
   write(u) X5
   close(u)
