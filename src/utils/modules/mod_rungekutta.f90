@@ -48,6 +48,7 @@
         real, allocatable, save :: b_crk(:)	    !generic b vector for conc. vert adv (can be im or ex)
 
 	integer, save :: n_rkstages = 0		    !number of (non-trivial) stages
+	integer, save :: rkscheme = 0		    !scheme triplet
 
         double precision, allocatable, save :: uverk_reg(:,:,:) !register vector for explicit momentum
         double precision, allocatable, save :: uvirk_reg(:,:,:) !register vector for implicit momentum
@@ -64,7 +65,6 @@
 
         integer nkn, nel, nlv
 
-	integer rk_triplet
 	double precision am,at,az,af,av,ad,aa,gamma,chi,a32
 	real getpar
 
@@ -72,14 +72,14 @@
 	!1/ $s$ is the number of non-trivial stages of the implicit scheme,
 	!2/ $\sigma$ is the number of non-trivial stages of the explicit scheme
 	!3/ $p$ is the combined order of accuracy.
-	rk_triplet = nint(getpar('rkscheme'))
+	rkscheme = nint(getpar('rkscheme'))
 
-        if( rk_triplet .ne. 111  .and.  &
-     &      rk_triplet .ne. 222  .and.  &
-     &      rk_triplet .ne. 2221 .and.  &
-     &      rk_triplet .ne. 232  .and.  &
-     &      rk_triplet .ne. 33 ) then
-          write(6,*) 'runge-kutta triplet: ', rk_triplet
+        if( rkscheme .ne. 111  .and.  &
+     &      rkscheme .ne. 222  .and.  &
+     &      rkscheme .ne. 2221 .and.  &
+     &      rkscheme .ne. 232  .and.  &
+     &      rkscheme .ne. 33 ) then
+          write(6,*) 'runge-kutta triplet: ', rkscheme
           stop 'error stop mod_rungekutta_init: incompatible params'
         end if
 
@@ -109,7 +109,7 @@
 	!Notice that for vertical viscous terms uses a different coefficient
 	! $at$, so that an L-stable Backward Euler is used, by default with
 	!weight $at=1$.
-	if (rk_triplet == 111) then
+	if (rkscheme == 111) then
 	  am=getpar('ampar')
 	  at=getpar('atpar')
 	  aa=getpar('aapar')
@@ -186,7 +186,7 @@
 	!It is composed of the pair second order DIRK22 and its
 	!explicit companion scheme ERK22. The same implicit scheme
 	!is used for all the stiff terms.
-	else if (rk_triplet == 222) then
+	else if (rkscheme == 222) then
 	  gamma=getpar('gapar')
 	  if( gamma <= 0. .or. gamma >= 1. ) then
             write(6,*) 'You are using the rkscheme=222 with:'
@@ -241,7 +241,7 @@
 	!composed of a first stage with Heun’s method followed by a
 	!second stage of the Cranck-Nicholson scheme and the explicit
 	!method is the midpoint scheme.
-	else if (rk_triplet == 2221) then
+	else if (rkscheme == 2221) then
           n_rkstages = 2
 
           allocate (a_erk(n_rkstages,n_rkstages))
@@ -286,7 +286,7 @@
 	!in (Bank,1985) and analysed in (Hosea,1996) and the explicit scheme
 	!is designed to match the coupling and order conditions (Giraldo,2013).
 	!This scheme preserve invariants and it is L-stable.
-	else if (rk_triplet == 232) then
+	else if (rkscheme == 232) then
 	  chi=getpar('chipar')
 	  if( chi <= 0. .or. chi >= 1. ) then
             write(6,*) 'You are using th rkscheme=232 with:'
@@ -366,7 +366,7 @@
 	!explicit this scheme is highly inefficient and it is used
 	!only for testing or computing reference solutions. It is
 	!not documented in the manual.
-	else if (rk_triplet == 33) then
+	else if (rkscheme == 33) then
           n_rkstages = 3
 
           allocate (a_erk(n_rkstages,n_rkstages))
@@ -471,6 +471,25 @@
 	end if
 
 	end subroutine get_rungekutta_weights
+
+!**************************************************************************
+
+	subroutine get_rungekutta_weights_tracer(curr_stage,coeff_crk)
+
+! returns additional Butcher Tableaux coefficients for tracers
+! a_rk for inner stages
+! b_rk for final stage
+
+	integer, intent(in) :: curr_stage
+	real, dimension(n_rkstages+1), intent(out) :: coeff_crk
+
+	if ( curr_stage < n_rkstages ) then
+	  coeff_crk = a_crk(curr_stage,:)
+	else
+	  coeff_crk = b_crk(:)
+	end if
+
+	end subroutine get_rungekutta_weights_tracer
 
 !==========================================================================
         end module mod_rungekutta
