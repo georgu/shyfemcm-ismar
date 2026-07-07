@@ -1293,7 +1293,7 @@
         end if
 
 !	------------------------------------------------------
-!	set up current stage right hand side F^x and F^y
+!	set up current stage right hand side F^x=G^x+L^x+S^x
 !	------------------------------------------------------
 
 	rvec(ju) = utlov(l,ie) - dtafix*( &
@@ -1302,7 +1302,7 @@
      &	  coeff_erk(curr_stage)*ggy + coeff_irk(curr_stage)*lly + coeff_srk(curr_stage)*ssy )
 
 !	------------------------------------------------------
-!	set up previous stage right hand side F^x and F^y
+!	set up previous stage right hand side F^x=G^x+L^x+S^x
 !	------------------------------------------------------
 
 	do jstage=1,curr_stage-1
@@ -1317,7 +1317,7 @@
         end do
 
 !	------------------------------------------------------
-!	save current stage right hand side F^x and F^y
+!	save current stage right hand side G^x,L^x,S^x ...^y
 !	------------------------------------------------------
 
         if (curr_stage .ne. n_rkstages) then !if (not last stage)
