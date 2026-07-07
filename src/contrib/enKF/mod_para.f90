@@ -35,7 +35,7 @@ module mod_para
   ! Ensemble inflation
   !--------------------------------------------------------------------
   integer, parameter :: inflate = 2    ! 0=off, 1=multiplicative, 2=adaptive
-  real(dp),    parameter :: infmult = 1.0  ! Inflation multiplier when inflate=1
+  real(dp),    parameter :: infmult = 0.9  ! Inflation multiplier when inflate=1
 
   !--------------------------------------------------------------------
   ! Local analysis (localisation)
@@ -77,9 +77,8 @@ module mod_para
 
   ! Check on observations
   logical, parameter  ::  OBSCHK = .true.
-  real(dp), parameter  :: THRSTD = 500. ! threshold multiplier for std (e.g., 3.0). 
-                                        ! Not recommended, use a very high value to disable.
-  real(dp), parameter  :: THRABS = 1.   ! relative threshold (0.1 - 0.5 typical). Absolute value.
+  real(dp), parameter  :: THRSTD = 3. ! threshold multiplier for std (e.g., 3.0). Use a very high value to disable.
+  real(dp), parameter  :: THRABS = 0.5   ! relative threshold (0.1 - 0.5 typical). Absolute value.
 
   ! SVD truncation and perturbation options
   real(dp),    parameter :: truncation     = 0.99

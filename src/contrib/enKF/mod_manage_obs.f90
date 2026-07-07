@@ -946,6 +946,7 @@ subroutine screen_observation(obs, x_ens, nmem, obs_std, k_std, k_rel, accept_ob
     ! 1) Std-based check
     if (abs(innovation) > k_std * obs_std) then
         accept_obs = .false.
+	write(*,*) 'Std-based check. Observation removed: ',abs(innovation), k_std * obs_std
         return
     end if
 
@@ -954,6 +955,7 @@ subroutine screen_observation(obs, x_ens, nmem, obs_std, k_std, k_rel, accept_ob
     if (scale_value > 0.0_dp) then
         if (abs(innovation) > k_rel * scale_value) then
             accept_obs = .false.
+	    write(*,*) 'Relative-scale check. Observation removed: ',abs(innovation), k_rel * scale_value
             return
         end if
     end if
@@ -962,6 +964,7 @@ subroutine screen_observation(obs, x_ens, nmem, obs_std, k_std, k_rel, accept_ob
     ens_spread = sqrt(sum(x_ens**2)/real(nmem, dp) - mean_model**2)
     thresh = 3._dp * sqrt(obs_std**2 + ens_spread**2)
     if (abs(innovation) > thresh) then
+	write(*,*) 'Spread check. Observation removed: ',abs(innovation), thresh
         accept_obs = .false.
         return
     end if

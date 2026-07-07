@@ -2,7 +2,7 @@
 !  MODULE: mod_enks_data
 !
 !  PURPOSE:
-!    Manages memory infrastructure and robust binary unformatted I/O 
+!    Manages memory infrastructure and binary unformatted I/O 
 !    ingestion for retrieving analysis weight sequences (X3/X5 operators) 
 !    accumulated during prior filter passes, preparing them for the EnKS.
 ! ======================================================================
@@ -120,9 +120,9 @@ subroutine load_all_x5(nrens_expected)
          read(u, iostat=ios) all_x5(count)%S
          if (ios /= 0) error stop "load_all_x5: Ingestion error on S matrix coefficients."
          
-         write(*,'(A,I5,A,I5,A,I5,A,F12.6)') &
+         write(*,'(A,I5,A,I5,A,I5,A,F18.1)') &
              '  Record', count, ': X3 (', all_x5(count)%nrobs, 'x', &
-             all_x5(count)%nrens, ') at t=', all_x5(count)%tt
+             all_x5(count)%nrens, ') at t = ', all_x5(count)%tt
       else if (all_x5(count)%tag == 'X5') then
          read(u, iostat=ios) all_x5(count)%nrens
          if (ios /= 0) error stop "load_all_x5: Ingestion error on deterministic metadata dimensions."
@@ -139,9 +139,9 @@ subroutine load_all_x5(nrens_expected)
          read(u, iostat=ios) all_x5(count)%mat
          if (ios /= 0) error stop "load_all_x5: Ingestion error on X5 matrix coefficients."
          
-         write(*,'(A,I5,A,I5,A,I5,A,F12.6)') &
+         write(*,'(A,I5,A,I5,A,I5,A,F18.1)') &
              '  Record', count, ': X5 (', all_x5(count)%nrens, 'x', &
-             all_x5(count)%nrens, ') at t=', all_x5(count)%tt
+             all_x5(count)%nrens, ') at t = ', all_x5(count)%tt
       end if
    end do
 
@@ -294,13 +294,13 @@ subroutine init_shyfem(basfile, nnlv)
 
    character(len=80), intent(in) :: basfile
    integer,           intent(in) :: nnlv
-   integer :: ios, u_bas
+   integer :: ios
 
-   ! Open and ingest unformatted hydrographic bathymetry topology boundaries
-   open(newunit=u_bas, file=trim(basfile), status="old", form="unformatted", iostat=ios)
-   if (ios /= 0) error stop "ERROR: init_shyfem: Unable to access basin boundary topology file."
-   call basin_read_by_unit(u_bas)
-   close(u_bas)
+   ! Open basin
+   open(22, file=trim(basfile), status="old", form="unformatted", iostat=ios)
+   if (ios /= 0) error stop "ERROR: init_shyfem: Unable to access basin file."
+   call basin_read_by_unit(22)
+   close(22)
 
    ! Bind uniform horizontal-vertical mesh layouts
    nlv = nnlv
@@ -389,7 +389,7 @@ subroutine read_rst(rstname, atimea, nnlv)
         error stop
      end if
      
-     ! MATHEMATICAL FIX: Replaced hyper-strict machine epsilon with robust time matching tolerance
+     ! Replaced hyper-strict machine epsilon with robust time matching tolerance
      if (abs(atimef - atimea) < time_match_tol) exit   
   end do
   close(u_rst)
@@ -463,7 +463,6 @@ subroutine rst_write_rec(atimea, iunit)
   utlov = utlnv
   vtlov = vtlnv
 
-  ! FIXED: Removed uninitialized local 'ios' checker that caused random runtime aborts
   call rst_write_record(atimea, iunit)
 end subroutine rst_write_rec
 
@@ -512,7 +511,7 @@ subroutine push_matrix(sdim, nrens, nre, Amat)
    ! 2. PHYSICAL CONVERSION: Translate Transport (m^2/s) to Velocity (m/s) via static hdenv
    ulnv = 0.0_dp
    vlnv = 0.0_dp
-   where( hdenv > 1.0e-6_dp ) ! Explicit stability threshold against division by zero
+   where( hdenv > 1.0e-6_dp )
        ulnv = utlnv / hdenv
        vlnv = vtlnv / hdenv
    end where
@@ -636,9 +635,7 @@ end subroutine make_mn_std
 !   by concatenating future analysis transformation operators within a 
 !   defined lag window, applying the joint weights to update past state fields.
 !
-! CRITICAL MATHEMATICAL FIX:
-!   Matrix multiplication order has been corrected to satisfy non-commutative 
-!   subspace rules. To apply future information retrogradely while looping
+!   Apply future information retrogradely while looping
 !   forward, the incoming operators must be premultiplied (multiplied onto 
 !   the left side of Xacc: Xtmp = X5 * Xacc), ensuring proper temporal chaining.
 ! ======================================================================
@@ -663,11 +660,11 @@ subroutine make_analysis(atime, sdim, nrens, Amat, nlag, verbose)
    ! 1. Define the dynamic temporal smoothing lag window boundaries: [atime, t_end]
    if (nlag == -1) then
       t_end = huge(1.0_dp)
-      if (lverbose) write(*,'(A,F12.4)') &
-          'make_analysis: Unbounded smoothing engaged. Compiling all available future records from t=', atime
+      if (lverbose) write(*,'(A,F18.1)') &
+          'make_analysis: Unbounded smoothing engaged. Compiling all available future records from t = ', atime
    else
       t_end = atime + real(nlag, dp) * dt_x5 + time_tol
-      if (lverbose) write(*,'(A,F12.4,A,F12.4,A)') &
+      if (lverbose) write(*,'(A,F18.1,A,F18.1,A)') &
           'make_analysis: Compiling future records within lag window [', atime, ' , ', t_end, ']'
    end if
 
@@ -685,8 +682,9 @@ subroutine make_analysis(atime, sdim, nrens, Amat, nlag, verbose)
    ! 2. Parse the historical weight ledger to accumulate operations within the lag window
    do i = 1, total_x5_records
       
-      ! Check if the current ledger record falls inside the active smoothing window [atime, t_end]
-      if (all_x5(i)%tt >= atime - time_tol .and. all_x5(i)%tt <= t_end) then
+      ! Check if the current ledger record falls inside the active smoothing window ]atime, t_end]
+      ! Note that the window does not include the current time.
+      if (all_x5(i)%tt > atime - time_tol .and. all_x5(i)%tt <= t_end) then
          count = count + 1
          
          if (all_x5(i)%tag == 'X3') then
@@ -705,22 +703,22 @@ subroutine make_analysis(atime, sdim, nrens, Amat, nlag, verbose)
                        all_x5(i)%S, all_x5(i)%nrobs, all_x5(i)%mat, all_x5(i)%nrobs, &
                        1.0_dp, X5_equiv, nrens)
             
-            ! MATHEMATICAL FIX: Premultiply (X5_equiv * Xacc) to preserve backward-chaining math
+            ! Premultiply (X5_equiv * Xacc) to preserve backward-chaining math
             call dgemm("N", "N", nrens, nrens, nrens, 1.0_dp, X5_equiv, nrens, &
                        Xacc, nrens, 0.0_dp, Xtmp, nrens)
             
-            if (lverbose) write(*,'(A,I5,A,F12.4)') '    Ingesting Stochastic weights from record ', i, ' at t=', all_x5(i)%tt
+            if (lverbose) write(*,'(A,I5,A,F18.1)') '    Ingesting Stochastic weights from record ', i, ' at t=', all_x5(i)%tt
             deallocate(X5_equiv)
             
          else if (all_x5(i)%tag == 'X5') then
             ! -----------------------------------------------------------
             ! Deterministic Subspace Path: Direct operator multiplication
             ! -----------------------------------------------------------
-            ! MATHEMATICAL FIX: Premultiply (X5 * Xacc) to ensure chronological inversion order
+            ! Premultiply (X5 * Xacc) to ensure chronological inversion order
             call dgemm("N", "N", nrens, nrens, nrens, 1.0_dp, all_x5(i)%mat, nrens, &
                        Xacc, nrens, 0.0_dp, Xtmp, nrens)
             
-            if (lverbose) write(*,'(A,I5,A,F12.4)') '    Ingesting Deterministic weights from record ', i, ' at t=', all_x5(i)%tt
+            if (lverbose) write(*,'(A,I5,A,F18.1)') '    Ingesting Deterministic weights from record ', i, ' at t=', all_x5(i)%tt
          else
             write(*,'(A,A)') 'ERROR: make_analysis: Invalid architecture signature detected: ', all_x5(i)%tag
             cycle
@@ -743,10 +741,10 @@ subroutine make_analysis(atime, sdim, nrens, Amat, nlag, verbose)
       Amat = Amat_tmp
       deallocate(Amat_tmp)
       
-      if (lverbose) write(*,'(A,I5,A,F12.4)') 'make_analysis: Retrospective smoothing completed. Blended ', &
+      if (lverbose) write(*,'(A,I5,A,F18.1)') 'make_analysis: Retrospective smoothing completed. Blended ', &
                                               count_applied, ' weight packets at time coordinate ', atime
    else
-      if (lverbose) write(*,'(A,F12.4)') 'make_analysis: No future weight packets fell within criteria for time ', atime
+      if (lverbose) write(*,'(A,F18.1)') 'make_analysis: No future weight packets fell within criteria for time ', atime
    end if
 
    deallocate(Xacc, Xtmp)
@@ -763,11 +761,6 @@ end module mod_enks_analysis
 !   by a prior EnKF filter pass, applies accumulated transformation 
 !   matrices (X3/X5), and exports retrospective mean and variance fields.
 !
-! CRITICAL REFACTORING NOTES:
-!   1. State space memory allocation for 'Astate' is extracted outside 
-!      the temporal loops to maximize cache performance and prevent size mismatch.
-!   2. Optimized file streaming protocols should be validated inside 
-!      downstream 'read_rst' structures to prevent redundant I/O open/close hits.
 ! ======================================================================
 ! ======================================================================
 ! PROGRAM: enKF2enKS
@@ -860,7 +853,7 @@ program enKF2enKS
        atime = all_x5(rrec)%tt
 
        if (rrec > 1) write(*,*) ""
-       write(*,'(A,I5,A,I5,A,F12.4)') &
+       write(*,'(A,I5,A,I5,A,F18.1)') &
            'Inverting Record: ', rrec, ' / ', total_x5_records, ' | Physical Time = ', atime
 
        ! ------------------------------------------------------------------
@@ -872,7 +865,7 @@ program enKF2enKS
           ! Ingest spatial restart arrays for the targeted member and timestamp
           call read_rst("analKF_en"//nrel//".rst", atime, nnlv)
 
-          ! CORRECTED: Dynamic calculation of sdim immediately after the first successful restart read
+          ! Calculation of sdim immediately after the first successful restart read
           if (.not. allocated(Astate)) then
               ! Import block flags from modules to calculate sdim
               sdim = nkn + 2 * nnlv * nel
@@ -892,7 +885,6 @@ program enKF2enKS
        ! ------------------------------------------------------------------
        ! Step B: Execute the Backward-Looking Subspace Smoother Analysis
        ! ------------------------------------------------------------------
-       ! REMOVED: Argument keyword 'verbose=' to bypass explicit interface compiler bugs
        call make_analysis(atime, sdim, nrens, Astate, nlag, .true.)
 
        ! ------------------------------------------------------------------

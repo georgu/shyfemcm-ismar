@@ -319,7 +319,7 @@ subroutine analysis(A, R, E, S, D1, innov, ndim, nrens, nrobs, verbose, truncati
 
   ! Bounded inflation to prevent runaway variance growth
   ! Clamp inflation factor to reasonable stable range [0.8, 1.40]
-  inffac = max(0.80_dp, min(1.40_dp, inffac))
+  !inffac = max(0.80_dp, min(1.40_dp, inffac))
 
   do j = 1, nrens
      do i = 1, ndim

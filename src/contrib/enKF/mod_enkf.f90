@@ -193,7 +193,7 @@ subroutine fill_scalar_0d(olabel, nfile, ostate)
       ! Optional execution threshold validation checks
       if ( OBSCHK ) then
          accept_obs = .true.
-         if (nanal > 3) call screen_observation(valo, valm, nrens, stdo, THRSTD, THRABS, accept_obs)
+         call screen_observation(valo, valm, nrens, stdo, THRSTD, THRABS, accept_obs)
          if (.not. accept_obs) cycle 
       end if
 
