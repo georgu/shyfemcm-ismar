@@ -63,7 +63,9 @@
 !
 !**************************************************************
 
-        subroutine conz3d_omp(cn1,co1 &
+        subroutine conz3d_omp(curr_stage &
+     &			,coeff_erk,coeff_irk,coeff_srk,coeff_crk &
+     &			,cn1,co1 &
      &			,ddt &
      &                  ,rkpar,difhv,difv &
      &			,difmol,cbound &
@@ -71,7 +73,6 @@
      &			,cobs,robs,rtauv &
      &			,wsink,wsinkv &
      &			,rload,load &
-     &			,azpar,adpar,aapar &
      &			,istot,isact,nlvddi &
      &                  ,nlev)
      
@@ -98,9 +99,11 @@
 ! wsinkv variable settling velocity [m/s]
 ! rload	 factor for loading
 ! load   load (source or sink) [kg/s]
-! azpar  time weighting parameter
-! adpar  time weighting parameter for vertical diffusion (ad)
-! aapar  time weighting parameter for vertical advection (aa)
+! curr_stage current stage index
+! coeff_erk  explicit runge-kutta coefficients at current stage
+! coeff_irk  implicit runge-kutta coefficients at current stage
+! coeff_srk  stiffly implicit runge-kutta coefficients at current stage
+! coeff_crk  special runge-kutta coefficients at current stage for tracer
 ! istot	 total inter time steps
 ! isact	 actual inter time step
 ! nlvddi	 dimension in z direction
@@ -122,6 +125,7 @@
 !
 ! DPGGU -> introduced double precision to stabilize solution
 
+	use mod_rungekutta, only : n_rkstages
 	use mod_bound_geom
 	use mod_geom
 	use mod_depth
@@ -140,9 +144,12 @@
 
 	implicit none
 
-	integer, intent(in) :: nlvddi,nlev,itvd,itvdv,istot,isact
+! arguments
+	integer, intent(in) :: curr_stage,nlvddi,nlev,itvd,itvdv,istot,isact
 	real, intent(in) :: difmol,robs,wsink,rload,ddt,rkpar
-	real, intent(in) :: azpar,adpar,aapar
+	real,dimension(n_rkstages),intent(in) :: coeff_erk
+	real,dimension(n_rkstages+1),intent(in) :: coeff_irk,coeff_srk
+	real,dimension(n_rkstages+1),intent(in) :: coeff_crk
 	real,dimension(nlvddi,nkn),intent(inout) :: cn1
 	real,dimension(nlvddi,nkn),intent(in) :: co1,cbound
 	real,dimension(nlvddi,nel),intent(in) :: difhv
@@ -152,7 +159,7 @@
 	real,dimension(0:nlvddi,nkn),intent(in) :: difv,wsinkv
         !double precision,dimension(nlvddi,nkn),intent(out) :: cn
         
-	logical :: btvdv,btvd2
+	logical :: btvdv,btvd2,is_rk_explicit
 	integer :: ie,k,ilevel,ibase,ii,l,n,i,j,x,ies,iend,kl,kend,ntot
 	integer :: myid,numthreads,j_init,j_end,knod,k_end,jel
 	integer,allocatable,dimension(:) :: subset_l
@@ -160,10 +167,8 @@
 	double precision :: dtime1,dtime2
 	integer :: nchunk,nthreads,nelems,nnodes
 	double precision :: dt
-	double precision :: az,ad,aa,azt,adt,aat,an,ant
 	double precision :: rstot,rso,rsn,rsot,rsnt
 	double precision :: timer,timer1,chunk,rest
-	
 ! 	double precision,dimension(nlvddi,nkn) :: cn
 ! 	double precision,dimension(nlvddi,nkn) :: co        
 !         double precision,dimension(nlvddi,nkn) :: cdiag
@@ -197,16 +202,6 @@
 	ALLOCATE(cdiag(nlvddi,nkn))
 	ALLOCATE(clow(nlvddi,nkn))
 	ALLOCATE(chigh(nlvddi,nkn))
-	
-	az = azpar
-	ad = adpar
-	aa = aapar
-	an = 0.			!implicit parameter nudging
-	
-	azt=1.-az
-	adt=1.-ad
-	aat=1.-aa
-	ant=1.-an
 
 	rstot = istot			!ERIC - what a brown paper bag bug
 	rso=(isact-1)/rstot
@@ -214,15 +209,19 @@
 	rsot=1.-rso
 	rsnt=1.-rsn
 
+	is_rk_explicit = (coeff_crk(2).eq.0.) &
+     &		   .and. (coeff_srk(2).eq.0.)
+
 	dt=ddt/rstot
 	
 	btvdv = itvdv .gt. 0
-	if( btvdv .and. aapar .ne. 0. ) then
-	  write(6,*) 'aapar = ',aapar,'  itvdv = ',itvdv
-	  write(6,*) 'Cannot use implicit vertical advection'
-	  write(6,*) 'together with vertical TVD scheme.'
-	  write(6,*) 'Please set either aapar = 0 (explicit) or'
+	if( btvdv .and. coeff_crk(2) .ne. 0. ) then
+	  write(6,*) 'aapar = ',coeff_crk(2),'  itvdv = ',itvdv
+	  write(6,*) 'Cannot use vertical TVD scheme'
+	  write(6,*) 'together with implicit vertical advection.'
+	  write(6,*) 'Please set:'
 	  write(6,*) 'itvdv = 0 (no vertical TVD) in the STR file.'
+	  write(6,*) 'or use an implicit vertical advection scheme.'
 	  stop 'error stop conz3d: vertical tvd scheme'
 	end if
 
@@ -260,19 +259,22 @@
 !$OMP& DEFAULT(NONE) &
 !$OMP& FIRSTPRIVATE(jel,i) &
 !$OMP& PRIVATE(j,ie) &
-!$OMP& SHARED(nlvddi,nlev,itvd,itvdv,istot,isact,aa,nchunk) &
-!$OMP& SHARED(difmol,robs,wsink,rload,ddt,rkpar,az,ad) &
-!$OMP& SHARED(an,ant) &
-!$OMP& SHARED(azt,adt,aat,rso,rsn,rsot,rsnt,dt,nkn) &
+!$OMP& SHARED(curr_stage,nlvddi,nlev,itvd,itvdv,istot,isact,nchunk) &
+!$OMP& SHARED(difmol,robs,wsink,rload,ddt,rkpar) &
+!$OMP& SHARED(rso,rsn,rsot,rsnt,dt,nkn) &
 !$OMP& SHARED(cn,co,cdiag,clow,chigh,subset_el,cn1,co1) &
 !$OMP& SHARED(subset_num,indipendent_subset) &
-!$OMP& SHARED(difhv,cbound,gradxv,gradyv,cobs,rtauv,load,difv,wsinkv)
+!$OMP& SHARED(difhv,cbound,gradxv,gradyv,cobs,rtauv,load,difv,wsinkv) &
+!$OMP& SHARED(coeff_erk,coeff_irk,coeff_srk,coeff_crk)
 
        do j=jel,jel+nchunk-1 	! loop over elements in subset
 		if(j .le. subset_el(i)) then
 	        ie = indipendent_subset(j,i)
 	        !print *,i,ie
-                call conz3d_element(ie,cdiag,clow,chigh,cn,cn1 &
+                call conz3d_element( &
+     &			 curr_stage &
+     &			,coeff_erk,coeff_irk,coeff_srk,coeff_crk &
+     &                  ,ie,cdiag,clow,chigh,cn,cn1 &
      &			,dt &
      &                  ,rkpar,difhv,difv &
      &			,difmol,cbound &
@@ -280,7 +282,6 @@
      &			,cobs,robs,rtauv &
      &			,wsink,wsinkv &
      &			,rload,load &
-     &			,az,ad,aa,azt,adt,aat,an,ant &
      &			,rso,rsn,rsot,rsnt &
      &			,nlvddi,nlev)
 		end if
@@ -311,12 +312,12 @@
        do knod=1,ntot,nchunk
 !$OMP TASK FIRSTPRIVATE(knod) PRIVATE(k) DEFAULT(NONE)      &
 !$OMP& SHARED(cn,cdiag,clow,chigh,cn1,cbound,load,nchunk,   &
-!$OMP&           rload,ad,aa,dt,nlvddi,ntot)
+!$OMP&           rload,dt,nlvddi,ntot)
 	 do k=knod,knod+nchunk-1
 	 if(k .le. ntot) then
 	   call conz3d_nodes(k,cn,cdiag(:,k),clow(:,k),chigh(:,k), &
      &                          cn1,cbound,load,rload, &
-     &                          ad,aa,dt,nlvddi)
+     &                          is_rk_explicit,dt,nlvddi)
          endif
          enddo
 !$OMP END TASK 	      
@@ -359,7 +360,10 @@
 
 !*****************************************************************
 
-       subroutine conz3d_element(ie &
+       subroutine conz3d_element( &
+     &			curr_stage &
+     &			,coeff_erk,coeff_irk,coeff_srk,coeff_crk &
+     &			,ie &
      &			,cdiag,clow,chigh,cn,cn1 &
      &			,dt &
      &                  ,rkpar,difhv,difv &
@@ -368,10 +372,10 @@
      &			,cobs,robs,rtauv &
      &			,wsink,wsinkv &
      &			,rload,load &
-     &			,az,ad,aa,azt,adt,aat,an,ant &
      &			,rso,rsn,rsot,rsnt &
      &			,nlvddi,nlev)
-     
+
+	use mod_rungekutta, only : n_rkstages
         use mod_bound_geom
 	use mod_geom
 	use mod_depth
@@ -388,34 +392,38 @@
       
       implicit none
       
-      integer,intent(in) :: ie,nlvddi,nlev,itvd,itvdv
+      integer,intent(in) :: curr_stage,ie,nlvddi,nlev,itvd,itvdv
       real,intent(in) :: difmol,robs,wsink,rload,rkpar
       real,dimension(nlvddi,nkn),intent(in) :: cn1,cbound
       real,dimension(nlvddi,nel),intent(in) :: difhv
       real,dimension(nlvddi,nkn),intent(in) :: gradxv,gradyv
       real,dimension(nlvddi,nkn),intent(in) :: cobs,rtauv,load
       real,intent(in),dimension(0:nlvddi,nkn) :: wsinkv,difv
+      real,dimension(n_rkstages),intent(in) :: coeff_erk
+      real,dimension(n_rkstages+1),intent(in) :: coeff_irk,coeff_srk
+      real,dimension(n_rkstages+1),intent(in) :: coeff_crk
       double precision,intent(in) :: dt
-      double precision,intent(in) :: az,ad,aa,azt,adt,aat,an,ant
       double precision,intent(in) :: rso,rsn,rsot,rsnt
       double precision,dimension(nlvddi,nkn),intent(inout) :: cdiag
       double precision,dimension(nlvddi,nkn),intent(inout) :: clow
       double precision,dimension(nlvddi,nkn),intent(inout) :: chigh
       double precision,dimension(nlvddi,nkn),intent(inout) :: cn
         
-        logical :: btvdv,btvd
-	integer :: k,ii,l,iii,ll,ibase,lstart,ilevel,itot,isum
-	integer :: jlevel
-	integer :: n,i,iext
-	integer, dimension(3) :: kn
-        double precision :: cexpl,cbm,ccm,waux,loading,wws,us,vs
-        double precision :: aj,rk3,aj4,aj12
-        double precision :: hmed,hmbot,hmtop,hmotop,hmobot
-        double precision :: hmntop,hmnbot,rvptop,rvpbot,w,aux
-        double precision :: flux_tot,flux_tot1,flux_top,flux_bot
-        double precision :: rstot,hn,ho,cdummy,alow,adiag,ahigh
-        double precision :: rkmin,rkmax,cconz
-      double precision,dimension(3) :: fw,fd,fl,fnudge
+      logical :: btvdv,btvd
+      integer :: k,ii,l,iii,ll,ibase,lstart,ilevel,itot,isum
+      integer :: jlevel
+      integer :: n,i,iext
+      integer, dimension(3) :: kn
+      double precision :: cexpl,cbm,ccm,waux,loading,wws,us,vs
+      double precision :: aj,rk3,aj4,aj12
+      double precision :: hmed,hmbot,hmtop,hmotop,hmobot
+      double precision :: hmntop,hmnbot,rvptop,rvpbot,w,aux
+      double precision :: flux_tot,flux_tot1,flux_top,flux_bot
+      double precision :: rstot,hn,ho,cdummy,alow,adiag,ahigh,rrc
+      double precision :: rkmin,rkmax,cconz
+      double precision :: as_ll,ac_ll,d_ll,d_llm,c_l
+      double precision,dimension(n_rkstages+1) :: d_l
+      double precision,dimension(3) :: fw,fd,fl,fnudge_o,fnudge_c
       double precision,dimension(3) :: b,c,f,wdiff
       double precision,dimension(0:nlvddi+1) :: hdv,haver,presentl
       double precision,dimension(0:nlvddi+1,3) :: hnew,htnew,rtau,cob
@@ -430,8 +438,16 @@
 !  initialize variables and parameters
 ! ----------------------------------------------------------------
 
-	btvd = itvd .gt. 0
+	btvd = itvd .gt. 0	!flags for tvd scheme
 	btvdv = itvdv .gt. 0
+
+!  renaming of special runge-kutta coefficients in Butcher tableaux
+        ac_ll = coeff_crk(curr_stage+1)	!diagonal coeff for vertical adv tableau
+        as_ll = coeff_srk(curr_stage+1)	!diagonal coeff for stiffly implicit tableau
+	c_l = sum(coeff_erk)		!c coefficient
+        d_l = coeff_irk/c_l		!scaled implicit tableau
+        d_ll = d_l(curr_stage+1)	!diagonal coeff for the scaled tableau
+        d_llm = d_l(curr_stage)		!under diagonal coeff for the scaled tableau
 
 ! ----------------------------------------------------------------
 ! global arrays for accumulation of implicit terms
@@ -537,8 +553,8 @@
 
         do l=jlevel,ilevel
 
-        us=az*utlnv(l,ie)+azt*utlov(l,ie)             !$$azpar
-        vs=az*vtlnv(l,ie)+azt*vtlov(l,ie)
+        us=d_ll*utlnv(l,ie)+d_llm*utlov(l,ie)             !$$azpar
+        vs=d_ll*vtlnv(l,ie)+d_llm*vtlov(l,ie)
 
         rk3 = 3. * rkpar * difhv(l,ie)
 
@@ -596,14 +612,12 @@
 	  hmntop =2.*rvptop*presentl(l-1)/(hnew(l-1,ii)+hnew(l,ii))
 	  hmnbot =2.*rvpbot*presentl(l+1)/(hnew(l,ii)+hnew(l+1,ii))
 
-	  fd(ii) = adt * (  &
-     &			(cl(l,ii)-cl(l+1,ii))*hmobot - &
-     &			(cl(l-1,ii)-cl(l,ii))*hmotop &
-     &			  )
+	  fd(ii) = (cl(l,ii)-cl(l+1,ii))*hmobot - &
+     &		   (cl(l-1,ii)-cl(l,ii))*hmotop
 
-	  clc(l,ii) = clc(l,ii) + ad * ( hmntop + hmnbot )
-	  clm(l,ii) = clm(l,ii) - ad * ( hmntop )
-	  clp(l,ii) = clp(l,ii) - ad * ( hmnbot )
+	  clc(l,ii) = clc(l,ii) + as_ll * ( hmntop + hmnbot )
+	  clm(l,ii) = clm(l,ii) - as_ll * ( hmntop )
+	  clp(l,ii) = clp(l,ii) - as_ll * ( hmnbot )
 
 ! 	  ----------------------------------------------------------------
 ! 	  contributions from vertical advection
@@ -619,29 +633,20 @@
 	  w = wl(l-1,ii)		!top of layer
 	  if( l .eq. jlevel ) w = 0.	!surface -> no transport (WZERO)
 	  if( w .ge. 0. ) then
-	    fw(ii) = aat*w*cl(l,ii)
-	    flux_top = w*cl(l,ii)
-	    clc(l,ii) = clc(l,ii) + aa*w
+	    clc(l,ii) = clc(l,ii) + ac_ll*w
 	  else
-	    fw(ii) = aat*w*cl(l-1,ii)
-	    flux_top = w*cl(l-1,ii)
-	    clm(l,ii) = clm(l,ii) + aa*w
+	    clm(l,ii) = clm(l,ii) + ac_ll*w
 	  end if
 
 	  w = wl(l,ii)			!bottom of layer
 	  if( l .eq. ilevel ) w = 0.	!bottom -> handle flux elsewhere (WZERO)
 	  if( w .gt. 0. ) then
-	    fw(ii) = fw(ii) - aat*w*cl(l+1,ii)
-	    flux_bot = w*cl(l+1,ii)
-	    clp(l,ii) = clp(l,ii) - aa*w
+	    clp(l,ii) = clp(l,ii) - ac_ll*w
 	  else
-	    fw(ii) = fw(ii) - aat*w*cl(l,ii)
-	    flux_bot = w*cl(l,ii)
-	    clc(l,ii) = clc(l,ii) - aa*w
+	    clc(l,ii) = clc(l,ii) - ac_ll*w
 	  end if
 
-	  flux_tot1 = aat * ( flux_top - flux_bot )
-	  flux_tot = aat * ( vflux(l-1,ii) - vflux(l,ii) )
+	  flux_tot = vflux(l-1,ii) - vflux(l,ii)
 
 	  fw(ii) = flux_tot
 	end do
@@ -700,26 +705,33 @@
 ! 	----------------------------------------------------------------
 
 	do ii=1,3
-	  fnudge(ii) = robs * rtau(l,ii) * ( cob(l,ii) - ant * cl(l,ii) )
-	  finu(l,ii) = an * robs * rtau(l,ii)	!implicit contribution
-	end do
+	  fnudge_o(ii) = robs * rtau(l,ii) * cob(l,ii)  !explicit contributions
+	  fnudge_c(ii) = -robs * rtau(l,ii) * cl(l,ii)  ! 
+	  finu(l,ii) = robs * rtau(l,ii)		!implicit contribution:
+	end do						!later set to zero
 
-! 	----------------------------------------------------------------
-! 	sum explicit contributions
-! 	----------------------------------------------------------------
+!	------------------------------------------------------
+!	Set up current stage right hand side for conc.
+!       F^c_l = R_l+W_l+D_l
+!	rrc is explicit contribution R_l
+!	fw  is vertical advection contribution W_l
+!	fd  is stiffly implicit contribution D_l
+!	Set up concentration matrix A^c
+!	------------------------------------------------------
 
 	do ii=1,3
 	  k=kn(ii)
           hmed = haver(l)                    !new ggu   !HACK
-	  cexpl = aj4 * ( hold(l,ii)*cl(l,ii) &
-     &				+ dt *  (  &
-     &					    hold(l,ii)*fnudge(ii) &
-     &					  + 3.*fl(ii)  &
-     &					  - fw(ii) &
-     &					  - rk3*hmed*wdiff(ii) &
-     &					  - fd(ii) &
-     &					) &
-     &			               )
+
+          rrc = 3.*fl(ii) - rk3*hmed*wdiff(ii) + fnudge_c(ii)
+
+	  cexpl = aj4 * ( &
+	            hold(l,ii)*cl(l,ii) &
+     &	              + dt *  (   c_l*hold(l,ii)*fnudge_o(ii) &
+     &		                + coeff_erk(curr_stage)*rrc &
+     &                          - coeff_crk(curr_stage)*fw(ii) &
+     &		                - coeff_srk(curr_stage)*fd(ii) ) &
+     &                  )
 	  
 	  !clm(1,ii) = 0.		!ERIC
 	  !clp(ilevel,ii) = 0.
@@ -733,7 +745,7 @@
 	  alow  = aj4 * dt * clm(l,ii)
 	  ahigh = aj4 * dt * clp(l,ii)
 	  adiag = aj4 * dt * clc(l,ii)  &
-     &			+ aj4 * (1.+dt*finu(l,ii)) * hnew(l,ii)
+     &			+ aj4 * (1.+ 0.*dt*finu(l,ii)) * hnew(l,ii)
 	  cn(l,k)    = cn(l,k)    + cexpl
 	  clow(l,k)  = clow(l,k)  + alow
 	  chigh(l,k) = chigh(l,k) + ahigh   
@@ -762,7 +774,7 @@
 ! *****************************************************************
       
        subroutine conz3d_nodes(k,cn,cdiag,clow,chigh,cn1,cbound, &
-     &                         load,rload,ad,aa,dt,nlvddi)
+     &                         load,rload,is_explicit,dt,nlvddi)
 
       	use mod_bound_geom
 	use mod_geom
@@ -785,12 +797,13 @@
 	real,dimension(nlvddi,nkn),intent(in) :: cn1,cbound
 	real,dimension(nlvddi,nkn),intent(inout) :: load 		!LLL
 	double precision, intent(in) :: dt
-	double precision, intent(in) :: ad,aa
 
 	double precision,dimension(nlvddi,nkn),intent(inout) :: cn
 	double precision,dimension(nlvddi),intent(inout) :: cdiag
 	double precision,dimension(nlvddi),intent(inout) :: clow
 	double precision,dimension(nlvddi),intent(inout) :: chigh
+
+	logical, intent(in) :: is_explicit
 
 	logical :: bdry
 	integer :: l,ilevel,jlevel,lstart,i,ii,ie,n,ibase
@@ -860,10 +873,10 @@
 	  end do
 
 ! ----------------------------------------------------------------
-!  compute concentration for each node (solve system)
+!  compute concentration for each node (solve system) A^c C = F^c
 ! ----------------------------------------------------------------
 
-	if((aa .eq. 0. .and. ad .eq. 0.).or.(nlv .eq. 1)) then
+	if(is_explicit .or. (nlv .eq. 1)) then
 
 	  if( nlv .gt. 1 ) then
 	    write(6,*) 'conz: computing explicitly ',nlv

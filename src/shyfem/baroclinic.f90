@@ -31,7 +31,8 @@
 !
 ! contents :
 !
-! subroutine barocl(mode)		amministrates the baroclinic time step
+! subroutine barocl(mode,s,cerk,	amministrates the baroclinic time step
+!   +               cirk,csrk,ccrk)
 ! subroutine rhoset_shell(iterwant)	sets rho iterating to real solution
 ! subroutine rhoset(resid)		computes rhov
 ! subroutine convectivecorr             convective adjustment
@@ -195,12 +196,14 @@
 !
 !*****************************************************************
 
-	subroutine barocl(mode)
+	subroutine barocl(mode,curr_stage,coeff_erk, &
+     &                    coeff_irk,coeff_srk,coeff_crk)
 
 ! amministrates the baroclinic time step
 !
 ! mode : =0 initialize  >0 normal call
 !
+	use mod_rungekutta, only : n_rkstages
 	use mod_layer_thickness
 	use mod_ts
 	use mod_diff_visc_fric
@@ -218,6 +221,11 @@
 !
 ! arguments
 	integer mode
+	integer curr_stage
+	real coeff_erk(n_rkstages)
+	real coeff_irk(n_rkstages+1)
+	real coeff_srk(n_rkstages+1)
+	real coeff_crk(n_rkstages+1)
 ! common
 
 ! local
@@ -477,7 +485,10 @@
 
           if( itemp .gt. 0 ) then
 		what = 'temp'
-                call scal_adv_nudge(what,0 &
+                call scal_adv_nudge(curr_stage &
+     &				,coeff_erk,coeff_irk &
+     &                          ,coeff_srk,coeff_crk &
+     &                          ,what,0 &
      &                          ,tempv,idtemp &
      &                          ,thpar,wsink &
      &                          ,difhv,difv,difmol &
@@ -496,7 +507,10 @@
 
           if( isalt .gt. 0 ) then
 		what = 'salt'
-                call scal_adv_nudge(what,0 &
+                call scal_adv_nudge(curr_stage &
+     &				,coeff_erk,coeff_irk &
+     &                          ,coeff_srk,coeff_crk &
+     &                          ,what,0 &
      &                          ,saltv,idsalt &
      &                          ,shpar,wsink &
      &                          ,difhv,difv,difmol &

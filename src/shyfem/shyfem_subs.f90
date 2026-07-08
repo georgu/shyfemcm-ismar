@@ -288,6 +288,7 @@
 ! start of program
 !-----------------------------------------------------------
 
+	use mod_rungekutta, only : n_rkstages
 	use mod_shyfem
 	use mod_shyfem_intern
 
@@ -296,6 +297,8 @@
 	logical, intent(in) :: mpi_init
 	integer n
 	logical rst_use_restart
+	real aerk_dummy(n_rkstages)
+	real airk_dummy(n_rkstages+1)
 
 	call cpu_time(time1)
 	call cpu_time_init
@@ -459,7 +462,8 @@
 	call init_uv            !set vel, w, pr, ... from transports
 	!call copy_uvz		!copy new to old
 	call trace_point('calling barocl')
-	call barocl(0)
+	call barocl(0,1, &	!runge-kutta coeff are not needed
+     &    aerk_dummy,airk_dummy,airk_dummy,airk_dummy)
 	call trace_point('wrfvla')
 	call wrfvla		!write finite volume
 	call nonhydro_init
@@ -629,7 +633,7 @@
 	     call hydro(kstage,aerk,airk,asrk)!hydro
 
 	     call trace_point_0('run_scalar')
-	     call run_scalar
+	     call run_scalar(kstage,aerk,airk,asrk)
 	   end do			!all additional modules are not resolved with runge-kutta
 
            call turb_closure		!turbulence model
@@ -1014,14 +1018,24 @@
 
 !*****************************************************************
 
-	subroutine run_scalar()
+	subroutine run_scalar(curr_stage, coeff_erk, &
+     &			        coeff_irk, coeff_srk)
 	
 !$	use omp_lib	!ERIC
-	
+
+	use mod_rungekutta, only : n_rkstages, &
+     &				   get_rungekutta_weights_tracer
 	use mod_bfm
 
 	implicit none
-	
+
+! arguments
+	integer curr_stage
+	real coeff_erk(n_rkstages)
+	real coeff_irk(n_rkstages+1)
+	real coeff_srk(n_rkstages+1)
+! local
+	real coeff_crk(n_rkstages+1)
 	real getpar
 	
 	integer :: nscal,itemp,isalt,iconz,itvd
@@ -1038,6 +1052,10 @@
 	if(itemp .gt. 0) nscal = nscal +1
 	if(isalt .gt. 0) nscal = nscal +1
 	if(iconz .gt. 0) nscal = nscal + iconz
+	if(nscal .gt. 0) then
+	  call get_rungekutta_weights_tracer(curr_stage, &
+     &	     				     coeff_crk)
+	end if
 
 !$      !!!call omp_set_nested(.TRUE.)
 	
@@ -1049,11 +1067,13 @@
 !!!$OMP TASKGROUP
 
 !$OMP TASK 
-	call barocl(1)
+	call barocl(1,curr_stage,coeff_erk,coeff_irk, &
+     &                coeff_srk,coeff_crk)
 !$OMP END TASK
 
 !$OMP TASK IF ( iconz > 0 )
-	call tracer_compute
+	call tracer_compute(curr_stage,coeff_erk,coeff_irk, &
+     &                coeff_srk,coeff_crk)
 !$OMP END TASK
 
 !$OMP TASK IF ( ibfm > 0 )

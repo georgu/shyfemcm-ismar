@@ -313,20 +313,33 @@
 !*********************************************************************
 !*********************************************************************
 
-	subroutine tracer_compute
+	subroutine tracer_compute(curr_stage, &
+     &				  coeff_erk,coeff_irk, &
+     &                            coeff_srk,coeff_crk)
 
+	use mod_rungekutta, only : n_rkstages
 	use mod_conz
 
 	implicit none
+
+	integer curr_stage
+	real coeff_erk(n_rkstages)
+	real coeff_irk(n_rkstages+1)
+	real coeff_srk(n_rkstages+1)
+	real coeff_crk(n_rkstages+1)
 
 	if( iconz < 0 ) return
 
 	if( iconz == 1 ) then
 	  !call conz3sh
-	  call tracer_compute_single
+	  call tracer_compute_single(curr_stage, &
+     &				     coeff_erk,coeff_irk, &
+     &                               coeff_srk,coeff_crk)
 	else
 	  !call conzm3sh
-	  call tracer_compute_multi
+	  call tracer_compute_multi(curr_stage, &
+     &				     coeff_erk,coeff_irk, &
+     &                               coeff_srk,coeff_crk)
 	end if
 
 	icall_conz = icall_conz + 1
@@ -335,8 +348,11 @@
 
 !*********************************************************************
 
-	subroutine tracer_compute_single
+	subroutine tracer_compute_single(curr_stage, &
+     &					 coeff_erk,coeff_irk, &
+     &                                   coeff_srk,coeff_crk)
 
+	use mod_rungekutta, only : n_rkstages
 	use mod_conz
 	use mod_diff_visc_fric
 	use levels, only : nlvdi,nlv
@@ -345,6 +361,12 @@
 	!use shympi
 
 	implicit none
+
+	integer curr_stage
+	real coeff_erk(n_rkstages)
+	real coeff_irk(n_rkstages+1)
+	real coeff_srk(n_rkstages+1)
+	real coeff_crk(n_rkstages+1)
 
 	logical bfirst
 	real wsink,contau
@@ -372,7 +394,10 @@
 
 	!write(6,*) 'single conz - wsink = ',wsink
 
-        call scal_adv(what,0 &
+        call scal_adv(curr_stage &
+     &				,coeff_erk,coeff_irk &
+     &                          ,coeff_srk,coeff_crk &
+     &                          ,what,0 &
      &                          ,cnv,idconz &
      &                          ,rkpar,wsink &
      &                          ,difhv,difv,difmol)
@@ -411,8 +436,11 @@
 
 !*********************************************************************
 
-	subroutine tracer_compute_multi
+	subroutine tracer_compute_multi(curr_stage, &
+     &					coeff_erk,coeff_irk, &
+     &                                  coeff_srk,coeff_crk)
 
+	use mod_rungekutta, only : n_rkstages
 	use mod_conz
 	use mod_diff_visc_fric
 	use levels, only : nlvdi,nlv
@@ -420,6 +448,12 @@
 	use mkonst
 
 	implicit none
+
+	integer curr_stage
+	real coeff_erk(n_rkstages)
+	real coeff_irk(n_rkstages+1)
+	real coeff_srk(n_rkstages+1)
+	real coeff_crk(n_rkstages+1)
 
 	logical blinfo,bfirst
 	integer nvar,i
@@ -456,7 +490,9 @@
 !$OMP& dt,nlvdi,idecay,blinfo,bage)                                     &
 !$OMP&  SHARED(conzv,tauv,massv) DEFAULT(NONE)
  
-          call scal_adv(what,i &
+          call scal_adv(curr_stage,coeff_erk,coeff_irk &
+     &				,coeff_srk,coeff_crk &
+     &                          ,what,i &
      &                          ,conzv(1,1,i),idconz &
      &                          ,rkpar,wsink &
      &                          ,difhv,difv,difmol)
