@@ -579,6 +579,12 @@ subroutine val_check_correct()
    integer :: otott, ntott, btott
    integer :: otots, ntots, btots
 
+
+   !===================================================================
+   ! Apply BC relaxation
+   !===================================================================
+   call apply_obc_relaxation
+
    ! Initialize global diagnostics accumulators
    ototz = 0 ; ntotz = 0 ; btotz = 0
    ototv = 0 ; ntotv = 0 ; btotv = 0
@@ -707,6 +713,185 @@ subroutine val_check_correct()
 end subroutine val_check_correct
 
 !=======================================================================
+subroutine apply_obc_relaxation()
+!=======================================================================
+   use mod_restart, only : ibarcl_rst
+   implicit none
+
+   logical               :: file_exists
+   integer               :: nbc, ne, k, ie, nl
+   integer, allocatable  :: bcid(:)
+   real(dp), allocatable :: bcrho(:)
+   real(dp)              :: w
+
+   ! Boundary file reading
+   nbc = 1
+   allocate(bcid(nbc), bcrho(nbc))
+   inquire(file='lbound.dat', exist=file_exists)
+
+   if (file_exists) then
+      call read_bc_file(0, 'lbound.dat', nbc, bcid, bcrho)
+      deallocate(bcid, bcrho)
+      allocate(bcid(nbc), bcrho(nbc))
+      call read_bc_file(1, 'lbound.dat', nbc, bcid, bcrho)
+      write(*,*) 'Boundary value correction active.'
+   else
+      write(*,*) 'Warning: lbound.dat not found - no boundary correction applied.'
+      bcid = 1
+      bcrho = 0.0_dp
+   end if
+
+   do ne = 1, nrens
+
+     do k = 1, nnkn
+
+       ! Compute spatial boundary weight
+       if (file_exists) then
+          call bc_correction('nodes', k, nbc, bcid, bcrho, w)
+       else
+          w = 0.0_dp
+       end if
+
+       ! Apply boundary relaxation weight 
+       Aan(ne)%z(k) = w * Abk(ne)%z(k) + (1.0_dp - w) * Aan(ne)%z(k)
+
+       if (ibarcl_rst /= 0) then
+          do nl = 1, nnlv
+             Aan(ne)%s(nl,k) = w * Abk(ne)%s(nl,k) + (1.0_dp - w) * Aan(ne)%s(nl,k)
+             Aan(ne)%t(nl,k) = w * Abk(ne)%t(nl,k) + (1.0_dp - w) * Aan(ne)%t(nl,k)
+          end do
+       end if
+
+     end do
+
+     do ie = 1, nnel
+        ! Compute spatial boundary weight
+       if (file_exists) then
+          call bc_correction('elements', ie, nbc, bcid, bcrho, w)
+       else
+          w = 0.0_dp
+       end if
+
+       do nl = 1, nnlv
+          ! Apply boundary relaxation to U and V currents
+          Aan(ne)%u(nl,ie) = w * Abk(ne)%u(nl,ie) + (1.0_dp - w) * Aan(ne)%u(nl,ie)
+          Aan(ne)%v(nl,ie) = w * Abk(ne)%v(nl,ie) + (1.0_dp - w) * Aan(ne)%v(nl,ie)
+       end do
+     end do
+
+   end do
+
+end subroutine apply_obc_relaxation
+
+!=======================================================================
+subroutine read_bc_file(icall, bcfile, nbc, bcid, bcrho)
+!=======================================================================
+   implicit none
+   character(len=*), intent(in) :: bcfile
+   integer, intent(in) :: icall
+   integer, intent(inout) :: nbc
+   integer, intent(out) :: bcid(nbc)
+   real(dp), intent(out) :: bcrho(nbc)
+   
+   integer :: i
+   
+   if (icall == 0) then
+      open(28, file=trim(bcfile), status='old')
+      read(28,*) nbc
+      close(28)
+      return
+   end if
+
+   open(28, file=trim(bcfile), status='old')
+   read(28,*) nbc   ! skip first line
+   do i = 1, nbc
+      read(28,*) bcid(i), bcrho(i)
+   end do
+   close(28)
+      
+end subroutine read_bc_file
+
+!=======================================================================
+subroutine bc_correction(stype, id, nbc, bcid, bcrho, w)
+!=======================================================================
+   implicit none
+
+   character(len=*), intent(in) :: stype
+   integer, intent(in) :: id
+   integer, intent(in) :: nbc
+   integer, intent(in) :: bcid(nbc)
+   real(dp), intent(in) :: bcrho(nbc)
+   real(dp), intent(out) :: w
+
+   integer*4 :: kext
+   integer :: i, k, kbc
+   real(dp) :: x, y, bcx, bcy
+   real(dp) :: d, dmin, rho
+
+   integer*4 ipint
+
+   ! --- Metric conversion variables ---
+   real(dp) :: lat_mean, lat_rad, deg2rad
+   real(dp) :: meters_per_deg_y, meters_per_deg_x
+   real(dp) :: dx_m, dy_m
+
+   ! 1. Infer the mean latitude of the domain from the global ygv array.
+   ! NOTE: Ensure 'ygv' and 'dp' are accessible via host/module association.
+   lat_mean = sum(ygv) / size(ygv)
+
+   ! 2. Convert mean latitude to radians for trigonometric scaling
+   deg2rad = 3.141592653589793_dp / 180.0_dp
+   lat_rad = lat_mean * deg2rad
+
+   ! 3. Define local metric scaling factors based on a spherical Earth radius (R ≈ 6371 km).
+   ! 1 degree of latitude is approximately 111,195 meters.
+   meters_per_deg_y = 111195.0_dp
+   ! 1 degree of longitude scales with the cosine of the mean latitude.
+   meters_per_deg_x = 111195.0_dp * cos(lat_rad)
+
+   x = 0.0_dp ; y = 0.0_dp
+   dmin = 1.0e15_dp
+   rho = 0.0_dp
+
+   if (stype == 'nodes') then
+      x = xgv(id)
+      y = ygv(id)
+   else
+      ! element -> average vertices
+      do i = 1, 3
+         k = nen3v(i, id)
+         x = x + xgv(k)
+         y = y + ygv(k)
+      end do
+      x = x / 3.0_dp
+      y = y / 3.0_dp
+   end if
+
+   do i = 1, nbc
+      kext = bcid(i)
+      kbc = ipint(kext)
+      bcx = xgv(kbc)
+      bcy = ygv(kbc)
+
+      ! 4. Transform angular differences (degrees) into linear distances (meters)
+      ! applying the localized Equirectangular projection approximation.
+      dx_m = (x - bcx) * meters_per_deg_x
+      dy_m = (y - bcy) * meters_per_deg_y
+
+      ! 5. Compute the standard Euclidean distance in meters
+      d = sqrt(dx_m**2 + dy_m**2)
+
+      if (d < dmin) then
+         dmin = d
+         rho = bcrho(i)
+      end if
+   end do
+
+   call find_weight_GC(rho, dmin, w)
+
+end subroutine bc_correction
+
+!=======================================================================
 ! SUBROUTINE: check_one_val
 !
 ! PURPOSE:
@@ -757,6 +942,7 @@ subroutine check_one_val(ih,iv,vtype, va, vb, vmax, vmin, vnan, vout, vbig)
    case ('Z')
       ! Sea Surface Height (SSH) absolute update clipping
       if (abs(inc) > max_abs_ssh) then
+         write(998,*) max_abs_ssh,abs(inc),vbk,va,xgv(ih), ygv(ih)
          va = vbk + sign(max_abs_ssh, inc)
          vbig = vbig + 1
       end if
