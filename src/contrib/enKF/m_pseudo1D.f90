@@ -97,7 +97,7 @@ subroutine pseudo1D(A, nx, nrfields, rx, dx, n1)
 
       ! Build spectral Gaussian envelope
       do l = 1, n1/2
-         tt = kappa2*l*l / r12
+	 tt = kappa2 * real(l*l,dp) / r12
          fampl(l,1) = exp(-tt) * cos(phi(l)) * sqrt(deltak) * c
          fampl(l,2) = exp(-tt) * sin(phi(l)) * sqrt(deltak) * c
       end do

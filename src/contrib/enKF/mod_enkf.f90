@@ -209,7 +209,6 @@ subroutine fill_scalar_0d(olabel, nfile, ostate)
       call make_0Dpert(olabel, nrens, nanal, ostate(nf)%id, pvec, atime_an, TTAU_0D)
 
       ! ------------------------------------------------------------------
-      ! STATISTICAL FIX FOR CASE 13 IN-SITU STATIONS:
       ! Enforce zero-mean and unit variance to neutralize sampling noise
       ! ------------------------------------------------------------------
       p_mean = sum(pvec) / real(nrens, dp)

@@ -46,13 +46,13 @@ contains
     zero = 0.0_dp
     ld_nrens = nrens
 
-    if (nrens <= zero) then
+    if (nrens <= 0) then
        write(*,*) 'mean_preserving_rotation: nrens must be positive.'
        Up = zero
        return
     end if
 
-    if (nrens == one) then
+    if (nrens == 1) then
        Up = one
        return
     end if
@@ -64,17 +64,6 @@ contains
     ! 1) Build B: an orthonormal basis whose first column is 1/sqrt(nrens)
     ! -------------------------------------------------------------------------
     call random_number(B)                  
-    
-    !=======================================================================
-    ! FIX: Raw uniform random numbers have a mean of 0.5. Projecting columns
-    ! 2:N against a constant first column causes severe numerical cancellation 
-    ! and loss of rank during Gram-Schmidt. We explicitly force columns 2:N 
-    ! to have an intrinsic zero-mean configuration before running MGS.
-    !=======================================================================
-    do j = 2, nrens
-       row_mean = sum(B(:,j)) / real(nrens, dp)
-       B(:,j) = B(:,j) - row_mean
-    end do
     
     ! Fix the target mean-preserving transformation vector in column 1
     B(:,1) = 1.0_dp / sqrt( real(nrens, dp) )

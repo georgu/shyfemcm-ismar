@@ -23,12 +23,6 @@ subroutine analysis(A, R, E, S, D1, innov, ndim, nrens, nrobs, verbose, truncati
   !      3. Final ensemble update A <- A + update
   !      4. Inflation (multiplicative or adaptive)
   !
-  !  IMPROVEMENTS (v2.0):
-  !      - Adaptive damping in pseudo-inversion to prevent ill-conditioning
-  !      - Diagnostic monitoring of update increments
-  !      - Safeguards against excessive variance growth
-  !      - Enhanced numerical stability in low-rank cases
-  !      - Generic formulation for sea level, T, S, velocity fields
   !=======================================================================
   
   use mod_anafunc
@@ -43,7 +37,7 @@ subroutine analysis(A, R, E, S, D1, innov, ndim, nrens, nrobs, verbose, truncati
   integer,  intent(in)    :: nrobs       
 
   real(dp), intent(inout) :: A(ndim,nrens)  
-  real(dp), intent(inout) :: R(nrobs,nrobs) 
+  real(dp), intent(in)    :: R(nrobs,nrobs) 
   real(dp), intent(in)    :: D1(nrobs,nrens) 
   real(dp), intent(in)    :: E(nrobs,nrens) 
   real(dp), intent(in)    :: S(nrobs,nrens) 
@@ -78,7 +72,7 @@ subroutine analysis(A, R, E, S, D1, innov, ndim, nrens, nrobs, verbose, truncati
   real(dp), allocatable :: eig(:), Z(:,:)      
   real(dp), allocatable :: X2(:,:), X3(:,:), Reps(:,:)
 
-  integer  :: nrmin, i, j, k, iblkmax
+  integer  :: nrmin, i, j, iblkmax
   logical  :: lreps               
 
   external :: dgemm
@@ -114,23 +108,22 @@ subroutine analysis(A, R, E, S, D1, innov, ndim, nrens, nrobs, verbose, truncati
       ! Compute innovation-error covariance denominator: S*S^T + (N-1)*R
       den = dot_product(S(1,:), S(1,:)) + real(nrens-1, dp)*R(1,1)
       
-      ! IMPROVED: Adaptive threshold based on observation error magnitude
+      ! Adaptive threshold based on observation error magnitude
       den_threshold = max(eps_inv, eps_damping * R(1,1))
       
       if (den > den_threshold) then
-          ! IMPROVED: Apply light Tikhonov damping if condition number is poor
-          if (den < sqrt(eps_damping * R(1,1))) then
-              eig(1) = 1.0_dp / sqrt(den*den + eps_damping*den*R(1,1))
-              if (verbose) write(*,'(a,e12.4)') &
-                  'WARNING: Low-rank 1D case with damping applied. Threshold was: ', den_threshold
-          else
-              eig(1) = 1.0_dp / den
-          end if
+
+         eig(1)=1.0_dp/(den + eps_damping*max(R(1,1),1.0_dp))
+
       else
-          if (verbose) write(*,'(a,e12.4,a,e12.4)') &
-              'Warning: Singular obs at node, skipping update. den=', den, ' threshold=', den_threshold
-          eig(1) = 0.0_dp
-      end if
+
+         if (verbose) write(*,'(a,e12.4,a,e12.4)') 'Warning: Singular obs at node, skipping update. den=', &
+                      den, ' threshold=', den_threshold
+
+         eig(1)=0.0_dp
+
+      endif
+
       Z(1,1) = 1.0_dp
 
   else
@@ -141,11 +134,6 @@ subroutine analysis(A, R, E, S, D1, innov, ndim, nrens, nrobs, verbose, truncati
          call exact_diag_inversion(S, D1, X5, nrens, nrobs)
 
       case (11, 21)
-         !=======================================================================
-         ! FIX: Allocate a dedicated temporary covariance matrix 'C' to prevent
-         ! permanent destruction/overwriting of the original 'R' intent(inout) argument.
-         ! This preserves observational error variances for adjacent local nodes or loops.
-         !=======================================================================
          nrmin = nrobs
          allocate(Z(nrobs,nrobs), eig(nrobs))
          
@@ -173,35 +161,17 @@ subroutine analysis(A, R, E, S, D1, innov, ndim, nrens, nrobs, verbose, truncati
          ! Apply the eigenvalue truncation threshold filter to handle low-rank approximations
          call eigsign(eig, nrobs, truncation)
 
-         !=======================================================================
-         ! FIX: Explicitly compute the reciprocal of valid eigenvalues (Pseudo-Inverse).
-         ! Omitting this step causes the EnKF update step to multiply by the covariance
-         ! instead of dividing, leading to unphysical explosive increment magnitudes.
-         !=======================================================================
-         do i = 1, nrmin
-            if (eig(i) > eps_inv) then
-                ! If the eigenvalue approaches the noise floor, apply adaptive Tikhonov regularization
-                if (eig(i) < eps_damping) then
-                    eig(i) = 1.0_dp / sqrt(eig(i)**2 + eps_damping*eig(i))
-                else
-                    eig(i) = 1.0_dp / eig(i)
-                end if
-            else
-                eig(i) = 0.0_dp
-            end if
-         end do
-
       case (12, 22)
-         ! IMPROVED: Low-rank case with adaptive rank selection
+         ! Low-rank case with adaptive rank selection
          nrmin = min(nrobs, nrens)
          allocate(Z(nrobs,nrmin), eig(nrmin))
-         call lowrankCinv(S, R, nrobs, nrens, nrmin, Z, eig, truncation, verbose)
+         call lowrankCinv(S, R, nrobs, nrens, nrmin, Z, eig, truncation)
 
       case (13, 23)
          ! Low-rank with perturbed obs: SS^T + E*E^T
          nrmin = min(nrobs, nrens)
          allocate(Z(nrobs,nrmin), eig(nrmin))
-         call lowrankE(S, E, nrobs, nrens, nrmin, Z, eig, truncation, verbose)
+         call lowrankE(S, E, nrobs, nrens, nrmin, Z, eig, truncation)
 
       case default
          print *, 'error analysis: Unknown mode: ', mode
@@ -218,6 +188,7 @@ subroutine analysis(A, R, E, S, D1, innov, ndim, nrens, nrobs, verbose, truncati
       ! X5 already produced by exact_diag_inversion
 
   case (11,12,13)
+
       allocate(X3(nrobs,nrens))
       if (nrobs > 1) then
           call genX3(nrens, nrobs, nrmin, eig, Z, D1, X3)
@@ -225,37 +196,45 @@ subroutine analysis(A, R, E, S, D1, innov, ndim, nrens, nrobs, verbose, truncati
           X3 = D1 * eig(1)
       end if
 
-      !=======================================================================
-      ! FIX/CRITICAL CRITERIA: Stochastic perturbed EnKF modes (11, 12, 13) 
-      ! mathematically require an additive update formulation (A = A + Reps * X3).
-      ! The multiplicative X5 formulation (A = A * X5) is strictly designed 
-      ! for deterministic square-root filters (21, 22, 23) to avoid adding 
-      ! explicit noise. Forcing X5 on stochastic modes destroys the ensemble 
-      ! perturbations, collapsing the eigenvalues. We force lreps = .true. here.
-      !=======================================================================
-      lreps = .true.
-      if (verbose) print '(a)', 'analysis: Representer approach forced for stochastic mode'
-      
-      allocate(Reps(ndim,nrobs))
-      
-      ! Compute representer matrix via BLAS dgemm: Reps = A * S^T
-      ! This maps the ensemble anomalies into the model state space
-      call dgemm('N','T', ndim, nrobs, nrens, 1.0_dp, A, ndim, S, nrobs, 0.0_dp, Reps, ndim)
-      
+      if (2_8*ndim*nrobs < 1_8*nrens*(nrobs+ndim) .and. inflate /= 2) then
+
+         lreps = .true.
+
+         if (verbose) print '(a)', &
+            'analysis: Representer approach is used'
+
+         allocate(Reps(ndim,nrobs))
+
+         call dgemm('N','T', &
+                    ndim,nrobs,nrens, &
+                    1.0_dp,A,ndim,S,nrobs, &
+                    0.0_dp,Reps,ndim)
+
+      else
+
+         lreps = .false.
+
+         if (verbose) print '(a)', &
+            'analysis: X5 approach is used'
+
+         call dgemm('T','N', &
+                    nrens,nrens,nrobs, &
+                    1.0_dp,S,nrobs,X3,nrobs, &
+                    0.0_dp,X5,nrens)
+
+         do i=1,nrens
+            X5(i,i)=X5(i,i)+1.0_dp
+         enddo
+
+      endif 
+
+      ! Dangerous!
       ! Apply damping to representer matrix to avoid unphysical local growth 
       ! near boundaries or dense observation clusters
-      call damp_representer(Reps, ndim, nrobs, verbose)
-
-      ! If adaptive inflation requires X5 diagnostics later in the code, 
-      ! we compute X5 as a secondary tracking variable without using it for the update
-      if (inflate == 2) then
-          call dgemm('T','N', nrens, nrens, nrobs, 1.0_dp, S, nrobs, X3, nrobs, 0.0_dp, X5, nrens)
-          do i = 1, nrens
-              X5(i,i) = X5(i,i) + 1.0_dp
-          end do
-      end if
+      !call damp_representer(Reps, ndim, nrobs, verbose)
 
   case (21,22,23)
+
       ! Deterministic square-root modes correctly use the multiplicative X5 weighting matrix
       lreps = .false.
       call meanX5(nrens, nrobs, nrmin, S, Z, eig, innov, X5)
@@ -264,6 +243,7 @@ subroutine analysis(A, R, E, S, D1, innov, ndim, nrens, nrobs, verbose, truncati
       call genX2(nrens, nrobs, nrmin, S, Z, eig, X2)
 
       call X5sqrt(X2, nrobs, nrens, nrmin, X5, lrandrot, lupdate_randrot, mode, lsymsqrt)
+
   end select
 
   !=======================================================================
@@ -290,11 +270,11 @@ subroutine analysis(A, R, E, S, D1, innov, ndim, nrens, nrobs, verbose, truncati
   !=======================================================================
   !  DIAGNOSTIC: Monitor increment magnitude and ensemble variance growth
   !=======================================================================
-  call monitor_increments(A, A_before, ave_before, ndim, nrens, nrobs, &
+  call monitor_increments(A, A_before, ndim, nrens, nrobs, &
                          var_before_scalar, max_incr, min_incr, mean_incr, rms_incr, verbose)
   
   ! SANITY CHECK: Warn if analysis updates are larger than background spread
-  if (verbose .and. rms_incr > 1.0_dp * sqrt(var_before_scalar + 1.0e-10_dp)) then
+  if (verbose .and. rms_incr > 3.0_dp * sqrt(var_before_scalar + 1.0e-10_dp)) then
       write(*,'(a,e12.4,a,e12.4)') &
           'WARNING: Large increments detected. RMS increment:', rms_incr, &
           ' vs. pre-analysis std:', sqrt(var_before_scalar + 1.0e-10_dp)
@@ -319,7 +299,7 @@ subroutine analysis(A, R, E, S, D1, innov, ndim, nrens, nrobs, verbose, truncati
 
   ! Bounded inflation to prevent runaway variance growth
   ! Clamp inflation factor to reasonable stable range [0.8, 1.40]
-  !inffac = max(0.80_dp, min(1.40_dp, inffac))
+  inffac = max(0.80_dp, min(1.40_dp, inffac))
 
   do j = 1, nrens
      do i = 1, ndim
