@@ -32,6 +32,11 @@ module mod_para
   logical, parameter :: verbose = .true.
 
   !--------------------------------------------------------------------
+  ! Use velocities intead of transports in the states
+  !--------------------------------------------------------------------
+  logical, parameter :: isvel = .false.
+
+  !--------------------------------------------------------------------
   ! Ensemble inflation
   !--------------------------------------------------------------------
   integer, parameter :: inflate = 2    ! 0=off, 1=multiplicative, 2=adaptive
