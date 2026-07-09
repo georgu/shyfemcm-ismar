@@ -7,19 +7,14 @@
 !   - Exact diagonal inversion
 !   - Inflation utilities
 !   - Debug dumps
-! Precision: Double precision throughout (dp)
 !
-! IMPROVEMENTS (v2.0):
-!   - Unified Tikhonov regularized damping in eigenvalue inversions (eigsign)
-!   - Thread-safe/MPI-safe diagnostic file I/O tracking
-!   - Better numerical stability for ill-conditioned coastal problems
 !===============================================================
 module mod_anafunc
   use iso_fortran_env, only : dp => real64
   implicit none
   private
   public :: lowrankE, eigC, eigsign, genX2, genX3, meanX5, X5sqrt
-  public :: dumpX3, dumpX5, lowrankCinv, lowrankCee, svdS, damp_representer, monitor_increments
+  public :: dumpX3, dumpX5, lowrankCinv, lowrankCee, svdS, monitor_increments
   public :: exact_diag_inversion, inflationfactor, inflateA
   
   ! Parameters for numerical stability
@@ -80,7 +75,7 @@ subroutine damp_representer(Reps, ndim, nrobs, verbose)
   
 end subroutine damp_representer	
 
-subroutine monitor_increments(A_new, A_old, ave_old, ndim, nrens, nrobs, &
+subroutine monitor_increments(A_new, A_old, ndim, nrens, nrobs, &
                               var_before, max_incr, min_incr, mean_incr, rms_incr, verbose)
   !=======================================================================
   !  PURPOSE:
@@ -91,7 +86,7 @@ subroutine monitor_increments(A_new, A_old, ave_old, ndim, nrens, nrobs, &
   
   integer, intent(in) :: ndim, nrens, nrobs
   real(dp), intent(in) :: A_new(ndim, nrens), A_old(ndim, nrens)
-  real(dp), intent(in) :: ave_old(ndim), var_before
+  real(dp), intent(in) :: var_before
   logical, intent(in) :: verbose
   real(dp), intent(out) :: max_incr, min_incr, mean_incr, rms_incr
   
@@ -213,63 +208,74 @@ subroutine eigsign(eig, nrobs, truncation)
   end do
 end subroutine eigsign
 
-subroutine lowrankE(S, E, nrobs, nrens, nrmin, Z, eig, truncation, verbose)
-  !=======================================================================
-  !  PURPOSE:
-  !    Computes the stable low-rank eigendecomposition of the innovation 
-  !    covariance matrix C = S*S^T + E*E^T using explicit observation 
-  !    perturbations (Mode 13 / 23).
-  !
-  !  CRITICAL FIXES:
-  !    - Prevented memory corruption/segmentation faults by allocating full-rank 
-  !      spectral workspaces (C_work, Z_work, eig_work) scaled to 'nrobs'.
-  !    - Solved the out-of-bounds array tracking issue where eigC overwrote 
-  !      the restricted 'nrmin' (nrens) limits.
-  !=======================================================================
-  implicit none
-  
-  integer, intent(in) :: nrobs, nrens, nrmin
-  real(dp), intent(in) :: S(nrobs, nrens), E(nrobs, nrens), truncation
-  real(dp), intent(out) :: Z(nrobs, nrmin), eig(nrmin)
-  logical, intent(in) :: verbose
-  
-  ! Full-rank dynamic workspace arrays to match eigC baseline requirements
-  real(dp), allocatable :: C_work(:,:), Z_work(:,:), eig_work(:)
-  integer :: i
-  
-  external :: dgemm
-  
-  allocate(C_work(nrobs, nrobs))
-  allocate(Z_work(nrobs, nrobs))
-  allocate(eig_work(nrobs))
-  
-  C_work = 0.0_dp
-  
-  ! Form C_work = S*S^T
-  call dgemm('N','T', nrobs, nrobs, nrens, 1.0_dp, S, nrobs, S, nrobs, 0.0_dp, C_work, nrobs)
-  
-  ! Accumulate C_work = C_work + E*E^T
-  call dgemm('N','T', nrobs, nrobs, nrens, 1.0_dp, E, nrobs, E, nrobs, 1.0_dp, C_work, nrobs)
-  
-  ! Perform spectral decomposition safely on full-rank structures
-  call eigC(C_work, nrobs, Z_work, eig_work)
-  
-  ! Apply safe truncation threshold filtering and mathematical inversion (1/lambda)
-  call eigsign(eig_work, nrobs, truncation)
-  
-  ! Cast the truncated full-rank solution down to the designated output dimensions
-  eig(1:nrmin) = eig_work(1:nrmin)
-  Z(1:nrobs, 1:nrmin) = Z_work(1:nrobs, 1:nrmin)
-  
-  if (nrmin < nrobs .and. verbose) then
-     write(*,'(a,i4,a,i4)') &
-         'lowrankE: ensemble rank limits nrmin to ', nrmin, &
-         ' (nrobs = ', nrobs, ')'
-  end if
-  
-  deallocate(C_work, Z_work, eig_work)
-  
+!=====================================================================
+! lowrankE
+!=====================================================================
+subroutine lowrankE(S,E,nrobs,nrens,nrmin,W,eig,truncation)
+   implicit none
+   integer, intent(in)  :: nrobs
+   integer, intent(in)  :: nrens
+   integer, intent(in)  :: nrmin
+   real(dp),    intent(in)  :: S(nrobs,nrens)
+   real(dp),    intent(in)  :: E(nrobs,nrens)
+   real(dp),    intent(out) :: W(nrobs,nrmin)
+   real(dp),    intent(out) :: eig(nrmin)
+   real(dp),    intent(in)  :: truncation
+
+   real(dp) U0(nrobs,nrmin),sig0(nrmin)
+   real(dp) X0(nrmin,nrens)
+   integer i,j
+
+   real(dp) U1(nrmin,nrmin),VT1(1,1)
+   real(dp), allocatable :: work(:)
+   integer lwork
+   integer ierr
+
+!====================================================
+! Compute SVD of S=HA`  ->  U0, sig0
+   call  svdS(S,nrobs,nrens,nrmin,U0,sig0,truncation)
+
+!====================================================
+! Compute X0=sig0^{*T} U0^T E
+
+! X0= U0^T E
+   call dgemm('t','n',nrmin,nrens,nrobs,1.0_dp,U0,nrobs,E,nrobs,0.0_dp,X0,nrmin)
+
+   do j=1,nrens
+   do i=1,nrmin
+      X0(i,j)=sig0(i)*X0(i,j)
+   enddo
+   enddo
+
+
+!====================================================
+! Compute singular value decomposition  of X0(nrmin,nrens)
+   lwork=2*max(3*nrens+nrobs,5*nrens)
+   allocate(work(lwork))
+   eig=0.0_dp
+
+   call dgesvd('S', 'N', nrmin, nrens, X0, nrmin, eig, U1, nrmin, VT1, 1, work, lwork, ierr)
+   deallocate(work)
+   if (ierr /= 0) then
+      print *,'mod_anafunc (lowrankE): ierr from call dgesvd 1= ',ierr; stop
+   endif
+
+   do i=1,nrmin
+      eig(i)=1.0_dp/(1.0_dp+eig(i)**2)
+   enddo
+
+!====================================================
+! W = U0 * sig0^{-1} * U1
+   do j=1,nrmin
+   do i=1,nrmin
+      U1(i,j)=sig0(i)*U1(i,j)
+   enddo
+   enddo
+
+   call dgemm('n','n',nrobs,nrmin,nrmin, 1.0_dp,U0,nrobs, U1,nrmin, 0.0_dp,W,nrobs)
+
 end subroutine lowrankE
+
 !=====================================================================
 ! genX2: X2 = (I + Λ)^{-1/2} * W^T * S
 !=====================================================================
@@ -425,6 +431,10 @@ subroutine X5sqrt(X2, nrobs, nrens, nrmin, X5, lrandrot, lupdate_randrot, mode, 
   if (ierr /= 0) stop 'X5sqrt: dgesvd failed'
   deallocate(work, X2loc)
 
+  if (maxval(sig) > 1.0001_dp) then
+      write(*,'(a,e12.4)') 'WARNING: singular value > 1 in X5sqrt: ', maxval(sig)
+  endif
+
   ! 3. Compute the square root of the weights
   allocate(X3(nrens, nrens))
   X3 = 0.0_dp
@@ -465,10 +475,6 @@ subroutine X5sqrt(X2, nrobs, nrens, nrmin, X5, lrandrot, lupdate_randrot, mode, 
   allocate(IenN(nrens, nrens))
   inv_n = -1.0_dp / real(nrens, dp)
   
-  !=======================================================================
-  ! FIX: Added internal index 'i' to private clause to avoid severe 
-  ! multi-threaded race conditions during projection matrix setup.
-  !=======================================================================
   !$omp parallel do private(j, i) shared(IenN, inv_n, nrens)
   do j = 1, nrens
     do i = 1, nrens
@@ -551,64 +557,51 @@ end subroutine dumpX5
 !=====================================================================
 ! lowrankCinv: stable inversion of S*S^T + (N-1)*R
 !=====================================================================
-subroutine lowrankCinv(S, R, nrobs, nrens, nrmin, Z, eig, truncation, verbose)
-  !=======================================================================
-  !  PURPOSE:
-  !    Safely computes the eigendecomposition of the innovation covariance 
-  !    matrix C = S*S^T + (N-1)*R without destructive side-effects on the
-  !    original observation error matrix R.
-  !=======================================================================
-  implicit none
-  
-  integer, intent(in) :: nrobs, nrens, nrmin
-  real(dp), intent(in) :: S(nrobs, nrens), R(nrobs, nrobs), truncation
-  real(dp), intent(out) :: Z(nrobs, nrmin), eig(nrmin)
-  logical, intent(in) :: verbose
-  
-  real(dp), allocatable :: C_work(:,:), Z_work(:,:), eig_work(:)
-  integer :: i, j, n_retained
-  real(dp) :: trace_C
-  
-  external :: dgemm
-  
-  allocate(C_work(nrobs, nrobs))
-  allocate(Z_work(nrobs, nrobs))
-  allocate(eig_work(nrobs))
-  
-  C_work = real(nrens-1, dp) * R
-  
-  call dgemm('N','T', nrobs, nrobs, nrens, 1.0_dp, S, nrobs, S, nrobs, &
-             1.0_dp, C_work, nrobs)
-  
-  call eigC(C_work, nrobs, Z_work, eig_work)
-  
-  n_retained = 0
-  trace_C = 0.0_dp
-  do i = 1, nrobs
-     trace_C = trace_C + eig_work(i)
-     if (eig_work(i) > truncation) n_retained = n_retained + 1
-  end do
-  
-  if (verbose .and. n_retained < nrobs) then
-     write(*,'(a,i4,a,i4,a,e12.4)') &
-         'lowrankCinv: ', n_retained, ' eigenvalues > ', nrobs, &
-         ' ; truncation = ', truncation
-  end if
-  
-  call eigsign(eig_work, nrobs, truncation)
-  
-  eig(1:nrmin) = eig_work(1:nrmin)
-  Z(1:nrobs, 1:nrmin) = Z_work(1:nrobs, 1:nrmin)
-  
-  if (nrmin < nrobs .and. verbose) then
-     write(*,'(a,i4,a,i4)') &
-         'lowrankCinv: ensemble rank nrens limits nrmin to ', nrmin, &
-         ' (nrobs = ', nrobs, ')'
-  end if
-  
-  deallocate(C_work, Z_work, eig_work)
-  
+subroutine lowrankCinv(S,R,nrobs,nrens,nrmin,W,eig,truncation)
+   implicit none
+   integer, intent(in)  :: nrobs
+   integer, intent(in)  :: nrens
+   integer, intent(in)  :: nrmin
+   real(dp),    intent(in)  :: S(nrobs,nrens)
+   real(dp),    intent(in)  :: R(nrobs,nrobs)
+   real(dp),    intent(out) :: W(nrobs,nrmin)
+   real(dp),    intent(out) :: eig(nrmin)
+   real(dp),    intent(in)  :: truncation
+
+   real(dp) U0(nrobs,nrmin),sig0(nrmin)
+   real(dp) B(nrmin,nrmin),Z(nrmin,nrmin)
+   integer i,j
+
+! Compute SVD of S=HA`  ->  U0, sig0
+   call  svdS(S,nrobs,nrens,nrmin,U0,sig0,truncation)
+
+! Compute B=sig0^{-1} U0^T R U0 sig0^{-1}
+   call lowrankCee(B,nrmin,nrobs,nrens,R,U0,sig0)
+
+! Compute eigenvalue decomposition  of B(nrmin,nrmin)
+   call eigC(B,nrmin,Z,eig)
+
+!   print *,'eig:',nrmin
+!   print '(6g11.3)',eig
+
+!=================================================
+! Compute inverse diagonal of (I+Lamda)
+   do i=1,nrmin
+      eig(i)=1.0_dp/(1.0_dp+eig(i))
+   enddo
+
+!=================================================
+! W = U0 * sig0^{-1} * Z
+   do j=1,nrmin
+   do i=1,nrmin
+      Z(i,j)=sig0(i)*Z(i,j)
+   enddo
+   enddo
+
+   call dgemm('n','n',nrobs,nrmin,nrmin, 1.0_dp,U0,nrobs, Z,nrmin, 0.0_dp,W,nrobs)
+
 end subroutine lowrankCinv
+
 !=====================================================================
 ! lowrankCee (no DGESVD): B = sig0^{-1} * U0^T * R * U0 * sig0^{-1} * (nrens-1)
 !=====================================================================

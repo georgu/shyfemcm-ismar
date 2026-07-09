@@ -34,14 +34,12 @@ Compile SHYFEM, should work both OpenMP and MPI, and goes in src/contrib/enKF. C
 with make clean and make.
 
 Then the deterministic run must have a RST file with a state at the initial
-time of the DA run. You need also at least one observation at this time. A
-.bas and a .str file must be present in this folder, as well. Avoid multiple
+time of the DA run.
+A .bas and a .str file must be present in this folder, as well. Avoid multiple
 str, bas or rst files in this folder. You can also prepare obs_list.txt in the
 folder observations (see below how to do it), otherwise you can do it
-interactiveley with the script. Remember also that only one type of
-observation (TEM, SAL, LEV) can be assimilated at each analysis step. You can
-stagger them in time. Also a odd number of ensemble members (even + 1 control)
-must be used.
+interactiveley with the script. 
+A odd number of ensemble members (even + 1 control) must be used.
 At this point go to the deterministic folder and run run_DA.sh. A new folder
 containing everything, named sim_DA, will be created. If this folder exists it
 will be overwritten.
@@ -245,19 +243,11 @@ To save results during the analysis, add in $para :
 
 You can also use the SHYFEM utility rst2shy to generate SHY files from restarts.
 
-
 ----------
 Initial restart files
 ----------
 Each restart file must contain one record at the first analysis time.
-
 The first restart is the control (unperturbed) run, i.e. ensemble member 0.
-
-To create a good initial ensemble, run multiple simulations with perturbed
-forcings and/or boundary conditions and save the restart at the first
-analysis step.
-The ensemble should be centered: mean approximately equal to control.
-
 
 ----------
 Observation files

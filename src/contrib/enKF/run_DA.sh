@@ -253,7 +253,7 @@ handle_observations() {
 
     if [ -f "$ENKF_DIR/make_antime_list" ] && [ -f "$DA_DIR/obs_list.txt" ]; then
         echo "Configuring the Analysis list (frequency of DA steps)..."
-        echo "Initial date: $R_DATE"
+	echo "Initial date (same of RST files): $R_DATE"
         read -p "--- [INPUT] Enter simulation final date (yyyy-mm-dd::HH:MM:SS): " T_END
         read -p "--- [INPUT] Enter minimum delta-time between analyses [seconds]: " T_DT
         (cd "$DA_DIR" && "$ENKF_DIR/make_antime_list" "$R_DATE" "$T_END" "$T_DT" "obs_list.txt")
@@ -267,9 +267,10 @@ run_enkf() {
     read -p "--- [INPUT] Choose DA Method (e.g., 21): " DA_METHOD
     read -p "--- [INPUT] Apply Localization? (0=No, 1=Yes): " DA_LOC
     read -p "--- [INPUT] Number of parallel threads (nomp): " DA_THREADS
-    read -p "--- [INPUT] Save all members output (required for enKS Smoothing)? (0/1): " DA_OUT
+    read -p "--- [INPUT] Save all members output (required for enKS)? (0/1): " DA_OUT
     read -p "--- [INPUT] Forecast execution engine (mpi|omp): " PMODE
 
+    # no more used
     [ -f "$DET_DIR/lbound.dat" ] && cp "$DET_DIR/lbound.dat" "$DA_DIR/"
     
     read -p "--- [INPUT] Run the DA code? (y/n): " do_p

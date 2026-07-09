@@ -1,13 +1,6 @@
 module m_pseudo2D
    !
    !
-   ! Key improvements:
-   ! - All arrays have FFTW‑compatible dimensions.
-   ! - Removed the extra “ghost index” p = n2/2 that caused segfaults.
-   ! - Single FFTW plan created once (thread‑safe usage).
-   ! - Clean and robust OpenMP parallel section.
-   ! - English comments: clear, structured, and technically accurate.
-   !
    use iso_fortran_env, only : dp => real64
    use mod_fftw3
    use m_newton2D
@@ -84,8 +77,8 @@ subroutine pseudo2D(Amat, nx, ny, lde, rx, ry, dx, dy, n1, n2, theta, verbose)
    summ = 0.0_dp
    do p = -n2/2+1, n2/2
       do l = -n1/2+1, n1/2
-         summ = summ + exp( -2.0_dp * ( kappa2*l*l/(r1*r1) +  &
-                                       lambda2*p*p/(r2*r2) ) )
+         summ = summ + exp( -2.0_dp * ( kappa2*real(l*l,dp)/(r1*r1) +  &
+                                       lambda2*real(p*p,dp)/(r2*r2) ) )
       end do
    end do
    summ = summ - 1.0_dp
@@ -101,12 +94,6 @@ subroutine pseudo2D(Amat, nx, ny, lde, rx, ry, dx, dy, n1, n2, theta, verbose)
    a12 = (a22tmp - a11tmp)*cos(theta*torad)*sin(theta*torad)
 
 !======================================================================
-! Parallel generation loop
-! - Each thread has private temporary vectors but uses a shared FFTW plan
-!   (safe for C2R execution as long as x,y arrays are thread‑private).
-!======================================================================
-!$omp parallel private(j,m,i,x,y)
-!$omp do schedule(static)
    do j=1, lde
 
       ! Generate spectrum (preserves exactly old behaviour)
@@ -124,8 +111,6 @@ subroutine pseudo2D(Amat, nx, ny, lde, rx, ry, dx, dy, n1, n2, theta, verbose)
       end do
 
    end do
-!$omp end do
-!$omp end parallel
 
    !------------------ Cleanup
    call dfftw_destroy_plan(plan)
@@ -142,9 +127,6 @@ subroutine wave_amp(n1,n2,pi2,a11,a12,a22,kappa,kappa2,lambda,lambda2, &
 !======================================================================
    !
    ! Constructs the anisotropic Gaussian spectrum with random phases.
-   ! This version is bit‑wise equivalent to the original one,
-   ! but uses the correct frequency indexing without the out‑of‑bounds
-   ! “ghost cell” that caused crashes.
    !
    integer, intent(in) :: n1, n2
    real(dp), intent(in) :: pi2, a11, a12, a22
