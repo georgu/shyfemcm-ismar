@@ -345,18 +345,13 @@ subroutine num2str(num, str)
 end subroutine num2str
 
 ! ======================================================================
-! SUBROUTINE: read_rst
+! SUBROUTINE: rst_read_rec
 !
 ! PURPOSE:
 !   Ingests physical state distributions from specific binary unformatted 
 !   SHYFEM member restart tracking streams.
-!
-! CRITICAL CORRECTIONS:
-!   1. Time-matching search tolerance modified from machine 'epsilon' 
-!      to '1.0e-6_dp' to guarantee float matching over long integration lines.
-!   2. Added analytical documentation anchors for transport-to-velocity mapping.
 ! ======================================================================
-subroutine read_rst(rstname, atimea, nnlv)
+subroutine rst_read_rec(rstname, atimea, nnlv)
   use mod_restart
   use levels
   use shympi
@@ -377,14 +372,14 @@ subroutine read_rst(rstname, atimea, nnlv)
 
   ! Open unformatted sequential restart channel for the requested member
   open(newunit=u_rst, file=trim(rstname), status='old', form='unformatted', action='read', iostat=ios)
-  if (ios /= 0) error stop 'ERROR: read_rst: Ingestion streaming failure opening restart file.'
+  if (ios /= 0) error stop 'ERROR: rst_read_rec: Ingestion streaming failure opening restart file.'
 
   ! Parse records until the timestamps match
   do
      call rst_read_record(u_rst, atimef, iflag, ierr)
      if (ierr /= 0) then
         close(u_rst)
-        write(*,'(A,F14.4,A,A)') 'ERROR: read_rst: Target timestamp ', atimea, &
+        write(*,'(A,F14.4,A,A)') 'ERROR: rst_read_rec: Target timestamp ', atimea, &
                                  ' not resolved inside stream: ', trim(rstname)
         error stop
      end if
@@ -396,7 +391,7 @@ subroutine read_rst(rstname, atimea, nnlv)
 
   ! On the initial baseline execution, register and broadcast execution flags
   if (icall == 0) then
-     if (nnlv /= nlv) error stop 'ERROR: read_rst: Vertical grid level dimensionality mismatch.'
+     if (nnlv /= nlv) error stop 'ERROR: rst_read_rec: Vertical grid level dimensionality mismatch.'
      hlv        = hlvrst
      hlv_global = hlvrst
      ilhv       = ilhrst
@@ -418,7 +413,7 @@ subroutine read_rst(rstname, atimea, nnlv)
      call addpar('imerc' , imerc4)
      call addpar('iturb' , iturb4)
 
-     call addpar('nzadapt' , 0.04) 
+     call addpar('nzadapt' , 0.) 
 
      call daddpar('date', 0.0_dp)
      call daddpar('time', 0.0_dp)
@@ -438,7 +433,7 @@ subroutine read_rst(rstname, atimea, nnlv)
 
   icall = icall + 1
 
-end subroutine read_rst
+end subroutine rst_read_rec
 
 ! ======================================================================
 ! SUBROUTINE: rst_write_rec
@@ -483,6 +478,7 @@ subroutine push_matrix(sdim, nrens, nre, Amat)
    use mod_ts
    use mod_restart
    use basin
+   use mod_para, only : isvel
    implicit none
 
    integer,  intent(in)    :: sdim, nrens, nre
@@ -517,8 +513,14 @@ subroutine push_matrix(sdim, nrens, nre, Amat)
    end where
 
    ! 3. Map velocities and elevation fields into the designated ensemble member column
-   Amat(1:d_uv, nre) = reshape(real(ulnv, dp), [d_uv])
-   Amat(d_uv+1:2*d_uv, nre) = reshape(real(vlnv, dp), [d_uv])
+   if (isvel) then
+      Amat(1:d_uv, nre) = reshape(real(ulnv, dp), [d_uv])
+      Amat(d_uv+1:2*d_uv, nre) = reshape(real(vlnv, dp), [d_uv])
+   else
+      Amat(1:d_uv, nre) = reshape(real(utlnv, dp), [d_uv])
+      Amat(d_uv+1:2*d_uv, nre) = reshape(real(vtlnv, dp), [d_uv])
+   end if
+
    Amat(2*d_uv+1:2*d_uv+d_z, nre) = real(znv, dp)
 
    ! 4. Handle baroclinic state parameters (Temperature & Salinity) if active
@@ -552,6 +554,7 @@ subroutine pull_matrix(sdim, nrens, nre, Amat)
    use mod_ts
    use mod_restart
    use basin
+   use mod_para, only : isvel
    implicit none
 
    integer,  intent(in) :: sdim, nrens, nre
@@ -569,8 +572,17 @@ subroutine pull_matrix(sdim, nrens, nre, Amat)
    end if
 
    ! 1. Unpack smooth velocity trajectories and sea surface elevations from matrix slot
-   ulnv = reshape(real(Amat(1:d_uv, nre), dp), [nlv, nel])
-   vlnv = reshape(real(Amat(d_uv+1:2*d_uv, nre), dp), [nlv, nel])
+   if (isvel) then
+      ulnv = reshape(real(Amat(1:d_uv, nre), dp), [nlv, nel])
+      vlnv = reshape(real(Amat(d_uv+1:2*d_uv, nre), dp), [nlv, nel])
+      ! 3. Convert smoothed pure velocities (m/s) back to physical fluid transports (m^2/s) using static layers
+      utlnv = ulnv * hdenv
+      vtlnv = vlnv * hdenv
+   else
+      utlnv = reshape(real(Amat(1:d_uv, nre), dp), [nlv, nel])
+      vtlnv = reshape(real(Amat(d_uv+1:2*d_uv, nre), dp), [nlv, nel])
+   end if
+
    znv  = real(Amat(2*d_uv+1:2*d_uv+d_z, nre), dp)
 
    ! 2. Unpack thermodynamic scalars if baroclinic physics are engaged
@@ -585,9 +597,6 @@ subroutine pull_matrix(sdim, nrens, nre, Amat)
       saltv = reshape(real(Amat(2*d_uv+d_z+d_ts+1:2*d_uv+d_z+2*d_ts, nre), dp), [nlv, nkn])
    end if
 
-   ! 3. Convert smoothed pure velocities (m/s) back to physical fluid transports (m^2/s) using static layers
-   utlnv = ulnv * hdenv
-   vtlnv = vlnv * hdenv
 end subroutine pull_matrix
 
 ! ======================================================================
@@ -766,7 +775,7 @@ end module mod_enks_analysis
 ! PROGRAM: enKF2enKS
 !
 ! PURPOSE:
-!   Main execution driver for the Ensemble Kalman Smoother (EnKS v2.0).
+!   Main execution driver for the Ensemble Kalman Smoother.
 !   Ingests sequential ocean model restarts (SHYFEM format) generated
 !   by a prior EnKF filter pass, applies accumulated transformation
 !   matrices (X3/X5), and exports retrospective mean and variance fields.
@@ -863,7 +872,7 @@ program enKF2enKS
           call num2str(nre-1, nrel)
 
           ! Ingest spatial restart arrays for the targeted member and timestamp
-          call read_rst("analKF_en"//nrel//".rst", atime, nnlv)
+          call rst_read_rec("analKF_en"//nrel//".rst", atime, nnlv)
 
           ! Calculation of sdim immediately after the first successful restart read
           if (.not. allocated(Astate)) then

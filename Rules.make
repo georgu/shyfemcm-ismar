@@ -36,7 +36,7 @@
 
 COMPILER_PROFILE = NORMAL
 #COMPILER_PROFILE = CHECK
-#COMPILER_PROFILE = SPEED
+COMPILER_PROFILE = SPEED
 
 ##############################################
 # Compiler
@@ -113,7 +113,7 @@ PARALLEL_OMP = false
 #PARALLEL_OMP = true
 
 PARALLEL_MPI = NONE
-#PARALLEL_MPI = NODE
+PARALLEL_MPI = NODE
 #PARALLEL_MPI = ELEM
 
 ##############################################
@@ -143,14 +143,14 @@ PARALLEL_MPI = NONE
 
 PARTS = NONE
 #PARTS = METIS
-#PARTS = PARMETIS
-METISDIR = 
-METISDIR = ${METIS_HOME}
+PARTS = PARMETIS
+#METISDIR = 
+#METISDIR = ${METIS_HOME}
 #METISDIR = /usr/local
 #METISDIR = $(HOME)/lib/metis
 #METISDIR = $(LD_LIBRARY_PATH)
-PARMETISDIR = 
-PARMETISDIR = ${PARMETIS_HOME}
+#PARMETISDIR = 
+#PARMETISDIR = ${PARMETIS_HOME}
 #PARMETISDIR = /usr/local
 #PARMETISDIR = $(HOME)/lib/parmetis
 #PARMETISDIR = $(LD_LIBRARY_PATH)
@@ -184,10 +184,10 @@ PARMETISDIR = ${PARMETIS_HOME}
 ##############################################
 
 #SOLVER = GAUSS
-SOLVER = SPARSKIT
+#SOLVER = SPARSKIT
 #SOLVER = PARDISO
 #SOLVER = PARALUTION
-#SOLVER = PETSC
+SOLVER = PETSC
 #SOLVER = PETSC_AmgX
 
 ##############################################
@@ -198,8 +198,8 @@ SOLVER = SPARSKIT
 
 # PETSC_DIR it the path to the PETSc installation folder, it is 
 # needed for both the PETSc and the PETSc_AmgX solvers
-PETSC_DIR =
-PETSC_DIR =${PETSC_HOME}
+PETSC_DIR = /usr/lib/petscdir/petsc3.22/x86_64-linux-gnu-real
+#PETSC_DIR =${PETSC_HOME}
 
 # The next 4 paths must be filled in for the PETSc_AmgX solver only.
 
@@ -264,7 +264,7 @@ GPU=NONE
 ##############################################
 
 NETCDF = false
-#NETCDF = true
+NETCDF = true
 #NETCDFDIR =
 NETCDFDIR = ${NETCDF_C_HOME}
 NETCDFFDIR =${NETCDF_FORTRAN_HOME}
