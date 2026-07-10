@@ -32,6 +32,9 @@ module mod_ens_state
    type(states) :: Abk_m, Aan_m
    type(states) :: Abk_std, Aan_std
 
+   real(dp), allocatable, public :: w_nodes(:)
+   real(dp), allocatable, public :: w_elem(:)
+
 contains
 
 !=======================================================================
@@ -558,18 +561,70 @@ subroutine matrix_to_tyqstate(ibrcl, nens, ndim, Amat, A)
 end subroutine matrix_to_tyqstate
 
 !=======================================================================
-! SUBROUTINE: val_check_correct
-!
-! PURPOSE:
-!   Scans the analysed ensemble states (Aan) against background fields (Abk)
-!   to enforce physical thresholds for Sea Surface Height (SSH), Salinity (S),
-!   Temperature (T), and Velocity Vectors (u, v). Replaces anomalous values 
-!   with prior background coefficients upon violation.
+subroutine init_obc_relaxation_weights()
+!=======================================================================
+   ! Precomputes spatial weights once at model startup using OpenMP
+   ! to accelerate the initial O(N*M) geometric search.
+   implicit none
+   logical               :: file_exists
+   integer               :: nbc, k, ie
+   integer, allocatable  :: bcid(:)
+   real(dp), allocatable :: bcrho(:)
+
+   ! 1. Allocate arrays dynamically based on current grid dimensions
+   if (allocated(w_nodes)) deallocate(w_nodes)
+   if (allocated(w_elem))  deallocate(w_elem)
+   allocate(w_nodes(nnkn), w_elem(nnel))
+
+   ! 2. Parse and evaluate boundary condition parameters (Serial Phase)
+   nbc = 1
+   allocate(bcid(nbc), bcrho(nbc))
+   inquire(file='lbound.dat', exist=file_exists)
+
+   if (file_exists) then
+      call read_bc_file(0, 'lbound.dat', nbc, bcid, bcrho)
+      deallocate(bcid, bcrho)
+      allocate(bcid(nbc), bcrho(nbc))
+      call read_bc_file(1, 'lbound.dat', nbc, bcid, bcrho)
+      write(*,*) 'Precomputing OBC relaxation weights in parallel...'
+   else
+      write(*,*) 'Warning: lbound.dat missing. Setting OBC weights to 0.0'
+      w_nodes = 0.0_dp
+      w_elem  = 0.0_dp
+      deallocate(bcid, bcrho)
+      return
+   end if
+
+   ! 3. Parallel Precomputation of Spatial Weights for Nodes
+   !$omp parallel do &
+   !$omp default(shared) &
+   !$omp private(k)
+   do k = 1, nnkn
+      call bc_correction('nodes', k, nbc, bcid, bcrho, w_nodes(k))
+   end do
+   !$omp end parallel do
+
+   ! 4. Parallel Precomputation of Spatial Weights for Elements
+   !$omp parallel do &
+   !$omp default(shared) &
+   !$omp private(ie)
+   do ie = 1, nnel
+      call bc_correction('elements', ie, nbc, bcid, bcrho, w_elem(ie))
+   end do
+   !$omp end parallel do
+
+   deallocate(bcid, bcrho)
+   write(*,*) 'OBC spatial weights lookup arrays precomputed successfully.'
+
+end subroutine init_obc_relaxation_weights
+
 !=======================================================================
 subroutine val_check_correct()
+!=======================================================================
+   use mod_restart, only : ibarcl_rst
    implicit none
 
-   ! Legitimate local loop counters and grid pointers
+   ! Local loop counters and diagnostics
    integer :: ne, k, nl, ie
    integer :: zout, sout, tout, uout, vout
    integer :: znan, snan, tnan, unan, vnan
@@ -578,12 +633,13 @@ subroutine val_check_correct()
    integer :: ototv, ntotv, btotv
    integer :: otott, ntott, btott
    integer :: otots, ntots, btots
+   
+   ! Local private registers copies for high-speed hardware math scaling
+   real(dp) :: wn, we
 
-
-   !===================================================================
-   ! Apply BC relaxation
-   !===================================================================
-   call apply_obc_relaxation
+   if (.not. allocated(w_nodes)) then
+      call init_obc_relaxation_weights()
+   end if
 
    ! Initialize global diagnostics accumulators
    ototz = 0 ; ntotz = 0 ; btotz = 0
@@ -591,9 +647,19 @@ subroutine val_check_correct()
    otott = 0 ; ntott = 0 ; btott = 0
    otots = 0 ; ntots = 0 ; btots = 0
 
-   !===================================================================
-   ! Loop over ensemble members (Executed sequentially for data safety)
-   !===================================================================
+   !-------------------------------------------------------------------
+   ! Unified Parallel Loop over Ensemble Members
+   !-------------------------------------------------------------------
+   !$omp parallel do &
+   !$omp default(shared) &
+   !$omp private(ne, k, nl, ie, wn, we) &
+   !$omp private(zout, sout, tout, uout, vout) &
+   !$omp private(znan, snan, tnan, unan, vnan) &
+   !$omp private(zbig, sbig, tbig, ubig, vbig) &
+   !$omp reduction(+:ototz, ntotz, btotz) &
+   !$omp reduction(+:ototv, ntotv, btotv) &
+   !$omp reduction(+:otott, ntott, btott) &
+   !$omp reduction(+:otots, ntots, btots)
    do ne = 1, nrens
 
       ! Initialize member-specific quality control counters
@@ -606,42 +672,44 @@ subroutine val_check_correct()
       !===============================================================
       do k = 1, nnkn
 
-         ! Validate physical thresholds and metric increments for SSH (Z field)
+         ! Direct thread-safe read from the module level lookup array
+         wn = w_nodes(k)
+
+         ! Apply boundary relaxation weight for SSH (Z field)
+         Aan(ne)%z(k) = wn * Abk(ne)%z(k) + (1.0_dp - wn) * Aan(ne)%z(k)
+
+         ! Validate physical thresholds and metric increments for SSH
          call check_one_val( &
-            k, &
-            1, &
-            vtype = 'Z', &
-            va = Aan(ne)%z(k), &
-            vb = Abk(ne)%z(k), &
-            vmax = SSH_MAX, &
-            vmin = SSH_MIN, &
+            k, 1, vtype = 'Z', &
+            va = Aan(ne)%z(k), vb = Abk(ne)%z(k), &
+            vmax = SSH_MAX, vmin = SSH_MIN, &
             vnan = znan, vout = zout, vbig = zbig )
 
          !------------------------------------------------------------
          ! 3D Hydrographic Fields: Temperature & Salinity Profiles
          !------------------------------------------------------------
-         do nl = 1, nnlv
+         if (ibarcl_rst /= 0) then
+            do nl = 1, nnlv
 
-            ! Validate Salinity profiles (S field)
-            call check_one_val( &
-               k, &
-               nl, &
-               vtype = 'S', &
-               va = Aan(ne)%s(nl,k), &
-               vb = Abk(ne)%s(nl,k), &
-               vmax = SAL_MAX, vmin = SAL_MIN, &
-               vnan = snan, vout = sout, vbig = sbig)
+               ! Apply boundary relaxation using the static node weight
+               Aan(ne)%s(nl,k) = wn * Abk(ne)%s(nl,k) + (1.0_dp - wn) * Aan(ne)%s(nl,k)
+               Aan(ne)%t(nl,k) = wn * Abk(ne)%t(nl,k) + (1.0_dp - wn) * Aan(ne)%t(nl,k)
 
-            ! Validate Temperature profiles (T field)
-            call check_one_val( &
-               k, &
-               nl, &
-               vtype = 'T', &
-               va = Aan(ne)%t(nl,k), &
-               vb = Abk(ne)%t(nl,k), &
-               vmax = TEM_MAX, vmin = TEM_MIN, &
-               vnan = tnan, vout = tout, vbig = tbig)
-         end do
+               ! Validate Salinity profiles (S field)
+               call check_one_val( &
+                  k, nl, vtype = 'S', &
+                  va = Aan(ne)%s(nl,k), vb = Abk(ne)%s(nl,k), &
+                  vmax = SAL_MAX, vmin = SAL_MIN, &
+                  vnan = snan, vout = sout, vbig = sbig)
+
+               ! Validate Temperature profiles (T field)
+               call check_one_val( &
+                  k, nl, vtype = 'T', &
+                  va = Aan(ne)%t(nl,k), vb = Abk(ne)%t(nl,k), &
+                  vmax = TEM_MAX, vmin = TEM_MIN, &
+                  vnan = tnan, vout = tout, vbig = tbig)
+            end do
+         end if
 
       end do
 
@@ -649,52 +717,44 @@ subroutine val_check_correct()
       ! ELEMENT-BASED FIELDS: Velocity Components (u, v Vectors)
       !===============================================================
       do ie = 1, nnel
+
+         ! Direct thread-safe read from the module level lookup array
+         we = w_elem(ie)
+
          do nl = 1, nnlv
             
+            ! Apply boundary relaxation using the static element weight
+            Aan(ne)%u(nl,ie) = we * Abk(ne)%u(nl,ie) + (1.0_dp - we) * Aan(ne)%u(nl,ie)
+            Aan(ne)%v(nl,ie) = we * Abk(ne)%v(nl,ie) + (1.0_dp - we) * Aan(ne)%v(nl,ie)
+
             ! Validate horizontal zonal velocity component (u field)
             call check_one_val( &
-               ie, &
-               nl, &
-               vtype = 'V', &
-               va = Aan(ne)%u(nl,ie), &
-               vb = Abk(ne)%u(nl,ie), &
+               ie, nl, vtype = 'V', &
+               va = Aan(ne)%u(nl,ie), vb = Abk(ne)%u(nl,ie), &
                vmax = VEL_MAX, vmin = VEL_MIN, &
                vnan = unan, vout = uout, vbig = ubig)
 
             ! Validate horizontal meridional velocity component (v field)
             call check_one_val( &
-               ie, &
-               nl, &
-               vtype = 'V', &
-               va = Aan(ne)%v(nl,ie), &
-               vb = Abk(ne)%v(nl,ie), &
+               ie, nl, vtype = 'V', &
+               va = Aan(ne)%v(nl,ie), vb = Abk(ne)%v(nl,ie), &
                vmax = VEL_MAX, vmin = VEL_MIN, &
                vnan = vnan, vout = vout, vbig = vbig)
          end do
       end do
 
-      ! Concrete tracking reduction accumulation across active members
-      ototz = ototz + zout
-      ntotz = ntotz + znan
-      btotz = btotz + zbig
-
-      ototv = ototv + uout + vout
-      ntotv = ntotv + unan + vnan
-      btotv = btotv + ubig + vbig
-
-      otott = otott + tout
-      ntott = ntott + tnan
-      btott = btott + tbig
-
-      otots = otots + sout
-      ntots = ntots + snan
-      btots = btots + sbig
+      ! Reduction accumulation across active members
+      ototz = ototz + zout ; ntotz = ntotz + znan ; btotz = btotz + zbig
+      ototv = ototv + uout + vout ; ntotv = ntotv + unan + vnan ; btotv = btotv + ubig + vbig
+      otott = otott + tout ; ntott = ntott + tnan ; btott = btott + tbig
+      otots = otots + sout ; ntots = ntots + snan ; btots = btots + sbig
 
    end do
+   !$omp end parallel do
 
-   !===================================================================
+   !-------------------------------------------------------------------
    ! SERIAL DIAGNOSTICS LOGGING
-   !===================================================================
+   !-------------------------------------------------------------------
    if (ototz > 0) write(*,'(A,I8)') 'Z total out-of-range corrections per member: ', ototz / nrens
    if (ntotz > 0) write(*,'(A,I8)') 'Z total NaN corrections per member:          ', ntotz / nrens
    if (btotz > 0) write(*,'(A,I8)') 'Z total excessive increment corrections per member: ', btotz / nrens
@@ -710,78 +770,8 @@ subroutine val_check_correct()
    if (otots > 0) write(*,'(A,I8)') 'S total out-of-range corrections per member: ', otots / nrens
    if (ntots > 0) write(*,'(A,I8)') 'S total NaN corrections per member:          ', ntots / nrens
    if (btots > 0) write(*,'(A,I8)') 'S total excessive increment corrections per member: ', btots / nrens
+
 end subroutine val_check_correct
-
-!=======================================================================
-subroutine apply_obc_relaxation()
-!=======================================================================
-   use mod_restart, only : ibarcl_rst
-   implicit none
-
-   logical               :: file_exists
-   integer               :: nbc, ne, k, ie, nl
-   integer, allocatable  :: bcid(:)
-   real(dp), allocatable :: bcrho(:)
-   real(dp)              :: w
-
-   ! Boundary file reading
-   nbc = 1
-   allocate(bcid(nbc), bcrho(nbc))
-   inquire(file='lbound.dat', exist=file_exists)
-
-   if (file_exists) then
-      call read_bc_file(0, 'lbound.dat', nbc, bcid, bcrho)
-      deallocate(bcid, bcrho)
-      allocate(bcid(nbc), bcrho(nbc))
-      call read_bc_file(1, 'lbound.dat', nbc, bcid, bcrho)
-      write(*,*) 'Boundary value correction active.'
-   else
-      write(*,*) 'Warning: lbound.dat not found - no boundary correction applied.'
-      bcid = 1
-      bcrho = 0.0_dp
-   end if
-
-   do ne = 1, nrens
-
-     do k = 1, nnkn
-
-       ! Compute spatial boundary weight
-       if (file_exists) then
-          call bc_correction('nodes', k, nbc, bcid, bcrho, w)
-       else
-          w = 0.0_dp
-       end if
-
-       ! Apply boundary relaxation weight 
-       Aan(ne)%z(k) = w * Abk(ne)%z(k) + (1.0_dp - w) * Aan(ne)%z(k)
-
-       if (ibarcl_rst /= 0) then
-          do nl = 1, nnlv
-             Aan(ne)%s(nl,k) = w * Abk(ne)%s(nl,k) + (1.0_dp - w) * Aan(ne)%s(nl,k)
-             Aan(ne)%t(nl,k) = w * Abk(ne)%t(nl,k) + (1.0_dp - w) * Aan(ne)%t(nl,k)
-          end do
-       end if
-
-     end do
-
-     do ie = 1, nnel
-        ! Compute spatial boundary weight
-       if (file_exists) then
-          call bc_correction('elements', ie, nbc, bcid, bcrho, w)
-       else
-          w = 0.0_dp
-       end if
-
-       do nl = 1, nnlv
-          ! Apply boundary relaxation to U and V currents
-          Aan(ne)%u(nl,ie) = w * Abk(ne)%u(nl,ie) + (1.0_dp - w) * Aan(ne)%u(nl,ie)
-          Aan(ne)%v(nl,ie) = w * Abk(ne)%v(nl,ie) + (1.0_dp - w) * Aan(ne)%v(nl,ie)
-       end do
-     end do
-
-   end do
-
-end subroutine apply_obc_relaxation
 
 !=======================================================================
 subroutine read_bc_file(icall, bcfile, nbc, bcid, bcrho)
@@ -816,48 +806,62 @@ subroutine bc_correction(stype, id, nbc, bcid, bcrho, w)
 !=======================================================================
    implicit none
 
+   ! --- Dummy Arguments ---
    character(len=*), intent(in) :: stype
-   integer, intent(in) :: id
-   integer, intent(in) :: nbc
-   integer, intent(in) :: bcid(nbc)
-   real(dp), intent(in) :: bcrho(nbc)
-   real(dp), intent(out) :: w
+   integer, intent(in)          :: id
+   integer, intent(in)          :: nbc
+   integer, intent(in)          :: bcid(nbc)
+   real(dp), intent(in)         :: bcrho(nbc)
+   real(dp), intent(out)        :: w
 
+   ! --- Local Loop Counters and Spatial Pointers ---
    integer*4 :: kext
-   integer :: i, k, kbc
-   real(dp) :: x, y, bcx, bcy
-   real(dp) :: d, dmin, rho
+   integer   :: i, k, kbc
+   real(dp)  :: x, y, bcx, bcy
+   real(dp)  :: d, dmin, rho
 
    integer*4 ipint
 
-   ! --- Metric conversion variables ---
-   real(dp) :: lat_mean, lat_rad, deg2rad
-   real(dp) :: meters_per_deg_y, meters_per_deg_x
-   real(dp) :: dx_m, dy_m
+   ! --- Metric Conversion Variables ---
+   real(dp)  :: lat_mean, lat_rad, deg2rad
+   real(dp)  :: meters_per_deg_y, meters_per_deg_x
+   real(dp)  :: dx_m, dy_m
 
-   ! 1. Infer the mean latitude of the domain from the global ygv array.
-   ! NOTE: Ensure 'ygv' and 'dp' are accessible via host/module association.
+   ! --- Optimization Variables (Bounding Box Filter) ---
+   real(dp)  :: max_rho_deg, dx_deg, dy_deg
+   real(dp)  :: cutoff_factor
+
+   ! 1. Domain Configuration & Metric Conversion Factors
+   ! Infer the mean latitude of the domain from the global ygv array.
    lat_mean = sum(ygv) / size(ygv)
 
-   ! 2. Convert mean latitude to radians for trigonometric scaling
+   ! Convert mean latitude to radians for trigonometric scaling
    deg2rad = 3.141592653589793_dp / 180.0_dp
    lat_rad = lat_mean * deg2rad
 
-   ! 3. Define local metric scaling factors based on a spherical Earth radius (R ≈ 6371 km).
+   ! Define local metric scaling factors based on a spherical Earth radius (R ≈ 6371 km).
    ! 1 degree of latitude is approximately 111,195 meters.
    meters_per_deg_y = 111195.0_dp
    ! 1 degree of longitude scales with the cosine of the mean latitude.
    meters_per_deg_x = 111195.0_dp * cos(lat_rad)
 
+   ! 2. Setup Gaspari-Cohn Cutoff Radius
+   ! Optimization parameter: Gaspari-Cohn (GC) function strictly drops to 0.0 
+   ! either at 1.0*rho or 2.0*rho depending on your specific implementation.
+   ! Adjust 'cutoff_factor' (e.g., 1.0_dp or 2.0_dp) to match your find_weight_GC logic.
+   cutoff_factor = 2.0_dp
+   max_rho_deg   = maxval(bcrho) * cutoff_factor
+
    x = 0.0_dp ; y = 0.0_dp
    dmin = 1.0e15_dp
    rho = 0.0_dp
 
+   ! 3. Resolve Target Spatial Coordinates (Node vs Element Center)
    if (stype == 'nodes') then
       x = xgv(id)
       y = ygv(id)
    else
-      ! element -> average vertices
+      ! Element geometry -> average vertices to find barycenter
       do i = 1, 3
          k = nen3v(i, id)
          x = x + xgv(k)
@@ -867,27 +871,52 @@ subroutine bc_correction(stype, id, nbc, bcid, bcrho, w)
       y = y / 3.0_dp
    end if
 
+   ! 4. Optimized Boundary Condition Search Loop
    do i = 1, nbc
       kext = bcid(i)
-      kbc = ipint(kext)
+      kbc  = ipint(kext)
+      bcy  = ygv(kbc)
+
+      ! --- HPC OPTIMIZATION: STEP A (Latitude Bounding Box Filter) ---
+      ! Compute quick absolute difference in degrees along the Y-axis.
+      ! If the target node is further than the maximum possible influence radius,
+      ! bypass expensive coordinate fetching, squaring, and sqrt operations.
+      dy_deg = abs(y - bcy)
+      if (dy_deg > max_rho_deg) cycle
+
+      ! Fetch X coordinate only if the node passes the Latitude filter
       bcx = xgv(kbc)
-      bcy = ygv(kbc)
+      
+      ! --- HPC OPTIMIZATION: STEP B (Longitude Bounding Box Filter) ---
+      ! Compute quick absolute difference in degrees along the X-axis.
+      dx_deg = abs(x - bcx)
+      if (dx_deg > max_rho_deg) cycle
 
-      ! 4. Transform angular differences (degrees) into linear distances (meters)
+      ! --- HEAVY COMPUTATION ZONE (Executed only for near-boundary nodes) ---
+      ! Transform angular differences (degrees) into linear distances (meters)
       ! applying the localized Equirectangular projection approximation.
-      dx_m = (x - bcx) * meters_per_deg_x
-      dy_m = (y - bcy) * meters_per_deg_y
+      dx_m = dx_deg * meters_per_deg_x
+      dy_m = dy_deg * meters_per_deg_y
 
-      ! 5. Compute the standard Euclidean distance in meters
+      ! Compute the standard Euclidean distance in meters
       d = sqrt(dx_m**2 + dy_m**2)
 
       if (d < dmin) then
          dmin = d
-         rho = bcrho(i)
+         ! Scaling Correction: Convert 'bcrho' from degrees to meters 
+         ! to ensure dimensional consistency inside find_weight_GC
+         rho  = bcrho(i) * meters_per_deg_y 
       end if
    end do
 
-   call find_weight_GC(rho, dmin, w)
+   ! 5. Weight Computation & Early Abort for Deep Internal Nodes
+   ! If dmin was never updated or exceeds the metric cutoff distance,
+   ! force weight to zero and skip the Gaspari-Cohn subroutine call entirely.
+   if (dmin > (max_rho_deg * meters_per_deg_y)) then
+      w = 0.0_dp
+   else
+      call find_weight_GC(rho, dmin, w)
+   end if
 
 end subroutine bc_correction
 
@@ -942,7 +971,8 @@ subroutine check_one_val(ih,iv,vtype, va, vb, vmax, vmin, vnan, vout, vbig)
    case ('Z')
       ! Sea Surface Height (SSH) absolute update clipping
       if (abs(inc) > max_abs_ssh) then
-         write(998,*) max_abs_ssh,abs(inc),vbk,va,xgv(ih), ygv(ih)
+         ! This is for debugging
+         !write(998,*) max_abs_ssh,abs(inc),vbk,va,xgv(ih), ygv(ih)
          va = vbk + sign(max_abs_ssh, inc)
          vbig = vbig + 1
       end if
@@ -987,6 +1017,5 @@ subroutine check_one_val(ih,iv,vtype, va, vb, vmax, vmin, vnan, vout, vbig)
    end if
 
 end subroutine check_one_val
-
 
 end module mod_ens_state

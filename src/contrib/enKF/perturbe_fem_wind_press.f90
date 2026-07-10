@@ -236,7 +236,7 @@ program perturbe_fem_wind_press
     integer, allocatable    :: ilhkv(:)
 
     ! Variables for calculation
-    real(dp), allocatable   :: var3d(:,:,:,:), var3d_ens(:,:,:,:)
+    real(dp), allocatable   :: var3d(:,:,:,:), var3d_ens(:,:,:,:,:)
     real(dp), allocatable   :: pmat(:,:,:) 
     real(dp)                :: alpha, dt_sec
 
@@ -311,7 +311,10 @@ program perturbe_fem_wind_press
 
         if (.not. allocated(femdata))   allocate(femdata(lmax, nx, ny))
         if (.not. allocated(var3d))     allocate(var3d(nvar, nx, ny, lmax))
-        if (.not. allocated(var3d_ens)) allocate(var3d_ens(nvar, nx, ny, lmax))
+
+        ! --- HPC MODIFICATION: Expand array to 5D to hold all ensemble members ---
+        if (.not. allocated(var3d_ens)) allocate(var3d_ens(nvar, nx, ny, lmax, nrens))
+
         if (.not. allocated(pmat)) then
             allocate(pmat(nx, ny, nrens-1))
             pmat = 0.0_dp ! Zero start for AR1
@@ -335,18 +338,43 @@ program perturbe_fem_wind_press
 
         ! Perturbation Logic ---
         select case (pert_type)
-	! ------------------------------------
+        ! ------------------------------------
         case(1) ! Pressure + Geostrophic Wind
-            
+
             if (n == 1) write(*,*) 'Pressure + Geostrophic Wind '
 
-            ! Generate spatial innovation and update AR1 state (pmat)
-            ! rx_km/ry_km set to 500km as placeholder
+            ! Sequential Phase: AR1 Red Noise state update (MUST be serial)
             write(*,*) 'Making random - red noise perturbations...'
             call generate_ensemble_perturbations(nx, ny, nrens-1, &
                         real(dx,dp), real(dy,dp), real(y0,dp), &
                         500.0_dp, 500.0_dp, alpha, pmat)
 
+            ! =================================================================
+            ! PHASE 1: PARALLEL COMPUTATION 
+            ! =================================================================
+            !$omp parallel do &
+            !$omp default(shared) &
+            !$omp private(ne)
+            do ne = 1, nrens
+                if (ne > 1) then
+                   ! Compute perturbed field for this member
+                   ! Safe: each thread writes to its own slice var3d_ens(:,:,:,:,ne)
+                   call make_geo_field(nvar, ne-1, nrens-1, nx, ny, lmax, &
+                      real(dx,dp), real(dy,dp), &
+                      pmat, var3d, var3d_ens(:,:,:,:,ne), &
+                      real(flag,dp), std_p, real(y0,dp))
+                else
+                   ! Control member (ne=1) receives unperturbed fields
+                   var3d_ens(:,:,:,:,1) = var3d
+                end if
+            end do
+            !$omp end parallel do
+
+            ! =================================================================
+            ! PHASE 2: SERIAL I/O OPERATIONS
+            ! =================================================================
+            ! Standard Fortran I/O routines and file units (fid) are executed
+            ! sequentially to prevent thread collision and file corruption.
             do ne = 1, nrens
 
                 ! Open member file only once at first time step
@@ -355,35 +383,49 @@ program perturbe_fem_wind_press
                 call fem_file_write_header(iformat, fid(ne), dtime, nvers, np, lmax, &
                        nvar, ntype, 1, hlv, datetime, regpar)
 
-                if (ne > 1) then
-                   ! Compute perturbed field for this member
-		   call make_geo_field(nvar, ne-1, nrens-1, nx, ny, lmax, &      ! 1-6
-                      real(dx,dp), real(dy,dp), &                                ! 7-8
-                      pmat, var3d, var3d_ens, &                                  ! 9-11
-                      real(flag,dp), std_p, real(y0,dp))                         ! 12-14
-                else
-                      var3d_ens = var3d
-                end if
-
                 do i = 1, nvar
-                    femdata(1, :, :) = real(var3d_ens(i,:,:,1), sp)
+                    ! Extract the 3D grid slice for the current variable and member
+                    femdata(1, :, :) = real(var3d_ens(i,:,:,1,ne), sp)
                     call fem_file_write_data(iformat, fid(ne), nvers, np, lmax, &
                            vstring(i), ilhkv, hd, 1, femdata)
                 end do
 
             end do
 
-	! ------------------------------------
+        ! ------------------------------------
         case(2) ! Wind speed perturbations
             if (n == 1) write(*,*) 'Wind speed perturbations '
 
-            ! Generate spatial innovation and update AR1 state (pmat)
-            ! rx_km/ry_km set to 500km as placeholder
+            ! Sequential Phase: AR1 Red Noise state update (MUST be serial)
             write(*,*) 'Making random - red noise perturbations...'
             call generate_ensemble_perturbations(nx, ny, nrens-1, &
                         real(dx,dp), real(dy,dp), real(y0,dp), &
                         500.0_dp, 500.0_dp, alpha, pmat)
 
+            ! =================================================================
+            ! PHASE 1: PARALLEL COMPUTATION
+            ! =================================================================
+            !$omp parallel do &
+            !$omp default(shared) &
+            !$omp private(ne)
+            do ne = 1, nrens
+                if (ne > 1) then
+                   ! Compute perturbed field for this member
+                   ! Safe: each thread writes to its own slice var3d_ens(:,:,:,:,ne)
+                   call make_wind_speed_pert(nvar, ne-1, nrens-1, nx, ny, lmax, &
+                           pmat, var3d, var3d_ens(:,:,:,:,ne), std_p, real(flag, dp))
+                else
+                   ! Control member (ne=1) receives unperturbed nominal fields
+                   var3d_ens(:,:,:,:,1) = var3d
+                end if
+            end do
+            !$omp end parallel do
+
+            ! =================================================================
+            ! PHASE 2: SERIAL I/O OPERATIONS
+            ! =================================================================
+            ! Thread-safe execution of standard Fortran I/O routines
+            ! to prevent file unit (fid) overlapping and disk collisions.
             do ne = 1, nrens
 
                 ! Open member file only once at first time step
@@ -392,16 +434,9 @@ program perturbe_fem_wind_press
                 call fem_file_write_header(iformat, fid(ne), dtime, nvers, np, lmax, &
                        nvar, ntype, 1, hlv, datetime, regpar)
 
-                if (ne > 1) then
-                   ! Compute perturbed field for this member
-                   call make_wind_speed_pert(nvar, ne-1, nrens-1, nx, ny, lmax, &
-			   pmat, var3d, var3d_ens, std_p, real(flag, dp))
-                else
-                      var3d_ens = var3d
-                end if
-
                 do i = 1, nvar
-                    femdata(1, :, :) = real(var3d_ens(i,:,:,1), sp)
+                    ! Extract the 3D grid slice for the current variable and member
+                    femdata(1, :, :) = real(var3d_ens(i,:,:,1,ne), sp)
                     call fem_file_write_data(iformat, fid(ne), nvers, np, lmax, &
                            vstring(i), ilhkv, hd, 1, femdata)
                 end do
