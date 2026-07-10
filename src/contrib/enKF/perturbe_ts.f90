@@ -90,6 +90,7 @@ end subroutine perturbe_0d
 ! ======================================================================
 subroutine apply_ts_perturbation(v_nom, std_obs, pvec, nrens, v_pert)
     use iso_fortran_env, only : dp => real64
+    use m_set_random_seed2
     implicit none
 
     ! --- Arguments ---
@@ -105,6 +106,8 @@ subroutine apply_ts_perturbation(v_nom, std_obs, pvec, nrens, v_pert)
     ! 1. Safety checks
     if (size(v_pert) < nrens) error stop "apply_ts_perturbation: output vector too small"
     if (size(pvec) < nrens - 1) error stop "apply_ts_perturbation: pvec size insufficient"
+
+    call init_random_seed_persistent('random_seed.dat', .true.)
 
     ! 2. Member 1 is the control (unperturbed)
     v_pert(1) = v_nom

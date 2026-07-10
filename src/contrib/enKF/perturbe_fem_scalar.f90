@@ -158,6 +158,7 @@ end subroutine make_pert_field
 program perturbe_fem_scalar
 !============================================================================================
     use iso_fortran_env, only : dp => real64, sp => real32, error_unit
+    use m_set_random_seed2
     implicit none
 
     ! --- CLI and File variables ---
@@ -220,6 +221,8 @@ program perturbe_fem_scalar
     if ((nrens < 2).or.(std_r < 0).or.(tau < 0)) &
 	    error stop 'Bad input arguments, stopping.'
     if (mod(nrens, 2) == 0) error stop 'The ensemble members must be odd with control.'
+
+    call init_random_seed_persistent('random_seed.dat', .true.)
 
     ! Open Input FEM File ---
     write(*,*) 'Opening input FEM file...'
