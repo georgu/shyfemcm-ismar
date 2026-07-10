@@ -307,6 +307,7 @@ end subroutine rst_write_rec
 ! ======================================================================
 program perturbe_state
     use iso_fortran_env, only: dp => real64, error_unit
+    use m_set_random_seed2
     use iso8601 
     implicit none
 
@@ -360,6 +361,8 @@ program perturbe_state
         write(error_unit, '(A,I0,A)') "Error: nrens (", nrens, ") is even."
         error stop "The number of ensemble members must be odd to include the control state."
     end if
+
+    call init_random_seed_persistent('random_seed.dat', .true.)
 
     ! --- 4. Initialization Summary ---
     write(*, '(/,A)') "--- perturbe_state setup ---"

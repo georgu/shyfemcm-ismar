@@ -186,8 +186,8 @@ enKF2enKS: enKF2enKS.o $(SHYOBJ)
 perturbe_state: perturbe_state.o subenkf.o $(SAMPOBJ) $(SHYOBJ)
 	$(LINKER) $(FFLAGS) $(ENKF_OMP_FLAG) perturbe_state.o subenkf.o $(SAMPOBJ) $(SHYOBJ) $(LFLAGS) $(MATH_LIBS) $(NC_LIBS) -o $@
 
-perturbe_ts: perturbe_ts.o $(SHYOBJ)
-	$(LINKER) $(FFLAGS) $(ENKF_OMP_FLAG) perturbe_ts.o $(SHYOBJ) $(LFLAGS) -o $@
+perturbe_ts: perturbe_ts.o $(SHYOBJ) m_set_random_seed2.o
+	$(LINKER) $(FFLAGS) $(ENKF_OMP_FLAG) perturbe_ts.o m_set_random_seed2.o $(SHYOBJ) $(LFLAGS) -o $@
 
 fem2nc: fem2nc.o $(SHYOBJENS)
 	$(LINKER) $(FFLAGS) $(ENKF_OMP_FLAG) fem2nc.o $(SHYOBJENS) $(LFLAGS) $(MATH_LIBS) $(NC_LIBS) -o $@
