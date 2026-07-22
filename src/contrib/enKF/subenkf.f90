@@ -461,49 +461,27 @@ end subroutine find_el_node
 ! s = dst / rho.
 !----------------------------------------------------------------------
 subroutine find_weight_GC(rho, dst, w)
-    implicit none
+  use iso_fortran_env, only : dp => real64
+  implicit none
+  real(dp), intent(in)  :: rho, dst
+  real(dp), intent(out) :: w
+  real(dp) :: s
 
-    ! --- Input/Output Arguments ---
-    real, intent(in)  :: rho  ! Length scale (radius of influence), must be > 0
-    real, intent(in)  :: dst  ! Distance between two points, must be >= 0
-    real, intent(out) :: w    ! Computed Gaspari-Cohn compact support weight [0, 1]
+  if (rho <= 0.0_dp) then
+    w = 0.0_dp
+    return
+  end if
 
-    ! --- Local Variables ---
-    real              :: s    ! Normalized distance (dst / rho)
+  s = abs(dst) / rho
 
-    ! 1. Boundary Condition: Check for non-positive localization radius
-    if (rho <= 0.0) then
-        w = 0.0
-        return
-    end if
-
-    ! Compute the normalized distance
-    s = dst / rho
-
-    ! 2. Piecewise Evaluation of the Gaspari-Cohn (1999) Fifth-Order Polynomial
-    if (s < 0.0) then
-        ! Handle non-physical negative distances safely
-        w = 0.0
-
-    else if (s < 1.0) then
-        ! First interval: 0 <= s < 1
-        ! Standard formulation for the inner core of the localization function
-        w = 1.0 - (5.0/3.0)*s**2 + (5.0/8.0)*s**3 + 0.5*s**4 - 0.25*s**5
-
-    else if (s < 2.0) then
-        ! Second interval: 1 <= s < 2
-        ! Outer tail formulation. Note: Written explicitly as '- (2.0 / (3.0 * s))' 
-        ! instead of using a negative integer exponent 's**(-1)' to guarantee 
-        ! numerical stability, cross-compiler compatibility, and better performance.
-        w = 4.0 - 5.0*s + (5.0/3.0)*s**2 + (5.0/8.0)*s**3 - 0.5*s**4 + (1.0/12.0)*s**5 - (2.0 / (3.0 * s))
-
-    else
-        ! Cutoff distance reached: s >= 2 (dst >= 2 * rho)
-        ! Compact support enforces strict zero correlation beyond the cutoff radius
-        w = 0.0
-
-    end if
-
+  if ((s >= 0.0_dp) .and. (s < 1.0_dp)) then
+    w = 1.0_dp - (5.0_dp/3.0_dp)*s**2 + (5.0_dp/8.0_dp)*s**3 + 0.5_dp*s**4 - 0.25_dp*s**5
+  else if ((s >= 1.0_dp) .and. (s < 2.0_dp)) then
+    w = - (2.0_dp/3.0_dp)*s**(-1) + 4.0_dp - 5.0_dp*s + (5.0_dp/3.0_dp)*s**2 + (5.0_dp/8.0_dp)*s**3  &
+        - 0.5_dp*s**4 + (1.0_dp/12.0_dp)*s**5
+  else
+    w = 0.0_dp
+  end if
 end subroutine find_weight_GC
 
 !======================================================================

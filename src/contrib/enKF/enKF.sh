@@ -16,7 +16,7 @@ SIMDIR=$(pwd)		# Current run execution workspace directory
 # MPI MODE: Allocates discrete MPI processes per member execution
 CORES_PER_MEMBER=1
 # OPENMP MODE: Launches concurrent members utilizing localized multi-threading
-THREADS_PER_MEMBER=2
+THREADS_PER_MEMBER=1
 
 #----------------------------------------------------------
 # Usage Information Function
