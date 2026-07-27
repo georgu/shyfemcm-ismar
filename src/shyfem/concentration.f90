@@ -273,7 +273,8 @@
      &                          ,what,ivar &
      &				,scal,ids &
      &				,rkpar,wsink &
-     &                          ,difhv,difv,difmol)
+     &                          ,difhv,difv,difmol &
+     &				,erk_reg,crk_reg,srk_reg)
 
 ! shell for scalar (for parallel version)
 
@@ -297,6 +298,9 @@
         real difhv(nlvdi,nel)
 	real difv(0:nlvdi,nkn)
         real difmol
+	real erk_reg(nlvdi,nkn,n_rkstages-1)
+	real crk_reg(nlvdi,nkn,n_rkstages-1)
+	real srk_reg(nlvdi,nkn,n_rkstages-1)
 
         real, allocatable :: r3v(:,:)
         real, allocatable :: load(:,:)
@@ -355,7 +359,8 @@
      &				,scal,nlvdi &
      &                          ,r3v,cobs,robs,rtauv &
      &				,rkpar,wsink,wsinkv,rload,load &
-     &                          ,difhv,difv,difmol)
+     &                          ,difhv,difv,difmol &
+     &				,erk_reg,crk_reg,srk_reg)
 
 	deallocate(r3v,load,cobs,rtauv,wsinkv)
 
@@ -373,7 +378,8 @@
      &				,scal,ids &
      &				,rkpar,wsink &
      &                          ,difhv,difv,difmol &
-     &				,sobs,robs,rtauv)
+     &				,sobs,robs,rtauv &
+     &				,erk_reg,crk_reg,srk_reg)
 
 ! shell for scalar with nudging (for parallel version)
 
@@ -397,9 +403,12 @@
         real difhv(nlvdi,nel)
 	real difv(0:nlvdi,nkn)
         real difmol
-	real sobs(nlvdi,nkn)		!observations
+	real sobs(nlvdi,nkn)			!observations
 	real robs
-	real rtauv(nlvdi,nkn)		!varible relaxation coefficient
+	real rtauv(nlvdi,nkn)			!varible relaxation coefficient
+	real erk_reg(nlvdi,nkn,n_rkstages-1)	!runge-kutta register array for explicit terms
+	real crk_reg(nlvdi,nkn,n_rkstages-1)	!runge-kutta register array for special terms
+	real srk_reg(nlvdi,nkn,n_rkstages-1)	!runge-kutta register array for stiffly implicit terms
 
         real, allocatable :: r3v(:,:)
         real, allocatable :: wsinkv(:,:)
@@ -450,7 +459,8 @@
      &				,scal,nlvdi &
      &                          ,r3v,sobs,robs,rtauv &
      &				,rkpar,wsink,wsinkv,rload,load &
-     &                          ,difhv,difv,difmol)
+     &                          ,difhv,difv,difmol &
+     &				,erk_reg,crk_reg,srk_reg)
 
 	deallocate(r3v,load)
 	deallocate(wsinkv)
@@ -501,11 +511,14 @@
         integer iwhat,ichanm
 	character*20 whatvar,whataux
 
-	integer :: curr_stage = 1
+	integer :: curr_stage = 1	!runge-kutta related variables: to be pass as arguments
 	real :: coeff_erk(1) = 1.0
 	real :: coeff_irk(2) = (/0.5,0.5/)
 	real :: coeff_srk(2) = (/0.0,1.0/)
 	real :: coeff_crk(2) = (/0.0,1.0/)
+	real erk_reg(nlvdi,nkn,0)	!runge-kutta register array for explicit terms
+	real crk_reg(nlvdi,nkn,0)	!runge-kutta register array for special terms
+	real srk_reg(nlvdi,nkn,0)	!runge-kutta register array for stiffly implicit terms
 
 	allocate(r3v(nlvdi,nkn))
 	allocate(cobs(nlvdi,nkn))
@@ -554,7 +567,8 @@
      &				,scal,nlvdi &
      &                          ,r3v,cobs,robs,rtauv &
      &				,rkpar,wsink,wsinkv,rload,load &
-     &                          ,difhv,difv,difmol)
+     &                          ,difhv,difv,difmol &
+     &				,erk_reg,crk_reg,srk_reg)
 
 	deallocate(r3v,cobs,rtauv)
 
@@ -590,7 +604,8 @@
      &			  ,coeff_erk,coeff_irk,coeff_srk,coeff_crk &
      &			  ,what,cnv,nlvddi,rcv,cobs,robs,rtauv,rkpar &
      &			  ,wsink,wsinkv,rload,load &
-     &			  ,difhv,difv,difmol)
+     &			  ,difhv,difv,difmol &
+     &			  ,erk_reg,crk_reg,srk_reg)
 
 ! shell for scalar T/D
 
@@ -612,19 +627,22 @@
 	real coeff_crk(n_rkstages+1)
         character*(*) what
         real cnv(nlvddi,nkn)
-	integer nlvddi		!vertical dimension
-        real rcv(nlvddi,nkn)	!boundary condition (value of scalar)
-	real cobs(nlvddi,nkn)	!observations (for nudging)
-	real robs		!use nudging
-	real rtauv(nlvddi,nkn)	!inverse time scale (for nudging)
+	integer nlvddi				!vertical dimension
+        real rcv(nlvddi,nkn)			!boundary condition (value of scalar)
+	real cobs(nlvddi,nkn)			!observations (for nudging)
+	real robs				!use nudging
+	real rtauv(nlvddi,nkn)			!inverse time scale (for nudging)
         real rkpar
 	real wsink
 	real wsinkv(0:nlvddi,nkn)
 	real rload
-	real load(nlvddi,nkn)		!load [kg/s]
+	real load(nlvddi,nkn)			!load [kg/s]
         real difhv(nlvddi,nel)
 	real difv(0:nlvddi,nkn)
         real difmol
+	real erk_reg(nlvdi,nkn,n_rkstages-1)	!runge-kutta register array for explicit terms
+	real crk_reg(nlvdi,nkn,n_rkstages-1)	!runge-kutta register array for special terms
+	real srk_reg(nlvdi,nkn,n_rkstages-1)	!runge-kutta register array for stiffly implicit terms
 ! parameters
 	integer istot_max
 	!parameter ( istot_max = 100 )
@@ -787,7 +805,7 @@
      &		,rload,load &
      &          ,istot,isact &
      &          ,nlvddi,nlv &
-     &               )
+     &          ,erk_reg,crk_reg,srk_reg)
 
 	  call assert_min_max_property(cnv,saux,sbconz,gradxv,gradyv,eps)
 

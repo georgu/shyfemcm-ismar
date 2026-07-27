@@ -203,7 +203,9 @@
 !
 ! mode : =0 initialize  >0 normal call
 !
-	use mod_rungekutta, only : n_rkstages
+	use mod_rungekutta, only : n_rkstages, &
+     &				   terk_reg,tcrk_reg,tsrk_reg, &
+     &				   serk_reg,scrk_reg,ssrk_reg
 	use mod_layer_thickness
 	use mod_ts
 	use mod_diff_visc_fric
@@ -480,6 +482,8 @@
 
 !$OMP TASK PRIVATE(what,dtime) FIRSTPRIVATE(thpar,wsink,robs,itemp) &
 !$OMP&     SHARED(idtemp,tempv,difhv,difv,difmol,tobsv,ttauv) &
+!$OMP&     SHARED(terk_reg,tcrk_reg,tsrk_reg) &
+!$OMP&     SHARED(curr_stage,coeff_erk,coeff_irk,coeff_srk,coeff_crk) &
 !$OMP&     DEFAULT(NONE) &
 !$OMP&     IF(itemp > 0)
 
@@ -492,7 +496,8 @@
      &                          ,tempv,idtemp &
      &                          ,thpar,wsink &
      &                          ,difhv,difv,difmol &
-     &				,tobsv,robs,ttauv)
+     &				,tobsv,robs,ttauv &
+     &				,terk_reg,tcrk_reg,tsrk_reg)
 	  end if
 
 !$OMP END TASK
@@ -502,6 +507,8 @@
 
 !$OMP TASK PRIVATE(what,dtime) FIRSTPRIVATE(shpar,wsink,robs,isalt) &
 !$OMP&     SHARED(idsalt,saltv,difhv,difv,difmol,sobsv,stauv) &
+!$OMP&     SHARED(serk_reg,scrk_reg,ssrk_reg) &
+!$OMP&     SHARED(curr_stage,coeff_erk,coeff_irk,coeff_srk,coeff_crk) &
 !$OMP&     DEFAULT(NONE) &
 !$OMP&     IF(isalt > 0)
 
@@ -514,7 +521,8 @@
      &                          ,saltv,idsalt &
      &                          ,shpar,wsink &
      &                          ,difhv,difv,difmol &
-     &				,sobsv,robs,stauv)
+     &				,sobsv,robs,stauv &
+     &				,serk_reg,scrk_reg,ssrk_reg)
           end if
 
 !$OMP END TASK

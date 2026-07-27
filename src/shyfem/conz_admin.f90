@@ -352,7 +352,8 @@
      &					 coeff_erk,coeff_irk, &
      &                                   coeff_srk,coeff_crk)
 
-	use mod_rungekutta, only : n_rkstages
+	use mod_rungekutta, only : n_rkstages, &
+     &				   cerk_reg,ccrk_reg,csrk_reg
 	use mod_conz
 	use mod_diff_visc_fric
 	use levels, only : nlvdi,nlv
@@ -400,7 +401,10 @@
      &                          ,what,0 &
      &                          ,cnv,idconz &
      &                          ,rkpar,wsink &
-     &                          ,difhv,difv,difmol)
+     &                          ,difhv,difv,difmol &
+     &				,cerk_reg(:,:,:,1) &
+     &				,ccrk_reg(:,:,:,1) &
+     &				,csrk_reg(:,:,:,1))
 
 !-------------------------------------------------------------
 ! simulate decay
@@ -440,7 +444,8 @@
      &					coeff_erk,coeff_irk, &
      &                                  coeff_srk,coeff_crk)
 
-	use mod_rungekutta, only : n_rkstages
+	use mod_rungekutta, only : n_rkstages, &
+     &				   cerk_reg,ccrk_reg,csrk_reg
 	use mod_conz
 	use mod_diff_visc_fric
 	use levels, only : nlvdi,nlv
@@ -488,14 +493,19 @@
 
 !$OMP  TASK FIRSTPRIVATE(i,rkpar,wsink,difhv,difv,difmol,idconz,what,   &
 !$OMP& dt,nlvdi,idecay,blinfo,bage)                                     &
-!$OMP&  SHARED(conzv,tauv,massv) DEFAULT(NONE)
- 
+!$OMP& SHARED(conzv,tauv,massv,cerk_reg,ccrk_reg,csrk_reg) 		&
+!$OMP& SHARED(curr_stage,coeff_erk,coeff_irk,coeff_srk,coeff_crk) 	&
+!$OMP& DEFAULT(NONE) 
+
           call scal_adv(curr_stage,coeff_erk,coeff_irk &
      &				,coeff_srk,coeff_crk &
      &                          ,what,i &
      &                          ,conzv(1,1,i),idconz &
      &                          ,rkpar,wsink &
-     &                          ,difhv,difv,difmol)
+     &                          ,difhv,difv,difmol &
+     &				,cerk_reg(:,:,:,i) &
+     &				,ccrk_reg(:,:,:,i) &
+     &				,csrk_reg(:,:,:,i))
 
 
 	  if(idecay == 1) then

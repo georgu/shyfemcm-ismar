@@ -35,27 +35,37 @@
 	implicit none
 
 !Butcher tableaux
-        real, allocatable, save :: a_erk(:,:)	    !explicit A matrix
-        real, allocatable, save :: a_irk(:,:)       !implicit A matrix
-        real, allocatable, save :: a_srk(:,:)       !stiffly implicit A matrix
-        real, allocatable, save :: b_erk(:)	    !explicit b vector
-        real, allocatable, save :: b_irk(:)	    !implicit b vector
-        real, allocatable, save :: b_srk(:)	    !stiffly implicit b vector
-        real, allocatable, save :: c_rk(:)	    !implicit/explicit c vectors:
-                                                    !they are equal for all im/ex schemes in additive runge-kutta
+        real, allocatable, save :: a_erk(:,:)	    		!explicit A matrix
+        real, allocatable, save :: a_irk(:,:)       		!implicit A matrix
+        real, allocatable, save :: a_srk(:,:)     		!stiffly implicit A matrix
+        real, allocatable, save :: b_erk(:)	    		!explicit b vector
+        real, allocatable, save :: b_irk(:)	    		!implicit b vector
+        real, allocatable, save :: b_srk(:)	    		!stiffly implicit b vector
+        real, allocatable, save :: c_rk(:)	    		!implicit/explicit c vectors:
+                                                    		!they are equal for all im/ex schemes in additive runge-kutta
 !specific Butcher tableaux for concentrations
-        real, allocatable, save :: a_crk(:,:)       !generic A matrix for conc. vert adv (can be im or ex)
-        real, allocatable, save :: b_crk(:)	    !generic b vector for conc. vert adv (can be im or ex)
+        real, allocatable, save :: a_crk(:,:)       		!generic A matrix for conc. vert adv (can be im or ex)
+        real, allocatable, save :: b_crk(:)	    		!generic b vector for conc. vert adv (can be im or ex)
 
-	integer, save :: n_rkstages = 0		    !number of (non-trivial) stages
-	integer, save :: rkscheme = 0		    !scheme triplet
+	integer, save :: n_rkstages = 0		    		!number of (non-trivial) stages
+	integer, save :: rkscheme = 0		    		!scheme triplet
 
-        double precision, allocatable, save :: uverk_reg(:,:,:) !register vector for explicit momentum
-        double precision, allocatable, save :: uvirk_reg(:,:,:) !register vector for implicit momentum
-        double precision, allocatable, save :: uvsrk_reg(:,:,:) !register vector for stiffly implicit momentum
+        double precision, allocatable, save :: uverk_reg(:,:,:) !register vector for explicit momentum rhs
+        double precision, allocatable, save :: uvirk_reg(:,:,:) !register vector for implicit momentum rhs
+        double precision, allocatable, save :: uvsrk_reg(:,:,:) !register vector for stiffly implicit momentum rhs
         double precision, allocatable, save :: urk_reg(:,:,:)   !register vector for u-transport
         double precision, allocatable, save :: vrk_reg(:,:,:)   !register vector for v-transport
         double precision, allocatable, save :: wrk_reg(:,:,:)   !register vector for w-velocity
+
+        double precision, allocatable, save :: terk_reg(:,:,:) 	!register vector for explicit temperature rhs
+        double precision, allocatable, save :: tcrk_reg(:,:,:) 	!register vector for implicit temperature rhs
+        double precision, allocatable, save :: tsrk_reg(:,:,:) 	!register vector for stiffly implicit temperature rhs
+        double precision, allocatable, save :: serk_reg(:,:,:) 	!register vector for explicit salinity rhs
+        double precision, allocatable, save :: scrk_reg(:,:,:) 	!register vector for implicit salinity rhs
+        double precision, allocatable, save :: ssrk_reg(:,:,:) 	!register vector for stiffly implicit salinity rhs
+        double precision, allocatable, save :: cerk_reg(:,:,:,:)!register vector for explicit concentration rhs
+        double precision, allocatable, save :: ccrk_reg(:,:,:,:)!register vector for implicit concentration rhs
+        double precision, allocatable, save :: csrk_reg(:,:,:,:)!register vector for stiffly implicit concentration rhs
 
 !==========================================================================
         contains
@@ -67,12 +77,17 @@
 
 	double precision am,at,az,af,av,ad,aa,gamma,chi,a32
 	real getpar
+	integer itemp,isalt,iconz
 
 	!The ImEx triplet $(s, \sigma, p)$ identifies a scheme where:
 	!1/ $s$ is the number of non-trivial stages of the implicit scheme,
 	!2/ $\sigma$ is the number of non-trivial stages of the explicit scheme
 	!3/ $p$ is the combined order of accuracy.
 	rkscheme = nint(getpar('rkscheme'))
+
+	itemp = nint(getpar('itemp'))
+	isalt = nint(getpar('isalt'))
+	iconz = nint(getpar('iconz'))
 
         if( rkscheme .ne. 111  .and.  &
      &      rkscheme .ne. 222  .and.  &
@@ -101,6 +116,22 @@
           deallocate(urk_reg)
           deallocate(vrk_reg)
           deallocate(wrk_reg)
+
+	  if (itemp == 1) then
+            deallocate(terk_reg)
+            deallocate(tcrk_reg)
+            deallocate(tsrk_reg)
+	  end if
+	  if (isalt == 1) then
+            deallocate(serk_reg)
+            deallocate(scrk_reg)
+            deallocate(ssrk_reg)
+	  end if
+	  if (iconz == 1) then
+            deallocate(cerk_reg)
+            deallocate(ccrk_reg)
+            deallocate(csrk_reg)
+	  end if
         end if
 
 	!The classical ARK(1,1,1) method of Ascher,Ruuth\&Spiteri:
@@ -423,6 +454,8 @@
 
 	end if
 
+	!Register vectors to store stage right-hand sides
+	!and stage velocity components
         if ( n_rkstages > 1 ) then
           allocate(uverk_reg(2*nlv,nel,n_rkstages-1))
           allocate(uvirk_reg(2*nlv,nel,n_rkstages-1))
@@ -439,6 +472,34 @@
           urk_reg = 0.
           vrk_reg = 0.
           wrk_reg = 0.
+
+	  if (itemp == 1) then
+            allocate(terk_reg(nlv,nkn,n_rkstages-1))
+            allocate(tcrk_reg(nlv,nkn,n_rkstages-1))
+            allocate(tsrk_reg(nlv,nkn,n_rkstages-1))
+
+            terk_reg = 0.
+            tcrk_reg = 0.
+            tsrk_reg = 0.
+	  end if
+	  if (isalt == 1) then
+            allocate(serk_reg(nlv,nkn,n_rkstages-1))
+            allocate(scrk_reg(nlv,nkn,n_rkstages-1))
+            allocate(ssrk_reg(nlv,nkn,n_rkstages-1))
+
+            serk_reg = 0.
+            scrk_reg = 0.
+            ssrk_reg = 0.
+	  end if
+	  if (iconz > 0) then !iconz index runs slowest
+            allocate(cerk_reg(nlv,nkn,n_rkstages-1,iconz))
+            allocate(ccrk_reg(nlv,nkn,n_rkstages-1,iconz))
+            allocate(csrk_reg(nlv,nkn,n_rkstages-1,iconz))
+
+            cerk_reg = 0.
+            ccrk_reg = 0.
+            csrk_reg = 0.
+	  end if
         end if
 
 
@@ -449,7 +510,7 @@
 	subroutine get_rungekutta_weights(curr_stage,crk,coeff_erk, &
      &    coeff_irk,coeff_srk)
 
-! returns Butcher Tableaux coefficients
+! returns Butcher Tableaux
 ! c_rk and a_rk for inner stages
 ! c_rk and b_rk for final stage
 
@@ -476,7 +537,7 @@
 
 	subroutine get_rungekutta_weights_tracer(curr_stage,coeff_crk)
 
-! returns additional Butcher Tableaux coefficients for tracers
+! returns additional Butcher Tableaux for tracers/concentrations
 ! a_rk for inner stages
 ! b_rk for final stage
 

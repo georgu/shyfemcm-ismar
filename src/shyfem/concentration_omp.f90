@@ -74,7 +74,8 @@
      &			,wsink,wsinkv &
      &			,rload,load &
      &			,istot,isact,nlvddi &
-     &                  ,nlev)
+     &                  ,nlev &
+     &			,erk_reg,crk_reg,srk_reg)
      
 ! computes concentration
 !
@@ -157,6 +158,9 @@
 	real,dimension(nlvddi,nkn),intent(in) :: cobs,rtauv
 	real,dimension(nlvddi,nkn),intent(inout) :: load		!LLL
 	real,dimension(0:nlvddi,nkn),intent(in) :: difv,wsinkv
+	real,dimension(nlvdi,nkn,n_rkstages-1),intent(inout) :: erk_reg !runge-kutta register array for explicit terms
+	real,dimension(nlvdi,nkn,n_rkstages-1),intent(inout) :: crk_reg !runge-kutta register array for explicit terms
+	real,dimension(nlvdi,nkn,n_rkstages-1),intent(inout) :: srk_reg !runge-kutta register array for explicit terms
         !double precision,dimension(nlvddi,nkn),intent(out) :: cn
         
 	logical :: btvdv,btvd2,is_rk_explicit
@@ -171,7 +175,7 @@
 	double precision :: timer,timer1,chunk,rest
 ! 	double precision,dimension(nlvddi,nkn) :: cn
 ! 	double precision,dimension(nlvddi,nkn) :: co        
-!         double precision,dimension(nlvddi,nkn) :: cdiag
+!       double precision,dimension(nlvddi,nkn) :: cdiag
 ! 	double precision,dimension(nlvddi,nkn) :: clow
 ! 	double precision,dimension(nlvddi,nkn) :: chigh
 	
@@ -283,7 +287,8 @@
      &			,wsink,wsinkv &
      &			,rload,load &
      &			,rso,rsn,rsot,rsnt &
-     &			,nlvddi,nlev)
+     &			,nlvddi,nlev &
+     &			,erk_reg,crk_reg,srk_reg)
 		end if
 	end do ! end loop over el in subset
 !$OMP END TASK
@@ -315,9 +320,13 @@
 !$OMP&           rload,dt,nlvddi,ntot)
 	 do k=knod,knod+nchunk-1
 	 if(k .le. ntot) then
-	   call conz3d_nodes(k,cn,cdiag(:,k),clow(:,k),chigh(:,k), &
-     &                          cn1,cbound,load,rload, &
-     &                          is_rk_explicit,dt,nlvddi)
+	   call conz3d_nodes(&
+     &			curr_stage, &
+     &			coeff_erk,coeff_irk,coeff_srk,coeff_crk, &
+     &			k,cn,cdiag(:,k),clow(:,k),chigh(:,k), &
+     &                  cn1,cbound,load,rload, &
+     &                  is_rk_explicit,dt,nlvddi, &
+     &			erk_reg,crk_reg,srk_reg)
          endif
          enddo
 !$OMP END TASK 	      
@@ -360,7 +369,7 @@
 
 !*****************************************************************
 
-       subroutine conz3d_element( &
+       subroutine conz3d_element(  &
      &			curr_stage &
      &			,coeff_erk,coeff_irk,coeff_srk,coeff_crk &
      &			,ie &
@@ -373,7 +382,8 @@
      &			,wsink,wsinkv &
      &			,rload,load &
      &			,rso,rsn,rsot,rsnt &
-     &			,nlvddi,nlev)
+     &			,nlvddi,nlev &
+     &			,erk_reg,crk_reg,srk_reg)
 
 	use mod_rungekutta, only : n_rkstages
         use mod_bound_geom
@@ -408,7 +418,10 @@
       double precision,dimension(nlvddi,nkn),intent(inout) :: clow
       double precision,dimension(nlvddi,nkn),intent(inout) :: chigh
       double precision,dimension(nlvddi,nkn),intent(inout) :: cn
-        
+      real,dimension(nlvdi,nkn,n_rkstages-1),intent(inout) :: erk_reg
+      real,dimension(nlvdi,nkn,n_rkstages-1),intent(inout) :: crk_reg
+      real,dimension(nlvdi,nkn,n_rkstages-1),intent(inout) :: srk_reg
+
       logical :: btvdv,btvd
       integer :: k,ii,l,iii,ll,ibase,lstart,ilevel,itot,isum
       integer :: jlevel
@@ -750,10 +763,24 @@
 	  clow(l,k)  = clow(l,k)  + alow
 	  chigh(l,k) = chigh(l,k) + ahigh   
           cdiag(l,k) = cdiag(l,k) + adiag
+
+!	------------------------------------------------------
+!	save current stage right hand side R_l, W_l, D_l
+!	------------------------------------------------------
+
+          if (curr_stage .ne. n_rkstages) then !if (not last stage)
+	    erk_reg(l,k,curr_stage) = &
+     &        erk_reg(l,k,curr_stage) + aj4 * rrc
+	    crk_reg(l,k,curr_stage) = &
+     &        crk_reg(l,k,curr_stage) - aj4 * fw(ii)
+	    srk_reg(l,k,curr_stage) = &
+     &        srk_reg(l,k,curr_stage) - aj4 * fd(ii)
+	  end if
+
 	end do
 
 	end do		! loop over l
-	
+
 ! ----------------------------------------------------------------
 !  end of loop over l
 ! ----------------------------------------------------------------
@@ -773,9 +800,15 @@
 
 ! *****************************************************************
       
-       subroutine conz3d_nodes(k,cn,cdiag,clow,chigh,cn1,cbound, &
-     &                         load,rload,is_explicit,dt,nlvddi)
+       subroutine conz3d_nodes(		   &
+     &			       curr_stage, &
+     &			       coeff_erk,coeff_irk,coeff_srk,coeff_crk, &
+     &			       k, &
+     &			       cn,cdiag,clow,chigh,cn1,cbound, &
+     &                         load,rload,is_explicit,dt,nlvddi, &
+     &			       erk_reg,crk_reg,srk_reg)
 
+	use mod_rungekutta, only : n_rkstages
       	use mod_bound_geom
 	use mod_geom
 	use mod_depth
@@ -792,7 +825,11 @@
 	
 	implicit none
 	
-	integer,intent(in) :: k,nlvddi
+	integer,intent(in) :: curr_stage,k,nlvddi
+        real,dimension(n_rkstages),intent(in) :: coeff_erk
+        real,dimension(n_rkstages+1),intent(in) :: coeff_irk,coeff_srk
+        real,dimension(n_rkstages+1),intent(in) :: coeff_crk
+
 	real,intent(in) :: rload
 	real,dimension(nlvddi,nkn),intent(in) :: cn1,cbound
 	real,dimension(nlvddi,nkn),intent(inout) :: load 		!LLL
@@ -803,10 +840,14 @@
 	double precision,dimension(nlvddi),intent(inout) :: clow
 	double precision,dimension(nlvddi),intent(inout) :: chigh
 
+        real,dimension(nlvdi,nkn,n_rkstages-1),intent(in) :: erk_reg
+        real,dimension(nlvdi,nkn,n_rkstages-1),intent(in) :: crk_reg
+        real,dimension(nlvdi,nkn,n_rkstages-1),intent(in) :: srk_reg
+
 	logical, intent(in) :: is_explicit
 
 	logical :: bdry
-	integer :: l,ilevel,jlevel,lstart,i,ii,ie,n,ibase
+	integer :: l,ilevel,jlevel,jstage,lstart,i,ii,ie,n,ibase
 	double precision :: mflux,qflux,cconz
 	double precision :: loading,aux,cload
 
@@ -823,7 +864,8 @@
 ! ----------------------------------------------------------------
 
 ! ----------------------------------------------------------------
-!  handle boundary (flux) conditions
+!  handle boundary (flux) conditions and
+!  set up previous stage right hand side F^c_l = R_l+W_l+D_l
 ! ----------------------------------------------------------------
 
 	  bdry = is_dry_node(k)
@@ -860,6 +902,13 @@
             else					!erosion
               cn(l,k) = cn(l,k) + dt*loading
             end if
+
+	    do jstage=1,curr_stage-1 !lrp:dbg-imex
+              cn(l,k) = cn(l,k) + dt*( &
+     &          coeff_erk(jstage) * erk_reg(l,k,jstage) + &
+     &          coeff_crk(jstage) * crk_reg(l,k,jstage) + &
+     &          coeff_srk(jstage) * srk_reg(l,k,jstage) )
+            end do
 
 	    if( bdebug ) then
 	     if( mflux /= 0. .or. loading /= 0. ) then
