@@ -52,13 +52,8 @@ contains
       !==================== FFTW plan ===========================
       call dfftw_plan_dft_c2r_1d(plan, n1, arrayC, y, FFTW_ESTIMATE)
 
-      !==================== NEW robust initial guess ==============
-      !!
-      !! Old: r1 = 3.0_dp / rx   (unsafe for small grids)
-      !! New: scale-independent guess inside Newton’s basin
-      !! Newton will explore 10 scaled values anyway.
-      !!
-      r1 = 0.2_dp        ! universal safe guess, independent of rx
+      !==================== initial guess ==============
+      r1 = 3.0_dp/rx
 
       if (diag) print *, 'Initial r1 guess = ', r1
       call newton1D(r1, n1, dx, rx, cnv)
@@ -83,7 +78,6 @@ contains
          phi = pi2 * phi
 
          do l = 1, n1/2
-!$omp simd
             tt = kappa2 * real(l*l,dp) / r12
             fampl(l,1) = exp(-tt) * cos(phi(l)) * sqrt(deltak) * c
             fampl(l,2) = exp(-tt) * sin(phi(l)) * sqrt(deltak) * c

@@ -6,8 +6,6 @@ module m_pseudo2D
    !  • Double precision everywhere: real(dp), complex(dp)
    !  • Robust on small grids (e.g., 1°): scale‑independent initial r1=r2=0.2_dp
    !    and newton2D then calibrates (r1, r2) to match target correlation.
-   !  • OpenMP-safe: each thread creates/uses/destroys its own FFTW plan and
-   !    its own work buffers (no sharing of plans or buffers across threads).
    !
    ! Overall workflow in pseudo2D:
    !  1) Validate input sizes and parameters.
@@ -63,6 +61,9 @@ contains
       complex(dp), allocatable :: x_local(:,:)    ! complex spectrum  (0:n1/2, 0:n2-1)
       real(dp),    allocatable :: y_local(:,:)    ! real field        (0:n1-1, 0:n2-1)
 
+      real(dp), allocatable :: phi(:,:)    ! random phases in [0, 2π)
+      real(dp), allocatable :: fampl(:,:,:)
+
       !---------------- Basic validation (fail-fast)
       if (lde < 1)       stop 'pseudo2D: error lde < 1'
       if (rx  <= 0.0_dp) stop 'pseudo2D: error, rx <= 0.0'
@@ -80,10 +81,9 @@ contains
       lambda = pi2 / ( real(n2,dp) * dy )
       lambda2= lambda * lambda
 
-      !---------------- Robust initial guesses for Newton2D
-      ! Small-grid safe: start inside a wide basin; Newton2D explores scaled starts.
-      r1 = 0.2_dp
-      r2 = 0.2_dp
+      !---------------- initial guesses for Newton2D
+      r1 = 3.0_dp/rx
+      r2 = 3.0_dp/ry
       if (verbose) then
          write(*,'(a,2(1x,es12.5),a,2(i6),a,4(1x,es12.5))')  &
               'pseudo2D: Call newton with r1,r2=', r1, r2, '  n1,n2=', n1, n2, &
@@ -125,18 +125,20 @@ contains
       !   • builds a plan bound to those arrays
       !   • generates a subset of fields (j loop)
       !   • destroys its plan and deallocates its buffers
-!$omp parallel default(shared) private(j, i, m, plan_local, x_local, y_local)
       allocate(x_local(0:n1/2, 0:n2-1))
       allocate(y_local(0:n1-1, 0:n2-1))
       call dfftw_plan_dft_c2r_2d(plan_local, n1, n2, x_local, y_local, FFTW_ESTIMATE)
 
-!$omp do schedule(static)
+      allocate(phi(0:n1/2, -n2/2:n2/2))
+      allocate(fampl(0:n1/2, -n2/2:n2/2, 2))
+
       do j = 1, lde
          ! Build complex spectrum with random phase and rotated anisotropic envelope
-         call wave_amp(n1, n2, pi2, a11, a12, a22, kappa, kappa2, lambda, lambda2, deltak, c, x_local)
+         call wave_amp(n1, n2, pi2, a11, a12, a22, kappa, kappa2, lambda, lambda2, deltak, c, x_local, phi, fampl)
 
          ! Inverse FFT (complex → real) into y_local
-         call dfftw_execute_dft_c2r(plan_local, x_local, y_local)
+         !call dfftw_execute_dft_c2r(plan_local, x_local, y_local)
+	 y_local = 0.0_dp
 
          ! Copy leading (nx × ny) block to output (Fortran: y_local is 0-based here)
          do m = 1, ny
@@ -145,31 +147,28 @@ contains
             end do
          end do
       end do
-!$omp end do
+
+      deallocate(fampl, phi)
 
       call dfftw_destroy_plan(plan_local)
       deallocate(y_local, x_local)
-!$omp end parallel
 
    end subroutine pseudo2D
 
    !---------------------------------------------------------------------------
-   subroutine wave_amp(n1, n2, pi2, a11, a12, a22, kappa, kappa2, lambda, lambda2, deltak, c, x)
+   subroutine wave_amp(n1, n2, pi2, a11, a12, a22, kappa, kappa2, lambda, lambda2, deltak, c, x, phi, fampl)
       implicit none
       !---------------- Arguments
       integer,  intent(in)    :: n1, n2
       real(dp), intent(in)    :: pi2, a11, a12, a22, kappa, kappa2, lambda, lambda2, deltak, c
       complex(dp), intent(inout) :: x(0:n1/2, 0:n2-1)
+      real(dp), intent(inout) :: phi(0:n1/2, -n2/2:n2/2)    ! random phases in [0, 2π)
+      real(dp), intent(inout) :: fampl(0:n1/2, -n2/2:n2/2, 2)
 
       !---------------- Declarations
-      real(dp), allocatable :: phi(:,:)    ! random phases in [0, 2π)
-      real(dp), allocatable :: fampl(:,:,:)
       real(dp) :: e, l2, p2
       integer  :: p, l
 
-      !---------------- Draw random phases and build amplitudes
-      allocate(phi(0:n1/2, -n2/2:n2/2))
-      allocate(fampl(0:n1/2, -n2/2:n2/2, 2))
 
       call random_number(phi)
       phi = pi2 * phi
@@ -177,7 +176,6 @@ contains
       ! Envelope in k-space: rotated anisotropic Gaussian
       !   e = exp( - (a11*kx^2 + 2*a12*kx*ky + a22*ky^2) )
       !   with kx = kappa*l, ky = lambda*p
-!$omp simd collapse(2)
       do p = -n2/2, n2/2
          do l = 0, n1/2
             l2 = real(l*l, dp)
@@ -201,7 +199,6 @@ contains
          x(:,p) = cmplx( fampl(:, -n2 + p, 1), fampl(:, -n2 + p, 2), kind=dp )
       end do
 
-      deallocate(fampl, phi)
    end subroutine wave_amp
 
 end module m_pseudo2D
