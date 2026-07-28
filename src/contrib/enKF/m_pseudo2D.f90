@@ -137,8 +137,7 @@ contains
          call wave_amp(n1, n2, pi2, a11, a12, a22, kappa, kappa2, lambda, lambda2, deltak, c, x_local, phi, fampl)
 
          ! Inverse FFT (complex → real) into y_local
-         !call dfftw_execute_dft_c2r(plan_local, x_local, y_local)
-	 y_local = 0.0_dp
+         call dfftw_execute_dft_c2r(plan_local, x_local, y_local)
 
          ! Copy leading (nx × ny) block to output (Fortran: y_local is 0-based here)
          do m = 1, ny
