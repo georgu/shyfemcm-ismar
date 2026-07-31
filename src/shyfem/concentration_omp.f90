@@ -64,7 +64,7 @@
 !**************************************************************
 
         subroutine conz3d_omp(curr_stage &
-     &			,coeff_erk,coeff_irk,coeff_srk,coeff_crk &
+     &			,coeff_erk,coeff_srk,coeff_crk &
      &			,cn1,co1 &
      &			,ddt &
      &                  ,rkpar,difhv,difv &
@@ -149,7 +149,7 @@
 	integer, intent(in) :: curr_stage,nlvddi,nlev,itvd,itvdv,istot,isact
 	real, intent(in) :: difmol,robs,wsink,rload,ddt,rkpar
 	real,dimension(n_rkstages),intent(in) :: coeff_erk
-	real,dimension(n_rkstages+1),intent(in) :: coeff_irk,coeff_srk
+	real,dimension(n_rkstages+1),intent(in) :: coeff_srk
 	real,dimension(n_rkstages+1),intent(in) :: coeff_crk
 	real,dimension(nlvddi,nkn),intent(inout) :: cn1
 	real,dimension(nlvddi,nkn),intent(in) :: co1,cbound
@@ -269,7 +269,7 @@
 !$OMP& SHARED(cn,co,cdiag,clow,chigh,subset_el,cn1,co1) &
 !$OMP& SHARED(subset_num,indipendent_subset) &
 !$OMP& SHARED(difhv,cbound,gradxv,gradyv,cobs,rtauv,load,difv,wsinkv) &
-!$OMP& SHARED(coeff_erk,coeff_irk,coeff_srk,coeff_crk)
+!$OMP& SHARED(coeff_erk,coeff_srk,coeff_crk)
 
        do j=jel,jel+nchunk-1 	! loop over elements in subset
 		if(j .le. subset_el(i)) then
@@ -277,7 +277,7 @@
 	        !print *,i,ie
                 call conz3d_element( &
      &			 curr_stage &
-     &			,coeff_erk,coeff_irk,coeff_srk,coeff_crk &
+     &			,coeff_erk,coeff_srk,coeff_crk &
      &                  ,ie,cdiag,clow,chigh,cn,cn1 &
      &			,dt &
      &                  ,rkpar,difhv,difv &
@@ -322,7 +322,7 @@
 	 if(k .le. ntot) then
 	   call conz3d_nodes(&
      &			curr_stage, &
-     &			coeff_erk,coeff_irk,coeff_srk,coeff_crk, &
+     &			coeff_erk,coeff_srk,coeff_crk, &
      &			k,cn,cdiag(:,k),clow(:,k),chigh(:,k), &
      &                  cn1,cbound,load,rload, &
      &                  is_rk_explicit,dt,nlvddi, &
@@ -371,7 +371,7 @@
 
        subroutine conz3d_element(  &
      &			curr_stage &
-     &			,coeff_erk,coeff_irk,coeff_srk,coeff_crk &
+     &			,coeff_erk,coeff_srk,coeff_crk &
      &			,ie &
      &			,cdiag,clow,chigh,cn,cn1 &
      &			,dt &
@@ -385,7 +385,8 @@
      &			,nlvddi,nlev &
      &			,erk_reg,crk_reg,srk_reg)
 
-	use mod_rungekutta, only : n_rkstages
+	use mod_rungekutta, only : n_rkstages, &
+     &	                           urk_reg,vrk_reg,a_erk,a_irk
         use mod_bound_geom
 	use mod_geom
 	use mod_depth
@@ -410,7 +411,7 @@
       real,dimension(nlvddi,nkn),intent(in) :: cobs,rtauv,load
       real,intent(in),dimension(0:nlvddi,nkn) :: wsinkv,difv
       real,dimension(n_rkstages),intent(in) :: coeff_erk
-      real,dimension(n_rkstages+1),intent(in) :: coeff_irk,coeff_srk
+      real,dimension(n_rkstages+1),intent(in) :: coeff_srk
       real,dimension(n_rkstages+1),intent(in) :: coeff_crk
       double precision,intent(in) :: dt
       double precision,intent(in) :: rso,rsn,rsot,rsnt
@@ -432,15 +433,15 @@
       double precision :: hmed,hmbot,hmtop,hmotop,hmobot
       double precision :: hmntop,hmnbot,rvptop,rvpbot,w,aux
       double precision :: flux_tot,flux_tot1,flux_top,flux_bot
-      double precision :: rstot,hn,ho,cdummy,alow,adiag,ahigh,rrc
+      double precision :: rstot,hn,ho,hc,cdummy,alow,adiag,ahigh,rrc
       double precision :: rkmin,rkmax,cconz
       double precision :: as_ll,ac_ll,d_ll,d_llm,c_l
       double precision,dimension(n_rkstages+1) :: d_l
       double precision,dimension(3) :: fw,fd,fl,fnudge_o,fnudge_c
       double precision,dimension(3) :: b,c,f,wdiff
-      double precision,dimension(0:nlvddi+1) :: hdv,haver,presentl
-      double precision,dimension(0:nlvddi+1,3) :: hnew,htnew,rtau,cob
-      double precision,dimension(0:nlvddi+1,3) :: hold,htold,vflux,wl
+      double precision,dimension(0:nlvddi+1) :: haver,presentl
+      double precision,dimension(0:nlvddi+1,3) :: hnew,rtau,cob
+      double precision,dimension(0:nlvddi+1,3) :: hold,hcur,vflux,wl
       double precision,dimension(0:nlvddi+1,3) :: cl
       double precision,dimension(0:nlvddi+1,3) :: finu
       double precision,dimension(nlvddi,3) :: clc,clm,clp,cle
@@ -457,8 +458,8 @@
 !  renaming of special runge-kutta coefficients in Butcher tableaux
         ac_ll = coeff_crk(curr_stage+1)	!diagonal coeff for vertical adv tableau
         as_ll = coeff_srk(curr_stage+1)	!diagonal coeff for stiffly implicit tableau
-	c_l = sum(coeff_erk)		!c coefficient
-        d_l = coeff_irk/c_l		!scaled implicit tableau
+	c_l = sum(coeff_erk)		!c coeff
+        d_l = a_irk(curr_stage,:)/c_l	!scaled implicit tableau
         d_ll = d_l(curr_stage+1)	!diagonal coeff for the scaled tableau
         d_llm = d_l(curr_stage)		!under diagonal coeff for the scaled tableau
 
@@ -468,21 +469,19 @@
 
 ! 	 ALLOCATE(fw(3),fd(3),fl(3),fnudge(3),wdiff(3))
 ! 	 ALLOCATE(b(3),c(3),f(3))
-! 	 ALLOCATE(hdv(0:nlvddi+1),haver(0:nlvddi+1))
 ! 	 ALLOCATE(presentl(0:nlvddi+1))
 ! 	 ALLOCATE(hnew(0:nlvddi+1,3),htnew(0:nlvddi+1,3))
 ! 	 ALLOCATE(rtau(0:nlvddi+1,3),cob(0:nlvddi+1,3))
-! 	 ALLOCATE(hold(0:nlvddi+1,3),htold(0:nlvddi+1,3))
 ! 	 ALLOCATE(vflux(0:nlvddi+1,3),wl(0:nlvddi+1,3))
 ! 	 ALLOCATE(cl(0:nlvddi+1,3))
 ! 	 ALLOCATE(clc(nlvddi,3),clm(nlvddi,3))
 ! 	 ALLOCATE(clp(nlvddi,3),cle(nlvddi,3))
-	 
-          hdv = 0.		!layer thickness
+
           haver = 0.
 	  presentl = 0.		!1. if layer is present
 	  hnew = 0.		!as hreal but with zeta_new
 	  hold = 0.		!as hreal but with zeta_old
+	  hcur = 0.		!as hreal but with zeta_cur
 	  cl = 0.		!concentration in layer
 	  wl = 0.		!vertical velocity
 	  vflux = 0.		!vertical flux
@@ -512,20 +511,22 @@
 ! 	----------------------------------------------------------------
 ! 	set up vectors for use in assembling contributions
 ! 	----------------------------------------------------------------
+! 
+!	note that hdeov is at current stage, hdenv is at the new stage
+!	hdkov is at old stage, hdknv is at new stage, hdkcv is at
+!	current stage
 
         do l=jlevel,ilevel
-	  hdv(l) = hdeov(l,ie)		!use old time step -> FIXME
-          !haver(l) = 0.5 * ( hdeov(l,ie) + hdenv(l,ie) )
           haver(l) = rso*hdenv(l,ie) + rsot*hdeov(l,ie)
 	  presentl(l) = 1.
 	  do ii=1,3
 	    k=kn(ii)
 	    hn = hdknv(l,k)		! there are never more layers in ie
 	    ho = hdkov(l,k)		! ... than in k
-            htold(l,ii) = ho
-            htnew(l,ii) = hn
+	    hc = hdkcv(l,k)
 	    hold(l,ii) = rso * hn + rsot * ho
 	    hnew(l,ii) = rsn * hn + rsnt * ho
+	    hcur(l,ii) = rso * hn + rsot * hc
 	    cl(l,ii) = cn1(l,k)
 	    cob(l,ii) = cobs(l,k)	!observations
 	    rtau(l,ii) = rtauv(l,k)	!observations
@@ -558,7 +559,7 @@
 
 	wws = 0.	!sinking already in wl
 	call vertical_flux_ie(btvdv,ie,ilevel,jlevel, &
-     &			      dt,wws,cl,wl,hold,vflux)
+     &			      dt,wws,cl,wl,hcur,vflux)
 
 ! ----------------------------------------------------------------
 !  loop over levels
@@ -618,10 +619,8 @@
 
 	  rvptop = difv(l-1,k) + difmol
 	  rvpbot = difv(l,k) + difmol
-	  !hmtop = 2. * rvptop * presentl(l-1) / (hdv(l-1)+hdv(l))
-	  !hmbot = 2. * rvpbot * presentl(l+1) / (hdv(l)+hdv(l+1))
-	  hmotop =2.*rvptop*presentl(l-1)/(hold(l-1,ii)+hold(l,ii))
-	  hmobot =2.*rvpbot*presentl(l+1)/(hold(l,ii)+hold(l+1,ii))
+	  hmotop =2.*rvptop*presentl(l-1)/(hcur(l-1,ii)+hcur(l,ii))
+	  hmobot =2.*rvpbot*presentl(l+1)/(hcur(l,ii)+hcur(l+1,ii))
 	  hmntop =2.*rvptop*presentl(l-1)/(hnew(l-1,ii)+hnew(l,ii))
 	  hmnbot =2.*rvpbot*presentl(l+1)/(hnew(l,ii)+hnew(l+1,ii))
 
@@ -769,12 +768,12 @@
 !	------------------------------------------------------
 
           if (curr_stage .ne. n_rkstages) then !if (not last stage)
-	    erk_reg(l,k,curr_stage) = &
-     &        erk_reg(l,k,curr_stage) + aj4 * rrc
-	    crk_reg(l,k,curr_stage) = &
-     &        crk_reg(l,k,curr_stage) - aj4 * fw(ii)
-	    srk_reg(l,k,curr_stage) = &
-     &        srk_reg(l,k,curr_stage) - aj4 * fd(ii)
+	    erk_reg(l,k,curr_stage) = erk_reg(l,k,curr_stage) &
+     &        + aj4 * rrc
+	    crk_reg(l,k,curr_stage) = crk_reg(l,k,curr_stage) &
+     &        - aj4 * fw(ii)
+	    srk_reg(l,k,curr_stage) = srk_reg(l,k,curr_stage) &
+     &        - aj4 * fd(ii)
 	  end if
 
 	end do
@@ -787,9 +786,9 @@
 
 ! 	deallocate(fw,fd,fl,fnudge)
 ! 	deallocate(b,c,f,wdiff)
-! 	deallocate(hdv,haver,presentl)
-! 	deallocate(hnew,htnew,rtau,cob)
-! 	deallocate(hold,htold,vflux,wl,cl)
+! 	deallocate(haver,presentl)
+! 	deallocate(hnew,rtau,cob)
+! 	deallocate(hold,vflux,wl,cl)
 ! 	deallocate(clc,clm,clp,cle)
 ! 	
 ! ----------------------------------------------------------------
@@ -802,7 +801,7 @@
       
        subroutine conz3d_nodes(		   &
      &			       curr_stage, &
-     &			       coeff_erk,coeff_irk,coeff_srk,coeff_crk, &
+     &			       coeff_erk,coeff_srk,coeff_crk, &
      &			       k, &
      &			       cn,cdiag,clow,chigh,cn1,cbound, &
      &                         load,rload,is_explicit,dt,nlvddi, &
@@ -827,7 +826,7 @@
 	
 	integer,intent(in) :: curr_stage,k,nlvddi
         real,dimension(n_rkstages),intent(in) :: coeff_erk
-        real,dimension(n_rkstages+1),intent(in) :: coeff_irk,coeff_srk
+        real,dimension(n_rkstages+1),intent(in) :: coeff_srk
         real,dimension(n_rkstages+1),intent(in) :: coeff_crk
 
 	real,intent(in) :: rload

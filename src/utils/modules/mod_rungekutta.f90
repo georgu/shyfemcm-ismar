@@ -44,6 +44,8 @@
         real, allocatable, save :: c_rk(:)	    		!implicit/explicit c vectors:
                                                     		!they are equal for all im/ex schemes in additive runge-kutta
 !specific Butcher tableaux for concentrations
+!vertical concentration advection is discretized by means of additional weights in the semi-implicit method.
+!For high-order ImEx schemes only an explicit discretization is available, by now. 
         real, allocatable, save :: a_crk(:,:)       		!generic A matrix for conc. vert adv (can be im or ex)
         real, allocatable, save :: b_crk(:)	    		!generic b vector for conc. vert adv (can be im or ex)
 

@@ -463,7 +463,7 @@
 	!call copy_uvz		!copy new to old
 	call trace_point('calling barocl')
 	call barocl(0,1, &	!runge-kutta coeff are not needed
-     &    aerk_dummy,airk_dummy,airk_dummy,airk_dummy)
+     &    aerk_dummy,airk_dummy,airk_dummy)
 	call trace_point('wrfvla')
 	call wrfvla		!write finite volume
 	call nonhydro_init
@@ -633,7 +633,7 @@
 	     call hydro(kstage,aerk,airk,asrk)!hydro
 
 	     call trace_point_0('run_scalar')
-	     call run_scalar(kstage,aerk,airk,asrk)
+	     call run_scalar(kstage,aerk,asrk)
 	   end do			!all additional modules are not resolved with runge-kutta
 
            call turb_closure		!turbulence model
@@ -1018,8 +1018,7 @@
 
 !*****************************************************************
 
-	subroutine run_scalar(curr_stage, coeff_erk, &
-     &			        coeff_irk, coeff_srk)
+	subroutine run_scalar(curr_stage, coeff_erk, coeff_srk)
 	
 !$	use omp_lib	!ERIC
 
@@ -1032,7 +1031,6 @@
 ! arguments
 	integer curr_stage
 	real coeff_erk(n_rkstages)
-	real coeff_irk(n_rkstages+1)
 	real coeff_srk(n_rkstages+1)
 ! local
 	real coeff_crk(n_rkstages+1)
@@ -1067,12 +1065,12 @@
 !!!$OMP TASKGROUP
 
 !$OMP TASK 
-	call barocl(1,curr_stage,coeff_erk,coeff_irk, &
+	call barocl(1,curr_stage,coeff_erk, &
      &                coeff_srk,coeff_crk)
 !$OMP END TASK
 
 !$OMP TASK IF ( iconz > 0 )
-	call tracer_compute(curr_stage,coeff_erk,coeff_irk, &
+	call tracer_compute(curr_stage,coeff_erk, &
      &                coeff_srk,coeff_crk)
 !$OMP END TASK
 

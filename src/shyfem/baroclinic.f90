@@ -31,8 +31,7 @@
 !
 ! contents :
 !
-! subroutine barocl(mode,s,cerk,	amministrates the baroclinic time step
-!   +               cirk,csrk,ccrk)
+! subroutine barocl(mode,s,cerk,csrk,ccrk) amministrates the baroclinic time step
 ! subroutine rhoset_shell(iterwant)	sets rho iterating to real solution
 ! subroutine rhoset(resid)		computes rhov
 ! subroutine convectivecorr             convective adjustment
@@ -197,7 +196,7 @@
 !*****************************************************************
 
 	subroutine barocl(mode,curr_stage,coeff_erk, &
-     &                    coeff_irk,coeff_srk,coeff_crk)
+     &                    coeff_srk,coeff_crk)
 
 ! amministrates the baroclinic time step
 !
@@ -225,7 +224,6 @@
 	integer mode
 	integer curr_stage
 	real coeff_erk(n_rkstages)
-	real coeff_irk(n_rkstages+1)
 	real coeff_srk(n_rkstages+1)
 	real coeff_crk(n_rkstages+1)
 ! common
@@ -483,14 +481,14 @@
 !$OMP TASK PRIVATE(what,dtime) FIRSTPRIVATE(thpar,wsink,robs,itemp) &
 !$OMP&     SHARED(idtemp,tempv,difhv,difv,difmol,tobsv,ttauv) &
 !$OMP&     SHARED(terk_reg,tcrk_reg,tsrk_reg) &
-!$OMP&     SHARED(curr_stage,coeff_erk,coeff_irk,coeff_srk,coeff_crk) &
+!$OMP&     SHARED(curr_stage,coeff_erk,coeff_srk,coeff_crk) &
 !$OMP&     DEFAULT(NONE) &
 !$OMP&     IF(itemp > 0)
 
           if( itemp .gt. 0 ) then
 		what = 'temp'
                 call scal_adv_nudge(curr_stage &
-     &				,coeff_erk,coeff_irk &
+     &				,coeff_erk &
      &                          ,coeff_srk,coeff_crk &
      &                          ,what,0 &
      &                          ,tempv,idtemp &
@@ -508,15 +506,14 @@
 !$OMP TASK PRIVATE(what,dtime) FIRSTPRIVATE(shpar,wsink,robs,isalt) &
 !$OMP&     SHARED(idsalt,saltv,difhv,difv,difmol,sobsv,stauv) &
 !$OMP&     SHARED(serk_reg,scrk_reg,ssrk_reg) &
-!$OMP&     SHARED(curr_stage,coeff_erk,coeff_irk,coeff_srk,coeff_crk) &
+!$OMP&     SHARED(curr_stage,coeff_erk,coeff_srk,coeff_crk) &
 !$OMP&     DEFAULT(NONE) &
 !$OMP&     IF(isalt > 0)
 
           if( isalt .gt. 0 ) then
 		what = 'salt'
                 call scal_adv_nudge(curr_stage &
-     &				,coeff_erk,coeff_irk &
-     &                          ,coeff_srk,coeff_crk &
+     &                          ,coeff_erk,coeff_srk,coeff_crk &
      &                          ,what,0 &
      &                          ,saltv,idsalt &
      &                          ,shpar,wsink &

@@ -32,15 +32,14 @@
 !
 !-------------------------------------------------------------
 !
-! subroutine scal_adv(curr_stage,coeff_erk,coeff_irk
-!     +				 ,coeff_srk,coeff_crk
+! subroutine scal_adv(curr_stage,coeff_erk,coeff_srk,coeff_crk
 !     +                          ,what,ivar
 !     +                          ,scal,ids
 !     +                          ,rkpar,wsink
 !     +                          ,difhv,difv,difmol)
 !		shell for scalar (for parallel version)
 
-! subroutine scal_adv_nudge(curr_stage,coeff_erk,coeff_irk
+! subroutine scal_adv_nudge(curr_stage,coeff_erk,
 !     +				,coeff_srk,coeff_crk
 !     +                         ,what,ivar
 !     +				,scal,ids
@@ -58,7 +57,7 @@
 !
 !-------------------------------------------------------------
 !
-! subroutine scal3sh(curr_stage,coeff_erk,coeff_irk,coeff_srk,coeff_crk
+! subroutine scal3sh(curr_stage,coeff_erk,coeff_srk,coeff_crk
 !     +              ,what,cnv,nlvddi,rcv,cobs,robs,rtauv,rkpar
 !     +					,wsink,wsinkv,rload,load
 !     +                                 ,difhv,difv,difmol)
@@ -268,8 +267,8 @@
 !
 !*********************************************************************
 
-	subroutine scal_adv(curr_stage,coeff_erk,coeff_irk &
-     &				,coeff_srk,coeff_crk &
+	subroutine scal_adv(curr_stage &
+     &				,coeff_erk,coeff_srk,coeff_crk &
      &                          ,what,ivar &
      &				,scal,ids &
      &				,rkpar,wsink &
@@ -286,7 +285,6 @@
 
 	integer curr_stage
 	real coeff_erk(n_rkstages)
-	real coeff_irk(n_rkstages+1)
 	real coeff_srk(n_rkstages+1)
 	real coeff_crk(n_rkstages+1)
         character*(*) what
@@ -353,8 +351,7 @@
 ! do advection and diffusion
 !--------------------------------------------------------------
 
-        call scal3sh(curr_stage,coeff_erk,coeff_irk &
-     &				,coeff_srk,coeff_crk &
+        call scal3sh(curr_stage,coeff_erk,coeff_srk,coeff_crk &
      &				,whatvar(1:iwhat) &
      &				,scal,nlvdi &
      &                          ,r3v,cobs,robs,rtauv &
@@ -372,8 +369,8 @@
 
 !*********************************************************************
 
-	subroutine scal_adv_nudge(curr_stage,coeff_erk,coeff_irk &
-     &				,coeff_srk,coeff_crk &
+	subroutine scal_adv_nudge(curr_stage &
+     &				,coeff_erk,coeff_srk,coeff_crk &
      &                          ,what,ivar &
      &				,scal,ids &
      &				,rkpar,wsink &
@@ -391,7 +388,6 @@
 
 	integer curr_stage
 	real coeff_erk(n_rkstages)
-	real coeff_irk(n_rkstages+1)
 	real coeff_srk(n_rkstages+1)
 	real coeff_crk(n_rkstages+1)
         character*(*) what
@@ -453,8 +449,7 @@
 ! do advection and diffusion
 !--------------------------------------------------------------
 
-        call scal3sh(curr_stage,coeff_erk,coeff_irk &
-     &				,coeff_srk,coeff_crk &
+        call scal3sh(curr_stage,coeff_erk,coeff_srk,coeff_crk &
      &                          ,whatvar(1:iwhat) &
      &				,scal,nlvdi &
      &                          ,r3v,sobs,robs,rtauv &
@@ -513,7 +508,6 @@
 
 	integer :: curr_stage = 1	!runge-kutta related variables: to be pass as arguments
 	real :: coeff_erk(1) = 1.0
-	real :: coeff_irk(2) = (/0.5,0.5/)
 	real :: coeff_srk(2) = (/0.0,1.0/)
 	real :: coeff_crk(2) = (/0.0,1.0/)
 	real erk_reg(nlvdi,nkn,0)	!runge-kutta register array for explicit terms
@@ -561,8 +555,7 @@
 ! do advection and diffusion
 !--------------------------------------------------------------
 
-        call scal3sh(curr_stage,coeff_erk,coeff_irk &
-     &				,coeff_srk,coeff_crk &
+        call scal3sh(curr_stage,coeff_erk,coeff_srk,coeff_crk &
      &				,whatvar(1:iwhat) &
      &				,scal,nlvdi &
      &                          ,r3v,cobs,robs,rtauv &
@@ -601,7 +594,7 @@
 !*********************************************************************
 
 	subroutine scal3sh(curr_stage &
-     &			  ,coeff_erk,coeff_irk,coeff_srk,coeff_crk &
+     &			  ,coeff_erk,coeff_srk,coeff_crk &
      &			  ,what,cnv,nlvddi,rcv,cobs,robs,rtauv,rkpar &
      &			  ,wsink,wsinkv,rload,load &
      &			  ,difhv,difv,difmol &
@@ -622,7 +615,6 @@
 ! arguments
 	integer curr_stage
 	real coeff_erk(n_rkstages)
-	real coeff_irk(n_rkstages+1)
 	real coeff_srk(n_rkstages+1)
 	real coeff_crk(n_rkstages+1)
         character*(*) what
@@ -793,7 +785,7 @@
           !call conz3d_orig( &
           call conz3d_omp(       &
      &           curr_stage &
-     &          ,coeff_erk,coeff_irk,coeff_srk,coeff_crk &
+     &          ,coeff_erk,coeff_srk,coeff_crk &
      &          ,cnv &
      &          ,saux &
      &          ,dt &

@@ -314,8 +314,7 @@
 !*********************************************************************
 
 	subroutine tracer_compute(curr_stage, &
-     &				  coeff_erk,coeff_irk, &
-     &                            coeff_srk,coeff_crk)
+     &				  coeff_erk,coeff_srk,coeff_crk)
 
 	use mod_rungekutta, only : n_rkstages
 	use mod_conz
@@ -324,7 +323,6 @@
 
 	integer curr_stage
 	real coeff_erk(n_rkstages)
-	real coeff_irk(n_rkstages+1)
 	real coeff_srk(n_rkstages+1)
 	real coeff_crk(n_rkstages+1)
 
@@ -333,13 +331,11 @@
 	if( iconz == 1 ) then
 	  !call conz3sh
 	  call tracer_compute_single(curr_stage, &
-     &				     coeff_erk,coeff_irk, &
-     &                               coeff_srk,coeff_crk)
+     &				     coeff_erk,coeff_srk,coeff_crk)
 	else
 	  !call conzm3sh
 	  call tracer_compute_multi(curr_stage, &
-     &				     coeff_erk,coeff_irk, &
-     &                               coeff_srk,coeff_crk)
+     &				     coeff_erk,coeff_srk,coeff_crk)
 	end if
 
 	icall_conz = icall_conz + 1
@@ -349,8 +345,7 @@
 !*********************************************************************
 
 	subroutine tracer_compute_single(curr_stage, &
-     &					 coeff_erk,coeff_irk, &
-     &                                   coeff_srk,coeff_crk)
+     &					 coeff_erk,coeff_srk,coeff_crk)
 
 	use mod_rungekutta, only : n_rkstages, &
      &				   cerk_reg,ccrk_reg,csrk_reg
@@ -365,7 +360,6 @@
 
 	integer curr_stage
 	real coeff_erk(n_rkstages)
-	real coeff_irk(n_rkstages+1)
 	real coeff_srk(n_rkstages+1)
 	real coeff_crk(n_rkstages+1)
 
@@ -396,8 +390,7 @@
 	!write(6,*) 'single conz - wsink = ',wsink
 
         call scal_adv(curr_stage &
-     &				,coeff_erk,coeff_irk &
-     &                          ,coeff_srk,coeff_crk &
+     &				,coeff_erk,coeff_srk,coeff_crk &
      &                          ,what,0 &
      &                          ,cnv,idconz &
      &                          ,rkpar,wsink &
@@ -441,8 +434,7 @@
 !*********************************************************************
 
 	subroutine tracer_compute_multi(curr_stage, &
-     &					coeff_erk,coeff_irk, &
-     &                                  coeff_srk,coeff_crk)
+     &					coeff_erk,coeff_srk,coeff_crk)
 
 	use mod_rungekutta, only : n_rkstages, &
      &				   cerk_reg,ccrk_reg,csrk_reg
@@ -456,7 +448,6 @@
 
 	integer curr_stage
 	real coeff_erk(n_rkstages)
-	real coeff_irk(n_rkstages+1)
 	real coeff_srk(n_rkstages+1)
 	real coeff_crk(n_rkstages+1)
 
@@ -494,11 +485,11 @@
 !$OMP  TASK FIRSTPRIVATE(i,rkpar,wsink,difhv,difv,difmol,idconz,what,   &
 !$OMP& dt,nlvdi,idecay,blinfo,bage)                                     &
 !$OMP& SHARED(conzv,tauv,massv,cerk_reg,ccrk_reg,csrk_reg) 		&
-!$OMP& SHARED(curr_stage,coeff_erk,coeff_irk,coeff_srk,coeff_crk) 	&
+!$OMP& SHARED(curr_stage,coeff_erk,coeff_srk,coeff_crk) 	        &
 !$OMP& DEFAULT(NONE) 
 
-          call scal_adv(curr_stage,coeff_erk,coeff_irk &
-     &				,coeff_srk,coeff_crk &
+          call scal_adv(curr_stage &
+     &				,coeff_erk,coeff_srk,coeff_crk &
      &                          ,what,i &
      &                          ,conzv(1,1,i),idconz &
      &                          ,rkpar,wsink &
