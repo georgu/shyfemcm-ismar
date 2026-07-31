@@ -1,0 +1,12 @@
+{
+    "dataset_id": "cmems_mod_ibi_phy-ssh_my_0.027deg_PT1H-m",
+    "minimum_longitude": -8.0,
+    "maximum_longitude": -4.0,
+    "minimum_latitude": 34.0,
+    "maximum_latitude": 37.5,
+    "start_datetime": "2018-10-01",
+    "end_datetime": "2018-11-02",
+    "variables": ["zos"],
+    "output_directory": "INPUT",
+    "output_filename": "ibi_ssh.nc"
+}

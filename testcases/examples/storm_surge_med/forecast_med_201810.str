@@ -1,0 +1,58 @@
+--------------------------------------------------------
+                  SECTION TITLE
+--------------------------------------------------------
+$title
+       Mediterranean Simulation
+       forecast_med_201810
+       GRID/meditot_geo.grd
+$end
+--------------------------------------------------------
+                SECTION PARAMETER
+--------------------------------------------------------
+$para
+       date = 20180101
+
+       itanf = '2018-10-01::00:00'
+       itend = '2018-11-01::23:00'
+       idt = '300s'
+
+       itmext = '2018-10-01::00:00'    idtext =  '15m'
+       itmout=  '2018-10-01::00:00'    idtout =  '1h'
+	
+       ireib =  2	czdef = 30
+       iwtype = 1	itdrag = 0	dragco = 0.0025
+       
+	ampar = 0.60	azpar = 0.60
+       afpar = 0.60
+       
+       ilin =  0  itsplt = 2  coumax = 0.9  idtsyn = '300s'
+     
+       icor=  1
+       rtide  = 1	ltidec = 6.5e-05
+
+       ilytyp = 3	hlvmin = 0.5
+       href = -0.3
+$end
+--------------------------------------------------------
+                SECTION BOUNDARY
+--------------------------------------------------------
+$bound1       -----ATLANTIC OCEAN------
+       kbound = 8453 8457 8459 8462
+       ibtyp  = 1
+       boundn = 'INPUT/bc_ibi_ssh_exp.fem'
+$end
+-------------------------------------------------------
+           SECTIONS EXTRA for TIME SERIES
+--------------------------------------------------------
+$extra
+        4673 '1_Trieste'
+        2075 '2_Venezia'
+        5353 '3_Ravenna'
+        5572 '4_Ancona'
+$end
+--------------------------------------------------------
+           SECTION NAME for FILES
+--------------------------------------------------------
+$name
+       wind='INPUT/wind_201810.fem'
+$end
