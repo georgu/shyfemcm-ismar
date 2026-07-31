@@ -482,34 +482,43 @@
           urk_reg = 0.
           vrk_reg = 0.
           wrk_reg = 0.
+        end if
 
-	  if (itemp == 1) then
-            allocate(terk_reg(nlv,nkn,n_rkstages-1))
-            allocate(tcrk_reg(nlv,nkn,n_rkstages-1))
-            allocate(tsrk_reg(nlv,nkn,n_rkstages-1))
+	!Register vectors to store stage right-hand sides for the
+	!concentrations. With respect to momentum, we allocate the registers
+	!also for n_rkstages=1. In the latter case, a zero-sized array is
+	!allocated, which is legal in fortran. Since register vectors for
+	!concentration are passed as arguments through many functions, this
+	!trick help us in the implementation as it avoids treating
+	!n_rkstages=1 as a special case. To avoid out-of-bounds error, special
+	!care is taken to guarantee that the register vectors are only accessed
+	!if n_rkstages>1
+	if (itemp == 1) then
+          allocate(terk_reg(nlv,nkn,n_rkstages-1))
+          allocate(tcrk_reg(nlv,nkn,n_rkstages-1))
+          allocate(tsrk_reg(nlv,nkn,n_rkstages-1))
 
-            terk_reg = 0.
-            tcrk_reg = 0.
-            tsrk_reg = 0.
-	  end if
-	  if (isalt == 1) then
-            allocate(serk_reg(nlv,nkn,n_rkstages-1))
-            allocate(scrk_reg(nlv,nkn,n_rkstages-1))
-            allocate(ssrk_reg(nlv,nkn,n_rkstages-1))
+          terk_reg = 0.
+          tcrk_reg = 0.
+          tsrk_reg = 0.
+	end if
+	if (isalt == 1) then
+          allocate(serk_reg(nlv,nkn,n_rkstages-1))
+          allocate(scrk_reg(nlv,nkn,n_rkstages-1))
+          allocate(ssrk_reg(nlv,nkn,n_rkstages-1))
 
-            serk_reg = 0.
-            scrk_reg = 0.
-            ssrk_reg = 0.
-	  end if
-	  if (iconz > 0) then !iconz index runs slowest
-            allocate(cerk_reg(nlv,nkn,n_rkstages-1,iconz))
-            allocate(ccrk_reg(nlv,nkn,n_rkstages-1,iconz))
-            allocate(csrk_reg(nlv,nkn,n_rkstages-1,iconz))
+          serk_reg = 0.
+          scrk_reg = 0.
+          ssrk_reg = 0.
+	end if
+	if (iconz > 0) then !iconz index runs slowest
+          allocate(cerk_reg(nlv,nkn,n_rkstages-1,iconz))
+          allocate(ccrk_reg(nlv,nkn,n_rkstages-1,iconz))
+          allocate(csrk_reg(nlv,nkn,n_rkstages-1,iconz))
 
-            cerk_reg = 0.
-            ccrk_reg = 0.
-            csrk_reg = 0.
-	  end if
+          cerk_reg = 0.
+          ccrk_reg = 0.
+          csrk_reg = 0.
         end if
 
 
