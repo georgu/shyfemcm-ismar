@@ -255,7 +255,8 @@
 	  a_irk(2,3) = gamma
 
 	  a_srk = a_irk
-	  a_crk = a_srk
+	  a_crk = 0.
+	  a_crk(:,1:n_rkstages) = a_erk
 
 	  b_erk(1)  = 1.-1./(2.*gamma)
 	  b_erk(2)  = 1./(2.*gamma)
@@ -265,7 +266,8 @@
 	  b_irk(3)  = gamma
 
 	  b_srk  = b_irk
-	  b_crk  = b_srk
+	  b_crk  = 0.
+	  b_crk(1:n_rkstages) = b_erk
 
 	  c_rk(1)  = gamma
 	  c_rk(2)  = 1.
@@ -300,7 +302,8 @@
 	  a_irk(2,3) = 0.5
 
 	  a_srk = a_irk
-	  a_crk = a_srk
+	  a_crk = 0.
+	  a_crk(:,1:n_rkstages) = a_erk
 
 	  b_erk(1)  = 0.
 	  b_erk(2)  = 1.
@@ -310,7 +313,8 @@
 	  b_irk(3)  = 0.5
 
 	  b_srk  = b_irk
-	  b_crk  = b_srk
+	  b_crk  = 0.
+	  b_crk(1:n_rkstages) = b_erk
 
 	  c_rk(1)  = 0.5
 	  c_rk(2)  = 1.
@@ -375,7 +379,8 @@
 	  a_irk(3,4) = 0.
 
 	  a_srk = a_irk
-	  a_crk = a_srk
+	  a_crk = 0.
+	  a_crk(:,1:n_rkstages) = a_erk
 
 	  b_erk(1)  = 1.-(1.-2.*chi)/(4.*chi)-chi
 	  b_erk(2)  = (1.-2.*chi)/(4.*chi)
@@ -387,7 +392,8 @@
 	  b_irk(4)  = 0.
 
 	  b_srk  = b_irk
-	  b_crk  = b_srk
+	  b_crk  = 0.
+	  b_crk(1:n_rkstages) = b_erk
 
 	  c_rk(1)  = 2*chi
 	  c_rk(2)  = 1.
@@ -436,7 +442,8 @@
 	  a_irk(3,4) = 0.
 
 	  a_srk = a_irk
-	  a_crk = a_srk
+	  a_crk = 0.
+	  a_crk(:,1:n_rkstages) = a_erk
 
 	  b_erk(1)  = 1./6.
 	  b_erk(2)  = 1./6.
@@ -448,7 +455,8 @@
 	  b_irk(4)  = 0.
 
 	  b_srk  = b_irk
-	  b_crk  = b_srk
+	  b_crk  = 0.
+	  b_crk(1:n_rkstages) = b_erk
 
 	  c_rk(1)  = 1.
 	  c_rk(2)  = 1./2.
@@ -457,7 +465,7 @@
 	end if
 
 	!Register vectors to store stage right-hand sides
-	!and stage velocity components
+	!for the momentum and stage transport/velocity components
         if ( n_rkstages > 1 ) then
           allocate(uverk_reg(2*nlv,nel,n_rkstages-1))
           allocate(uvirk_reg(2*nlv,nel,n_rkstages-1))
