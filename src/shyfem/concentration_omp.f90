@@ -237,6 +237,11 @@
         cdiag=0.
         clow=0.
         chigh=0.
+	if (curr_stage .ne. n_rkstages) then !if (not last stage)
+	  erk_reg(:,:,curr_stage) = 0.
+	  crk_reg(:,:,curr_stage) = 0.
+	  srk_reg(:,:,curr_stage) = 0.
+	end if
 
         !call tsdebug(robs,cobs,rtauv)
 
@@ -427,16 +432,18 @@
       integer :: k,ii,l,iii,ll,ibase,lstart,ilevel,itot,isum
       integer :: jlevel
       integer :: n,i,iext
+      integer :: istage,jstage,mstage
       integer, dimension(3) :: kn
-      double precision :: cexpl,cbm,ccm,waux,loading,wws,us,vs
+      real :: as_ll,ac_ll,c_l,inv_ae_ll,ai_ll,ai_llm
+      double precision :: cexpl,cbm,ccm,waux,loading,wws
       double precision :: aj,rk3,aj4,aj12
       double precision :: hmed,hmbot,hmtop,hmotop,hmobot
       double precision :: hmntop,hmnbot,rvptop,rvpbot,w,aux
       double precision :: flux_tot,flux_tot1,flux_top,flux_bot
       double precision :: rstot,hn,ho,hc,cdummy,alow,adiag,ahigh,rrc
       double precision :: rkmin,rkmax,cconz
-      double precision :: as_ll,ac_ll,d_ll,d_llm,c_l
-      double precision,dimension(n_rkstages+1) :: d_l
+      double precision :: rhs_us,rhs_vs,sum_us,sum_vs
+      double precision,dimension(curr_stage) :: us,vs
       double precision,dimension(3) :: fw,fd,fl,fnudge_o,fnudge_c
       double precision,dimension(3) :: b,c,f,wdiff
       double precision,dimension(0:nlvddi+1) :: haver,presentl
@@ -459,9 +466,6 @@
         ac_ll = coeff_crk(curr_stage+1)	!diagonal coeff for vertical adv tableau
         as_ll = coeff_srk(curr_stage+1)	!diagonal coeff for stiffly implicit tableau
 	c_l = sum(coeff_erk)		!c coeff
-        d_l = a_irk(curr_stage,:)/c_l	!scaled implicit tableau
-        d_ll = d_l(curr_stage+1)	!diagonal coeff for the scaled tableau
-        d_llm = d_l(curr_stage)		!under diagonal coeff for the scaled tableau
 
 ! ----------------------------------------------------------------
 ! global arrays for accumulation of implicit terms
@@ -567,8 +571,36 @@
 
         do l=jlevel,ilevel
 
-        us=d_ll*utlnv(l,ie)+d_llm*utlov(l,ie)             !$$azpar
-        vs=d_ll*vtlnv(l,ie)+d_llm*vtlov(l,ie)
+! 	----------------------------------------------------------------
+! 	compute advection transport
+! 	----------------------------------------------------------------
+! 
+!	The discharge values us,vs used in the tracer equation are
+!	computed by solving the following linear system, whose
+!	coefficient matrix is a lower triangular submatrix of the
+!	explicit weight matrix A. At each stage l we compute us,vs
+!	with forward substitution:
+
+        do istage=1,curr_stage
+	  inv_ae_ll = 1./a_erk(istage,istage)
+	  ai_ll = a_irk(istage,curr_stage+1)
+	  ai_llm = a_irk(istage,curr_stage)
+	  rhs_us = ai_ll*utlnv(l,ie) + ai_llm*utlcv(l,ie)
+	  rhs_vs = ai_ll*vtlnv(l,ie) + ai_llm*vtlcv(l,ie)
+	  do jstage=1,curr_stage-1
+	    rhs_us = rhs_us + a_irk(istage,jstage)*urk_reg(l,ie,jstage)
+	    rhs_vs = rhs_vs + a_irk(istage,jstage)*vrk_reg(l,ie,jstage)
+	  end do
+          sum_us = 0.0d0
+          sum_vs = 0.0d0
+          do mstage=1,istage-1
+            sum_us = sum_us + a_erk(istage,mstage) * us(mstage)
+            sum_vs = sum_vs + a_erk(istage,mstage) * vs(mstage)
+          end do
+          us(istage) = (rhs_us - sum_us) * inv_ae_ll
+          vs(istage) = (rhs_vs - sum_vs) * inv_ae_ll
+        end do
+
 
         rk3 = 3. * rkpar * difhv(l,ie)
 
@@ -578,7 +610,7 @@
 	isum=0
 	do ii=1,3
 	  k=kn(ii)
-	  f(ii)=us*b(ii)+vs*c(ii)	!$$azpar
+	  f(ii)=us(curr_stage)*b(ii)+vs(curr_stage)*c(ii)	!$$azpar
 	  if(f(ii).lt.0.) then	!flux out of node
 	    itot=itot+1
 	    isum=isum+ii
