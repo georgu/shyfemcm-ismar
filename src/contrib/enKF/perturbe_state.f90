@@ -138,6 +138,7 @@ subroutine read_rst(rstname, atimea)
       call addpar("ibfm"  ,zero4)
       call addpar("imerc" ,imerc4)
       call addpar("iturb" ,iturb4)
+      call addpar("nzadapt" ,0.)
 
       call daddpar("date",0.0_dp)
       call daddpar("time",0.0_dp)

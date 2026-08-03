@@ -48,8 +48,19 @@ awk '{print $1, $2}' "$fileheat" > sol.dat
 # Correcting solar radiation at night
 echo "Correcting solar radiation at night..."
 for f in sol_*.dat; do
-    awk 'NR==FNR {mask[NR]=$1; next} {print (mask[FNR] == 0 ? 0 : $1)}' sol.dat "$f" > "fixed_$f"
-    mv "fixed_$f" $f
+    paste sol.dat "$f" | awk '{
+        date_pert = $3
+        rad_unpert = $2
+        rad_pert = $4
+        
+        if (rad_unpert == 0) {
+            rad_pert = 0
+        }
+        
+        print date_pert, rad_pert
+    }' > "fixed_$f"
+    
+    mv "fixed_$f" "$f"
 done
 
 # Column 3: Air Temperature (Min: -60, Max: 50)

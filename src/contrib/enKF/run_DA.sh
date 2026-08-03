@@ -84,7 +84,7 @@ perturb_forcings_interactive() {
                     read -p "      > Heat FEM Params (STD_S STD_T STD_H STD_C Tau): " H_S H_A H_H H_C H_T
                     "$ENKF_DIR/perturbe_fem_heat" "$fname" "$NRENS" "$H_S" "$H_A" "$H_H" "$H_C" "$H_T"
                 else
-                    read -p "      > Scalar FEM Params (STD MIN MAX Tau PType): " S_STD S_VMIN S_VMAX S_TAU S_TYP
+                    read -p "      > Scalar FEM Params (STD MIN MAX Tau PType[1:scalar, 2:PGauss]): " S_STD S_VMIN S_VMAX S_TAU S_TYP
                     "$ENKF_DIR/perturbe_fem_scalar" "$fname" "$NRENS" "$S_TYP" "$S_STD" "$S_VMIN" "$S_VMAX" "$S_TAU"
                 fi
             fi
