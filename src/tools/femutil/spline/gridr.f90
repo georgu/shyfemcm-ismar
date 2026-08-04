@@ -38,6 +38,7 @@
 ! 27.05.2012    ggu     renamed ndim to nsdim in smooth()
 ! 12.01.2026    ggu     large arrays transformed to allocatable
 ! 12.02.2026    ggu     new routine despike, bug fix for retriv
+! 01.08.2026    ggu     new routine reduce_points_strait(), not finished
 !
 ! description :
 !
@@ -105,6 +106,7 @@
 	logical bperiod
 	integer nt,nll
 	integer i
+	real hl
 
 	real, allocatable :: xt(:)
 	real, allocatable :: yt(:)
@@ -115,6 +117,7 @@
 	integer nnode
 	real sigma
 	real reduce
+	real deflect
 	real rspike
 
 	call shyfem_copyright('gridr - smoothing of lines')
@@ -154,7 +157,7 @@
 	reduce = 300.
 !-----------------------------------
 
-	call handle_command_line(file,sigma,reduce,rspike)
+	call handle_command_line(file,sigma,reduce,deflect,rspike)
 
 !------------------------------------------------------
 
@@ -187,7 +190,8 @@
 
 	do l=1,nl
 	  nll = nnl
-	  nline = ipplv(l)
+	  nline = ipplv(l)	!number of line
+	  hl = hhlv(l)		!depth of line
 	  call extrli(l,nl,ipplv,ialv,ipntlv,inodlv,xgv,ygv,hkv &
      &				,xt,yt,ht,nll,nt)
 	  call mkperiod(xt,yt,nll,bperiod)
@@ -196,6 +200,7 @@
 	  call smooth(sigma,xt,yt,ht,nll,bperiod)
 	  call wrline(99,nline,nnode,nll,xt,yt,ht,nt,bperiod)
 	  call reduce_points(reduce,xt,yt,ht,nll)
+	  call reduce_points_strait(deflect,xt,yt,ht,nll,hl)
 	  call wrline(98,nline,nnode,nll,xt,yt,ht,nt,bperiod)
 	  call despike(rspike,xt,yt,ht,nll)
 	  call wrline(97,nline,nnode,nll,xt,yt,ht,nt,bperiod)
@@ -222,17 +227,17 @@
 
 	integer l		!actual line
 	integer nli		!total number of lines
-	integer iplv(1)
-	integer ialrv(1)
-	integer ipntlv(0:1)
-	integer inodlv(1)
-	real xgv(1)
-	real ygv(1)
-	real hkv(1)
+	integer iplv(nli)	!line number
+	integer ialrv(nli)	!type of line
+	integer ipntlv(0:nli)	!node index
+	integer inodlv(nl)	
+	real xgv(*)
+	real ygv(*)
+	real hkv(*)
+	real xt(nl)
+	real yt(nl)
+	real ht(nl)
 	integer nl		!on entry dim, on return number of nodes in line
-	real xt(1)
-	real yt(1)
-	real ht(1)
 	integer nt		!type of line
 
 	integer nvert,i,ibase
@@ -254,11 +259,11 @@
 	    node = inodlv(ibase+i)
 	    !ier = retriv(node,k)
 	    k = node
-	    if( ier .lt. 0 ) goto 99
-	    if( ier .eq. 0 ) then
-	      write(6,*) 'node not found: ',node
-		stop
-	    end if
+	    !if( ier .lt. 0 ) goto 99
+	    !if( ier .eq. 0 ) then
+	    !  write(6,*) 'node not found: ',node
+	!	stop
+	!    end if
 	    xt(i) = xgv(k)
 	    yt(i) = ygv(k)
 	    ht(i) = hkv(k)
@@ -880,6 +885,108 @@
 
 !********************************************************
 
+	subroutine reduce_points_strait(deflect,xt,yt,ht,nl,hl)
+
+	implicit none
+
+	real deflect	!maximum deflection allowed
+	real xt(nl)
+	real yt(nl)
+	real ht(nl)	!not used
+	integer nl	!number of points in line
+	real hl		!depth of line -> resolution required
+
+	integer i,j,nd,ndef,nelim,ntot,nnew
+	integer ib,ia,ic,ibb,iaa
+	real dx,dy,dd
+
+	integer, allocatable :: neibor(:,:)
+	logical, allocatable :: active(:)
+	real, allocatable :: ang(:)
+	real, allocatable :: dist(:)
+
+	real angle
+
+	allocate( neibor(2,nl) )
+	allocate( active(nl) )
+	allocate( ang(nl) )
+	allocate( dist(nl) )
+
+	neibor = 0
+	active = .true.
+	ang = 0
+	dist = 0
+
+	neibor(2,1) = 2
+
+	do i=2,nl-1
+	  neibor(1,i) = i-1
+	  neibor(2,i) = i+1
+	  ang(i) = angle(xt(i-1),yt(i-1),xt(i),yt(i),xt(i+1),yt(i+1))
+	  ang(i) = abs( ang(i) - 180. )
+	  dx = xt(i+1) - xt(i-1)
+	  dy = yt(i+1) - yt(i-1)
+	  dist(i) = sqrt( dx*dx + dy*dy )
+	end do
+	
+	neibor(1,nl) = nl-1
+
+	nd = count( ang < deflect )
+	write(6,*) 'line: ',nl,deflect,hl,nd
+
+	ndef = 10
+	ntot = 0
+	do j=1,ndef
+	  dd = j*deflect/ndef	!start from small and then go up
+	  nelim = 0
+	  do i=2,nl-1
+	    if( ang(i) >= dd ) cycle
+	    if( dist(i) >= 2.*hl ) cycle
+	    ! now we eliminate this point
+	    active(i) = .false.
+	    ang(i) = 360.
+	    ib = neibor(1,i)
+	    ia = neibor(2,i)
+	    neibor(1,ia) = ib
+	    neibor(2,ib) = ia
+	    neibor(:,i) = 0
+	    ic = ib
+	    ibb = neibor(1,ic)
+	    iaa = neibor(2,ic)
+	    dx = xt(iaa) - xt(ibb)
+	    dy = yt(iaa) - yt(ibb)
+	    dist(ic) = sqrt( dx*dx + dy*dy )
+	    ang(ic) = angle(xt(ibb),yt(ibb),xt(ic),yt(ic),xt(iaa),yt(iaa))
+	    ang(ic) = abs( ang(ic) - 180. )
+	    ic = ia
+	    ibb = neibor(1,ic)
+	    iaa = neibor(2,ic)
+	    dx = xt(iaa) - xt(ibb)
+	    dy = yt(iaa) - yt(ibb)
+	    dist(ic) = sqrt( dx*dx + dy*dy )
+	    ang(ic) = angle(xt(ibb),yt(ibb),xt(ic),yt(ic),xt(iaa),yt(iaa))
+	    ang(ic) = abs( ang(ic) - 180. )
+	    nelim = nelim + 1
+	  end do
+	  ntot = ntot + nelim
+	  !write(6,*) 'eliminated: ',dd,nelim
+	end do
+
+	nnew = 0
+	do i=1,nl
+	  if( .not. active(i) ) cycle
+	  nnew = nnew + 1
+	  xt(nnew) = xt(i)
+	  yt(nnew) = yt(i)
+	  ht(nnew) = ht(i)
+	end do
+	nl = nnew
+	write(6,*) 'total nodes in line/eliminated: ',nl,ntot
+
+	end
+
+!********************************************************
+
 	  subroutine intpdep(nline,ht,nl,bperiod)
 
 ! interpolates depth values for points in line
@@ -1059,13 +1166,13 @@
 	end do
 	dmed = dmed / nll
 
-	write(6,*) nl,nll,dmin,dmax,dmed
+	!write(6,*) 'mkstats: ',nll,dmin,dmax,dmed
 
 	end
 
 !********************************************************
 
-	subroutine handle_command_line(file,sigma,reduce,rspike)
+	subroutine handle_command_line(file,sigma,reduce,deflect,rspike)
 
 	use clo
 
@@ -1074,6 +1181,7 @@
 	character*(*) file
 	real sigma
 	real reduce
+	real deflect
 	real rspike
 
 	integer nfile
@@ -1085,6 +1193,8 @@
      &                    ,'standard deviation for smoothing is sigma')
         call clo_add_option('reduce dmin',0. &
      &                    ,'elimination of points with distance < dmin')
+        call clo_add_option('deflect angle',0. &
+     &                    ,'elimination of points with ang < angle')
         call clo_add_option('despike rspike',0. &
      &                    ,'elimination of points with spike ratio > rspike')
 
@@ -1092,6 +1202,7 @@
 
         call clo_get_option('sigma',sigma)
         call clo_get_option('reduce',reduce)
+        call clo_get_option('deflect',deflect)
         call clo_get_option('despike',rspike)
 
         nfile = clo_number_of_files()
@@ -1100,6 +1211,7 @@
 	write(6,*) 'file name: ',trim(file)
 	write(6,*) 'sigma: ',sigma
 	write(6,*) 'reduce: ',reduce
+	write(6,*) 'deflect: ',deflect
 	write(6,*) 'rspike: ',rspike
 
 	end

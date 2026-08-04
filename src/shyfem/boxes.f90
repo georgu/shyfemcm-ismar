@@ -111,7 +111,11 @@
 !
 ! notes :
 !
+! to produce the files for the box model:
+!
+! copy boxes.txt to the simulation directory
 ! insert parameters idtbox and itmbox into STR file to have box file written
+! save files boxes_*.txt to a different directory after simulation run
 !
 ! for format of written files please see box_write_*()
 ! all other information is contained in boxfile (normally boxes.txt)
@@ -119,7 +123,9 @@
 !
 ! still to check: some sections have more layers than adjacent boxes
 !
-! in order to plot boxes set bbox=.true. in plobas (supsim.f)
+! in order to plot boxes insert ibox=1 in apnbath.str file and run 
+! shyplot outboxes.grd apnbath.str
+! (apnbath is the str file for plotting, it can have any name)
 !
 ! still to do
 !

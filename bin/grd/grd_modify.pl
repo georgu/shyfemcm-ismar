@@ -46,6 +46,7 @@ $::min_area = 0 unless $::min_area;
 $::min_dist = 0 unless $::min_dist;
 $::clean = "" unless $::clean;
 $::unused = "" unless $::unused;
+$::unify_node = "-1" unless $::unify_node;
 
 if( $::n or $::e or $::l ) {	#explicitly given -> only on these items
   $::n = 0 unless $::n;

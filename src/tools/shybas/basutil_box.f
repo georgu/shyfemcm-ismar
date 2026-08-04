@@ -45,6 +45,7 @@ c 16.06.2022	ggu	write coloring errors to grd files
 c 13.07.2022	ggu	forgot setting listold(0,:)
 c 20.12.2024	ggu	general read for index file
 c 22.05.2026	ggu	new routines for regularizing edges and connectivity
+c 04.08.2026	ggu	write newboxes.grd with depth
 c
 c****************************************************************
 
@@ -86,7 +87,7 @@ c-----------------------------------------------------------------
 c check if we have read a bas file and not a grd file
 c-----------------------------------------------------------------
 
-        if( .not. breadbas .and. .not. bnew ) then
+        if( .not. breadbas .and. .not. bnew ) then	!only for old version
           write(6,*) 'for -box we need a bas file'
           stop 'error stop basbox: need a bas file'
         end if
@@ -640,7 +641,6 @@ c sets up box index
 	end do
 
 	call handle_regularize_edges
-	stop
 
 	return
    98	continue
@@ -759,7 +759,7 @@ c checks if all boxes are connected
 	 end do
 	end if
 
-	stop 'forced stop in check_box_connection'
+	!stop 'forced stop in check_box_connection'
 
 	nnocol = count( icon == 0 )
 	if( nnocol > 0 ) goto 96
@@ -1671,7 +1671,7 @@ c area code 0 is not allowed !!!!
 
 	file = 'newboxes.grd'
 	write(6,*) 'writing files with new boxes: ',trim(file)
-	call write_grd_from bas(file)
+	call write_grd_from_bas1(file)
 
 	end
 
@@ -1724,7 +1724,7 @@ c area code 0 is not allowed !!!!
 
 !*****************************************************************
 
-	subroutine write_grd_from bas(file)
+	subroutine write_grd_from_bas1(file)
 
 	use basin
 
@@ -1736,7 +1736,10 @@ c area code 0 is not allowed !!!!
 	integer intype(nkn)
 	integer ieext(nel)
 	integer ietype(nel)
+	real redepth(nel)
+	real rndepth(nkn)
 	character*80 text
+	integer ie
 
 	text = 'regularized'
 
@@ -1746,8 +1749,13 @@ c area code 0 is not allowed !!!!
 	intype = 0
 	ietype = iarv
 
-	call write_grd_file(file,text,nkn,nel,xgv,ygv,nen3v
-     +                  ,inext,ieext,intype,ietype)
+	rndepth = -999.
+	do ie=1,nel
+	  redepth(ie) = sum(hm3v(:,ie)) / 3.
+	end do
+
+	call write_grd_file_with_depth(file,text,nkn,nel,xgv,ygv,nen3v
+     +                  ,inext,ieext,intype,ietype,rndepth,redepth)
 
 	end
 

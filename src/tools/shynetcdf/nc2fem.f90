@@ -56,6 +56,7 @@
 ! 19.06.2025    ggu     check file format with nc_check_file_format()
 ! 13.11.2025    ggu     increase length of var
 ! 09.06.2026    ggu     new option -coordinfo
+! 03.08.2026    ggu     new option -clayer
 !
 ! notes :
 !
@@ -143,7 +144,7 @@
 	double precision t
 	logical bverb,bcoords,btime,binfo,bvars,bwrite,bdebug,bsilent
 	logical binvertdepth,binvertslm,bunform,bquiet,blist
-	logical bregular,bsingle,babout,btcorrect
+	logical bregular,bsingle,babout,btcorrect,bclayer
 	logical bcoordinfo
         logical binvert,bx_invert,by_invert
 	logical exists_var
@@ -198,6 +199,8 @@
      &          ,'invert depth values for bathymetry')
         call clo_add_option('invertslm',.false.                         &
      &          ,'invert slmask values (0 for sea)')
+        call clo_add_option('clayer',.false.                         &
+     &          ,'layer depths are given on center, not bottom')
         call clo_add_option('unform',.false.                            &
      &          ,'write fem file unformatted')
         call clo_add_option('tcorrect',.false.                          &
@@ -260,6 +263,7 @@
 	call clo_get_option('coords',bcoords)
 	call clo_get_option('bathy',bathy)
 	call clo_get_option('slmask',slmask)
+	call clo_get_option('clayer',bclayer)
 	call clo_get_option('vars',varline)
 	call clo_get_option('descrp',descrpline)
 	call clo_get_option('single',sfile)
@@ -317,6 +321,8 @@
      &                  ,nt,nx,ny,nz                                    &
      &                  ,tcoord,xcoord,ycoord,zcoord)
 
+	!write(6,*) zcoord
+
 	if( bcoordinfo ) then
 	  call ncnames_write_info
 	end if
@@ -364,7 +370,7 @@
         call setup_coordinates(ncid,bverb,xcoord,ycoord                 &
      &                          ,nxdim,nydim,nx,ny                      &
      &                          ,xlon,ylat)
-	call setup_zcoord(ncid,bverb,zcoord,nlvdim,nz,zdep,nz1,hlv)
+	call setup_zcoord(ncid,bverb,bclayer,zcoord,nlvdim,nz,zdep,nz1,hlv)
         call setup_bathymetry(ncid,bverb,binvertdepth,bathy             &
      &                          ,nxdim,nydim,nx,ny,bat)
 	call setup_sealand(ncid,bverb,slmask,nxdim,nydim,nx,ny,slm)
