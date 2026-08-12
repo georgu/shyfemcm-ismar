@@ -32,6 +32,7 @@
 # 20.02.2022	ggu	new routine make_connection()
 # 31.01.2023	ggu	new routines to compute total items
 # 08.05.2026	ggu	new routine is_latlon()
+# 08.08.2026	ggu	try to always write 10 values of nodes per line
 #
 ##############################################################
 #
@@ -184,6 +185,8 @@ sub write_nodes {		# helper routine -> ncmax max chars to write
   my ($fh,$ra,$ncmax) = @_;
   my $j = 0;
 
+  $ncmax = 70 unless $ncmax;
+
   my $n = @$ra;
   my $ltot = 0;
 
@@ -193,7 +196,7 @@ sub write_nodes {		# helper routine -> ncmax max chars to write
     $ltot += $l + 1;
     print $fh " $_";
     if( $ncmax ) {
-      if( $ltot > $ncmax and $j != $n ) {
+      if( ($ltot > $ncmax and $j != $n) or ($j%10 == 0) ) {
         print $fh "\n";
 	$ltot = 0;
       }
@@ -251,7 +254,7 @@ sub write_line
     my $fh = $self->{outhandle};
 
     print $fh "3 $item->{number} $item->{type} $item->{nvert}\n";
-    &write_nodes($fh,$item->{vert},50);
+    &write_nodes($fh,$item->{vert},70);
     if( defined $item->{h} and $item->{h} != $self->{flag} ) {
       print $fh " $item->{h}";
     }

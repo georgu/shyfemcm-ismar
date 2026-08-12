@@ -42,7 +42,22 @@
 ! 16.02.2019	ggu	changed VERS_7_5_60
 ! 08.05.2026	ggu	in check_monotone() handle negative depth layers
 ! 03.08.2026	ggu	handle new option clayer
+! 11.08.2026	ggu	new routines to handle decreasing x/y coordinates
 !
+!*****************************************************************
+!*****************************************************************
+!*****************************************************************
+
+	module nc_coords
+
+	implicit none
+
+	integer, save :: ixinvert = 0	!x-coords are decreasing -> must invert
+	integer, save :: iyinvert = 0	!y-coords are decreasing -> must invert
+	integer, save :: izinvert = 0	!z-coords are decreasing -> must invert
+
+	end module nc_coords
+
 !*****************************************************************
 !*****************************************************************
 !*****************************************************************
@@ -356,6 +371,8 @@
 	subroutine setup_zcoord(ncid,bverb,bclayer,zcoord &
      &				,nlvdim,nz,zdep,nz1,hlv)
 
+	use nc_coords
+
 	implicit none
 
 	integer ncid
@@ -410,7 +427,7 @@
 
 	ndims = 1
 	call nc_get_var_data(ncid,zcoord,1,nlvdim,ndims,dims,zdep)
-	call check_monotone(nz,zdep,'checking z-coordinates')
+	call check_monotone(nz,zdep,'checking z-coordinates',.true.,izinvert)
 	hlv = zdep
 	nz1 = nz
 
@@ -842,34 +859,44 @@
 
 !*****************************************************************
 
-	subroutine check_monotone(n,val,text)
+	subroutine check_monotone(n,val,text,bv,invert)
 
 	implicit none
 
 	integer n
 	real val(n)
 	character*(*) text
+	logical bv		!check vertical levels
+	integer invert		!must invert (return)
 
 	logical bgrow,bquiet
 	integer i,imin,imax
-	real dv
+	real dv,aux
 
 	if( n <= 1 ) return
 
 	call nc_get_quiet(bquiet)
 	bgrow = val(2) > val(1)
+	invert = 0
 
 	if( .not. bgrow ) then
-	  if( val(n) == -1. ) then
-	    if( .not. bquiet ) then
-	      write(6,*) 'level are sigma layers... keeping them'
+	  if( bv ) then		!vertical levels
+	    if( val(n) == -1. ) then
+	      if( .not. bquiet ) then
+	        write(6,*) 'levels are sigma layers... keeping them'
+	      end if
+	    else
+	      if( .not. bquiet ) then
+	        write(6,*) 'levels are negative... inverting'
+	      end if
+	      val = -val
+	      bgrow = .true.
 	    end if
-	  else
+	  else			!horizontal values
 	    if( .not. bquiet ) then
-	      write(6,*) 'level are negative... inverting'
+	      write(6,*) 'coordinates are decreasing... must invert later'
 	    end if
-	    val = -val
-	    bgrow = .true.
+	    invert = 1
 	  end if
 	end if
 
@@ -882,6 +909,7 @@
 	return
    99	continue
 	write(6,*) trim(text)
+	write(6,*) 'bv = ',bv
 	write(6,*) 'values not monotone: ',n
 	write(6,*) 'problem around i = ',i
 	imin = max(1,i-2)
@@ -891,11 +919,122 @@
 	end
 
 !*****************************************************************
+
+	subroutine array_invert(text,n,val)
+
+	implicit none
+
+	character*(*) text
+	integer n
+	real val(n)
+
+	integer i
+	real aux
+
+	do i=1,n/2
+	  aux = val(i)
+	  val(i) = val(n+1-i)
+	  val(n+1-i) = aux
+	end do
+
+	end
+
+!*****************************************************************
+
+	subroutine matrix_2d_invert(text,nx,ny,val)
+
+	use nc_coords
+
+	implicit none
+
+	character*(*) text
+	integer nx,ny
+	real val(nx,ny)
+
+	logical bquiet
+	integer ix,iy
+	real aux
+
+	call nc_get_quiet(bquiet)
+
+	if( ixinvert /= 0 ) then
+	  if( .not. bquiet ) write(6,*) 'inverting x-values for ',trim(text)
+	  do iy=1,ny
+	    do ix=1,nx/2
+	      aux = val(ix,iy)
+	      val(ix,iy) = val(nx+1-ix,iy)
+	      val(nx+1-ix,iy) = aux
+  	    end do
+	  end do
+	end if
+
+	if( iyinvert /= 0 ) then
+	  if( .not. bquiet ) write(6,*) 'inverting y-values for ',trim(text)
+	  do ix=1,nx
+	    do iy=1,ny/2
+	      aux = val(ix,iy)
+	      val(ix,iy) = val(ix,ny+1-iy)
+	      val(ix,ny+1-iy) = aux
+  	    end do
+	  end do
+	end if
+
+	end
+
+!*****************************************************************
+
+	subroutine matrix_3d_invert(text,nx,ny,nz,val)
+
+	use nc_coords
+
+	implicit none
+
+	character*(*) text
+	integer nx,ny,nz
+	real val(nx,ny,nz)
+
+	logical bquiet
+	integer ix,iy,iz
+	real aux
+
+	call nc_get_quiet(bquiet)
+
+	if( ixinvert /= 0 ) then
+	  if( .not. bquiet ) write(6,*) 'inverting x-values for ',trim(text)
+	  do iz=1,nz
+	    do iy=1,ny
+	      do ix=1,nx/2
+	        aux = val(ix,iy,iz)
+	        val(ix,iy,iz) = val(nx+1-ix,iy,iz)
+	        val(nx+1-ix,iy,iz) = aux
+  	      end do
+	    end do
+	  end do
+	end if
+
+	if( iyinvert /= 0 ) then
+	  if( .not. bquiet ) write(6,*) 'inverting y-values for ',trim(text)
+	  do iz=1,nz
+	    do ix=1,nx
+	      do iy=1,ny/2
+	        aux = val(ix,iy,iz)
+	        val(ix,iy,iz) = val(ix,ny+1-iy,iz)
+	        val(ix,ny+1-iy,iz) = aux
+  	      end do
+	    end do
+	  end do
+	end if
+
+	end
+
+!*****************************************************************
 !*****************************************************************
 !*****************************************************************
 
         subroutine setup_coordinates(ncid,bverb,namex,namey             &
      &                  ,nxdim,nydim,nx,ny,xlon,ylat)
+
+	use nc_coords
 
 	implicit none
 
@@ -961,13 +1100,15 @@
 	ndim = nxdim * nydim
 	ndims = 2
 
+	write(6,*) 'ndimx,ndimy: ',ndimx,ndimy
+
 	if( ndimx .eq. 1 ) then
 	  call nc_get_dim_len(ncid,dimx_id(1),nx)
 	  call nc_get_dim_len(ncid,dimy_id(1),ny)
 	  if( nx .gt. nxdim .or. ny .gt. nydim ) goto 99
 
 	  call nc_get_var_real(ncid,x_id,aux)
-	  call check_monotone(nx,aux,'checking x-coordinates')
+	  call check_monotone(nx,aux,'checking x-coordinates',.false.,ixinvert)
 
 	  do iy=1,ny
 	    do ix=1,nx
@@ -976,7 +1117,7 @@
 	  end do
 
 	  call nc_get_var_real(ncid,y_id,aux)
-	  call check_monotone(ny,aux,'checking y-coordinates')
+	  call check_monotone(ny,aux,'checking y-coordinates',.false.,iyinvert)
 
 	  do iy=1,ny
 	    do ix=1,nx

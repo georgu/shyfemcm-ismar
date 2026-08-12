@@ -146,6 +146,10 @@
 ! if bregular is .true. than regpar describes fully the grid
 ! if it is .false. dx,dy are average values, x0,y0,x1,y1 are min/max values
 ! also for regular grid, dx,dy are average values
+!
+! this is not yet finished
+! we have already determined ixinvert and iyinvert in module nc_coords
+! now we must use them here and when writing the variables
 
 	!use ncnames
 

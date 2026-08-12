@@ -57,6 +57,7 @@
 ! 13.11.2025    ggu     increase length of var
 ! 09.06.2026    ggu     new option -coordinfo
 ! 03.08.2026    ggu     new option -clayer
+! 11.08.2026    ggu     handle decreasing x/y coordinate
 !
 ! notes :
 !
@@ -367,13 +368,19 @@
 ! handle coordinates and special variables
 !-----------------------------------------------------------------
 
+	xlon = 0.
+	ylat = 0.
         call setup_coordinates(ncid,bverb,xcoord,ycoord                 &
      &                          ,nxdim,nydim,nx,ny                      &
      &                          ,xlon,ylat)
+	call matrix_2d_invert('longitude',nx,ny,xlon)
+	call matrix_2d_invert('latitude',nx,ny,ylat)
 	call setup_zcoord(ncid,bverb,bclayer,zcoord,nlvdim,nz,zdep,nz1,hlv)
         call setup_bathymetry(ncid,bverb,binvertdepth,bathy             &
      &                          ,nxdim,nydim,nx,ny,bat)
+	call matrix_2d_invert('bathymetry',nx,ny,bat)
 	call setup_sealand(ncid,bverb,slmask,nxdim,nydim,nx,ny,slm)
+	call matrix_2d_invert('sealand',nx,ny,slm)
 	if( binvertslm ) slm = 1.-slm
 
 !-----------------------------------------------------------------
@@ -387,7 +394,7 @@
         call check_regular_coords(nxdim,nydim,xlon,ylat                 &
      &                          ,bx_invert,by_invert                    &
      &                          ,bregular,regpar_data)
-	if( bverb ) write(6,*) bregular,regpar_data
+	if( bverb ) write(6,*) 'regpar: ',bregular,regpar_data
 	call handle_domain(bverb,dstring,bregular,regpar_data,regpar)
 
 	if( .not. bsilent ) then
@@ -1157,6 +1164,8 @@
 	write(iu,*) 'rmin/rmax = ',rmin,rmax
 	call histo_info(iu)
 	end if
+
+	call matrix_3d_invert('variable',nx,ny,nz,data)
 
 	if( must_interpol() ) then
 	  np = nxnew*nynew
