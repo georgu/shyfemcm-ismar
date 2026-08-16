@@ -47,6 +47,9 @@
         real, allocatable, target, save :: saltv(:,:)
         real, allocatable, target, save :: tempv(:,:)
 
+        real, allocatable, save :: saltov(:,:)
+        real, allocatable, save :: tempov(:,:)
+
         real, allocatable, save :: sobsv(:,:)
         real, allocatable, save :: stauv(:,:)
         real, allocatable, save :: tobsv(:,:)
@@ -78,6 +81,8 @@
           deallocate(tobsv)
           deallocate(stauv)
           deallocate(ttauv)
+          deallocate(saltov)
+          deallocate(tempov)
         end if
 
         nkn_ts = nkn
@@ -92,6 +97,8 @@
           allocate(tobsv(nlv,nkn))
           allocate(stauv(nlv,nkn))
           allocate(ttauv(nlv,nkn))
+          allocate(saltov(nlv,nkn))
+          allocate(tempov(nlv,nkn))
 
 	rhov = 0.
 	saltv = 0.
@@ -100,6 +107,8 @@
 	tobsv = 0.
 	stauv = 0.
 	ttauv = 0.
+	saltov = 0.
+	tempov = 0.
 
         end subroutine mod_ts_init
 

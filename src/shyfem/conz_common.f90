@@ -66,6 +66,9 @@
         real, allocatable, save :: conzv(:,:,:)
         real, allocatable, save :: cnv(:,:)
 
+        real, allocatable, save :: conzov(:,:,:)
+        real, allocatable, save :: cnov(:,:)
+
         logical, save :: baccum = .false.
         logical, save :: bage = .false.
 	double precision, save :: dtconz_accum
@@ -116,6 +119,8 @@
         if( nkn_conz > 0 ) then
           deallocate(conzv)
           deallocate(cnv)
+          deallocate(conzov)
+          deallocate(cnov)
           if( baccum ) then
             deallocate(conz_aver)
             deallocate(conz_min)
@@ -131,9 +136,13 @@
 
         allocate(conzv(nlv,nkn,ncs))
         allocate(cnv(nlv,nkn))
+        allocate(conzov(nlv,nkn,ncs))
+        allocate(cnov(nlv,nkn))
 
 	cnv = 0.
 	conzv = 0.
+	cnov = 0.
+	conzov = 0.
 
 	if( baccum ) then
           allocate(conz_aver(nlv,nkn,ncs))
