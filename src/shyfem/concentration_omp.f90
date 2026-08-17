@@ -65,7 +65,7 @@
 
         subroutine conz3d_omp(curr_stage &
      &			,coeff_erk,coeff_srk,coeff_crk &
-     &			,cn1,co1 &
+     &			,cc,co &
      &			,ddt &
      &                  ,rkpar,difhv,difv &
      &			,difmol,cbound &
@@ -79,8 +79,9 @@
      
 ! computes concentration
 !
+! cc     current stage concentration
+! co     old concentration
 ! cn     new concentration
-! co     old concentration              !not used !FIXME
 ! caux   aux vector
 ! clow	 lower diagonal of vertical system
 ! chig	 upper diagonal of vertical system
@@ -151,8 +152,8 @@
 	real,dimension(n_rkstages),intent(in) :: coeff_erk
 	real,dimension(n_rkstages+1),intent(in) :: coeff_srk
 	real,dimension(n_rkstages+1),intent(in) :: coeff_crk
-	real,dimension(nlvddi,nkn),intent(inout) :: cn1
-	real,dimension(nlvddi,nkn),intent(in) :: co1,cbound
+	real,dimension(nlvddi,nkn),intent(inout) :: cc
+	real,dimension(nlvddi,nkn),intent(in) :: co,cbound
 	real,dimension(nlvddi,nel),intent(in) :: difhv
 	real,dimension(nlvddi,nkn),intent(in) :: gradxv,gradyv
 	real,dimension(nlvddi,nkn),intent(in) :: cobs,rtauv
@@ -161,7 +162,6 @@
 	real,dimension(nlvdi,nkn,n_rkstages-1),intent(inout) :: erk_reg !runge-kutta register array for explicit terms
 	real,dimension(nlvdi,nkn,n_rkstages-1),intent(inout) :: crk_reg !runge-kutta register array for explicit terms
 	real,dimension(nlvdi,nkn,n_rkstages-1),intent(inout) :: srk_reg !runge-kutta register array for explicit terms
-        !double precision,dimension(nlvddi,nkn),intent(out) :: cn
         
 	logical :: btvdv,btvd2,is_rk_explicit
 	integer :: ie,k,ilevel,ibase,ii,l,n,i,j,x,ies,iend,kl,kend,ntot
@@ -173,14 +173,8 @@
 	double precision :: dt
 	double precision :: rstot,rso,rsn,rsot,rsnt
 	double precision :: timer,timer1,chunk,rest
-! 	double precision,dimension(nlvddi,nkn) :: cn
-! 	double precision,dimension(nlvddi,nkn) :: co        
-!       double precision,dimension(nlvddi,nkn) :: cdiag
-! 	double precision,dimension(nlvddi,nkn) :: clow
-! 	double precision,dimension(nlvddi,nkn) :: chigh
 	
-	double precision,dimension(:,:),allocatable :: cn        
-	double precision,dimension(:,:),allocatable :: co        
+	double precision,dimension(:,:),allocatable :: cn
         double precision,dimension(:,:),allocatable :: cdiag
 	double precision,dimension(:,:),allocatable :: clow
 	double precision,dimension(:,:),allocatable :: chigh
@@ -202,7 +196,6 @@
 !!$	dtime1 = omp_get_wtime()
 	
 	ALLOCATE(cn(nlvddi,nkn))
-	ALLOCATE(co(nlvddi,nkn))
 	ALLOCATE(cdiag(nlvddi,nkn))
 	ALLOCATE(clow(nlvddi,nkn))
 	ALLOCATE(chigh(nlvddi,nkn))
@@ -230,15 +223,15 @@
 	end if
 
 	btvd2 = itvd == 2
-	if( btvd2 ) call tvd_mpi_run(cn1)
+	if( btvd2 ) call tvd_mpi_run(cc)
 
         cn=0.
-	co=cn1
         cdiag=0.
         clow=0.
         chigh=0.
-	if (curr_stage .ne. n_rkstages) then !if (not last stage)
-	  erk_reg(:,:,curr_stage) = 0.
+
+	if (curr_stage .ne. n_rkstages) then 	!if (not last stage)
+	  erk_reg(:,:,curr_stage) = 0.		!zeroing-out rk register vectors (they are cumulated)
 	  crk_reg(:,:,curr_stage) = 0.
 	  srk_reg(:,:,curr_stage) = 0.
 	end if
@@ -271,7 +264,7 @@
 !$OMP& SHARED(curr_stage,nlvddi,nlev,itvd,itvdv,istot,isact,nchunk) &
 !$OMP& SHARED(difmol,robs,wsink,rload,ddt,rkpar) &
 !$OMP& SHARED(rso,rsn,rsot,rsnt,dt,nkn) &
-!$OMP& SHARED(cn,co,cdiag,clow,chigh,subset_el,cn1,co1) &
+!$OMP& SHARED(cn,cdiag,clow,chigh,subset_el,cc,co) &
 !$OMP& SHARED(subset_num,indipendent_subset) &
 !$OMP& SHARED(difhv,cbound,gradxv,gradyv,cobs,rtauv,load,difv,wsinkv) &
 !$OMP& SHARED(coeff_erk,coeff_srk,coeff_crk)
@@ -283,7 +276,7 @@
                 call conz3d_element( &
      &			 curr_stage &
      &			,coeff_erk,coeff_srk,coeff_crk &
-     &                  ,ie,cdiag,clow,chigh,cn,cn1 &
+     &                  ,ie,cdiag,clow,chigh,cn,cc,co &
      &			,dt &
      &                  ,rkpar,difhv,difv &
      &			,difmol,cbound &
@@ -321,7 +314,7 @@
 !!!$OMP TASKGROUP
        do knod=1,ntot,nchunk
 !$OMP TASK FIRSTPRIVATE(knod) PRIVATE(k) DEFAULT(NONE)      &
-!$OMP& SHARED(cn,cdiag,clow,chigh,cn1,cbound,load,nchunk,   &
+!$OMP& SHARED(cn,cdiag,clow,chigh,cc,cbound,load,nchunk,   &
 !$OMP&           rload,dt,nlvddi,ntot)
 	 do k=knod,knod+nchunk-1
 	 if(k .le. ntot) then
@@ -329,7 +322,7 @@
      &			curr_stage, &
      &			coeff_erk,coeff_srk,coeff_crk, &
      &			k,cn,cdiag(:,k),clow(:,k),chigh(:,k), &
-     &                  cn1,cbound,load,rload, &
+     &                  cc,cbound,load,rload, &
      &                  is_rk_explicit,dt,nlvddi, &
      &			erk_reg,crk_reg,srk_reg)
          endif
@@ -340,7 +333,7 @@
 !!!$OMP END TASKGROUP
 !$OMP TASKWAIT       
 
-	cn1 = real(cn)		!here happens INTEL_BUG
+	cc = real(cn)		!here happens INTEL_BUG
 	
 	if (bdebug ) then
 	  iudb = 990 + my_id
@@ -351,13 +344,12 @@
 	    lmax = ilhkv(k)
 	    write(iudb,*) 'after: ',dtime,ipext(k)
 	    do l=1,lmax
-	      write(iudb,*) l,cn(l,k),cn1(l,k)
+	      write(iudb,*) l,cn(l,k),cc(l,k)
 	    end do
 	  end if
 	end if
 
 	DEALLOCATE(cn)
-	DEALLOCATE(co)
 	DEALLOCATE(cdiag)
 	DEALLOCATE(clow)
 	DEALLOCATE(chigh)
@@ -378,7 +370,7 @@
      &			curr_stage &
      &			,coeff_erk,coeff_srk,coeff_crk &
      &			,ie &
-     &			,cdiag,clow,chigh,cn,cn1 &
+     &			,cdiag,clow,chigh,cn,cc,co &
      &			,dt &
      &                  ,rkpar,difhv,difv &
      &			,difmol,cbound &
@@ -410,7 +402,7 @@
       
       integer,intent(in) :: curr_stage,ie,nlvddi,nlev,itvd,itvdv
       real,intent(in) :: difmol,robs,wsink,rload,rkpar
-      real,dimension(nlvddi,nkn),intent(in) :: cn1,cbound
+      real,dimension(nlvddi,nkn),intent(in) :: cc,co,cbound
       real,dimension(nlvddi,nel),intent(in) :: difhv
       real,dimension(nlvddi,nkn),intent(in) :: gradxv,gradyv
       real,dimension(nlvddi,nkn),intent(in) :: cobs,rtauv,load
@@ -531,7 +523,7 @@
 	    hold(l,ii) = rso * hn + rsot * ho
 	    hnew(l,ii) = rsn * hn + rsnt * ho
 	    hcur(l,ii) = rso * hn + rsot * hc
-	    cl(l,ii) = cn1(l,k)
+	    cl(l,ii) = cc(l,k)
 	    cob(l,ii) = cobs(l,k)	!observations
 	    rtau(l,ii) = rtauv(l,k)	!observations
 	    wl(l,ii) = wlnv(l,k) - wsink * wsinkv(l,k)
@@ -736,7 +728,7 @@
 	  end do
 
           if( iext .eq. 0 ) then
-	    call tvd_fluxes(ie,l,itot,isum,dt,cl,cn1,gradxv,gradyv,f,fl)
+	    call tvd_fluxes(ie,l,itot,isum,dt,cl,cc,gradxv,gradyv,f,fl)
 	  end if
 	end if
 
@@ -770,7 +762,7 @@
           rrc = 3.*fl(ii) - rk3*hmed*wdiff(ii) + fnudge_c(ii)
 
 	  cexpl = aj4 * ( &
-	            hold(l,ii)*cl(l,ii) &
+	            hold(l,ii)*co(l,k) &
      &	              + dt *  (   c_l*hold(l,ii)*fnudge_o(ii) &
      &		                + coeff_erk(curr_stage)*rrc &
      &                          - coeff_crk(curr_stage)*fw(ii) &
@@ -835,7 +827,7 @@
      &			       curr_stage, &
      &			       coeff_erk,coeff_srk,coeff_crk, &
      &			       k, &
-     &			       cn,cdiag,clow,chigh,cn1,cbound, &
+     &			       cn,cdiag,clow,chigh,cc,cbound, &
      &                         load,rload,is_explicit,dt,nlvddi, &
      &			       erk_reg,crk_reg,srk_reg)
 
@@ -862,7 +854,7 @@
         real,dimension(n_rkstages+1),intent(in) :: coeff_crk
 
 	real,intent(in) :: rload
-	real,dimension(nlvddi,nkn),intent(in) :: cn1,cbound
+	real,dimension(nlvddi,nkn),intent(in) :: cc,cbound
 	real,dimension(nlvddi,nkn),intent(inout) :: load 		!LLL
 	double precision, intent(in) :: dt
 
@@ -910,7 +902,7 @@
 	    cconz = cbound(l,k)			!concentration has been passed
 	    qflux = mfluxv(l,k)
 	    if( bdry ) qflux = 0.
-	    if( qflux .lt. 0. .and. is_boundary(k) ) cconz = cn1(l,k)
+	    if( qflux .lt. 0. .and. is_boundary(k) ) cconz = cc(l,k)
 	    mflux = qflux * cconz
 
             cn(l,k) = cn(l,k) + dt * mflux	!explicit treatment

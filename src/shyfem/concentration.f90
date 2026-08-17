@@ -270,7 +270,7 @@
 	subroutine scal_adv(curr_stage &
      &				,coeff_erk,coeff_srk,coeff_crk &
      &                          ,what,ivar &
-     &				,scal,ids &
+     &				,scalc,scalo,ids &
      &				,rkpar,wsink &
      &                          ,difhv,difv,difmol &
      &				,erk_reg,crk_reg,srk_reg)
@@ -289,7 +289,8 @@
 	real coeff_crk(n_rkstages+1)
         character*(*) what
 	integer ivar
-        real scal(nlvdi,nkn)
+        real scalc(nlvdi,nkn)
+        real scalo(nlvdi,nkn)
         integer ids(*)
         real rkpar
 	real wsink
@@ -353,7 +354,7 @@
 
         call scal3sh(curr_stage,coeff_erk,coeff_srk,coeff_crk &
      &				,whatvar(1:iwhat) &
-     &				,scal,nlvdi &
+     &				,scalc,scalo,nlvdi &
      &                          ,r3v,cobs,robs,rtauv &
      &				,rkpar,wsink,wsinkv,rload,load &
      &                          ,difhv,difv,difmol &
@@ -372,7 +373,7 @@
 	subroutine scal_adv_nudge(curr_stage &
      &				,coeff_erk,coeff_srk,coeff_crk &
      &                          ,what,ivar &
-     &				,scal,ids &
+     &				,scalc,scalo,ids &
      &				,rkpar,wsink &
      &                          ,difhv,difv,difmol &
      &				,sobs,robs,rtauv &
@@ -392,7 +393,8 @@
 	real coeff_crk(n_rkstages+1)
         character*(*) what
 	integer ivar
-        real scal(nlvdi,nkn)
+        real scalc(nlvdi,nkn)
+        real scalo(nlvdi,nkn)
         integer ids(*)
         real rkpar
 	real wsink
@@ -451,7 +453,7 @@
 
         call scal3sh(curr_stage,coeff_erk,coeff_srk,coeff_crk &
      &                          ,whatvar(1:iwhat) &
-     &				,scal,nlvdi &
+     &				,scalc,scalo,nlvdi &
      &                          ,r3v,sobs,robs,rtauv &
      &				,rkpar,wsink,wsinkv,rload,load &
      &                          ,difhv,difv,difmol &
@@ -469,12 +471,13 @@
 !*********************************************************************
 
 	subroutine scal_adv_fact(what,ivar,fact &
-     &				,scal,ids &
+     &				,scalc,ids &
      &				,rkpar,wsink,wsinkv,rload,load &
      &                          ,difhv,difv,difmol)
 
 ! shell for scalar (for parallel version)
-!lrp: runge-kutta is not available, only works with rkscheme=111
+! lrp: runge-kutta is not available for this subroutine:
+! it only works with rkscheme=111
 !
 ! special version with factor for BC, variable sinking velocity and loads
 
@@ -486,7 +489,7 @@
         character*(*) what
 	integer ivar
 	real fact			!factor for boundary condition
-        real scal(nlvdi,nkn)
+        real scalc(nlvdi,nkn)
         integer ids(*)
         real rkpar
 	real wsink
@@ -557,7 +560,7 @@
 
         call scal3sh(curr_stage,coeff_erk,coeff_srk,coeff_crk &
      &				,whatvar(1:iwhat) &
-     &				,scal,nlvdi &
+     &				,scalc,scalc,nlvdi &
      &                          ,r3v,cobs,robs,rtauv &
      &				,rkpar,wsink,wsinkv,rload,load &
      &                          ,difhv,difv,difmol &
@@ -595,7 +598,7 @@
 
 	subroutine scal3sh(curr_stage &
      &			  ,coeff_erk,coeff_srk,coeff_crk &
-     &			  ,what,cnv,nlvddi,rcv,cobs,robs,rtauv,rkpar &
+     &			  ,what,cnv,cov,nlvddi,rcv,cobs,robs,rtauv,rkpar &
      &			  ,wsink,wsinkv,rload,load &
      &			  ,difhv,difv,difmol &
      &			  ,erk_reg,crk_reg,srk_reg)
@@ -619,6 +622,7 @@
 	real coeff_crk(n_rkstages+1)
         character*(*) what
         real cnv(nlvddi,nkn)
+        real cov(nlvddi,nkn)
 	integer nlvddi				!vertical dimension
         real rcv(nlvddi,nkn)			!boundary condition (value of scalar)
 	real cobs(nlvddi,nkn)			!observations (for nudging)
@@ -763,7 +767,7 @@
 
 	call massconc(-1,cnv,nlvddi,massold)
 
-	do isact=1,istot
+	do isact=1,istot			!sub-stepping
 
 	  dtstep = -((istot-isact)*dt)/istot
 	  dtime_act = dtime + dtstep		!why is dtstep negative?
@@ -772,7 +776,9 @@
 	  !call check_scal_flux(what,cnv,sbconz)
 
 	  if( what /= 'temp' ) then
-	    where( cnv < 1.e-15 ) cnv = 0.
+	    where (cnv < 1.e-15)
+	      cnv = 0.; cov = 0.
+	    end where
 	    if( any(cnv < 0.) ) then
 	      write(6,*) 'negative scalar: ',what,isact &
      &		,count(cnv<0.),minval(cnv)
@@ -787,7 +793,7 @@
      &           curr_stage &
      &          ,coeff_erk,coeff_srk,coeff_crk &
      &          ,cnv &
-     &          ,saux &
+     &          ,cov &
      &          ,dt &
      &          ,rkpar,difhv,difv,difmol &
      &          ,sbconz &
@@ -808,7 +814,9 @@
           call shympi_exchange_3d_node(cnv)
 
 	  if( btvddebug ) call tvd_debug_finalize
-	end do
+
+	  if (istot > 1) cov = cnv!update of old values
+	end do			  !end sub-stepping
 
         !if( shympi_is_parallel() .and. istot > 1 ) then
         !  write(6,*) 'cannot handle istot>1 with mpi yet'

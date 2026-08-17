@@ -377,6 +377,10 @@
 	call is_time_first(bfirst)
 	if( bfirst ) stop 'tracer_compute_single: internal error'
 
+        if (curr_stage == 1) then 	!stage is first
+	  cnov = cnv			!update of old nodal concentration
+	end if
+
 !-------------------------------------------------------------
 ! normal call
 !-------------------------------------------------------------
@@ -392,7 +396,7 @@
         call scal_adv(curr_stage &
      &				,coeff_erk,coeff_srk,coeff_crk &
      &                          ,what,0 &
-     &                          ,cnv,idconz &
+     &                          ,cnv,cnov,idconz &
      &                          ,rkpar,wsink &
      &                          ,difhv,difv,difmol &
      &				,cerk_reg(:,:,:,1) &
@@ -466,6 +470,10 @@
 	call is_time_first(bfirst)
 	if( bfirst ) stop 'tracer_compute_multi: internal error'
 
+        if (curr_stage == 1) then 	!stage is first
+	  conzov = conzv		!update of old nodal concentrations
+	end if
+
 !-------------------------------------------------------------
 ! normal call
 !-------------------------------------------------------------
@@ -484,14 +492,14 @@
 
 !$OMP  TASK FIRSTPRIVATE(i,rkpar,wsink,difhv,difv,difmol,idconz,what,   &
 !$OMP& dt,nlvdi,idecay,blinfo,bage)                                     &
-!$OMP& SHARED(conzv,tauv,massv,cerk_reg,ccrk_reg,csrk_reg) 		&
+!$OMP& SHARED(conzv,conzov,tauv,massv,cerk_reg,ccrk_reg,csrk_reg) 	&
 !$OMP& SHARED(curr_stage,coeff_erk,coeff_srk,coeff_crk) 	        &
 !$OMP& DEFAULT(NONE) 
 
           call scal_adv(curr_stage &
      &				,coeff_erk,coeff_srk,coeff_crk &
      &                          ,what,i &
-     &                          ,conzv(1,1,i),idconz &
+     &                          ,conzv(1,1,i),conzov(1,1,i),idconz &
      &                          ,rkpar,wsink &
      &                          ,difhv,difv,difmol &
      &				,cerk_reg(:,:,:,i) &

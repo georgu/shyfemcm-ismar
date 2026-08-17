@@ -479,7 +479,7 @@
 	  !call ts_dia('before T/D')
 
 !$OMP TASK PRIVATE(what,dtime) FIRSTPRIVATE(thpar,wsink,robs,itemp) &
-!$OMP&     SHARED(idtemp,tempv,difhv,difv,difmol,tobsv,ttauv) &
+!$OMP&     SHARED(idtemp,tempv,tempov,difhv,difv,difmol,tobsv,ttauv) &
 !$OMP&     SHARED(terk_reg,tcrk_reg,tsrk_reg) &
 !$OMP&     SHARED(curr_stage,coeff_erk,coeff_srk,coeff_crk) &
 !$OMP&     DEFAULT(NONE) &
@@ -487,11 +487,14 @@
 
           if( itemp .gt. 0 ) then
 		what = 'temp'
+        	if (curr_stage == 1) then 		!stage is first
+	  	  tempov = tempv			!update of old nodal temperature
+		end if
                 call scal_adv_nudge(curr_stage &
      &				,coeff_erk &
      &                          ,coeff_srk,coeff_crk &
      &                          ,what,0 &
-     &                          ,tempv,idtemp &
+     &                          ,tempv,tempov,idtemp &
      &                          ,thpar,wsink &
      &                          ,difhv,difv,difmol &
      &				,tobsv,robs,ttauv &
@@ -504,7 +507,7 @@
 !	  !write(6,*) 'number of thread of salt: ',tid
 
 !$OMP TASK PRIVATE(what,dtime) FIRSTPRIVATE(shpar,wsink,robs,isalt) &
-!$OMP&     SHARED(idsalt,saltv,difhv,difv,difmol,sobsv,stauv) &
+!$OMP&     SHARED(idsalt,saltv,saltov,difhv,difv,difmol,sobsv,stauv) &
 !$OMP&     SHARED(serk_reg,scrk_reg,ssrk_reg) &
 !$OMP&     SHARED(curr_stage,coeff_erk,coeff_srk,coeff_crk) &
 !$OMP&     DEFAULT(NONE) &
@@ -512,10 +515,13 @@
 
           if( isalt .gt. 0 ) then
 		what = 'salt'
+        	if (curr_stage == 1) then 		!stage is first
+	  	  saltov = saltv			!update of old nodal salinity
+		end if
                 call scal_adv_nudge(curr_stage &
      &                          ,coeff_erk,coeff_srk,coeff_crk &
      &                          ,what,0 &
-     &                          ,saltv,idsalt &
+     &                          ,saltv,saltov,idsalt &
      &                          ,shpar,wsink &
      &                          ,difhv,difv,difmol &
      &				,sobsv,robs,stauv &
