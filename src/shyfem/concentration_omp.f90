@@ -206,14 +206,15 @@
 	rsot=1.-rso
 	rsnt=1.-rsn
 
-	is_rk_explicit = (coeff_crk(2).eq.0.) &
-     &		   .and. (coeff_srk(2).eq.0.)
+	is_rk_explicit = (coeff_crk(curr_stage+1).eq.0.) &
+     &		   .and. (coeff_srk(curr_stage+1).eq.0.)
 
 	dt=ddt/rstot
 	
 	btvdv = itvdv .gt. 0
-	if( btvdv .and. coeff_crk(2) .ne. 0. ) then
-	  write(6,*) 'aapar = ',coeff_crk(2),'  itvdv = ',itvdv
+	if( btvdv .and. coeff_crk(curr_stage+1) .ne. 0. ) then
+	  write(6,*) 'aapar = ',coeff_crk(curr_stage+1)
+	  write(6,*) 'itvdv = ',itvdv
 	  write(6,*) 'Cannot use vertical TVD scheme'
 	  write(6,*) 'together with implicit vertical advection.'
 	  write(6,*) 'Please set:'
