@@ -717,7 +717,7 @@
 	eps = 1.e-2
 
 !-------------------------------------------------------------
-! check stability criterion -> set istot
+! check stability criterion -> set substeps istot
 !-------------------------------------------------------------
 
 	call get_timestep(dt)
@@ -725,9 +725,12 @@
 	call get_act_timeline(aline)
 
 	saux = 0.
-	call scalar_stability(dt,robs,rtauv,wsinkl,wsinkv,rkpar, &
+	if (n_rkstages == 1) then		!sub-stepping is valid only for one stage methods
+	  call scalar_stability(dt,robs,rtauv,wsinkl,wsinkv,rkpar, &
      &					sindex,istot,saux)
-
+     	else
+     	  istot = 1
+	end if
 !$OMP CRITICAL
 	if(shympi_is_master()) then
           !write(iuinfo,*) 'stability_',what,': ',aline,sindex,istot
@@ -815,8 +818,8 @@
 
 	  if( btvddebug ) call tvd_debug_finalize
 
-	  if (istot > 1) cov = cnv!update of old values
-	end do			  !end sub-stepping
+	  if (istot > 1) cov = cnv		!update of old values
+	end do			  		!end sub-stepping
 
         !if( shympi_is_parallel() .and. istot > 1 ) then
         !  write(6,*) 'cannot handle istot>1 with mpi yet'
