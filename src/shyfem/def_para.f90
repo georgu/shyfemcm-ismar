@@ -645,12 +645,27 @@
 !		smaller than 1 in order to allow for fractional time steps.
 !		A value of 0.001 allows for time steps of down to
 !		1 millisecond. (Default 1)
+! |ssubs|       By default, the time step for the scalar equation is
+!               automatically adjusted to produce a Courant number for the
+!               scalar equation of 1, which may correspond to time-stepping the scalar
+!               equation with a smaller time step than the hydrodynamics.
+!               You can deactivate such substepping of the scalar equation by
+!               setting |ssubs=0|, which instead corresponds to a monolithic update of
+!               the hydrodynamics with the tracer equations. Please note that
+!               substepping is automatically disabled with Runge-Kutta schemes
+!               with more than one stage. (Default 1)
+! |rstol|       If substepping is active, you can set the Courant number to limit
+!               the sub-time steps of the scalar equation. In particular,
+!               you can set |rstol| to a value smaller than one if you think there
+!               are stability problems related to the scalars. (Default 1)
 
 	call addpar('itsplt',0.)
 	call addpar('coumax',1.)
 	call addpar('idtsyn',0.)
 	call addpar('idtmin',1.)
 	call addpar('tfact',0.)		!still to comment FIXME
+	call addpar('ssubs',1.)
+	call addpar('rstol',1.)		!limit scalar time step to this Courant number
 
 ! The next parameter choose the Additive Runge-Kutta (ARK) time integrator which
 ! is identified by the triplet $(s, \sigma, p)$ as in (Ascher,Ruuth and Spiteri,1997):
@@ -1123,15 +1138,10 @@
 !		equation. Normally an upwind scheme is used (0), but setting
 !		the parameter |itvdv| to 1 choses a TVD scheme. This feature
 !		is still experimental, so use with care. (Default 0)
-! |rstol|	Normally the internal time step for scalar advection is
-!		automatically adjusted to produce a Courant number of 1
-!		(marginal stability). You can set |rstol| to a smaller value 
-!		if you think there are stability problems. (Default 1)
 
 	call addpar('imtvd',0.)		!momentum horizontal scheme
 	call addpar('itvd',0.)		!scalar horizontal TVD scheme?
 	call addpar('itvdv',0.)		!scalar vertical TVD scheme?
-	call addpar('rstol',1.)		!limit time step to this Courant number
 
 !c------------------------------------------------------------------------
 
