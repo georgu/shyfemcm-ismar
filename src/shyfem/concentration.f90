@@ -68,7 +68,7 @@
 !     +                  ,robs,rtauv,wsink,wsinkv
 !     +                  ,rkpar,difhv,difv
 !     +                  ,difmol,azpar
-!     +                  ,adpar,aapar
+!     +                  ,as_ll,ac_ll
 !     +                  ,sindex
 !     +                  ,istot,isact
 !     +                  ,nlvddi,nlv)
@@ -870,13 +870,21 @@
      &			ddt &
      &			,robs,rtauv,wsink,wsinkv &
      &                  ,rkpar,difhv,difv &
-     &			,difmol,azpar &
-     &			,adpar,aapar &
+     &			,difmol,ai_ll &
+     &			,as_ll,ac_ll &
      &                  ,sindex &
      &			,istot,isact &
      &			,nlvddi,nlev)
 
-! checks stability
+! checks stability for the tracer equation. For each term in the
+! tracer equation:
+! if the time discretization is explicit:
+! compute stability index related to that term.
+! if the time discretization is implicit:
+! the time discretization is unconditionally stable and you do not
+! have to care about the time step restriction related to that term.
+! Note: the selection of explicit or implicit discretization
+! is based on the coefficients of the first stage.
 !
 ! cn     new concentration
 ! co     old concentration
@@ -890,9 +898,9 @@
 ! difhv  horizontal turbulent diffusivity (variable between elements)
 ! difv   vertical turbulent diffusivity
 ! difmol vertical molecular diffusivity
-! azpar  time weighting parameter
-! adpar  time weighting parameter for vertical diffusion (ad)
-! aapar  time weighting parameter for vertical advection (aa)
+! ai_ll  scaled diagonal coefficient of Butcher tableu for horizontal advection
+! as_ll  scaled diagonal coefficient of Butcher tableu for vertical diffusion
+! ac_ll  scaled diagonal coefficient of Butcher tableu for vertical advection
 ! sindex stability index
 ! istot	 total inter time steps
 ! isact	 actual inter time step
@@ -938,7 +946,7 @@
         real difv(0:nlvddi,nkn)
         real difhv(nlvddi,nel)
 	real difmol
-        real ddt,rkpar,azpar,adpar,aapar			!$$azpar
+        real ddt,rkpar,ai_ll,as_ll,ac_ll
 	real robs,wsink
         real rtauv(nlvddi,nkn)
 	real wsinkv(0:nlvddi,nkn)
@@ -954,7 +962,7 @@
         real sindex,rstol,raux
 	double precision us,vs
 	double precision az,azt
-	double precision aa,aat,ad,adt
+	double precision aat,adt
 	double precision aj,rk3,rv,aj4
 	double precision hmed,hmbot,hmtop
 	double precision rvptop,rvpbot
@@ -1053,25 +1061,16 @@
 
         if( bdebug1 ) then
                 write(6,*) 'debug parameters in conz3d'
-		write(6,*) ddt,rkpar,difmol,azpar,adpar,aapar
+		write(6,*) ddt,rkpar,difmol,ai_ll,as_ll,ac_ll
                 write(6,*) istot,isact,nlvddi,nlv
                 write(6,*) nkn,nel
         end if
 
-	az=azpar		!$$azpar
-	azt=1.-az
-	ad=adpar
-	adt=1.-ad
-	aa=aapar
-	aat=1.-aa
-
-	!if( aa .ne. 0. .and. nlv .gt. 1 ) then
-	!  write(6,*) 'aapar = ',aapar
-	!  write(6,*) 'Cannot use implicit vertical advection.'
-	!  write(6,*) 'This might be resolved in a future version.'
-	!  write(6,*) 'Please set aapar = 0 in the STR file.'
-	!  stop 'error stop conzstab: implicit vertical advection'
-	!end if
+	az = ai_ll
+	azt = 1.-ai_ll
+	adt = 1.; aat = 1.
+	if (as_ll >= 0.5) adt = 0.
+	if (ac_ll >= 0.5) aat = 0.
 
 !	-----------------------------------------------------------------
 !	 fractional time step

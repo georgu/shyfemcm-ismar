@@ -401,7 +401,7 @@
 
 	!The third order Strong Stability Preserving SSP scheme.
 	!The implicit scheme is coded as the explicit one with zero
-	!element on the diagonal of the Butcher Tableux. Being fully
+	!element on the diagonal of the Butcher Tableaux. Being fully
 	!explicit this scheme is highly inefficient and it is used
 	!only for testing or computing reference solutions. It is
 	!not documented in the manual.
@@ -526,24 +526,24 @@
 
 !**************************************************************************
 
-	subroutine get_rungekutta_weights(curr_stage,crk,coeff_erk, &
+	subroutine get_rungekutta_weights(stage,crk,coeff_erk, &
      &    coeff_irk,coeff_srk)
 
 ! returns Butcher Tableaux
 ! c_rk and a_rk for inner stages
 ! c_rk and b_rk for final stage
 
-	integer, intent(in) :: curr_stage
+	integer, intent(in) :: stage
 	real, intent(out) :: crk
 	real, dimension(n_rkstages), intent(out) :: coeff_erk
 	real, dimension(n_rkstages+1), intent(out) :: coeff_irk
 	real, dimension(n_rkstages+1), intent(out) :: coeff_srk
 
-	crk  = c_rk(curr_stage)
-	if ( curr_stage < n_rkstages ) then
-	  coeff_erk = a_erk(curr_stage,:)
-	  coeff_irk = a_irk(curr_stage,:)
-	  coeff_srk = a_srk(curr_stage,:)
+	crk  = c_rk(stage)
+	if ( stage < n_rkstages ) then
+	  coeff_erk = a_erk(stage,:)
+	  coeff_irk = a_irk(stage,:)
+	  coeff_srk = a_srk(stage,:)
 	else
 	  coeff_erk = b_erk(:)
 	  coeff_irk = b_irk(:)
@@ -554,22 +554,82 @@
 
 !**************************************************************************
 
-	subroutine get_rungekutta_weights_tracer(curr_stage,coeff_crk)
+	subroutine get_rungekutta_weights_tracer(stage,coeff_crk)
 
 ! returns additional Butcher Tableaux for tracers/concentrations
 ! a_rk for inner stages
 ! b_rk for final stage
 
-	integer, intent(in) :: curr_stage
+	integer, intent(in) :: stage
 	real, dimension(n_rkstages+1), intent(out) :: coeff_crk
 
-	if ( curr_stage < n_rkstages ) then
-	  coeff_crk = a_crk(curr_stage,:)
+	if ( stage < n_rkstages ) then
+	  coeff_crk = a_crk(stage,:)
 	else
 	  coeff_crk = b_crk(:)
 	end if
 
 	end subroutine get_rungekutta_weights_tracer
+
+!**************************************************************************
+
+	subroutine get_rungekutta_idiag_weights(stage,diag)
+
+! returns diagonal coefficient for the implicit tableau
+! stage
+! diagonal
+
+	integer, intent(in) :: stage
+	real, intent(out) :: diag
+
+	diag = a_irk(stage,stage+1)
+
+	end subroutine get_rungekutta_idiag_weights
+
+!**************************************************************************
+
+	subroutine get_rungekutta_sdiag_weights(stage,diag)
+
+! returns diagonal coefficient for the implicit tableau
+! stage
+! diagonal
+
+	integer, intent(in) :: stage
+	real, intent(out) :: diag
+
+	diag = a_srk(stage,stage+1)
+
+	end subroutine get_rungekutta_sdiag_weights
+
+!**************************************************************************
+
+	subroutine get_rungekutta_cdiag_weights(stage,diag)
+
+! returns diagonal coefficient for the implicit tableau
+! stage
+! diagonal
+
+	integer, intent(in) :: stage
+	real, intent(out) :: diag
+
+	diag = a_crk(stage,stage+1)
+
+	end subroutine get_rungekutta_cdiag_weights
+
+!**************************************************************************
+
+	subroutine get_rungekutta_c_weights(stage,c)
+
+! returns diagonal coefficient for the implicit tableau
+! stage
+! diagonal
+
+	integer, intent(in) :: stage
+	real, intent(out) :: c
+
+	c = c_rk(stage)
+
+	end subroutine get_rungekutta_c_weights
 
 !==========================================================================
         end module mod_rungekutta

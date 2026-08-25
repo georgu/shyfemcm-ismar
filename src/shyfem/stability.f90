@@ -115,10 +115,13 @@
 !==================================================================
 
 	subroutine scalar_compute_stability(robs,rtauv,wsink,wsinkv &
-     &					,rkpar,azpar,rindex,saux)
+     &					,rkpar,ai_ll,rindex,saux)
 
 ! computes stability index
 
+	use mod_rungekutta, only : get_rungekutta_sdiag_weights, &
+     &				   get_rungekutta_cdiag_weights, &
+     &				   get_rungekutta_c_weights
 	use mod_diff_visc_fric
 	use levels, only : nlvdi,nlv
 	use basin
@@ -131,23 +134,22 @@
 	real wsink
 	real wsinkv(0:nlvdi,nkn)
         real rkpar
-        real azpar
+        real ai_ll
         real rindex
         real saux(nlvdi,nkn)
 
-        real adpar,aapar
+        real as_ll,ac_ll,c_l
         real difmol
 	real ddt
         integer isact,istot
-
-        real getpar
 
 !----------------------------------------------------------------
 ! set parameters
 !----------------------------------------------------------------
 
-	adpar=getpar('adpar')
-	aapar=getpar('aapar')
+	call get_rungekutta_sdiag_weights(1,as_ll)
+	call get_rungekutta_cdiag_weights(1,ac_ll)
+	call get_rungekutta_c_weights(1,c_l)
 
         isact = 1
         istot = 1
@@ -161,7 +163,7 @@
 
         call conzstab( &
      &          ddt,robs,rtauv,wsink,wsinkv,rkpar,difhv,difv &
-     &		,difmol,azpar,adpar,aapar &
+     &		,difmol,ai_ll/c_l,as_ll/c_l,ac_ll/c_l &
      &          ,rindex,istot,isact,nlvdi,nlv)
 
 !----------------------------------------------------------------
@@ -182,6 +184,7 @@
 
 ! computes scalar stability without nudging and sinking
 
+	use mod_rungekutta, only : get_rungekutta_idiag_weights
 	use levels, only : nlvdi,nlv
 	use basin
 
@@ -192,7 +195,7 @@
         real rindex
 
         integer istot
-	real azpar
+	real ai_ll
 	real robs
 	real wsink
 	real, allocatable :: wsinkv(:,:)
@@ -209,8 +212,8 @@
 	robs = 0.
 	wsink = 0.
 
-	call getaz(azpar)
-	call scalar_compute_stability(robs,rtauv,wsink,wsinkv,rkpar,azpar, &
+	call get_rungekutta_idiag_weights(1,ai_ll)
+	call scalar_compute_stability(robs,rtauv,wsink,wsinkv,rkpar,ai_ll, &
      &					rindex,saux)
 
 	end
@@ -222,6 +225,7 @@
 
 ! gets stability index (if necessary computes it)
 
+	use mod_rungekutta, only : get_rungekutta_idiag_weights
 	use levels, only : nlvdi,nlv
 	use basin
 
@@ -237,14 +241,14 @@
         integer istot
 	real saux(nlvdi,nkn)
 
-	real azpar
+	real ai_ll
 
 !----------------------------------------------------------------
 ! compute stability index
 !----------------------------------------------------------------
 
-	call getaz(azpar)
-	call scalar_compute_stability(robs,rtauv,wsink,wsinkv,rkpar,azpar, &
+	call get_rungekutta_idiag_weights(1,ai_ll)
+	call scalar_compute_stability(robs,rtauv,wsink,wsinkv,rkpar,ai_ll, &
      &					rindex,saux)
 
 !----------------------------------------------------------------
@@ -269,6 +273,7 @@
 !
 ! it is assumed that the program will exit after this call
 
+	use mod_rungekutta, only : get_rungekutta_idiag_weights
 	use levels, only : nlvdi,nlv
 	use basin, only : nkn,nel,ngr,mbw
 
@@ -288,14 +293,14 @@
 	integer ia,id
 	integer l,k
 	real aindex
-	real azpar
+	real ai_ll
 
 !----------------------------------------------------------------
 ! compute stability index
 !----------------------------------------------------------------
 
-	call getaz(azpar)
-	call scalar_compute_stability(robs,rtauv,wsink,wsinkv,rkpar,azpar, &
+	call get_rungekutta_idiag_weights(1,ai_ll)
+	call scalar_compute_stability(robs,rtauv,wsink,wsinkv,rkpar,ai_ll, &
      &					rindex,saux)
 	rindex = dt * rindex
 	istot = 1 + rindex
@@ -318,7 +323,7 @@
 
 !ggu protect
 	write(6,*) 'scalar_info_stability:'
-	write(6,*) rkpar,azpar,rindex,istot
+	write(6,*) rkpar,ai_ll,rindex,istot
 	write(6,*) ia,aindex,dt*aindex
 	id = 0
 	call get_act_dtime(dtime)
@@ -410,7 +415,7 @@
 	integer ie,l,lmax,lmin,iweg,ilin,ibarcl,iu
 	integer, save :: iuinfo = 0
 	integer, save :: icall = 0
-        real rkpar,azpar,ahpar,rlin
+        real rkpar,ahpar,rlin
 	real dindex,aindex,tindex,sindex,gindex
 	real rmax
 	real array(4)
@@ -431,7 +436,6 @@
         end if
 
         rkpar = 0.
-	azpar = 1.
 	ahpar = getpar('ahpar')
 	ibarcl = nint(getpar('ibarcl'))
 	rlin = getpar('rlin')
@@ -592,8 +596,6 @@
 	integer, save :: icall = 0
 	double precision, save :: da_out(4)
 
-	real getpar
-
 	if( icall .lt. 0 ) return
 
 	if( icall .eq. 0 ) then
@@ -648,6 +650,16 @@
 
 	subroutine gravity_wave_stability(gindex,garray)
 
+! if the time discretization is explicit:
+! outputs stability index related to gravity waves (internal).
+! if the time discretization is implicit:
+! the time discretization is unconditionally stable and you can
+! jump this subroutine.
+! Note: the selection of explicit or implicit discretization
+! is based on the coefficients of the first stage.
+
+	use mod_rungekutta, only : get_rungekutta_idiag_weights, &
+     &				   get_rungekutta_c_weights
 	use basin
 	use mod_hydro
 	use shympi
@@ -660,7 +672,7 @@
 
 	integer ie,ii,ii1,k1,k2
 	real distmin,d,dx,dy
-	real am,az
+	real ai_ll,c_l
 	real hz,ri
 
 	integer, save :: icall = 0
@@ -675,20 +687,12 @@
 	if( icall < 0 ) return
 
 	if( icall == 0 ) then
-	  az = getpar('azpar')
-	  am = getpar('ampar')
-	  if( az >= 0.5 .and. am >= 0.5 ) then
-	    if( az == am ) then	!unconditionally stable
-	      icall = -1
-	    else
-	      goto 99
-	    end if
-	  else if( az == 0. .and. am == 1. ) then
-	    !ok
-	  else if( az == 1. .and. am == 0. ) then
-	    !ok
+	  call get_rungekutta_idiag_weights(1,ai_ll)
+	  call get_rungekutta_c_weights(1,c_l)
+	  if ( ai_ll/c_l >= 0.5 ) then
+	    icall = -1
 	  else
-	    goto 99
+	    !ok
 	  end if
 	  if( icall < 0 ) return
 	  icall = 1
@@ -724,14 +728,7 @@
 	!stop
 
 	return
-   99	continue
-	write(6,*) 'azpar,ampar: ',az,am
-	write(6,*) 'this combination of parameters is not allowed'
-	write(6,*) 'for explicit runs please use'
-	write(6,*) '  either az=1 and am=0 or az=0 and am=1'
-	write(6,*) 'for (semi-)implicit runs please use'
-	write(6,*) '  az==am and az>=0.5'
-	stop 'error stop gravity_wave_stability: az and am'
+
 	end
 
 !*****************************************************************
@@ -747,20 +744,20 @@
 
 	implicit none
 
-	real dt,rkpar,azpar,rindex
+	real dt,rkpar,ai_ll,rindex
 	real robs,wsink
 	real rtauv(nlvdi,nkn)
 	real wsinkv(0:nlvdi,nkn)
 	real saux(nlvdi,nkn)
 
-	azpar = 0.
+	ai_ll = 0.
 	rkpar = 0.
 	robs = 0.
 	wsink = 0.
 	rtauv = 0.
 
 	write(6,*) 'parallel test...'
-	call scalar_compute_stability(robs,rtauv,wsink,wsinkv,rkpar,azpar, &
+	call scalar_compute_stability(robs,rtauv,wsink,wsinkv,rkpar,ai_ll, &
      &					rindex,saux)
 	write(6,*) 'parallel is ok.'
 
