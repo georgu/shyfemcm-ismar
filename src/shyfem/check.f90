@@ -691,10 +691,13 @@
 
 !*************************************************************
 
-	subroutine mass_conserve
+	subroutine mass_conserve(curr_stage,coeff_erk, &
+     &			coeff_irk)
 
 ! checks mass conservation of single boxes (finite volumes)
 
+	use mod_rungekutta, only: n_rkstages, &
+     &				  urk_reg,vrk_reg,wrk_reg
 	use mod_bound_geom
 	use mod_bound_dynamic
 	use mod_hydro_vel
@@ -708,12 +711,18 @@
 
 	implicit none
 
+! arguments
+	integer curr_stage
+	real coeff_erk(n_rkstages)
+	real coeff_irk(n_rkstages+1)
+! local
 	logical berror,bdebug,bdry
 	integer ie,l,ii,k,lmin,lmax,mode,ks,kss,ie_mpi
 	integer levdbg
-	real am,az,azt,dt,azpar,ampar
+	integer jstage
+	real dt
 	real areafv,b,c
-	real ffn,ffo,ff
+	real ffn,ffo,ffp,ff
 	real vmax,vrmax,vdiv,vdiff,vrdiff
 	real abot,atop
 	real volo,voln
@@ -747,12 +756,9 @@
 	levdbg = nint(getpar('levdbg'))
 
 	if( levdbg .le. 1 ) return
+	if( curr_stage .ne. n_rkstages) return
 
 	mode = +1
-        call getazam(azpar,ampar)
-	az = azpar
-	am = ampar
-        azt = 1. - az
 	call get_timestep(dt)
 
 	call get_act_timeline(aline)
@@ -776,8 +782,12 @@
                 b = ev(ii+3,ie)
                 c = ev(ii+6,ie)
                 ffn = utlnv(l,ie)*b + vtlnv(l,ie)*c
-                ffo = utlov(l,ie)*b + vtlov(l,ie)*c
-                ff = ffn * az + ffo * azt
+                ffo = utlcv(l,ie)*b + vtlcv(l,ie)*c
+		ff = ffn * coeff_irk(curr_stage+1) + ffo * coeff_irk(curr_stage)
+		do jstage=1,curr_stage-1	! horizontal mass flux at previous stages
+		  ffp = urk_reg(l,ie,jstage)*b + vrk_reg(l,ie,jstage)*c
+		  ff = ff + ffp * coeff_irk(jstage)
+		end do
                 vf(l,k) = vf(l,k) + 3. * areafv * ff
                 va(l,k) = va(l,k) + areafv
             end do
@@ -818,7 +828,12 @@
 	    qflux = mfluxv(l,k)
 	    if( bdry ) qflux = 0.
 	    atop = va(l,k)
-	    vdiv = wlnv(l,k)*abot - wlnv(l-1,k)*atop
+	    vdiv = coeff_erk(curr_stage) &
+     &          * (wlnv(l,k)*abot - wlnv(l-1,k)*atop)
+	    do jstage=1,curr_stage-1			! vertical mass flux at previous stages
+	      vdiv = vdiv + coeff_erk(jstage) &
+     &	        * (wrk_reg(l,k,jstage)*abot - wrk_reg(l-1,k,jstage)*atop)
+	    end do
 	    vf(l,k) = vf(l,k) + vdiv + qflux
 	    abot = atop
 	    vvv = vvv + vdiv
@@ -899,8 +914,12 @@
 	  vbar = 0.
           lmax = ilhv(ie)
           do l=1,lmax
-	    ubar = ubar + az * utlnv(l,ie) + azt * utlov(l,ie)
-	    vbar = vbar + az * vtlnv(l,ie) + azt * vtlov(l,ie)
+	    ubar = ubar + coeff_irk(curr_stage+1) * utlnv(l,ie) + coeff_irk(curr_stage) * utlcv(l,ie)
+	    vbar = vbar + coeff_irk(curr_stage+1) * vtlnv(l,ie) + coeff_irk(curr_stage) * vtlcv(l,ie)
+	    do jstage=1,curr_stage-1	! horizontal mass flux at previous stages
+	      ubar = ubar + coeff_irk(jstage) * urk_reg(l,ie,jstage)
+	      vbar = vbar + coeff_irk(jstage) * vrk_reg(l,ie,jstage)
+	    end do
 	  end do
 
           do ii=1,3

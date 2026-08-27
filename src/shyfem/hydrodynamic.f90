@@ -479,7 +479,10 @@
 
 	call trace_point('vol_mass')
 	call vol_mass(1)			!computes and writes total volume
-	call mass_conserve			!check mass balance
+	call mass_conserve(curr_stage,    &
+     &	  		      coeff_erk,  &
+     &	  		      coeff_irk,  &
+			      dzeta)		!check mass balance
 
 !-----------------------------------------------------------------
 ! compute velocities on elements and nodes
@@ -1714,7 +1717,7 @@
 		ffn = utlnv(l,ie)*b + vtlnv(l,ie)*c
 		ffo = utlcv(l,ie)*b + vtlcv(l,ie)*c
 		ff = ffn * coeff_irk(curr_stage+1) + ffo * coeff_irk(curr_stage)
-! horizontal mass at previous stages
+! horizontal mass flux at previous stages
 		do jstage=1,curr_stage-1
 		  ffp = urk_reg(l,ie,jstage)*b + vrk_reg(l,ie,jstage)*c
 		  ff = ff + ffp * coeff_irk(jstage)
