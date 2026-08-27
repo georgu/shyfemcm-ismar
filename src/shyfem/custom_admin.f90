@@ -875,7 +875,6 @@
 	call massconc(1,cnv,nlvdi,res)		!3D
 
 	write(6,*) 'total dissolved mass: ',it,res,iweg
-!	call debug_node(4179)
 !	call debug_dry
 
 	end
