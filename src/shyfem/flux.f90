@@ -37,8 +37,8 @@
 !
 ! subroutine wrflxa				write of flux data
 !
-! subroutine flxscs(n,kflux,iflux,az,fluxes)	flux through sections
-! subroutine flxsec(n,kflux,iflux,az,fluxes)	flux through section
+! subroutine flxscs(n,kflux,iflux,ai_ll,fluxes)	flux through sections
+! subroutine flxsec(n,kflux,iflux,ai_ll,fluxes)	flux through section
 !
 ! subroutine flxini				initializes flux routines
 ! subroutine flx_init(kfluxm,kflux,nsect,iflux)	sets up array iflux
@@ -114,7 +114,7 @@
 !
 ! call flx_init(kfluxm,kflux,nsect,iflux)		initializes iflux
 !
-! call flxscs(kfluxm,kflux,iflux,az,fluxes) computes fluxes 
+! call flxscs(kfluxm,kflux,iflux,ai_ll,fluxes) computes fluxes
 !
 ! Initialization can be done anytime.
 !
@@ -429,6 +429,7 @@
 
 ! administers writing of flux data
 
+	use mod_rungekutta, only : get_rungekutta_idiag_weights
 	use mod_conz, only : cnv
 	use mod_ts
 	use mod_sediment, only : tcn
@@ -446,7 +447,7 @@
 	integer nl,nlg
 	integer nbflx
 	integer iunit6
-	real az,azpar,dt
+	real ai_ll,dt
 	double precision atime0,atime
 
 	integer ifemop,ipext
@@ -552,37 +553,36 @@
         if( .not. is_over_output_d(da_out) ) return
 
 	call get_timestep(dt)
-	call getaz(azpar)
-	az = azpar
+	call get_rungekutta_idiag_weights(1,ai_ll)
 
 !	-------------------------------------------------------
 !	accumulate results
 !	-------------------------------------------------------
 
 	ivar = 0
-	call flxscs(kfluxm,kflux,iflux,az,fluxes,ivar,rhov)
+	call flxscs(kfluxm,kflux,iflux,ai_ll,fluxes,ivar,rhov)
 	call fluxes_accum_d(nlvdi,nsect,nlayers,dt,trm,masst,fluxes)
 
 	flux0d(:) = fluxes(0,1,:)		!remember barotropic fluxes
 
 	if( bsalt ) then
 	  ivar = 11
-	  call flxscs(kfluxm,kflux,iflux,az,fluxes,ivar,saltv)
+	  call flxscs(kfluxm,kflux,iflux,ai_ll,fluxes,ivar,saltv)
 	  call fluxes_accum_d(nlvdi,nsect,nlayers,dt,trs,saltt,fluxes)
 	end if
 	if( btemp ) then
 	  ivar = 12
-	  call flxscs(kfluxm,kflux,iflux,az,fluxes,ivar,tempv)
+	  call flxscs(kfluxm,kflux,iflux,ai_ll,fluxes,ivar,tempv)
 	  call fluxes_accum_d(nlvdi,nsect,nlayers,dt,trt,tempt,fluxes)
 	end if
 	if( bconz ) then
 	  ivar = 10
-	  call flxscs(kfluxm,kflux,iflux,az,fluxes,ivar,cnv)
+	  call flxscs(kfluxm,kflux,iflux,ai_ll,fluxes,ivar,cnv)
 	  call fluxes_accum_d(nlvdi,nsect,nlayers,dt,trc,conzt,fluxes)
 	end if
 	if( bsedi ) then
 	  ivar = 800
-	  call flxscs(kfluxm,kflux,iflux,az,fluxes,ivar,tcn)
+	  call flxscs(kfluxm,kflux,iflux,ai_ll,fluxes,ivar,tcn)
 	  call fluxes_accum_d(nlvdi,nsect,nlayers,dt,trsc,ssctt,fluxes)
 	end if
 
@@ -755,6 +755,7 @@
 ! here the number of scalars and the scalar values are passed into the routine
 ! you can also import them through other means (modules, etc..)
 !
+	use mod_rungekutta, only : get_rungekutta_idiag_weights
 	use levels, only : nlvdi,nlv
 	use basin, only : nkn
 	use mod_flux
@@ -771,7 +772,7 @@
 	integer idtflx
 	integer nvar,ierr
 	integer kext(kfluxm)
-	real az,dt
+	real ai_ll,dt
 	double precision atime,atime0
 	character*80 title,femver
 
@@ -852,7 +853,7 @@
         if( .not. is_over_output_d(da_out) ) return
 
 	call get_timestep(dt)
-	call getaz(az)
+	call get_rungekutta_idiag_weights(1,ai_ll)
 
 !	-------------------------------------------------------
 !	accumulate results
@@ -860,7 +861,7 @@
 
 	do i=1,nscal
 	  ivar = ivbase + i
-	  call flxscs(kfluxm,kflux,iflux,az,fluxes,ivar,scal(1,1,i))
+	  call flxscs(kfluxm,kflux,iflux,ai_ll,fluxes,ivar,scal(1,1,i))
 	  call fluxes_accum_d(nlvdi,nsect,nlayers,dt,trs(i) &
      &			,scalt(0,1,1,i),fluxes)
 	end do

@@ -44,13 +44,14 @@
 !==================================================================
 
 	subroutine test_zeta_init
+	use mod_rungekutta, only : get_rungekutta_idiag_weights
 	use basin
 	use shympi
 
 	implicit none
 
         character*4 my_id_s,n_threads_s
-	real azpar,ampar
+	real ai_ll
 
 #if !defined(test_zeta)
 	return
@@ -59,10 +60,9 @@
         write(n_threads_s,'(i4.4)')n_threads
         write(my_id_s,'(i4.4)')my_id+1
 
-	call getazam(azpar,ampar)
+	call get_rungekutta_idiag_weights(1,ai_ll)
 
-	if( (azpar == 0. .and. ampar == 1. ) .or. &
-     &        (azpar == 1. .and. ampar == 0. ) )  then
+	if (ai_ll == 0. ) then
            open(unit = 99998,  &
      &          file = "test_zeta."//trim(n_threads_s)// &
      &                 ".EXPLICIT_"//trim(my_id_s))

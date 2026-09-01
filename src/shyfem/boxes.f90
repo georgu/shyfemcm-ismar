@@ -414,6 +414,7 @@
 
 ! administers writing of flux data
 
+	use mod_rungekutta, only : get_rungekutta_idiag_weights
 	use mod_conz, only : cnv
 	use mod_ts
 	use mod_diff_visc_fric
@@ -433,7 +434,7 @@
 	integer date,time
 	integer idtbox
 	integer nvar,ierr,iuaux,ib,iv,iu,is,ibtyp
-	real az,azpar,dt,dt1
+	real ai_ll,dt,dt1
 	double precision atime0,atime,dtime
 	double precision daux
 	character*80 title,femver,aline
@@ -601,15 +602,14 @@
 
 	dt1 = 1.
 	call get_timestep(dt)
-	call getaz(azpar)
-	az = azpar
+	call get_rungekutta_idiag_weights(1,ai_ll)
 
 !	-------------------------------------------------------
 !	accumulate fluxes (is done on local domains)
 !	-------------------------------------------------------
 
 	ivar = 0
-	call flxscs(kfluxm,kflux,iflux,az,fluxes,ivar,rhov)	!rhov is ignored
+	call flxscs(kfluxm,kflux,iflux,ai_ll,fluxes,ivar,rhov)	!rhov is ignored
 	call fluxes_accum_d(nlvdi,nsect,nslayers,dt,trm,masst,fluxes)
 
 	call box_ob_compute(nbc_ob,nlvdi,fluxes_ob)  !open boundary conditions
@@ -618,16 +618,16 @@
 
 	if( ibarcl .gt. 0 ) then
 	  ivar = 11
-	  call flxscs(kfluxm,kflux,iflux,az,fluxes,ivar,saltv)
+	  call flxscs(kfluxm,kflux,iflux,ai_ll,fluxes,ivar,saltv)
 	  call fluxes_accum_d(nlvdi,nsect,nslayers,dt,trs,saltt,fluxes)
 	  ivar = 12
-	  call flxscs(kfluxm,kflux,iflux,az,fluxes,ivar,tempv)
+	  call flxscs(kfluxm,kflux,iflux,ai_ll,fluxes,ivar,tempv)
 	  call fluxes_accum_d(nlvdi,nsect,nslayers,dt,trt,tempt,fluxes)
 	end if
 
 	if( iconz .eq. 1 ) then
 	  ivar = 10
-	  call flxscs(kfluxm,kflux,iflux,az,fluxes,ivar,cnv)
+	  call flxscs(kfluxm,kflux,iflux,ai_ll,fluxes,ivar,cnv)
 	  call fluxes_accum_d(nlvdi,nsect,nslayers,dt,trc,conzt,fluxes)
 	end if
 

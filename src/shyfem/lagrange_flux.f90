@@ -117,6 +117,7 @@
 
 ! sets up fluxes in 3d - has to be done every time step
 
+	use mod_rungekutta, only : get_rungekutta_idiag_weights
 	use mod_lagrange
 	use mod_geom
 	use levels
@@ -129,7 +130,7 @@
 	integer n
 	integer l,lmax,lkmax
 	integer itype
-	real az,azpar
+	real ai_ll
 	real tdif
 	
 	integer elems(maxlnk)
@@ -142,9 +143,8 @@
 !	initialization
 !	--------------------------------------------
 
-	call getaz(azpar)
-	az = azpar
-	azlgr = az		!store in include file
+	call get_rungekutta_idiag_weights(1,ai_ll)
+	azlgr = ai_ll		!store in include file
 
         do ie=1,nel
 	  lmax = ilhv(ie)
@@ -164,7 +164,7 @@
 
 	  n = maxlnk
 	  call get_elems_around(k,maxlnk,ne,elems)
-	  call flx3d_k(k,itype,az,lkmax,n,rflux,ne,elems)
+	  call flx3d_k(k,itype,ai_ll,lkmax,n,rflux,ne,elems)
 	  call make_fluxes_3d(k,itype,lkmax,n,rflux,tflux)
   	  call setup_flux3d(k,lkmax,n,tflux,ne,elems)
         end do
@@ -187,6 +187,7 @@
 
 ! sets up fluxes - has to be done every time step
 
+	use mod_rungekutta, only : get_rungekutta_idiag_weights
 	use mod_lagrange
 	use mod_geom
 	use basin, only : nkn,nel,ngr,mbw
@@ -197,7 +198,7 @@
 	integer nn,ne
 	integer n,j
 	integer itype
-	real az,azpar
+	real ai_ll
 	real tdif
 	
 	integer elems(maxlnk)
@@ -215,8 +216,7 @@
           end do
         end do
 
-	call getaz(azpar)
-	az = azpar
+	call get_rungekutta_idiag_weights(1,ai_ll)
 
         do k=1,nkn
           itype=flxtype(k)
@@ -227,7 +227,7 @@
 
 	  n = ngr
 	  call get_elems_around(k,maxlnk,ne,elems)
-	  call flx2d_k(k,itype,az,n,rflux,ne,elems)
+	  call flx2d_k(k,itype,ai_ll,n,rflux,ne,elems)
 	  call make_fluxes_2d(k,itype,n,rflux,tflux)
   	  call setup_flux2d(k,n,tflux,flux2d,ne,elems)
         end do
