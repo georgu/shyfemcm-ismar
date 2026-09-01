@@ -347,7 +347,7 @@
 
 !****************************************************************
 !
-        subroutine setuvd
+        subroutine setuvd(curr_stage,coeff_irk)
 !
 ! sets velocities in dry areas
 !
@@ -356,22 +356,28 @@
 ! hzmin smallest z allowed
 ! b,c   form functions
 !
+	use mod_rungekutta, only: n_rkstages,urk_reg,vrk_reg
 	use mod_geom_dynamic
 	use mod_hydro_baro
 	use mod_hydro
 	use evgeom
+	use levels
 	use basin
 
         implicit none
-!
+
+! arguments
+	integer curr_stage
+	real coeff_irk(n_rkstages+1)
 ! local
-        integer ie,ii,i1,i2,isum,itot
+        integer ie,ii,i1,i2,isum,itot,l,js
+        integer jlevel,ilevel
         integer i3,i4,i5,i6,i7,i8
 !        real zm,zmed,d1,d2,det
         double precision zm,zmed,d1,d2,det	!$$dpisum
         real adt,axdt,dt,hzmin
-	real az,azt,azpar
         real z(3),b(3),c(3),uo,vo,u,v,zz
+        real up(curr_stage-1),vp(curr_stage-1)
 	real zn(3)
         integer nnn,itmin
 	double precision dtime
@@ -392,9 +398,6 @@
 !
 	call get_timestep(dt)
         hzmin=getpar('hzmin')
-	call getaz(azpar)
-	az = azpar
-	azt=1.-az
 !
         i7=0            !mean value is too low for node
           i8=0          !
@@ -406,9 +409,24 @@
         do ie=1,nel
         if( iseout(ie) ) then
 !
-        uo=uov(ie)	!use barotropic velocities
-        vo=vov(ie)
-	axdt=3.*dt    !$$lump $$azpar
+	ilevel=ilhv(ie)
+	jlevel=jlhv(ie)
+
+	uo = 0.		!use barotropic velocities
+	vo = 0.
+	do l=jlevel,ilevel
+          uo = uo + utlcv(l,ie)
+          vo = vo + vtlcv(l,ie)
+	end do
+	up = 0.
+	vp = 0.
+	do js=1,curr_stage-1
+	  do l=jlevel,ilevel
+	    up(js) = up(js) + urk_reg(l,ie,js)
+	    vp(js) = vp(js) + vrk_reg(l,ie,js)
+	  end do
+	end do
+	axdt=3.*dt    !$$lump
         adt=1./axdt   !$$lump
 !
 ! z average, set b,c
@@ -480,11 +498,17 @@
         if(abs(zm-3.*zmed).gt.eps) goto 99
 !
 ! now compute velocities
-!						!$$azpar
+!
         d1 = (z(1)-zn(1))*adt &
-     &          - azt*( b(1)*uo + c(1)*vo )
+     &    - coeff_irk(curr_stage)*( b(1)*uo + c(1)*vo )
         d2 = (z(2)-zn(2))*adt &
-     &          - azt*( b(2)*uo + c(2)*vo )
+     &    - coeff_irk(curr_stage)*( b(2)*uo + c(2)*vo )
+	do js=1,curr_stage-1
+          d1 = d1 &
+     &      - coeff_irk(js)*( b(1)*up(js) + c(1)*vp(js) )
+	  d2 = d2 &
+     &	    - coeff_irk(js)*( b(2)*up(js) + c(2)*vp(js) )
+	end do
         det=1./(b(1)*c(2)-b(2)*c(1))
 !
         u = det * ( c(2)*d1 - c(1)*d2 )
@@ -494,30 +518,36 @@
 !
 	isum=-1
         itot=0
-        do ii=1,3				!$$azpar
-          zz = axdt * ( b(ii)*(azt*uo+az*u) + c(ii)*(azt*vo+az*v) )  &
-     &			+ zn(ii)
+        do ii=1,3
+          zz = zn(ii) + axdt * ( &
+     &      b(ii)*(coeff_irk(curr_stage)*uo+coeff_irk(curr_stage+1)*u) +  &
+     &      c(ii)*(coeff_irk(curr_stage)*vo+coeff_irk(curr_stage+1)*v) )
+	  do js=1,curr_stage-1
+            zz = zz + axdt * coeff_irk(js) * ( b(ii)*up(js)+ c(ii)*vp(js) )
+	  end do
           if(zz+hm3v(ii,ie).lt.hzmin-eps) itot=itot+1 !$$eps
         end do
 !
         if(itot.gt.0) then    !node is drying, set next z to above values
 	  isum=-2
           i6=i6+1
-	  if( az == 0. ) then
-	    write(6,*) 'drying with az=0 not possible'
-	    write(6,*) 'for explicit runs you may use az=1 and am=0'
-	    stop 'error stop setuvd: az=0'
+	  if( coeff_irk(curr_stage+1) == 0. ) then
+	    write(6,*) 'drying with explicit scheme is not possible'
+	    write(6,*) 'use an implicit run if you have wetting and drying'
+	    stop 'error stop setuvd: coeff_irk(curr_stage+1)'
 	  end if
-!						!$$azpar
+
           d1 = (z(1)-zn(1))*adt &
-     &          - azt*( b(1)*uo + c(1)*vo )
+     &      - coeff_irk(curr_stage)*( b(1)*uo + c(1)*vo )
           d2 = (z(2)-zn(2))*adt &
-     &          - azt*( b(2)*uo + c(2)*vo )
-          det=1./( az * (b(1)*c(2)-b(2)*c(1)) )	!$$azuvdry
+     &      - coeff_irk(curr_stage)*( b(2)*uo + c(2)*vo )
+	  do js=1,curr_stage-1
+	    d1 = d1 - coeff_irk(js)*( b(1)*up(js) + c(1)*vp(js) )
+	    d2 = d2 - coeff_irk(js)*( b(2)*up(js) + c(2)*vp(js) )
+	  end do
+          det=1./( coeff_irk(curr_stage+1) * (b(1)*c(2)-b(2)*c(1)) )
 !
-! the formula should be   det=1./( az*az * (b(1)*c(2)-b(2)*c(1)) )
-! and in the next two lines   u = det * az * (...)   and   v = ...
-! but we devide by az both equations
+! the formula should be   det=1./( a_ll * (b(1)*c(2)-b(2)*c(1)) )
 !
           u = det * ( c(2)*d1 - c(1)*d2 )
           v = det * (-b(2)*d1 + b(1)*d2 )
@@ -527,9 +557,13 @@
 !
         itot=0
         zm=0.          !only for control
-        do ii=1,3				!$$azpar
-          zz = axdt * ( b(ii)*(azt*uo+az*u) + c(ii)*(azt*vo+az*v) )  &
-     &			+ zn(ii)
+        do ii=1,3
+          zz = zn(ii) + axdt * ( &
+     &      b(ii)*(coeff_irk(curr_stage)*uo+coeff_irk(curr_stage+1)*u) +  &
+     &      c(ii)*(coeff_irk(curr_stage)*vo+coeff_irk(curr_stage+1)*v) )
+	  do js=1,curr_stage-1
+	    zz = zz + axdt * coeff_irk(js) * ( b(ii)*up(js)+ c(ii)*vp(js) )
+	  end do
           if(zz+hm3v(ii,ie).lt.hzmin-eps) itot=itot+1 !$$eps
           zenv(ii,ie)=zz
           zm=zm+zz

@@ -429,7 +429,7 @@
 !-----------------------------------------------------------------
 
         call setzev				!copy znv to zenv
-        call setuvd				!set velocities in dry areas
+        call setuvd(curr_stage,coeff_irk)       !set velocities in dry areas
 	call baro2l 				!sets transports in dry areas
 
 	call trace_point('make_new_depth')
