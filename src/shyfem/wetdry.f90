@@ -519,9 +519,10 @@
 	isum=-1
         itot=0
         do ii=1,3
-          zz = zn(ii) + axdt * ( &
+          zz = axdt * ( &
      &      b(ii)*(coeff_irk(curr_stage)*uo+coeff_irk(curr_stage+1)*u) +  &
-     &      c(ii)*(coeff_irk(curr_stage)*vo+coeff_irk(curr_stage+1)*v) )
+     &      c(ii)*(coeff_irk(curr_stage)*vo+coeff_irk(curr_stage+1)*v) )  &
+     &                 + zn(ii)
 	  do js=1,curr_stage-1
             zz = zz + axdt * coeff_irk(js) * ( b(ii)*up(js)+ c(ii)*vp(js) )
 	  end do
@@ -558,9 +559,10 @@
         itot=0
         zm=0.          !only for control
         do ii=1,3
-          zz = zn(ii) + axdt * ( &
+          zz = axdt * ( &
      &      b(ii)*(coeff_irk(curr_stage)*uo+coeff_irk(curr_stage+1)*u) +  &
-     &      c(ii)*(coeff_irk(curr_stage)*vo+coeff_irk(curr_stage+1)*v) )
+     &      c(ii)*(coeff_irk(curr_stage)*vo+coeff_irk(curr_stage+1)*v) )  &
+     &                 + zn(ii)
 	  do js=1,curr_stage-1
 	    zz = zz + axdt * coeff_irk(js) * ( b(ii)*up(js)+ c(ii)*vp(js) )
 	  end do
