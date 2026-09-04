@@ -625,12 +625,6 @@
 !		next lower integer value. This is not the case with
 !		|itsplt| = 3 where the highest possible fractional time step 
 !		will be used. (Default 0)
-! |coumax|	Normally the time step is computed in order to not
-!		exceed the Courant number of 1. However, in some cases
-!		the non-linear terms are stable even for a value higher
-!		than 1 or there is a need to achieve a lower Courant number.
-!		Setting |coumax| to the desired Courant number
-!		achieves exactly this effect. (Default 1)
 ! |idtsyn|	In case of |itsplt| = 2 this parameter makes sure that
 !		after a time of |idtsyn| the time step will be synchronized
 !		to this time. Therefore, setting |idtsyn| = 3600 means
@@ -645,26 +639,40 @@
 !		smaller than 1 in order to allow for fractional time steps.
 !		A value of 0.001 allows for time steps of down to
 !		1 millisecond. (Default 1)
-! |ssubs|       By default, the time step for the scalar equation is
-!               automatically adjusted to produce a Courant number for the
-!               scalar equation of 1, which may correspond to time-stepping the scalar
-!               equation with a smaller time step than the hydrodynamics.
-!               You can deactivate such substepping of the scalar equation by
-!               setting |ssubs=0|, which instead corresponds to a monolithic update of
-!               the hydrodynamics with the tracer equations. Please note that
-!               substepping is automatically disabled with Runge-Kutta schemes
-!               with more than one stage. (Default 1)
-! |rstol|       If substepping is active, you can set the Courant number to limit
-!               the sub-time steps of the scalar equation. In particular,
-!               you can set |rstol| to a value smaller than one if you think there
-!               are stability problems related to the scalars. (Default 1)
+! |isubs|	By default, the time step for the scalar equation is
+!		automatically adjusted to produce a Courant number for the
+!		scalar equation of 1, which may correspond to time-stepping the scalar
+!		equation with a smaller time step than the hydrodynamics.
+!		You can deactivate such substepping of the scalar equation by
+!		setting |isubs=0|, which instead corresponds to a monolithic update of
+!		the hydrodynamics with the tracer equations. Please note that
+!		substepping is automatically disabled with Runge-Kutta schemes
+!		with more than one stage. (Default 1)
 
 	call addpar('itsplt',0.)
-	call addpar('coumax',1.)
 	call addpar('idtsyn',0.)
 	call addpar('idtmin',1.)
 	call addpar('tfact',0.)		!still to comment FIXME
-	call addpar('ssubs',1.)
+	call addpar('isubs',1.)
+
+! The next parameters select the Courant number:
+
+! |coumax|	Normally, the hydrodynamic time step is computed so as not to
+!		exceed a Courant number of 1. However, in some cases,
+!		the nonlinear terms remain stable for values greater than 1,
+!		or a lower Courant number may be required.
+!		Setting |coumax| to the desired Courant number
+!		produces the corresponding effect. (Default: 1)
+!
+! |rstol|	Sets the Courant number for the scalar equation.
+!		If a monolithic update is selected (|isubs=0|), the minimum
+!		of the hydrodynamic and tracer time steps is used.
+!		If substepping is selected for the tracer (|isubs=1|), |rstol|
+!		limits only the tracer substeps.
+!		You can set |rstol| to a value smaller than 1 if there are
+!		stability problems related to the scalars. (Default: 1)
+
+	call addpar('coumax',1.)
 	call addpar('rstol',1.)		!limit scalar time step to this Courant number
 
 ! The next parameter choose the Additive Runge-Kutta (ARK) time integrator which

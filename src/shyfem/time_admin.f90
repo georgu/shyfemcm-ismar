@@ -551,6 +551,7 @@
 
 ! controls time step and adjusts it
 
+	use mod_rungekutta, only : n_rkstages
 	use shympi
 	use femtime
 	use mod_info_output
@@ -564,6 +565,7 @@
 	integer idtfrac
         integer istot,iss
 	integer idta(n_threads)
+        integer itemp,isalt,iconz
         double precision dt,dtnext,atime,ddts,dtsync,dtime,dt_recom
         double precision, save :: ddtmin
         double precision :: dtbest
@@ -575,10 +577,11 @@
 	real array(5)
 	character*80 format
 
-        real, save :: cmax,tfact,dtmin,zhpar
-        integer, save :: idtsync,isplit,idtmin
+        real, save :: cmax,rstol,tfact,dtmin,zhpar
+        integer, save :: idtsync,isplit,idtmin,nscal
         integer, save :: iuinfo = 0
         integer, save :: icall = 0
+	logical, save :: bsubs
 
 	double precision dgetpar
 
@@ -589,7 +592,10 @@
 
           isplit = nint(dgetpar('itsplt'))
           cmax   = dgetpar('coumax')
+	  rstol  = dgetpar('rstol')
           tfact  = dgetpar('tfact')	!still to be commented
+	  bsubs = ( (nint(dgetpar('isubs')) .eq. 1) &
+     &	       .and. (n_rkstages .eq. 1) ) !sub-stepping is valid only for one stage methods
 
           dhpar = dgetpar('dhpar')
           chpar = dgetpar('chpar')
@@ -604,6 +610,14 @@
 	  call convert_time_d('idtmin',ddtmin)
 	  idtmin = nint(ddtmin)
 
+	  itemp = nint(dgetpar("itemp"))
+	  isalt = nint(dgetpar("isalt"))
+	  iconz = nint(dgetpar("iconz"))
+	  nscal = 0
+	  if(itemp .gt. 0) nscal = nscal +1
+	  if(isalt .gt. 0) nscal = nscal +1
+	  if(iconz .gt. 0) nscal = nscal + iconz
+
 	  if( shympi_is_master() ) then
             call getinfo(iuinfo)  !unit number of info file
 	  end if
@@ -616,7 +630,8 @@
 
 !----------------------------------------------------------------------
 !        idtsync = 0             !time step for syncronization
-!        cmax = 1.0              !maximal Courant number permitted
+!        cmax = 1.0              !maximal hydro Courant number permitted
+!        rstol = 1.0             !maximal tracer Courant number permitted
 !        isplit = -1             !mode for variable time step:
 !                                ! -1:  time step fixed, 
 !                                !      no computation of rindex
@@ -626,15 +641,19 @@
 !                                !  3:  optimize time step (fractional)
 !	 idtmin = 1		 !minimum time step allowed
 !	 tfact = 0		 !factor of maximum decrease of time step
+!	 isubs = 1		 !  1: substepping of the tracers
+!                                !  0: monolithic update hydro+tracer
 !----------------------------------------------------------------------
 
 	call check_time('in set_timestep start')
 
         if( isplit .ge. 0 ) then
           dtr = 1.
+          sindex = 1e-7
           call hydro_stability(dtr,rindex)
-	  !call scalar_basic_stability(dtr,zhpar,sindex)
-	  !write(6,*) 'stability: ',rindex,sindex
+	  if (nscal .gt. 0 .and. .not. bsubs) then
+	    call scalar_basic_stability(dtr,zhpar,sindex)
+	  end if
         else
           rindex = 0.
         end if
@@ -645,6 +664,7 @@
 
 	!write(6,*) 'time domains: ',my_id,rindex,1./rindex,cmax
 	rindex = shympi_max(rindex)
+	sindex = shympi_max(sindex)
 	!write(6,*) 'time final: ',my_id,rindex,1./rindex,cmax
 
 !----------------------------------------------------------------------
@@ -668,7 +688,9 @@
           idts = idtsync
 	  idtfrac = 0
 	  dt = dt_orig
-	  if( rindex > 0 ) dt = cmax / rindex	! maximum allowed time step
+	  if( rindex > 0 ) then
+	    dt = min(cmax / rindex, rstol / sindex)	! maximum allowed time step
+	  end if
 	  if( dt >= dt_orig ) then
 	    dt = dt_orig
 	  else if( dt >= 1. ) then

@@ -653,7 +653,7 @@
 	real, allocatable :: gradxv(:,:)	!gradient in x for tvd
 	real, allocatable :: gradyv(:,:)	!gradient in y for tvd
 
-	logical btvd,btvd1,btvd2,btvddebug,bssubs
+	logical btvd,btvd1,btvd2,btvddebug,bsubs
 	integer isact
 	integer istot
 	integer itvd
@@ -661,7 +661,7 @@
 	integer iuinfo
 	integer iunit,k
 	integer levdbg
-	integer ssubs
+	integer isubs
         real dt,dtstep
 	real eps
         real sindex
@@ -688,14 +688,14 @@
 	itvd = nint(getpar('itvd'))	!horizontal tvd scheme
 	itvdv = nint(getpar('itvdv'))	!vertical tvd scheme
 	levdbg = nint(getpar('levdbg'))
-	ssubs = nint(getpar('ssubs'))
+	isubs = nint(getpar('isubs'))
 
 	btvd = itvd .gt. 0
 	btvd1 = itvd .eq. 1
 	btvd2 = itvd .eq. 2
 	btvddebug = .true.
 	btvddebug = btvddebug .and. btvd2
-	bssubs = (ssubs .eq. 1) .and. (n_rkstages .eq. 1)
+	bsubs = (isubs .eq. 1) .and. (n_rkstages .eq. 1)
 					!sub-stepping is valid only for one stage methods
 
 	allocate(saux(nlvddi,nkn))
@@ -730,7 +730,7 @@
 	call get_act_timeline(aline)
 
 	saux = 0.
-	if ( bssubs ) then
+	if ( bsubs ) then
 	  call scalar_stability(dt,robs,rtauv,wsinkl,wsinkv,rkpar, &
      &					sindex,istot,saux)
      	else
