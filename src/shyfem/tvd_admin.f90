@@ -692,9 +692,19 @@
 
 ! computes horizontal tvd fluxes for one element
 !
-! this is called for itvd == 1 and itvd == 2
-! in case itvd == 1 the values gxv,gyv are used to compute grad
-! otherwise (itvd==2) grad is computed as grad = cond - conu
+! this is called for:
+!
+! itvd == 1,2 Lax-Wendroff fluxes with flux limiter
+! In case itvd == 1 the gradient values gxv,gyv are used to
+! compute the slope limiter.
+! Otherwise (itvd==2) the gradient is computed as grad = cond - conu
+!
+! itvd == 3   Muscl fluxes with slope limiter.
+! The values gxv,gyv are used to compute grad.
+!
+! The routine is implemented as a standard extension of 1d fluxes
+! to unstructured triangular grids. The orientation is positive from
+! the upwind node (ic) to the downwind node (id)
 
 	use mod_tvd
 	use mod_hydro_vel
@@ -714,9 +724,6 @@
 	double precision, intent(in) :: f(3)
 	double precision, intent(out) :: fl(3)
 
-	real eps
-	parameter (eps=1.e-8)
-
         logical btvd2,btvddebug
         logical bdebug
 	integer ii,k
@@ -727,12 +734,13 @@
         real conc,cond,conf,conu
         real gcx,gcy,dx,dy
         real u,v
-        real rf,psi
         real alfa,dis,aj
+        real psi
         real vel
         real gdx,gdy
 	real conu_aux(3)
 
+	real limiter
 	integer smartdelta
 
 	btvd2 = itvd_type .eq. 2
@@ -794,35 +802,49 @@
 		dy = aj * ev(3+iop,ie)
 		!if( tet1 .eq. ic ) dy = -dy
 		dy = -2*smartdelta(tet1,ic) * dy + dy
-		dis = ev(16+iop,ie)
+							!====================
+                if ( itvd_type < 3 ) then		!lax-wendroff
+							!====================
+                  if( btvd2 ) then
+                    conu = cond
+                    !conu = 2.*conc - cond		!use internal gradient
+                    call tvd_get_upwind_c(ie,l,ic,id,conu,cv)
+		    conu_aux(ii) = conu
+                    grad = 0.5*(cond - conu)
+                  else
+                    gcx = gxv(l,kc)
+                    gcy = gyv(l,kc)
+                    grad = gcx*dx + gcy*dy
+                  end if
 
-                vel = abs( u*dx + v*dy ) / dis          !projected velocity
-                alfa = ( dt * vel  ) / dis
+		  psi = limiter(grad,cond-conc)		!flux limiter
 
-                if( btvd2 ) then
-                  conu = cond
-                  !conu = 2.*conc - cond		!use internal gradient
-                  call tvd_get_upwind_c(ie,l,ic,id,conu,cv)
-		  conu_aux(ii) = conu
-                  grad = cond - conu
-                else
-                  gcx = gxv(l,kc)
-                  gcy = gyv(l,kc)
-                  grad = 2. * (gcx*dx + gcy*dy)
-                end if
+		  dis = ev(16+iop,ie)
+                  vel = abs( u*dx + v*dy ) / dis	!projected velocity
+                  alfa = ( dt * vel  ) / dis		!lxw parameter
 
-                if( abs(conc-cond) .lt. eps ) then	!BUG -> eps
-                  rf = -1.
-                else
-                  rf = grad / (cond-conc) - 1.
-                end if
+                  conf = conc + 0.5*psi*(cond-conc)*(1.-alfa)
+							!====================
+		else if ( itvd_type == 3 ) then		!muscl
+							!====================
+		  if( fact * f(ii) .ge. 0.d0 ) then
+                    gcx = gxv(l,kc)
+                    gcy = gyv(l,kc)
+		    grad = gcx*dx + gcy*dy		!projected gradient at node ic
+		    psi = limiter(grad,cond-conc)	!slope limiter
 
-                psi = max(0.,min(1.,2.*rf),min(2.,rf))  ! superbee
-!               psi = ( rf + abs(rf)) / ( 1 + abs(rf))  ! muscl
-!               psi = max(0.,min(2.,rf))                ! osher
-!               psi = max(0.,min(1.,rf))                ! minmod
+		    conf = conc + 0.5*grad*psi		!reconstructed conc at edge ic-id from ic side
+		  else
+                    gcx = gxv(l,kd)
+                    gcy = gyv(l,kd)
+                    grad = gcx*dx + gcy*dy		!projected gradient at node id
+		    psi = limiter(grad,2.*grad-(cond-conc))
 
-                conf = conc + 0.5*psi*(cond-conc)*(1.-alfa)
+		    conf = cond - 0.5*grad*psi		!reconstructed conc at edge ic-id from id side
+		  end if
+
+		end if
+
                 term = fact * conf * f(ii)
                 fl(ic) = fl(ic) - term
                 fl(id) = fl(id) + term
@@ -833,8 +855,8 @@
 
 	if( bdebug ) then
 	  write(6,*) 'tvd: --------------'
-	  write(6,*) 'tvd: ',vel,gcx,gcy,grad
-	  write(6,*) 'tvd: ',rf,psi,alfa
+	  write(6,*) 'tvd: ',gcx,gcy,grad
+	  write(6,*) 'tvd: ',psi
 	  write(6,*) 'tvd: ',conc,cond,conf
 	  write(6,*) 'tvd: ',term,fact
 	  write(6,*) 'tvd: ',f
@@ -1046,6 +1068,43 @@
         smartdelta=int((float((a+b)-abs(a-b)))/(float((a+b)+abs(a-b))))
 
 	end function smartdelta
+
+!*****************************************************************
+
+	function limiter(grad,dcon)
+
+! computes the limiter for tvd fluxes. As you can see the
+! Superbee limiter is active by default. Eventually you can
+! choose other limiters.
+!
+! dcon    concentration difference along the edge, (+) in downwind direction
+! grad    nodal gradient of the concentration
+! rf      smoothness sensor, ratio of consecutive one-sided slopes
+! limiter return
+!
+
+	implicit none
+
+	real limiter
+        real, intent(in) :: grad,dcon
+
+        real rf
+
+	real eps
+	parameter (eps=1.e-8)
+
+	if( abs(dcon) .lt. eps ) then	!BUG -> eps
+	  rf = -1.
+	else
+	  rf = 2.*grad / dcon - 1.
+	end if
+
+	limiter = max(0.,min(1.,2.*rf),min(2.,rf))  !superbee
+!	limiter = ( rf + abs(rf)) / ( 1 + abs(rf))  !muscl
+!	limiter = max(0.,min(2.,rf))                !osher
+!	limiter = max(0.,min(1.,rf))                !minmod
+
+	end function limiter
 
 !*****************************************************************
 

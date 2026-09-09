@@ -653,7 +653,7 @@
 	real, allocatable :: gradxv(:,:)	!gradient in x for tvd
 	real, allocatable :: gradyv(:,:)	!gradient in y for tvd
 
-	logical btvd,btvd1,btvd2,btvddebug,bsubs
+	logical btvd,btvd2,btvdgrad,btvddebug,bsubs
 	integer isact
 	integer istot
 	integer itvd
@@ -691,8 +691,8 @@
 	isubs = nint(getpar('isubs'))
 
 	btvd = itvd .gt. 0
-	btvd1 = itvd .eq. 1
 	btvd2 = itvd .eq. 2
+	btvdgrad = (itvd .eq. 1) .or. (itvd .eq. 3)
 	btvddebug = .true.
 	btvddebug = btvddebug .and. btvd2
 	bsubs = (isubs .eq. 1) .and. (n_rkstages .eq. 1)
@@ -793,7 +793,7 @@
 	    end if
 	  end if
 
-	  if( btvd1 ) call tvd_grad_3d(cnv,gradxv,gradyv,saux,nlvddi)
+	  if( btvdgrad ) call tvd_grad_3d(cnv,gradxv,gradyv,saux,nlvddi)
 	  if( btvddebug ) call tvd_debug_initialize(dtime_act,what,isact)
 
           !call conz3d_orig( &

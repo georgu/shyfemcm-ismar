@@ -1121,10 +1121,10 @@
 	call addpar('dhpar',0.)		!diffusion parameter
 
 ! The next parameters deal with the discretization of nonlinear advection
-! terms. For the momentum equation you only have first order upwind flux,
-! and you can choose between two discretizations: upwinding by node or
-! by face. For scalar, you have the possibility to prescribe the tvd
-! scheme desired and to limit the Courant number.
+! terms. For the momentum equation you only have first order upwind flux.
+! For horizontal momentum you can choose between two discretizations:
+! upwinding by node or by face. For scalar, you have the possibility
+! to prescribe the TVD numerical flux desired.
 
 ! |imtvd|	Type of the horizontal advection scheme used for 
 !		momentum equation. You can choose between
@@ -1136,9 +1136,12 @@
 !		the transport and diffusion
 !		equation. Normally an upwind scheme is used (0), but setting
 !		the parameter |itvd| to a value greater than 0 
-!		choses a TVD scheme. A value of 1 will use a TVD scheme
-!		based on the average gradient, and a value of 2 will use
-!		the gradient of the upwind node (recommended).
+!		choses a TVD scheme. A value of 1 or 2 will use, as high order
+!		scheme, a Lax-Wendroff flux. 1 or 2 differ in the computation
+!		of the gradient to be used in the limiter.
+!		A value of 1 will use a centered average gradient
+!		and a value of 2 will use the gradient of the upwind node
+!		(recommended). Instead, a value of 3 will use the MUSCL flux.
 !		This feature is still experimental, so use with care. 
 !		(Default 0)
 ! |itvdv|	Type of the vertical advection scheme used for 
