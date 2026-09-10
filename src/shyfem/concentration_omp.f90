@@ -951,10 +951,6 @@
 
 	if(is_explicit .or. (nlv .eq. 1)) then
 
-	  if( nlv .gt. 1 ) then
-	    write(6,*) 'conz: computing explicitly ',nlv
-	  end if
-
 	  ilevel = ilhkv(k)
 	  do l=jlevel,ilevel
 	    if(cdiag(l).ne.0.) then
