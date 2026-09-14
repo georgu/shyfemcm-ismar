@@ -43,6 +43,7 @@
 ! 08.05.2026	ggu	in check_monotone() handle negative depth layers
 ! 03.08.2026	ggu	handle new option clayer
 ! 11.08.2026	ggu	new routines to handle decreasing x/y coordinates
+! 12.08.2026	ggu	new routines check_2d_monotone() -> still to be tested
 !
 !*****************************************************************
 !*****************************************************************
@@ -894,7 +895,9 @@
 	    end if
 	  else			!horizontal values
 	    if( .not. bquiet ) then
-	      write(6,*) 'coordinates are decreasing... must invert later'
+	      if( text /= ' ' ) then
+	        write(6,*) 'coordinates are decreasing... must invert later'
+	      end if
 	    end if
 	    invert = 1
 	  end if
@@ -916,6 +919,55 @@
 	imax = min(n,i+2)
 	write(6,*) val(imin:imax)
 	stop 'error stop check_monotone: error in values'
+	end
+
+!*****************************************************************
+
+	subroutine check_2d_monotone(nx,ny,val,text,ixinvert,iyinvert)
+
+! this has not yet been fully tested...
+
+	implicit none
+
+	integer nx,ny
+	real val(nx,ny)
+	character*(*) text
+	integer ixinvert,iyinvert		!must invert (return)
+
+	logical bgrow,bquiet
+	integer ix,iy,ainvert,irun
+	real xaux(nx)
+	real yaux(ny)
+
+	call nc_get_quiet(bquiet)
+
+	ixinvert = 0
+	iyinvert = 0
+
+	irun = 1
+	bgrow = val(2,1) > val(1,1)
+	if( .not. bgrow ) ixinvert = 1
+
+	do iy=1,ny
+	  xaux(:) = val(:,iy)
+	  call check_monotone(nx,xaux,' ',.false.,ainvert)
+	  if( ixinvert /= ainvert ) goto 99
+	end do
+
+	irun = 2
+	bgrow = val(1,2) > val(1,1)
+	if( .not. bgrow ) iyinvert = 1
+
+	do ix=1,nx
+	  yaux(:) = val(ix,:)
+	  call check_monotone(ny,yaux,' ',.false.,ainvert)
+	  if( iyinvert /= ainvert ) goto 99
+	end do
+
+   99	continue
+	write(6,*) trim(text),' : values are not monotone'
+	write(6,*) irun,ainvert,ixinvert,iyinvert
+	stop 'error stop check_2d_monotone: error in values'
 	end
 
 !*****************************************************************
@@ -1145,6 +1197,8 @@
 	    end do
 	  end do
 
+	  !call check_2d_monotone(nx,ny,xlon,text,ixinvert,iyinvert)
+
 	  call nc_get_var_data(ncid,namey,1,ndim,ndims,dims,aux)
 	  !call nc_get_var_real(ncid,y_id,aux)
 	  if( debug ) write(6,*) 'creating y-coordinates ... ',nx,ny
@@ -1155,6 +1209,7 @@
 	      ylat(ix,iy) = aux(i)
 	    end do
 	  end do
+
 	else
 	  write(6,*) 'coordinates x: ',x_id,ndimx,trim(namex)
 	  write(6,*) (dimx_id(i),i=1,ndimx)
