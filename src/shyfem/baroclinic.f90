@@ -745,7 +745,7 @@
 	  do l=lmin,lmax
 	    bsigma = l .le. nsigma
 
-	    hlayer = hdkov(l,k)
+	    hlayer = hdkcv(l,k)
 	    if( .not. bsigma ) hlayer = hldv(l)
 
 	    hh = 0.5 * hlayer
@@ -842,7 +842,7 @@
 	  do l=1,lmax
 	    bsigma = l .le. nsigma
 
-	    hlayer = hdkov(l,k)
+	    hlayer = hdkcv(l,k)
 	    if( .not. bsigma ) hlayer = hldv(l)
 
 	    hh = 0.5 * hlayer

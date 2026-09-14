@@ -1396,7 +1396,7 @@
 	if( bmoveinterface .and. bsigadjust ) then	!-------------- DEB SIG
 	  do k=1,nkn
 	    lmax=ilhkv(k)
-	    hkko(0,k)=-zov(k)	!depth of interface on node
+	    hkko(0,k)=-zov(k)	!depth of interface on node: old value refers to current stage
 	    hkkom(0,k)=-zov(k)	!depth of mid layer on node (0 not used)
 	    hkk=0.
 	    hkk=-zov(k)		!ggu
@@ -1430,7 +1430,7 @@
 	    htint = 0.				!depth of layer top interface
 	    if( l .gt. 1 ) htint = hlv(l-1)
 
-            hlayer = hdeov(l,ie)		!layer thickness
+            hlayer = hdeov(l,ie)		!layer thickness: old value refers to current stage
 	    if( (.not. bsigma) .and. (.not. badapt)) hlayer = hldv(l)
 
             hh = 0.5 * hlayer
