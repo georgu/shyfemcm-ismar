@@ -110,6 +110,7 @@
 	real, save :: hmax
 	real, save :: asmooth
 	integer, save :: iter
+	real, save :: bfact
 
 	logical, save :: bverb
 	logical, save :: bquiet
@@ -231,6 +232,7 @@
         call clo_add_option('hmax val',99999.,'maximum depth')
         call clo_add_option('asmooth alpha',0,'alpha for smoothing')
         call clo_add_option('iter n',0,'iterations for smoothing')
+        call clo_add_option('bfact f',0,'factor for depth rectification')
 
         call clo_add_sep(' ')
 
@@ -296,6 +298,7 @@
         call clo_get_option('hmax',hmax)
         call clo_get_option('asmooth',asmooth)
         call clo_get_option('iter',iter)
+        call clo_get_option('bfact',bfact)
 
         call clo_get_option('verb',bverb)
         call clo_get_option('quiet',bquiet)
@@ -327,6 +330,7 @@
 	bsmooth = bsmooth .or. hmax /=  99999.
 	bsmooth = bsmooth .or. asmooth > 0.
 	bsmooth = bsmooth .or. iter > 0
+	bsmooth = bsmooth .or. bfact > 0
 
 	end subroutine basutil_get_options
 
