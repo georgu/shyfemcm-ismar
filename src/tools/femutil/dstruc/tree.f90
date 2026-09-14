@@ -688,9 +688,9 @@
 
 !******************************************************************
 
-	programme tree_main
+	program tree_main
 	call tree_test
-	end programme tree_main
+	end program tree_main
 
 !******************************************************************
 
