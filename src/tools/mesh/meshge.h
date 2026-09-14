@@ -83,6 +83,8 @@ int IsPointInLine( Line_type *pl , float x , float y );
 int IsLineInLine( Line_type *plext , Line_type *plint );
 int IsLineClosed( Line_type *pl );
 
+void ShowLineExtremes( Line_type *pl );
+
 
 #endif
 

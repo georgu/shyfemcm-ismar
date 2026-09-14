@@ -152,6 +152,7 @@ int CheckInput( void )
 
 	if( plext != NULL ) {
 	  if( ! IsLineClosed(plext) ) {
+	    ShowLineExtremes(plext);
     	    Error2("External line is not closed: ",itos(plext->number));
           }
           ResetHashTable(HLI);

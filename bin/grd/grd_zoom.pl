@@ -15,10 +15,21 @@ use strict;
 $::n = 0;
 $::l = 0;
 
+$::help = 0 unless $::help;
+$::h = 0 unless $::h;
+
 $::node = 0 unless $::node;
 $::elem = 0 unless $::elem;
 $::line = 0 unless $::line;
 $::nsquare = 1 unless $::nsquare;  # how many squares to plot (increasing size)
+$::zoom = 50 unless $::zoom;
+
+if( $::help or $::h ) {
+  print STDERR "Usage: grid_zoom.pl {-node|-elem|-line}=n [options] grid\n";
+  print STDERR "  -nsquare     how many squares to plot for the zoom\n";
+  print STDERR "  -zoom        smallest square is 1/zoom of whole grid\n";
+  die          "  n is item number\n"
+}
 
 #-------------------------------------------------------------------
 
@@ -38,13 +49,13 @@ if( $::node ) {
   my $x = $nitem->{x};
   my $y = $nitem->{y};
   print STDERR "$::node $x $y\n";
-  my $dd = $dxy / 50.;
+  my $dd = $dxy / $::zoom;
   for( my $i=0; $i<$::nsquare; $i++ ) {
     write_square($x,$y,$dd);
     $dd = 2 * $dd;
   }
 } else {
-  die "can handle only -node...\n";
+  die "can handle only -node yet...\n";
 }
 
 #-------------------------------------------------------------------

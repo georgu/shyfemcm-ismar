@@ -620,5 +620,14 @@ int IsLineClosed( Line_type *pl )
 	}
 }
 
+void ShowLineExtremes( Line_type *pl )
+
+{
+     int nl = pl->vertex;
+
+     printf("length of line: %d \n",nl);
+     printf("start of line:  %d  %d\n",pl->index[0],pl->index[1]);
+     printf("end of line:    %d  %d\n",pl->index[nl-2],pl->index[nl-1]);
+}
 
 
