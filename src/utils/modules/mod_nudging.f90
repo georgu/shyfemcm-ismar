@@ -46,7 +46,7 @@
 	real, save :: taudefvel = 0.		!default tau for velocities
 
         real, allocatable, save :: andgzv(:)	!contribution to zeta
-        real, allocatable, save :: tauvel(:,:)	!weighting for vel
+        real, allocatable, save :: rtauvel(:,:)	!weighting for vel (inverse)
         real, allocatable, save :: uobs(:,:)	!observations for x vel
         real, allocatable, save :: vobs(:,:)	!observations for y vel
 
@@ -71,7 +71,7 @@
 
 	if( nkn_nudging > 0 ) then
           deallocate(andgzv)
-          deallocate(tauvel)
+          deallocate(rtauvel)
           deallocate(uobs)
           deallocate(vobs)
         end if
@@ -83,12 +83,12 @@
         if( nkn == 0 ) return
         
         allocate(andgzv(nkn))
-        allocate(tauvel(nlv,nel))
+        allocate(rtauvel(nlv,nel))
         allocate(uobs(nlv,nel))
         allocate(vobs(nlv,nel))
 
 	andgzv = 0.
-	tauvel = 0.
+	rtauvel = 0.
 	uobs = 0.
 	vobs = 0.
         

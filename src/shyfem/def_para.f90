@@ -234,6 +234,7 @@
 ! 03.12.2024    lrp     new parameter irain for the coupled model
 ! 01.04.2025    ggu     new value 5 for ibarcl
 ! 16.04.2025    ggu     new parameter wsettl
+! 14.09.2026    ggu     new parameter velobs
 !
 !************************************************************************
 
@@ -1063,7 +1064,7 @@
 ! the above parameters.
 
 ! |tauvel|	If you have velocity observations given in file
-!		|surfvel| then you can specify the relaxation
+!		|surfvel| or |velobs| then you must specify the relaxation
 !		parameter $\tau$ in the variable |tauvel|. (Default 0,
 !		which means no assimilation of velocities)
 
@@ -2044,6 +2045,8 @@
 
 ! |surfvel|	File with surface velocities from observation. These
 !		data can be used for assimilation into the model.
+! |velobs|	File with 3d velocities from observation. These
+!		data can be used for assimilation into the model.
 ! |restrt|	Name of the file if a restart is to be performed. The
 !		file has to be produced by a previous run
 !		with the parameter |idtrst| different
@@ -2053,6 +2056,7 @@
 !		GOTM turbulence model (iturb = 1).
 
         call addfnm('surfvel',' ')
+        call addfnm('velobs',' ')
 	call addfnm('restrt',' ')
 	call addfnm('gotmpa',' ')
 

@@ -321,6 +321,44 @@
 
 !*******************************************************************
 
+	subroutine velocity_nudging(dt,uobs,vobs,rtau,hlayer,utrans,vtrans)
+
+! does nudging of velocities - implicit - rtau matrix version
+
+	use basin
+	use levels
+
+	implicit none
+
+	real, intent(in) :: dt			!time step
+	real, intent(in) :: uobs(nlvdi,nel)	!observation of u vel
+	real, intent(in) :: vobs(nlvdi,nel)	!observation of v vel
+	real, intent(in) :: rtau(nlvdi,nel)	!inverse of time scale tau
+	real, intent(in) :: hlayer(nlvdi,nel)	!layer depth
+	real, intent(inout) :: utrans(nlvdi,nel)	!transports in x
+	real, intent(inout) :: vtrans(nlvdi,nel)	!transports in y
+
+	integer ie,l,lmax
+	real r,rr,h
+	real uaux,vaux
+
+	do ie=1,nel
+	  lmax = ilhv(ie)
+	  do l=1,lmax
+	    r = dt * rtau(l,ie)
+	    rr = 1./(1.+r)
+	    h = hlayer(l,ie)
+	    uaux = h * uobs(l,ie)
+	    vaux = h * vobs(l,ie)
+	    utrans(l,ie) = rr*utrans(l,ie) + (1.-rr)*uaux
+	    vtrans(l,ie) = rr*vtrans(l,ie) + (1.-rr)*vaux
+	  end do
+	end do
+
+	end
+
+!*******************************************************************
+
 	subroutine scalar_nudging(dt,scal,sobs,rtau)
 
 ! does nudging of scalars - implicit - rtau matrix version

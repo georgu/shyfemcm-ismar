@@ -80,6 +80,7 @@
 	logical, save :: bmulti = .true.   !nudge with more than one station
 
 	integer, save :: idsurf = 0
+	integer, save :: id3d = 0
 	integer, save :: idnudge = 0		!file id
 
 	integer, save :: nvars = 0
@@ -151,6 +152,8 @@
 
 	subroutine init_zeta_nudging
 
+! initializes zeta nudging
+
 	use mod_nudge
 	use mod_nudging
 	use basin
@@ -192,7 +195,7 @@
 	if( nvars .le. 0 ) return
 
 	if( shympi_is_parallel() ) then
-	  stop 'error stop init_velocity_nudging: no mpi yet'
+	  stop 'error stop init_zeta_nudging: no mpi yet'
 	end if
 
 	call mod_nudge_init(nkn)
@@ -253,15 +256,17 @@
    98	continue
 	write(6,*) 'error reading stations to exclude'
 	write(6,*) ios,ivar,nvars
-	stop 'error stop nudge_init: error exclude stations'
+	stop 'error stop init_zeta_nudging: error exclude stations'
    99	continue
 	write(6,*) 'Cannot find internal node: ',node
-	stop 'error stop nudge_init: no internal node'
+	stop 'error stop init_zeta_nudging: no internal node'
 	end
 
 !****************************************************************
 
-	subroutine set_zeta_nudging
+	subroutine apply_zeta_nudging
+
+! applies zeta nudging
 
 	use mod_nudge
 	use mod_nudging
@@ -513,7 +518,9 @@
 !*******************************************************************
 !*******************************************************************
 
-	subroutine init_velocity_nudging
+	subroutine init_surface_velocity_nudging
+
+! initializes surface velocity nudging
 
 	use mod_nudge
 	use mod_nudging
@@ -550,10 +557,16 @@
 	if( surffile == ' ' ) return
 
 	if( shympi_is_parallel() ) then
-	  stop 'error stop init_velocity_nudging: no mpi yet'
+	  stop 'error stop init_surface_velocity_nudging: no mpi yet'
 	end if
 
 	taudefvel = getpar('tauvel')
+	if( taudefvel == 0. ) then
+	  write(6,*)  'no time scale (tauvel) given for velocity'
+	  write(6,*)  'even if a file in surfvel has been specified'
+	  write(6,*)  'cannot apply nudging... aborting'
+	  stop 'error stop init_surface_velocity_nudging: tauvel == 0'
+	end if
 
         call iff_init(dtime0,surffile,nvar,np,lmax,nintp &
      &                          ,nodes,vconst,idsurf)
@@ -575,7 +588,9 @@
 
 !*******************************************************************
 
-	subroutine set_velocity_nudging
+	subroutine apply_surface_velocity_nudging
+
+! applies surface nudging
 
 	use mod_nudge
 	use mod_nudging
@@ -589,7 +604,7 @@
 	implicit none
 
 	integer ie,l,lmax,iflag
-	real h,tau,taudef
+	real h,tau,taudef,rtau
 	real u,v,s,flag
 	real smax
 	real uobs_surf(nel),vobs_surf(nel)
@@ -618,7 +633,7 @@
 
 	taudef = taudefvel
 
-	tauvel(1,:) = 0.
+	rtauvel(1,:) = 0.
 
 	call iff_get_flag(idsurf,flag)
 
@@ -632,11 +647,11 @@
 	  else
 	    s = sqrt(u*u+v*v)
 	    smax = max(smax,s)
-	    tauvel(1,ie) = taudef	!good point - define tau
+	    rtauvel(1,ie) = 1./taudef	!good point - define tau
 	  end if
 	end do
 
-	!write(6,*) 'flags found.... ',iflag,nel,smax
+	write(6,*) 'flags found.... ',iflag,nel,smax
 
 !------------------------------------------------------------------
 ! add contribution to explicit term
@@ -645,14 +660,167 @@
         do ie=1,nel
           lmax = ilhv(ie)
           do l=1,lmax
-	    tau = tauvel(l,ie)
-	    if( tau > 0. ) then
+	    rtau = rtauvel(l,ie)
+	    if( rtau > 0. ) then
 	      h = hdenv(l,ie)
-	      fxv(l,ie) = fxv(l,ie) - (h*uobs(l,ie)-utlov(l,ie))/tau
-	      fyv(l,ie) = fyv(l,ie) - (h*vobs(l,ie)-vtlov(l,ie))/tau
+	      fxv(l,ie) = fxv(l,ie) - rtau * (h*uobs(l,ie)-utlov(l,ie))
+	      fyv(l,ie) = fyv(l,ie) - rtau * (h*vobs(l,ie)-vtlov(l,ie))
 	    end if
 	  end do
 	end do
+
+!------------------------------------------------------------------
+! end of routine
+!------------------------------------------------------------------
+
+	end 
+
+!*******************************************************************
+
+	subroutine init_3d_velocity_nudging
+
+! intializes 3d velocity nudging
+
+	use mod_nudge
+	use mod_nudging		!here u/vobs are defined and allocated
+	use intp_fem_file
+	use basin
+	use levels
+	use shympi
+
+	implicit none
+
+	integer nvar,nintp,ibc
+	real vconst(2)
+	double precision dtime0,dtime
+	character*10 what
+	character*80 vel3dfile
+	character*80 surffile
+
+	integer np,lmax
+	integer nodes(1)
+
+	real getpar
+
+	call get_first_dtime(dtime0)
+
+	nodes = 0
+	nvar = 2
+	nintp = 2
+	np = nel			!interpolate on elements
+	lmax = 0
+	ibc = 0				!no lateral boundary
+	what = 'velobs'
+	vconst = (/0.,0./)
+
+	call getfnm(what,vel3dfile)
+	if( vel3dfile == ' ' ) return
+	call getfnm('surfvel',surffile)
+	if( surffile /= ' ' ) then
+	  write(6,*) 'can only do nudging with surface or 3d velocities'
+	  write(6,*) 'velobs file:   ',trim(vel3dfile)
+	  write(6,*) 'surfvel file: ',trim(surffile)
+	  stop 'error stop init_3d_velocity_nudging: either surface or 3d'
+	end if
+
+	if( shympi_is_parallel() ) then
+	  stop 'error stop init_3d_velocity_nudging: no mpi yet'
+	end if
+
+	taudefvel = getpar('tauvel')
+	if( taudefvel == 0. ) then
+	  write(6,*)  'no time scale (tauvel) given for velocity'
+	  write(6,*)  'even if a file in velobs has been specified'
+	  write(6,*)  'cannot apply nudging... aborting'
+	  stop 'error stop init_surface_velocity_nudging: tauvel == 0'
+	end if
+
+        call iff_init(dtime0,surffile,nvar,np,lmax,nintp &
+     &                          ,nodes,vconst,id3d)
+        call iff_set_description(id3d,ibc,'3d vel')
+        !call iff_need_all_values(id3d,.false.)
+        call iff_need_all_values(id3d,.true.)
+
+        call velocity_nudging_check_data(id3d,nvar)
+
+	lmax = nlvdi
+	call get_act_dtime(dtime)
+        call iff_read_and_interpolate(id3d,dtime0)
+        call iff_time_interpolate(id3d,dtime,1,np,lmax,uobs)
+        call iff_time_interpolate(id3d,dtime,2,np,lmax,vobs)
+
+	end
+
+!*******************************************************************
+
+	subroutine apply_3d_velocity_nudging
+
+! applies 3d velocity nudging
+
+	use mod_nudge
+	use mod_nudging
+	use basin
+	use levels
+	use mod_internal
+	use mod_hydro
+	use mod_layer_thickness
+	use intp_fem_file
+
+	implicit none
+
+	integer ie,l,lmax,iflag
+	real h,tau,taudef
+	real u,v,s,flag
+	real smax,dt
+	double precision dtime
+
+	if( id3d <= 0 ) return
+
+	call get_act_dtime(dtime)
+	call get_timestep(dt)
+	lmax = nlvdi
+
+!------------------------------------------------------------------
+! read and interpolate
+!------------------------------------------------------------------
+
+	if( .not. iff_is_constant(id3d) ) then
+          call iff_read_and_interpolate(id3d,dtime)
+          call iff_time_interpolate(id3d,dtime,1,nel,lmax,uobs)
+          call iff_time_interpolate(id3d,dtime,2,nel,lmax,vobs)
+	end if
+
+!------------------------------------------------------------------
+! set relaxation time
+!------------------------------------------------------------------
+
+	taudef = taudefvel
+
+	rtauvel = 0.
+
+	call iff_get_flag(id3d,flag)
+
+	iflag = 0
+        do ie=1,nel
+          lmax = ilhv(ie)
+	  do l=1,lmax
+	    u = uobs(l,ie)
+	    v = vobs(l,ie)
+	    if( u == flag .or. v == flag ) then
+	      iflag = iflag + 1
+	    else
+	      rtauvel(l,ie) = 1./taudef	!good point - define tau
+	    end if
+	  end do
+	end do
+
+	write(6,*) 'flags found.... ',iflag,nel,smax
+
+!------------------------------------------------------------------
+! call subroutine to carry out nudging
+!------------------------------------------------------------------
+
+	call velocity_nudging(dt,uobs,vobs,rtauvel,hdenv,utlnv,vtlnv)
 
 !------------------------------------------------------------------
 ! end of routine
@@ -743,7 +911,8 @@
 	implicit none
 
 	call init_zeta_nudging
-	call init_velocity_nudging
+	call init_surface_velocity_nudging
+	call init_3d_velocity_nudging
 
 	end 
 
@@ -753,8 +922,9 @@
 
 	implicit none
 
-	call set_zeta_nudging
-	call set_velocity_nudging
+	call apply_zeta_nudging
+	call apply_surface_velocity_nudging
+	call apply_3d_velocity_nudging
 
 	end 
 
