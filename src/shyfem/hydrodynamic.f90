@@ -280,6 +280,7 @@
 ! 25.07.2024    ggu     new implementation of OMP for hydro
 ! 21.04.2026    ggu     use vqv to deal with dry nodes, also in hydro_vertical()
 ! 28.04.2026    ggu     insert more timing calls
+! 04.06.2026    ggu     insert code to avoid divide by 0 (eps7)
 !
 !******************************************************************
 
@@ -989,6 +990,8 @@
 
         real epseps
         parameter (epseps = 1.e-6)
+        real eps7
+        parameter (eps7 = 1.e-4)
 
 	double precision dtime
 
@@ -1090,6 +1093,9 @@
 ! compute layer thicknes and store in hact and rhact
 !-------------------------------------------------------------
 
+        if( ilevel > nlvdi ) stop 'error stop: ilevel > nlvdi'
+
+        hact = 0.
 	hact(0) = 0.
 	do l=1,ilevel
 	  hact(l) = hdeov(l,ie)
@@ -1102,7 +1108,8 @@
 	end if
 
 	do l=0,ilevel+1
-	  if( hact(l) .le. 0. ) then
+	  !if( hact(l) .le. 0. ) then
+	  if( hact(l) .le. eps7 ) then
 	    rhact(l) = 0.
 	  else
 	    rhact(l) = 1. / hact(l)

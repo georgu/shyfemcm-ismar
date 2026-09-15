@@ -32,6 +32,7 @@
 ! 18.07.2023	lrp	rzmov read from shy
 ! 20.07.2023	lrp	new parameter nzadapt
 ! 09.03.2025	ggu	avoid out of bounds access (hlvaux)
+! 04.06.2026	ggu	htop was not set explicitly to 0 (bug fix)
 !
 ! notes:
 ! this file is used also in:      
@@ -363,13 +364,15 @@
 !	  den = (nsigma(ii)-1.)+r		!freezed
           den = hadapt(ii)-hlvaux(lmin(ii)-1) !zstar
 	  if (ladapt(ii).eq.lmax) den = htot(ii)-hlvaux(lmin(ii)-1)
+          htop = 0.
           do l=lmin(ii),ladapt(ii)
 !	    hdl(l,ii) = - 1. / den		!freezed		
 !           hdl(l,ii) = - 1. / nsigma(ii)       !constant
-	    htop = hlv(l-1)
+	    !htop = hlv(l-1)
 	    hbot = hlv(l)
 	    if (l.eq.lmax) hbot = htot(ii)
             hdl(l,ii) = (htop-hbot)/den   	!zstar
+            htop = hbot
 	  end do
 !         hdl(lmin(ii),ii) = - r / den          !freezed
 	  check = 0.

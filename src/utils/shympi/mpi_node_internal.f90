@@ -205,7 +205,7 @@
 	use shympi_internal
         use ieee_exceptions, only: ieee_divide_by_zero, ieee_invalid, &
                       & ieee_overflow, &
-			& ieee_set_halting_mode, ieee_get_halting_mode
+                      & ieee_set_halting_mode, ieee_get_halting_mode
 
 	implicit none
 
@@ -214,7 +214,7 @@
 
 	integer ierr,iberr
 	integer required,provided
-	logical bzero, binvalid, boverflow
+        logical bzero, binvalid, boverflow
 
 	required = MPI_THREAD_MULTIPLE
 	required = MPI_THREAD_SERIALIZED

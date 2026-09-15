@@ -318,6 +318,7 @@
 	real, parameter :: zero = 0.
 	real, parameter :: zmax = 10.
 	real, parameter :: vmax = 10.
+	!real, parameter :: vmax = 50.
 	real, parameter :: umax = 100000.
 	real, parameter :: hmax = 100000.
 	real, parameter :: smin = -1.
