@@ -3706,7 +3706,7 @@
 
 	logical bquiet
 
-	bquiet = bquiet
+	bquiet = bquiet_nc
 
 	end
 

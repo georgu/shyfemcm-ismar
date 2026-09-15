@@ -1597,6 +1597,8 @@
           call dtsgf(itl,line)
 	  line(11:12) = '  '
 	  line(23:25) = 'GMT'
+	  line(23:25) = 'UTC'
+	  !write(6,*) 'date/time for plot: ',itl,'  ',line
         else if( idate .eq. 5 ) then	!2026-05-14
           call dtsgf(itl,line)
 	  line(11:) = '  '
