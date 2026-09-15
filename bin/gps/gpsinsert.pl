@@ -41,11 +41,15 @@ $where = shift;
 $insertfile = shift;
 $psfile = shift;
 
-unless ( $::quiet ) {
-  print STDERR "Bounding Box PS: $bbps - Landscape: $landscape_ps\n";
+unless( $psfile ) {
+  die "gpsinsert.pl: not enough data...\n";
 }
 
-open(EPS,"<$insertfile");
+unless( -f $insertfile ) {
+  die "*** no such file: $insertfile\n";
+}
+
+open(EPS,"<$insertfile") || die "*** no such file: $insertfile\n";
 @insertfile = <EPS>;
 close(EPS);
 

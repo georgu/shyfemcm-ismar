@@ -29,6 +29,7 @@
 ! revision log :
 !
 ! 23.04.2026	ggu	copied from femadd
+! 22.06.2026    ggu     use iformat from the files read
 !
 !******************************************************************
 
@@ -133,10 +134,11 @@
 	  call femutil_init_record(finfo(i))
           call clo_get_file(i,infile)
 	  call femutil_open_for_read(infile,0,ffinfo(i),ierr)
+          iformat = ffinfo(i)%iformat
 	  if( ierr /= 0 ) goto 99
 	end do
 
-	iformat = 1
+	!iformat = 1
 	call femutil_open_for_write('out.fem',iformat,ffiout)
 
 !--------------------------------------------------------------

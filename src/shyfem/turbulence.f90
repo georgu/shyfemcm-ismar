@@ -78,6 +78,7 @@
 ! 06.06.2023    ggu     minor change writing n2max
 ! 05.10.2025	ggu	in gotm_internal_init() initialize only active layers
 ! 10.10.2025	ggu	new parameter rilimit to limit Richardson number
+! 04.06.2026	ggu	avoid divide by 0 while computing ri
 !
 !**************************************************************
 
@@ -477,7 +478,8 @@
 	      laux = nlev - l
 	      nn(laux) = buoyf2(l,k)
 	      ss(laux) = shearf2(l,k)
-	      ri = nn(laux) / ss(laux)
+              ri = 0.
+              if( ss(laux) > 0. ) ri = nn(laux) / ss(laux)
 	      if( brilimit ) then
 	        rimax = max(rimax,ri)
 	        if( ri > rilimit ) icount = icount + 1
