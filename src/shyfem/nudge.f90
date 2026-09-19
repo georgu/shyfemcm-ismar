@@ -556,10 +556,6 @@
 	call getfnm(what,surffile)
 	if( surffile == ' ' ) return
 
-	if( shympi_is_parallel() ) then
-	  stop 'error stop init_surface_velocity_nudging: no mpi yet'
-	end if
-
 	taudefvel = getpar('tauvel')
 	if( taudefvel == 0. ) then
 	  write(6,*)  'no time scale (tauvel) given for velocity'
@@ -723,10 +719,6 @@
 	  stop 'error stop init_3d_velocity_nudging: either surface or 3d'
 	end if
 
-	if( shympi_is_parallel() ) then
-	  stop 'error stop init_3d_velocity_nudging: no mpi yet'
-	end if
-
 	taudefvel = getpar('tauvel')
 	if( taudefvel == 0. ) then
 	  write(6,*)  'no time scale (tauvel) given for velocity'
@@ -814,7 +806,7 @@
 	  end do
 	end do
 
-	write(6,*) 'flags found.... ',iflag,nel,smax
+	!write(6,*) 'flags found: (iflag,nel) ',iflag,nel
 
 !------------------------------------------------------------------
 ! call subroutine to carry out nudging
@@ -920,11 +912,27 @@
 
 	subroutine set_nudging
 
+! this is called in explit.f90
+
 	implicit none
 
 	call apply_zeta_nudging
 	call apply_surface_velocity_nudging
 	call apply_3d_velocity_nudging
+
+	end 
+
+!*******************************************************************
+
+	subroutine apply_nudging
+
+! this is called in main
+
+	implicit none
+
+	!call apply_zeta_nudging
+	!call apply_surface_velocity_nudging
+	!call apply_3d_velocity_nudging
 
 	end 
 

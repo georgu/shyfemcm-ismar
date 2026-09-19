@@ -482,7 +482,7 @@
 	flags = -1.e+20
 	call parse_strings(flagline,nd,sflags)
 	call setup_facts(nd,sflags,flags)
-	write(6,*) 'flags: ',flags
+	!write(6,*) 'flags: ',flags
 
 	offs = 0.
 	call parse_strings(offline,nd,soffs)

@@ -1152,7 +1152,7 @@
 	ndim = nxdim * nydim
 	ndims = 2
 
-	write(6,*) 'ndimx,ndimy: ',ndimx,ndimy
+	!write(6,*) 'ndimx,ndimy: ',ndimx,ndimy
 
 	if( ndimx .eq. 1 ) then
 	  call nc_get_dim_len(ncid,dimx_id(1),nx)

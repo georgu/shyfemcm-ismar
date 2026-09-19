@@ -637,6 +637,7 @@
 	   call trace_point_0('hydro')
 	   call cpu_time_start(7)
 	   call hydro			!hydro
+	   call apply_nudging
 	   call cpu_time_end(7)
 
 	   call trace_point_0('run_scalar')
