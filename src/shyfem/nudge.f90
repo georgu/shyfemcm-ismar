@@ -764,6 +764,8 @@
 	real h,tau,taudef
 	real u,v,s,flag
 	real smax,dt
+	real rtau,rtaumax,rtaumin
+	real, parameter :: high = 1.e+30
 	double precision dtime
 
 	if( id3d <= 0 ) return
@@ -812,7 +814,27 @@
 ! call subroutine to carry out nudging
 !------------------------------------------------------------------
 
-	call velocity_nudging(dt,uobs,vobs,rtauvel,hdenv,utlnv,vtlnv)
+	!call velocity_nudging(dt,uobs,vobs,rtauvel,hdenv,utlnv,vtlnv)
+
+	rtaumax = -high
+	rtaumin = +high
+
+        do ie=1,nel
+          lmax = ilhv(ie)
+          do l=1,lmax
+	    rtau = rtauvel(l,ie)
+	    if( rtau /= 0 ) rtaumax = max(rtaumax,rtau)
+	    if( rtau /= 0 ) rtaumin = min(rtaumin,rtau)
+	    if( rtau > 0. ) then
+	      h = hdeov(l,ie)
+	      fxv(l,ie) = fxv(l,ie) - rtau * (h*uobs(l,ie)-utlov(l,ie))
+	      fyv(l,ie) = fyv(l,ie) - rtau * (h*vobs(l,ie)-vtlov(l,ie))
+	    end if
+	  end do
+	end do
+
+	!write(6,*) 'rtaumin/max: ',rtaumin,rtaumax
+	!write(6,*) 'taumin/max: ',1./rtaumin,1./rtaumax
 
 !------------------------------------------------------------------
 ! end of routine
@@ -912,8 +934,6 @@
 
 	subroutine set_nudging
 
-! this is called in explit.f90
-
 	implicit none
 
 	call apply_zeta_nudging
@@ -925,8 +945,6 @@
 !*******************************************************************
 
 	subroutine apply_nudging
-
-! this is called in main
 
 	implicit none
 

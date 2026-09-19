@@ -1528,7 +1528,7 @@
 
 	real getpar
 	double precision dgetpar
-	double precision iscand
+	integer iscand
 
 	if( icall .eq. -1 ) return
 
