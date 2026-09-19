@@ -57,9 +57,43 @@
 ! 01.10.2025    ggu     handle ncdate0
 ! 03.10.2025    ggu     handle sumvar with specific vars, use 78 for sumvar
 ! 08.10.2025    ggu     bug fix for ncdate0
+! 19.09.2026    ggu     with bsilent nc-file was not closed (bug)
 !
 !***************************************************************
 !
+! contents: 
+!
+!   file
+!	file_header
+!	data_record 1
+!	data_record 2
+!	...
+!	data_record n
+!
+!   file_header
+!	all infos on files neede
+!
+!   data_record
+!	data_record_header
+!	data_record 1
+!	data_record 2
+!	...
+!	data_record nvar
+!
+!   subroutine shyelab_init_output	writes file_header
+!   subroutine shyelab_header_output	writes record_header
+!   subroutine shyelab_record_output	writes single data record
+!   subroutine shyelab_post_output	handles output after data_records 
+!   subroutine shyelab_final_output	writes final message
+!
+!   subroutine handle_sumvar
+!   subroutine fem_write_hydro
+!   subroutine get_string_description
+!   subroutine fem_regular_interpolate_shell
+!
+!   subroutine shyelab_increase_nwrite
+!   subroutine shyelab_get_nwrite
+
 !===============================================================
         module shyelab_out
 !===============================================================
@@ -221,6 +255,7 @@
 	    call nc_output_set_vars(breg,nxreg,nyreg,hcoord,fmreg,xlon,ylat)
 	    call nc_output_init(ncid,title,nvar,ivars,b2d,sncglobal)
 	    idout = ncid
+	    !write(6,*) 'shyelab_init_output: '
 	  else if( outformat == 'off' ) then
 	    file = 'out.off'
             iunit = ifileo(60,file,'unformatted','new')
@@ -294,6 +329,7 @@
 	  else if( outformat == 'nc' ) then
 	    ncid = idout
 	    call nc_output_time(ncid,dtime)
+	    !write(6,*) 'shyelab_header_output: ',dtime
 	  else if( outformat == 'off' ) then
 	    if( bhydro ) return
             write(6,*) 'off format valid only on hydro files'
@@ -401,6 +437,7 @@
 	    call nc_output_get_var_id(iv,var_id)
 	    call nc_output_get_var_dim(iv,var_dim)
 	    call nc_output_record(ncid,var_id,var_dim,np,svalue)
+	    !write(6,*) 'shyelab_record_output: ',iv,var_id
 	  else if( outformat == 'off' ) then
 	    ! nothing to be done
 	  else
@@ -516,6 +553,7 @@
 	  else if( outformat == 'nc' ) then
 	    ncid = idout
 	    call nc_output_hydro(ncid,znv,uprv,vprv)
+	    !write(6,*) 'shyelab_post_output: '
 	  else if( outformat == 'off' ) then
             call off_output_hydro(idout,dtime,nndim,cv3all)
 	  else
@@ -562,6 +600,23 @@
 	character*40 full
 
 	if( .not. boutput .and. .not. baverbas ) return
+
+	if( boutput ) then	!if needed we have to close files
+
+	  if( bshy ) then
+	  else if( outformat == 'gis' ) then
+	  else if( outformat == 'fem' ) then
+	  else if( outformat == 'nc' ) then
+	    ncid = idout
+	    call nc_output_final(ncid)
+	  else if( outformat == 'off' ) then
+	  else
+	    write(6,*) 'outformat = ',trim(outformat)
+	    stop 'error stop: outformat not recognized'
+	  end if
+
+	end if
+
 	if( bsilent ) return
 
 	write(6,*) 'output written to following files: '
@@ -620,8 +675,6 @@
 	  else if( outformat == 'fem' ) then
 	    write(6,*) 'out.fem'
 	  else if( outformat == 'nc' ) then
-	    ncid = idout
-	    call nc_output_final(ncid)
 	    write(6,*) 'out.nc'
 	  else if( outformat == 'off' ) then
 	    write(6,*) 'out.off'
