@@ -1067,12 +1067,14 @@
 ! |stwind|		Point size of the text. (Default 18)
 ! |wtext|		Text used for the legend (Default 'Wind speed')
 ! |wunit|		Unit for the wind speed (Default 'm/s')
+! |wfact|		Extra factor for wind in legend (Default 1)
 
 	call addpar('xtwind',0.)
 	call addpar('ytwind',0.)
 	call addpar('stwind',18.)         !size
 	call addfnm('wtext','Wind speed') !legend for wind
 	call addfnm('wunit','m/s')	  !unit for wind
+	call addpar('wfact',1.)		  !extra factor for wind in legend
 
 ! DOCS	END
 
