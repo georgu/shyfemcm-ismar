@@ -94,6 +94,7 @@
 !  09.01.2025	ggu	avoid divide by zero in scale_legend(): 10 -> 10.
 !  18.05.2026	ggu	added bbox and badjust in blank_window()
 !  22.05.2026	ggu	update in legdate()
+!  22.09.2026	ggu	new variable wfact introduced
 ! 
 !  notes :
 ! 
@@ -1383,8 +1384,8 @@
 
         real array(ndim)
         save array
-        real xwind,ywind,lwwind,scwind,xtwind,ytwind
-        save xwind,ywind,lwwind,scwind,xtwind,ytwind
+        real xwind,ywind,lwwind,scwind,xtwind,ytwind,wfact
+        save xwind,ywind,lwwind,scwind,xtwind,ytwind,wfact
         integer iwtype,stwind
         save iwtype,stwind
         character*40 wtext,wunit
@@ -1412,16 +1413,17 @@
 	  call ptime_get_dtime(dtime)
 	  call iff_ts_init(dtime,file,nintp,nvar,idwind)
           !call exffil(file,nintp,nvar,nread,ndim,array)
-          xwind = getpar('xwind')
+          xwind = getpar('xwind')		!bottom of array
           ywind = getpar('ywind')
-          iwtype = nint(getpar('iwtype'))
-          lwwind = getpar('lwwind')
-          scwind = getpar('scwind')
+          iwtype = nint(getpar('iwtype'))	!wind type
+          lwwind = getpar('lwwind')		!line width
+          scwind = getpar('scwind')		!??
+          wfact = getpar('wfact')		!extra factor for text
 	  call make_absolute1(xwind,ywind)
 
-          xtwind = getpar('xtwind')
+          xtwind = getpar('xtwind')		!position of text
           ytwind = getpar('ytwind')
-          stwind = nint(getpar('stwind'))
+          stwind = nint(getpar('stwind'))	!point size of text
 	  call getfnm('wtext',wtext)
 	  call getfnm('wunit',wunit)
 	  call make_absolute1(xtwind,ytwind)
@@ -1472,6 +1474,7 @@
 	call qlwidth(-1.)      !FIXME -> use negative number to reset
 
 	if( stwind .gt. 0 ) call qtxts(stwind)
+	s = s * wfact				!conversion factor
         call make_wind_text(wtext,wunit,s,text)
 	call qtext(xtwind,ytwind,text)
 

@@ -73,6 +73,7 @@
 ! 23.04.2024	ggu	conversion routines for wind implemented
 ! 10.10.2024	ggu	new smooth option for fem files implemented
 ! 09.01.2026	ggu	new code for cover option
+! 22.09.2026	ggu	blayer introduced
 !
 !******************************************************************
 
@@ -92,7 +93,7 @@
 
 	character*80 name,string
 	integer np,iunit,iout
-	integer nvers,lmax,nvar,ntype,nlvdi,lmax_prof
+	integer nvers,lmax,nvar,ntype,nlvdi,lmax_prof,lmaxout
 	integer nvar0,lmax0,np0,ntype0
 	integer idt,idtact
 	double precision dtime,atime0,atime_out
@@ -130,6 +131,7 @@
 	real,allocatable :: facts(:)
 	real,allocatable :: offs(:)
 	real,allocatable :: data(:,:,:)
+	real,allocatable :: data2d(:)
 	real,allocatable :: data_profile(:)
 	real,allocatable :: dext(:)
 	real,allocatable :: d3dext(:,:)
@@ -149,7 +151,7 @@
 !--------------------------------------------------------------------
 	INTERFACE
 	subroutine allocate_vars(nvar,np,lmax,hlv,hd,ilhkv &
-     &			,data_profile,d3dext,data)
+     &			,data_profile,d3dext,data,data2d)
 	integer nvar,np,lmax
 	real, allocatable :: hlv(:)
 	real, allocatable :: hd(:)
@@ -157,6 +159,7 @@
 	real, allocatable :: data_profile(:)
 	real, allocatable :: d3dext(:,:)
 	real, allocatable :: data(:,:,:)
+	real, allocatable :: data2d(:)
 	end
 	END INTERFACE
 !--------------------------------------------------------------------
@@ -165,7 +168,6 @@
 
 	bhuman = .true.		!convert time in written fem file to dtime=0
 	blayer = .false.
-	blayer = .true.		!write layer structure - should be given by CLO
         bnewstring = .false.
 
 	iextract = 0
@@ -187,6 +189,7 @@
 	bskip = .not. bwrite
 	if( bout ) bskip = .false.
 	bextract = ( snode /= ' ' .or. scoord /= ' ' )
+	blayer = layer > 0	!only want this layer
 
 !--------------------------------------------------------------
 ! open file
@@ -277,6 +280,12 @@
 	  write(6,*) 'ntype:  ',ntype
 	end if
 
+	write(6,*) 'layer = ',blayer,layer,lmax
+	if( blayer .and. layer > lmax ) then
+	  write(6,*) 'max layers less than requested layer: ',lmax,layer
+	  stop 'error stop femelab: ilayer>lmax'
+	end if
+
 	nvar0 = nvar
 	ntype0 = ntype
 	lmax0 = lmax
@@ -284,7 +293,7 @@
 	np0 = np
 
 	call allocate_vars(nvar,np,lmax,hlv,hd,ilhkv &
-     &			,data_profile,d3dext,data)
+     &			,data_profile,d3dext,data,data2d)
 
 	allocate(ius(nvar))
 	allocate(ius_sd(nvar))
@@ -448,7 +457,7 @@
 	    nlvdi = lmax
 	    np0 = np
 	    call allocate_vars(nvar,np,lmax,hlv,hd,ilhkv &
-     &			,data_profile,d3dext,data)
+     &			,data_profile,d3dext,data,data2d)
 	  end if
 
 	  call fem_file_read_2header(iformat,iunit,ntype,lmax &
@@ -562,8 +571,10 @@
 	      hdp = flag
               bcondense_txt = ( nvar == 1 .or. lmax == 1 )
             end if
+	    lmaxout = lmax
+	    if( blayer ) lmaxout = 1
             call fem_file_write_header(iformout,iout,dtime &
-     &                          ,0,np_out,lmax,nvar,ntype_out,lmax &
+     &                          ,0,np_out,lmax,nvar,ntype_out,lmaxout &
      &                          ,hlv,datetime,regpar_out)
           end if
 
@@ -612,11 +623,21 @@
      &                          ,il_out,hd_out &
      &                          ,nlvdi,data_out)
 	      else
-                call fem_file_write_data(iformout,iout &
+		if( blayer ) then
+		  lmaxout = 1
+		  data2d(:) = data(layer,:,iv)
+                  call fem_file_write_data(iformout,iout &
+     &                          ,0,np_out,lmaxout &
+     &                          ,string &
+     &                          ,ilhkv,hd &
+     &                          ,nlvdi,data2d)
+		else
+                  call fem_file_write_data(iformout,iout &
      &                          ,0,np_out,llmax(iv) &
      &                          ,string &
      &                          ,ilhkv,hd &
      &                          ,nlvdi,data(1,1,iv))
+		end if
 	      end if
             end if
 	    if( bextract ) then
@@ -1755,7 +1776,7 @@
 !*****************************************************************
 
 	subroutine allocate_vars(nvar,np,lmax,hlv,hd,ilhkv &
-     &			,data_profile,d3dext,data)
+     &			,data_profile,d3dext,data,data2d)
 
 	implicit none
 
@@ -1766,6 +1787,7 @@
 	real, allocatable :: data_profile(:)
 	real, allocatable :: d3dext(:,:)
 	real, allocatable :: data(:,:,:)
+	real, allocatable :: data2d(:)
 
 	if( allocated(hlv) ) then
 	  deallocate(hlv,hd,ilhkv,data_profile,d3dext,data)
@@ -1777,6 +1799,7 @@
 	allocate(data_profile(lmax))
 	allocate(d3dext(lmax,nvar))
 	allocate(data(lmax,np,nvar))
+	allocate(data2d(np))
 
 	end
 

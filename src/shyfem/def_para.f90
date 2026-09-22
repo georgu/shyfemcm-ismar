@@ -235,6 +235,7 @@
 ! 01.04.2025    ggu     new value 5 for ibarcl
 ! 16.04.2025    ggu     new parameter wsettl
 ! 14.09.2026    ggu     new parameter velobs
+! 22.09.2026    ggu     new parameter veltau
 !
 !************************************************************************
 
@@ -2047,6 +2048,8 @@
 !		data can be used for assimilation into the model.
 ! |velobs|	File with 3d velocities from observation. These
 !		data can be used for assimilation into the model.
+! |veltau|	Name of file containing the time scale for nudging 
+!		of velocities (surface and 3d)
 ! |restrt|	Name of the file if a restart is to be performed. The
 !		file has to be produced by a previous run
 !		with the parameter |idtrst| different
@@ -2057,6 +2060,7 @@
 
         call addfnm('surfvel',' ')
         call addfnm('velobs',' ')
+	call addfnm('veltau',' ')
 	call addfnm('restrt',' ')
 	call addfnm('gotmpa',' ')
 

@@ -1188,6 +1188,8 @@
 ! 	global parameters from STR file
 ! 	-----------------------------------------------------------
 
+	!write(6,*) 'ivel = ',ivel
+
         bvel   = ivel .eq. 1		!want vel but have trans
         btrans = ivel .eq. 2		!want trans
         bwind  = ivel .eq. 3
@@ -1279,6 +1281,12 @@
 	  vvelem = 0.
         end if
 
+	!write(6,*) size(uvnode),size(vvnode),size(uvelem),size(vvelem)
+	!write(6,*) minval(uvnode),maxval(uvnode)
+	!write(6,*) minval(vvnode),maxval(vvnode)
+	!write(6,*) minval(uvelem),maxval(uvelem)
+	!write(6,*) minval(vvelem),maxval(vvelem)
+
 	nnn = 0
         if( nnn > 0 ) then
           write(112,*) 'writing uvelem ',nel
@@ -1320,9 +1328,9 @@
 	    call am2av(vreg,vvnode,nx,ny)
 	    np = nkn
 	  else				!use regular grid for plotting
+	    np = nx*ny
 	    uvnode(1:np) = reshape(ureg(:,:),(/nx*ny/))	!this seems useless
 	    vvnode(1:np) = reshape(vreg(:,:),(/nx*ny/))
-	    np = nx*ny
 	  end if
 	else if( bregplot ) then	!want regular plot for arrows
 	  call getgeo(x0,y0,dx,dy,flag)
@@ -1347,6 +1355,8 @@
 	    call bnd2val(vvnode,0.)	
 	  end if
 	end if
+
+	!write(6,*) np,maxval(uvmod(1:np))
 
 ! ------------------------------------------------------------------
 !  underlying color 
@@ -1499,7 +1509,7 @@
 	return
    99	continue
 	write(6,*) 'problems... ',bvel,btrans,bistrans,bonelem
-	stop 'error stop plo2vel: internal error (1)'
+	stop 'error stop plovect: internal error (1)'
 	end
 
 ! **********************************************************

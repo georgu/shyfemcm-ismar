@@ -673,6 +673,8 @@
 ! initializes file and sets up various parameters
 ! if called with dtime==-1 does not populate records
 ! this means that iff_populate_records must be called manually
+!
+! all parameters are input parameters, with the exception of id
 
 	use mod_info_output
 
@@ -1010,12 +1012,12 @@
 !	 2	direct
 !	 3	time series
 
-	character*(*) file
-	logical bverb
-	integer np
-	integer nvar		!is <= 0 if error in opening file
-	integer ntype
-	integer iformat		!info on file type (return)
+	character*(*), intent(in) :: file
+	logical, intent(in) :: bverb
+	integer, intent(out) :: np
+	integer, intent(out) :: nvar	!is <= 0 if error in opening file
+	integer, intent(out) :: ntype
+	integer, intent(out) :: iformat	!info on file type (return)
 
 	integer il
 	integer itype(2)
@@ -1101,8 +1103,8 @@
 
 	subroutine iff_populate_records(id,dtime0)
 
-	integer id
-	double precision dtime0
+	integer, intent(in) :: id
+	double precision, intent(in) :: dtime0
 
 	double precision dtime,dtime2
 	double precision dtimefirst,dtimelast
