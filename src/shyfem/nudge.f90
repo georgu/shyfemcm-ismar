@@ -814,6 +814,7 @@
 	if( id3d <= 0 ) return
 
 	bdebug = .true.
+	bdebug = .false.
 
 	call get_act_dtime(dtime)
 	call get_timestep(dt)

@@ -78,6 +78,7 @@
 ! 27.01.2022	ggu	new routine for skipping record, find last record
 ! 18.03.2025	ggu	deal with lmax == 0 in writing record
 ! 24.06.2025	ggu	in fem_is_nan() use intrinsic isnan()
+! 22.09.2026	ggu	some reformatting
 !
 ! notes :
 !
@@ -204,8 +205,9 @@
 !************************************************************
 !************************************************************
 
-	subroutine fem_file_write_header( iformat, iunit, dtime ,nvers, np, lmax,   &
-              &                 nvar, ntype, nlvddi, hlv,  datetime,regpar )
+	subroutine fem_file_write_header( iformat, iunit, dtime, nvers, np &
+     &                 		, lmax,  nvar, ntype, nlvddi, hlv &
+     &				, datetime, regpar )
 
 ! writes header of fem file
 
@@ -234,7 +236,7 @@
 !************************************************************
 
 	subroutine fem_file_write_params( iformat, iunit, dtime,    &
-               &        nvers,np,lmax, nvar, ntype, datetime)
+               &        nvers, np, lmax, nvar, ntype, datetime)
 
 ! writes first header of fem file
 
@@ -292,7 +294,8 @@
 
 !************************************************************
 
-	subroutine fem_file_write_2header( iformat, iunit, ntype, lmax, hlv, regpar )
+	subroutine fem_file_write_2header( iformat, iunit, ntype &
+     &					, lmax, hlv, regpar )
 
 	implicit none
 
@@ -330,8 +333,8 @@
 
 !************************************************************
 
-	subroutine fem_file_write_data( iformat, iunit, nvers, np, lmax, string    &
-               &                    , ilhkv, hd, nlvddi, data)
+	subroutine fem_file_write_data( iformat, iunit, nvers, np, lmax    &
+               &                    , string, ilhkv, hd, nlvddi, data)
 
 ! writes data of the file
 
@@ -363,7 +366,7 @@
 	b2d = lmax .le. 1
 
 	if( iformat == 1 ) then
-	  write(iunit,'(a)') text
+	  write(iunit,'(a)') trim(text)
 	  if( nv >= 3 ) write(iunit,*) np,lmax
 	  if( b2d ) then
 	    write(iunit,1000) (data(1,k),k=1,np)
@@ -900,7 +903,8 @@
 
 !************************************************************
 
-	subroutine fem_file_read_2header(iformat,iunit,ntype,lmax,hlv,regpar,ierr)
+	subroutine fem_file_read_2header(iformat,iunit,ntype,lmax &
+     &						,hlv,regpar,ierr)
 
 ! reads hlv of header
 
