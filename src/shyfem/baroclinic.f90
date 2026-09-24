@@ -605,6 +605,8 @@
 	  call check_nodes_around_node(ks)
 	end if
 
+	!call ts_debug
+
 !----------------------------------------------------------
 ! end of routine
 !----------------------------------------------------------
@@ -1368,6 +1370,33 @@
 	end if
 
 	if( bstop ) stop 'error stop ts_dia'
+
+	end
+
+!*******************************************************************	
+
+	subroutine ts_debug
+
+	use basin
+	use levels
+	use mod_ts
+ 
+	implicit none
+
+	integer, parameter :: ndim = 5
+	integer, save :: nodes(ndim)
+	integer, save :: icall = 0
+
+	nodes = (/300,600,900,1200,1500/)
+	!nodes = (/300,600,900,1200,15000/)	!to produce error
+
+	if( icall == 0 ) then
+	  call writevars_init(ndim,nodes)
+	  icall = 1
+	end if
+
+	!write(6,*) 'writing to unit 200'
+	call writevars_do(200,nkn,nlv,tempv)
 
 	end
 
