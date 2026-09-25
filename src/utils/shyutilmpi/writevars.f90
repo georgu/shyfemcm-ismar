@@ -38,7 +38,7 @@
 !
 !	call writevars_init(nnodes,nodes)	!just call it once at start
 !
-!	call writevars_do(iunit,n,nlvdi,var)	!write on every time step
+!	call writevars_array(iunit,n,nlvdi,var)	!write on every time step
 !	
 !	nnodes		total number of nodes to be written
 !	nodes(nnodes)	external node numbers
@@ -51,21 +51,32 @@
 !
 !   at simulation start:
 !
-!	nnodes = 3
+!	integer, parameter :: ndim = 3
+!	integer, allocatable :: nodes(:)
+!	...
+!	allocate(nodes(ndim))
+!	...
+!	nnodes = ndim
 !	nodes(1) = 100				!give nodes with external nums
 !	nodes(2) = 1000
 !	nodes(3) = 1500
 !	call writevars_init(nnodes,nodes)	!just call it once at start
 !
+!	or much easier
+!
+!	call writevars_init(3,(/100,100,150/)
+!
 !   in time loop:
 !
-!	call writevars_do(200,nkn,nlv,tempv)	!writes temperature values
+!	call writevars_array(200,nkn,nlv,tempv)	!writes temperature values
 !
 ! please note that for different variables different file units have to be used
 
 !=================================================================
 	module mod_writevars
 !=================================================================
+
+	private
 
 	logical, parameter :: bflush = .false.	!flush after every write
 
@@ -75,14 +86,18 @@
 	integer, save, allocatable :: enodes(:)
 	integer, save, allocatable :: node_id(:)
 
+	integer, save :: nindex = 0
+	integer, save, allocatable :: index(:)
+
+	public writevars_init, writevars_array, writevars_scalar
+
 !=================================================================
-	end module mod_writevars
+	contains
 !=================================================================
 
 	subroutine writevars_init(nnodes,nodes)
 
 	use shympi
-	use mod_writevars
 
 	implicit none
 
@@ -90,12 +105,14 @@
 	integer nodes(nnodes)
 
 	logical berror,bmaster
-	integer i,node
+	integer i,node,itot,isum
 	integer, allocatable :: found(:)
 
 	integer ipint
 
 	if( ndim > 0 ) return			!already initialized
+
+	bmaster = shympi_is_master()
 
 	ndim = nnodes
 	allocate(inodes(ndim),enodes(ndim),node_id(ndim))
@@ -120,7 +137,20 @@
 	call shympi_gather_and_sum(node_id)
 	call shympi_gather_and_sum(found)
 
-	bmaster = shympi_is_master()
+	nindex = maxval(inodes)		!max node number to refer
+	allocate(index(0:nindex))
+	index = 0
+
+	isum = 0
+	do i=1,ndim
+	  node = inodes(i)
+	  if( node > 0 ) index(node) = i
+	  isum = isum + i
+	end do
+	itot = sum(index)
+	itot = shympi_sum(itot)
+	if( bmaster ) write(6,*) 'itot = ',itot,'  isum = ',isum
+
 	berror = .false.
 
 	do i=1,ndim
@@ -140,16 +170,19 @@
 	  stop 'error stop writevars_init: unknown node(s)'
 	end if
 
+	if( itot /= isum .and. bmaster ) then
+	  stop 'error stop writevars_init: internal error (1)'
+	end if
+
 	call shympi_barrier
 
 	end
 
 !*****************************************************************
 
-	subroutine writevars_do(iunit,n,nlvdi,var)
+	subroutine writevars_array(iunit,n,nlvdi,var)
 
 	use shympi
-	use mod_writevars
 
 	implicit none
 
@@ -168,7 +201,7 @@
 
 	if( ndim == 0 ) then
 	  write(6,*) 'routines writevars are not initialized'
-	  stop 'error stop writevars_do: not initialized'
+	  stop 'error stop writevars_array: not initialized'
 	end if
 
 !-----------------------------------------------------------------
@@ -196,4 +229,60 @@
 	end
 
 !*****************************************************************
+
+	subroutine writevars_scalar(iunit,node,values)
+
+! writes scalars to file (with node info)
+!
+! typical call: call writevars_scalar(iu,node,(/s1,s2,s3/))
+!
+! the calling program must include the interface description
+
+	use shympi
+
+	implicit none
+
+	integer iunit		!file unit
+	integer node		!node number of the variables
+	real values(:)		!scalar values of the node
+
+	logical bopen
+	integer i,extnode,n
+	character*80 lformat
+	character*80 filename
+	character*20 aline
+
+	if( node > nindex ) return
+	i = index(node)
+	if( i == 0 ) return
+
+	n = size(values)
+	if( n <= 0 ) then
+	  write(6,*) 'size of values: ',n
+	  stop 'error stop writevars_scalar: internal error (1)'
+	end if
+
+	if( shympi_is_parallel() ) then		!must open file to not clobber
+	  inquire(unit=iunit,opened=bopen) 
+	  if( .not. bopen ) then
+	    write(filename,'(A,I0,A,I0)') 'fort.',iunit,'.',my_id
+	    !write(6,*) 'filename: ',trim(filename)
+	    open(iunit,file=filename,status='unknown',form='formatted')
+	  end if
+	end if
+
+	extnode = enodes(i)
+	write(lformat,'(a,i3,a)') '(a20,i8,',n,'f12.4)'
+
+	call get_act_timeline(aline)
+	write(iunit,lformat) aline,extnode,values(1:n)
+	if( bflush ) flush(iunit)
+
+	end
+
+!*****************************************************************
+
+!=================================================================
+	end module mod_writevars
+!=================================================================
 

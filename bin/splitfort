@@ -1,0 +1,72 @@
+#!/usr/bin/perl -w
+#
+#------------------------------------------------------------------------
+#
+#    Copyright (C) 1985-2020  Georg Umgiesser
+#
+#    This file is part of SHYFEM.
+#
+#------------------------------------------------------------------------
+
+# parses files written with writevars_scalar
+#
+# format of file is:  time node data1 data2 data3 ...
+#
+# the program creates files fort.nodes.node
+#
+# with format: time data1 data2 data3 ...
+#
+# for each single node
+
+use strict;
+
+$::help = 0 unless $::help;
+$::h = 0 unless $::h;
+
+if( $::help || $::h || !@ARGV ) {
+  print "Usage: splitcol [-help|-h] file\n";
+  exit 0;
+}
+
+%::fhs = ();		#hash of filehandles
+
+while(<>) {
+
+  chomp;
+  s/^\s+//;		#crop leading white space
+  next if /^\#.*/;	#comment line -> ignore
+  s/#.*//;		#comment -> delete
+
+  my @data = split;
+  my $time = shift(@data);
+  my $node = shift(@data);	#second column is node number
+  my $line = join(" ",@data);
+
+  my $fh = get_filehandle($node);
+  print $fh "$time $line\n";
+}
+
+foreach my $fh (values %::fhs) {
+  close($fh);
+}
+
+#----------------------------------------------------
+
+sub get_filehandle {
+
+  my $node = shift;
+
+  return $::fhs{$node} if $::fhs{$node};	#just to be sure
+
+  # no filehandle -> open file
+
+  my $file = "fort.nodes.$node";
+  my $fh;
+  open($fh,">$file") || die "*** cannot open file $file\n";
+  $::fhs{$node} = $fh;
+
+  return $fh;
+}
+  
+#----------------------------------------------------
+

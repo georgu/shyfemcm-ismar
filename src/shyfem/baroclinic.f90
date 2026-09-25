@@ -166,6 +166,7 @@
 ! 28.01.2026    ggu     new routine ts_nudge_check()
 ! 30.01.2026    ggu     fixed bug in nudging (with tau given as parameter)
 ! 05.05.2026    ggu     some more info messages
+! 24.09.2026    ggu     new routine ts_debug() to show writing with writevars
 !
 ! notes :
 !
@@ -1380,23 +1381,39 @@
 	use basin
 	use levels
 	use mod_ts
+	use mod_writevars
  
 	implicit none
 
 	integer, parameter :: ndim = 5
 	integer, save :: nodes(ndim)
+	integer, parameter :: nvals = 3
+	real, save :: vals(nvals)
 	integer, save :: icall = 0
+
+	integer i,k
 
 	nodes = (/300,600,900,1200,1500/)
 	!nodes = (/300,600,900,1200,15000/)	!to produce error
 
 	if( icall == 0 ) then
 	  call writevars_init(ndim,nodes)
+	  do i=1,nvals
+	    vals(i) = i
+	  end do
 	  icall = 1
 	end if
 
 	!write(6,*) 'writing to unit 200'
-	call writevars_do(200,nkn,nlv,tempv)
+	call writevars_array(200,nkn,nlv,tempv)
+
+	do i=1,nvals
+	  vals(i) = vals(i) + 10
+	end do
+
+	do k=1,nkn
+	  call writevars_scalar(88,k,vals)
+	end do
 
 	end
 
