@@ -692,7 +692,7 @@
 
 	btvd = itvd .gt. 0
 	btvd2 = itvd .eq. 2
-	btvdgrad = (itvd .eq. 1) .or. (itvd .eq. 3)
+	btvdgrad = (itvd .eq. 1) .or. (itvd .ge. 3)
 	btvddebug = .true.
 	btvddebug = btvddebug .and. btvd2
 	bsubs = (isubs .eq. 1) .and. (n_rkstages .eq. 1)

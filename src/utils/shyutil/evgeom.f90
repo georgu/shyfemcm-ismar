@@ -115,7 +115,7 @@
 
         implicit none
 
-	integer, parameter :: evdim = 19
+	integer, parameter :: evdim = 25
 
 	integer, save, private :: nel_alloc = 0
 	integer, save :: isphe_ev = -1
@@ -186,12 +186,13 @@
 	double precision s1,s2,s3,ss1,ss2,ss3
 	double precision d1,d2,d3
 	double precision dd1,dd2,dd3
+	double precision xg,yg,x12,y12,x13,y13,x23,y23
 
 	double precision xm,ym,maxmax
 	double precision xx1,xx2,xx3,yy1,yy2,yy3
 
 	double precision xlon1,ylat1,xlon2,ylat2,xlon3,ylat3	!lat/long [rad]
-	double precision dlat0,dlon0			!center of projection
+	double precision dlat0,dlon0				!center of projection
 
 	if( .not. basin_has_basin() ) goto 97
 
@@ -304,6 +305,15 @@
 	dd2 = aj * sqrt( b2*b2 + c2*c2 )
 	dd3 = aj * sqrt( b3*b3 + c3*c3 )
 
+	xg = (x1+x2+x3)/3.0
+	yg = (y1+y2+y3)/3.0
+	x12 = 0.5 * (x1 + x2)
+	y12 = 0.5 * (y1 + y2)
+	x13 = 0.5 * (x1 + x3)
+	y13 = 0.5 * (y1 + y3)
+	x23 = 0.5 * (x2 + x3)
+	y23 = 0.5 * (y2 + y3)
+
 	ev(1,ie)=a1		!a values for interpolation
 	ev(2,ie)=a2
 	ev(3,ie)=a3
@@ -323,6 +333,12 @@
 	ev(17,ie)=s1		!distance between vertices
 	ev(18,ie)=s2
 	ev(19,ie)=s3
+	ev(20,ie)=(yg - y12)/(aj)*2.	!scaled fv normals ij:
+	ev(21,ie)=(x12 - xg)/(aj)*2.	!orientation is (+)
+	ev(22,ie)=(y13 - yg)/(aj)*2.	!from i to j
+	ev(23,ie)=(xg - x13)/(aj)*2.
+	ev(24,ie)=(yg - y23)/(aj)*2.
+	ev(25,ie)=(x23 - xg)/(aj)*2.
 
         !write(96,*) ie,(ev(i,ie),i=1,evdim)
 

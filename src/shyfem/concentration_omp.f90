@@ -438,7 +438,7 @@
       double precision :: rhs_us,rhs_vs,sum_us,sum_vs
       double precision,dimension(curr_stage) :: us,vs
       double precision,dimension(3) :: fw,fd,fl,fnudge_o,fnudge_c
-      double precision,dimension(3) :: b,c,f,wdiff
+      double precision,dimension(3) :: b,c,nx_fv,ny_fv,f,fv,wdiff
       double precision,dimension(0:nlvddi+1) :: haver,presentl
       double precision,dimension(0:nlvddi+1,3) :: hnew,rtau,cob
       double precision,dimension(0:nlvddi+1,3) :: hold,hcur,vflux,wl
@@ -497,6 +497,8 @@
 	  kn(ii)=k
 	  b(ii)=ev(ii+3,ie)
 	  c(ii)=ev(ii+6,ie)
+	  nx_fv(ii)=ev(2*(ii-1)+20,ie)
+	  ny_fv(ii)=ev(2*(ii-1)+21,ie)
 	end do
 
 	aj=ev(10,ie)    !area of triangle / 12
@@ -603,7 +605,8 @@
 	isum=0
 	do ii=1,3
 	  k=kn(ii)
-	  f(ii)=us(curr_stage)*b(ii)+vs(curr_stage)*c(ii)	!$$azpar
+	  f(ii)=us(curr_stage)*b(ii)+vs(curr_stage)*c(ii) !lrp-imex: replace nx_fv with b?
+	  fv(ii)=us(curr_stage)*nx_fv(ii)+vs(curr_stage)*ny_fv(ii)
 	  if(f(ii).lt.0.) then	!flux out of node
 	    itot=itot+1
 	    isum=isum+ii
@@ -729,7 +732,8 @@
 	  end do
 
           if( iext .eq. 0 ) then
-	    call tvd_fluxes(ie,l,itot,isum,dt,cl,cc,gradxv,gradyv,f,fl)
+!	    call tvd_fluxes_old(ie,l,itot,isum,dt,cl,cc,gradxv,gradyv,f,fl) !lrp-imex
+	    call tvd_fluxes(ie,l,dt,cl,cc,gradxv,gradyv,fv,fl)
 	  end if
 	end if
 

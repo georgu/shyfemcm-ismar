@@ -688,7 +688,7 @@
 
 !*****************************************************************
 
-	subroutine tvd_fluxes(ie,l,itot,isum,dt,cl,cv,gxv,gyv,f,fl)
+	subroutine tvd_fluxes_old(ie,l,itot,isum,dt,cl,cv,gxv,gyv,f,fl)
 
 ! computes horizontal tvd fluxes for one element
 !
@@ -867,6 +867,185 @@
 	end if
 
 	end
+
+!*****************************************************************
+
+	subroutine tvd_fluxes(ie,l,dt,cl,cv,gxv,gyv,f,fl)
+
+! computes horizontal tvd fluxes for one element
+! The routine loops over the three edges ij of the triangle.
+! The edge numbering is:
+!
+!       k = 1    i = 1   j = 2
+!       k = 2    i = 1   j = 3
+!       k = 3    i = 2   j = 3
+!
+! f(k) is the hydrodynamic flux across edge ij connectin
+! the element baricenter and the edge midpoint with normal n_ij:
+!
+!       f(k) = q . n_ij
+!
+! The orientation of n_ij is such that:
+!
+!       f(k) < 0 : transport from i to j
+!       f(k) > 0 : transport from j to i
+!
+! itvd == 1,2 : Lax-Wendroff flux with flux limiter
+! itvd == 3   : MUSCL flux with slope limiter
+! itvd == 4   : flux based on piecewise linear reconstruction
+!
+! For itvd == 1,3,4 the nodal gradient gxv,gyv is used.
+! For itvd == 2 the upstream concentration is explicitly obtained.
+
+	use mod_tvd
+	use mod_hydro_vel
+	use evgeom
+	use levels, only : nlvdi,nlv
+	use basin
+
+	implicit none
+
+	integer, intent(in) :: ie,l
+	double precision, intent(in) :: dt
+	double precision, intent(in) :: cl(0:nlvdi+1,3)
+	real, intent(in) :: cv(nlvdi,nkn)
+	real, intent(in) :: gxv(nlvdi,nkn)
+	real, intent(in) :: gyv(nlvdi,nkn)
+	double precision, intent(in) :: f(3)
+	double precision, intent(out) :: fl(3)
+
+	logical btvd2,btvddebug
+	logical bdebug
+	integer k,i,j
+	integer ki,kj
+	integer iop,tet1
+	real term,grad
+	real conci,concj,conf,conu
+	real gcx,gcy,dx,dy,delta
+	real u,v
+	real alfa,dis,aj
+	real psi
+	real vel
+	real conu_aux(3)
+
+	real limiter
+	integer smartdelta
+
+	btvd2 = itvd_type .eq. 2
+	btvddebug = .true.
+	btvddebug = btvddebug .and. btvd2
+	bdebug = .false.
+
+	fl = 0.
+	conu_aux = 0.
+
+	u = ulnv(l,ie)
+	v = vlnv(l,ie)
+	aj = 24 * ev(10,ie)
+
+	k = 0					!loop over the three edges ij=12,13,23
+	do i=1,2
+	  do j=i+1,3
+	    k = k + 1
+
+	    ki = nen3v(i,ie)
+	    kj = nen3v(j,ie)
+
+	    conci = cl(l,i)
+	    concj = cl(l,j)
+
+	    iop = 6 - (i+j)			!opposite node
+
+	    tet1 = 1 + mod(iop,3)
+
+	    dx = aj * ev(6+iop,ie)
+	    dx = -2*smartdelta(tet1,j) * dx + dx!orienting vector dx,dy from i to j
+
+	    dy = aj * ev(3+iop,ie)
+	    dy = -2*smartdelta(tet1,i) * dy + dy!orienting vector dx,dy from i to j
+
+	    dis = ev(16+iop,ie)
+	    vel = abs(u*dx+v*dy) / dis
+	    alfa = dt*vel/dis
+
+	    if( f(k) .gt. 0.d0 ) then		!f(k) >= 0 : i is upwind
+
+	      if( btvd2 ) then
+	        conu = concj
+	        call tvd_get_upwind_c(ie,l,i,j,conu,cv)
+	        conu_aux(k) = conu
+	        grad = 0.5*(concj-conu)
+	      else
+	        gcx = gxv(l,ki)
+	        gcy = gyv(l,ki)
+	        grad = gcx*dx + gcy*dy		!projected gradient from i to j
+	      end if
+
+	      psi = limiter(grad,concj-conci)	!tvd limiter
+
+              if ( itvd_type .le. 2 ) then	!Lax-Wendroff
+	        delta = 0.5*psi*(concj-conci) * (1.-alfa)
+	      else if ( itvd_type .eq. 3 ) then	!Muscl
+		delta = 0.5*psi*(concj-conci)
+	      else if ( itvd_type .eq. 4 ) then	!Piecewise linear reconstruction
+		delta = 0.5*grad
+	      end if
+
+	      conf = conci + delta
+
+	    else				!f(k) < 0 : j is upwind
+
+	      if( btvd2 ) then
+	        conu = conci
+	        call tvd_get_upwind_c(ie,l,j,i,conu,cv)
+	        conu_aux(k) = conu
+	        grad = 0.5*(conci-conu)
+	      else
+	        gcx = gxv(l,kj)
+	        gcy = gyv(l,kj)
+	        grad = gcx*dx + gcy*dy
+	      end if
+
+	      psi = limiter(grad,concj-conci)	!tvd limiter
+
+              if ( itvd_type .le. 2 ) then	!Lax-Wendroff
+		delta = 0.5*psi*(concj-conci) * (1.-alfa)
+	      else if ( itvd_type .eq. 3 ) then	!Muscl
+		delta = 0.5*psi*(concj-conci)
+	      else if ( itvd_type .eq. 4 ) then	!Piecewise linear reconstruction
+		delta = 0.5*grad
+	      end if
+
+	      conf = concj - delta
+
+	    end if
+
+	    term = f(k) * conf			!Numerical tracer flux
+
+	    fl(i) = fl(i) - term
+	    fl(j) = fl(j) + term
+
+	    if( bdebug ) then
+	      write(6,*) 'tvd: ------------------------'
+	      write(6,*) 'tvd: ',ie,l,k,i,j
+	      write(6,*) 'tvd: flux = ',f(k)
+	      write(6,*) 'tvd: dxdy = ',dx,dy
+	      write(6,*) 'tvd: grad = ',grad
+	      write(6,*) 'tvd: psi  = ',psi
+	      write(6,*) 'tvd: conc = ',conci,concj,conf
+	      write(6,*) 'tvd: term = ',term
+	      write(6,*) 'tvd: fl   = ',fl
+	      write(6,*) 'tvd: ------------------------'
+	    end if
+
+	  end do
+	end do
+
+	if( btvddebug ) call tvd_debug_accum(ie,l,conu_aux)
+
+	end
+
+!*****************************************************************
 
 !*****************************************************************
 !*****************************************************************
