@@ -31,7 +31,7 @@ subroutine generate_ensemble_perturbations(nx, ny, nrens, &
 
     ! --- 2. Generate Spatial White Noise (Innovation) ---
     ! nre=5 is a typical value for the oversized ensemble in sample2D
-    nre_factor = 5
+    nre_factor = 3
     allocate(amat(nx, ny, nrens))
 
     ! Calling your module's routine
