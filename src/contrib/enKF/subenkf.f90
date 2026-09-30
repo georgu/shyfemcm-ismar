@@ -122,16 +122,30 @@ subroutine rst_write(rstname, atimea)
   real(dp),        intent(in) :: atimea
   integer :: ios
   integer :: ie, ii, k
+  real :: z, h
+  real, parameter :: hmin = 0.03
 
   iwetv = 0
 
-  ! This is very important!
+  ! This is important --------------------
   do ie = 1, nel
     do ii = 1, 3
-      k = nen3v(ii, ie)
-      zenv(ii, ie) = znv(k)
+        k = nen3v(ii, ie)
+        h = hm3v(ii, ie)
+        
+        if (znv(k) + h < hmin) then
+            znv(k) = max(znv(k), hmin - h)
+        end if
     end do
   end do
+
+  do ie = 1, nel
+    do ii = 1, 3
+        k = nen3v(ii, ie)
+        zenv(ii, ie) = znv(k)
+    end do
+  end do
+  ! This is important --------------------
 
   ! old variables
   zov = znv
