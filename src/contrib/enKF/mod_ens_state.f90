@@ -48,8 +48,6 @@ subroutine read_ensemble()
    use mod_conz
    use mod_gotm_aux
    use mod_restart
-   use mod_layer_thickness
-   use sigma
    use mod_area
    use evgeom
    use mod_depth
@@ -81,8 +79,6 @@ subroutine read_ensemble()
    call mod_gotm_aux_init(nnkn, nnlv)
    call shympi_set_hlv(nnlv, hlv)
    call shympi_init(.false.)
-   call mod_layer_thickness_init(nnkn, nnel, nnlv)
-   call init_sigma_info(nnlv,hlv)
    call mod_area_init(nnkn,nnlv)
    call ev_init(nnel)
    call mod_depth_init(nnkn,nnel)
@@ -255,6 +251,7 @@ subroutine push_state(A4)
    if (.not. allocated(znv)) stop 'ERROR: push_state: znv not allocated'
    if (.not. allocated(utlnv)) stop 'ERROR: push_state: utlnv not allocated'
    if (.not. allocated(vtlnv)) stop 'ERROR: push_state: vtlnv not allocated'
+   if (.not. allocated(hdenv)) stop 'ERROR: push_state: hdenv not allocated'
    if (ibarcl_rst /= 0) then
       if (.not. allocated(tempv)) stop 'ERROR: push_state: tempv not allocated'
       if (.not. allocated(saltv)) stop 'ERROR: push_state: saltv not allocated'
