@@ -37,6 +37,7 @@
  * 01.02.2012	ggu	bug in choosing lines -> no selection on depth was made
  * 18.03.2016	ggu	-a option also changes versus in line
  * 12.06.2020	ggu	write min/max numbers for items
+ * 01.08.2026	ggu	write min/max coordinates for items
  *
 \************************************************************************/
 
@@ -82,6 +83,7 @@ void MinMaxNumber(
 			,int *minelem , int *maxelem 
 			,int *minline , int *maxline 
 		 );
+void MinMaxXY( float *xmin , float *xmax , float *ymin , float *ymax );
 void MinMaxType( int *mintype , int *maxtype );
 void MinMaxVertex( int *minvertex , int *maxvertex );
 void MinMaxDepth( float *mindepth , float *maxdepth );
@@ -105,6 +107,9 @@ void WriteInfo(  int minnode, int maxnode
 		,int minelem, int maxelem
 		,int minline, int maxline
 		);
+void WriteInfoXY(  float xmin, float xmax
+		,float ymin, float ymax
+		);
 
 /**************************************************************************/
 
@@ -115,6 +120,7 @@ int main(int argc, char *argv[])
 	int minnode,maxnode,minelem,maxelem,minline,maxline;
 	int minvertex,maxvertex;
 	float mindepth,maxdepth;
+	float xmin,xmax,ymin,ymax;
 	int minrange,maxrange;
 
 	G = MakeGrid();
@@ -127,6 +133,7 @@ int main(int argc, char *argv[])
 
 	ReadFiles(argc,argv);
 
+	MinMaxXY(&xmin,&xmax,&ymin,&ymax);
 	MinMaxType(&mintype,&maxtype);
 	MinMaxNumber(&minnode,&maxnode,&minelem,&maxelem,&minline,&maxline);
 	MinMaxVertex(&minvertex,&maxvertex);
@@ -134,6 +141,7 @@ int main(int argc, char *argv[])
 	MinMaxRange(&minrange,&maxrange);
 
 	WriteInfo(minnode,maxnode,minelem,maxelem,minline,maxline);
+	WriteInfoXY(xmin,xmax,ymin,ymax);
 
 	if( OpInfo == 1 )		return(0);
 	if( OpMaxType == -1 )		OpMaxType = maxtype;
@@ -188,6 +196,35 @@ void WriteFile( void )
 
 	s = sfile;
 	WriteStandard(s,G);
+}
+
+void MinMaxXY( 
+			 float *xmin , float *xmax 
+			,float *ymin , float *ymax 
+		 )
+
+{
+	Node_type *pn;
+
+	/* find min/max of coordinates */
+
+	*xmin = 0; *xmax = 0;
+	*ymin = 0; *ymax = 0;
+
+	ResetHashTable(HNN);
+	while( (pn=VisitHashTableN(HNN)) != NULL ) {
+		*xmin = *xmax = pn->coord.x;
+		*ymin = *ymax = pn->coord.y;
+		break;
+	}
+
+	ResetHashTable(HNN);
+	while( (pn=VisitHashTableN(HNN)) != NULL ) {
+		if( pn->coord.x > *xmax ) *xmax = pn->coord.x;
+		if( pn->coord.x < *xmin ) *xmin = pn->coord.x;
+		if( pn->coord.y > *ymax ) *ymax = pn->coord.y;
+		if( pn->coord.y < *ymin ) *ymin = pn->coord.y;
+	}
 }
 
 void MinMaxNumber( 
@@ -1073,6 +1110,14 @@ void WriteInfo(  int minnode, int maxnode
 	if( maxline != -1 ) {
 	  printf("Min/Max Line numbers: %d %d\n",minline,maxline);
 	}
+}
+
+void WriteInfoXY(  float xmin, float xmax
+		  ,float ymin, float ymax
+		)
+{
+	  printf("Min/Max x coordinate: %f %f\n",xmin,xmax);
+	  printf("Min/Max y coordinate: %f %f\n",ymin,ymax);
 }
 
 /***********************************************************************/

@@ -120,6 +120,7 @@
 ! 07.11.2025    ggu     set time array out of iff_space_interpolate()
 ! 10.11.2025    ggu     introduced iuout, better info writing
 ! 08.05.2026    ggu     new routine iff_ts_has_data()
+! 29.05.2026    ggu     bug fix in iff_file_has_data() (bok not set)
 !
 !****************************************************************
 !
@@ -672,6 +673,8 @@
 ! initializes file and sets up various parameters
 ! if called with dtime==-1 does not populate records
 ! this means that iff_populate_records must be called manually
+!
+! all parameters are input parameters, with the exception of id
 
 	use mod_info_output
 
@@ -1009,12 +1012,12 @@
 !	 2	direct
 !	 3	time series
 
-	character*(*) file
-	logical bverb
-	integer np
-	integer nvar		!is <= 0 if error in opening file
-	integer ntype
-	integer iformat		!info on file type (return)
+	character*(*), intent(in) :: file
+	logical, intent(in) :: bverb
+	integer, intent(out) :: np
+	integer, intent(out) :: nvar	!is <= 0 if error in opening file
+	integer, intent(out) :: ntype
+	integer, intent(out) :: iformat	!info on file type (return)
 
 	integer il
 	integer itype(2)
@@ -1100,8 +1103,8 @@
 
 	subroutine iff_populate_records(id,dtime0)
 
-	integer id
-	double precision dtime0
+	integer, intent(in) :: id
+	double precision, intent(in) :: dtime0
 
 	double precision dtime,dtime2
 	double precision dtimefirst,dtimelast
@@ -2533,6 +2536,7 @@
 	if( t > tlast .and. pinfo(id)%eof ) return
 	if( t < tfirst ) return
 
+	bok = .true.
         tc = tcomp(t,nintp,ilast,pinfo(id)%time)
 
         do while( tc < t )

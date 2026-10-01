@@ -33,8 +33,12 @@
 ! 05.12.2017	ggu	changed VERS_7_5_39
 ! 14.02.2019	ggu	changed VERS_7_5_56
 
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+! not yet finished ... do not use...
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 !===============================================================
-	module stack
+	module dllist
 !===============================================================
 
 	implicit none
@@ -61,24 +65,24 @@
         integer, parameter :: ndim_first = 10
         type(entry), save, allocatable :: pentry(:)
 
-	public :: stack_init		!call stack_init(id)
-	public :: stack_delete		!call stack_delete(id)
-	public :: stack_push		!call stack_push(id,value)
-	public :: stack_pop		!logical stack_pop(id,value)
-	public :: stack_peek		!logical stack_peek(id,value)
-	public :: stack_is_empty	!logical stack_is_empty(id)
-	public :: stack_info		!call stack_info(id)
+	public :: dllist_init		!call dllist_init(id)
+	public :: dllist_delete		!call dllist_delete(id)
+	public :: dllist_insert		!call dllist_push(id,value)
+	public :: dllist_remove		!logical dllist_pop(id,value)
+	public :: dllist_peek		!logical dllist_peek(id,value)
+	public :: dllist_is_empty	!logical dllist_is_empty(id)
+	public :: dllist_info		!call dllist_info(id)
 
-        INTERFACE stack_push
-        MODULE PROCEDURE         stack_push_d &
-     &                          ,stack_push_r &
-     &                          ,stack_push_i
+        INTERFACE dllist_insert
+        MODULE PROCEDURE         dllist_insert_d &
+     &                          ,dllist_insert_r &
+     &                          ,dllist_insert_i
         END INTERFACE
 
-        INTERFACE stack_pop
-        MODULE PROCEDURE         stack_pop_d &
-     &                          ,stack_pop_r &
-     &                          ,stack_pop_i
+        INTERFACE dllist_remove
+        MODULE PROCEDURE         dllist_remove_d &
+     &                          ,dllist_remove_r &
+     &                          ,dllist_remove_i
         END INTERFACE
 
         INTERFACE stack_peek
@@ -393,8 +397,8 @@
 
 !******************************************************************
 
-	program stack_main
+	programme stack_main
 	call stack_test
-	end program stack_main
+	end programme stack_main
 
 !******************************************************************

@@ -233,6 +233,7 @@
 	  stop 'error stop adjust_no_plot_area: ianopl,iadopl'
 	end if
 
+	ia = -1
 	if( iadopl >= 0 ) then
 	  ia = iadopl
 	  bset = .true.

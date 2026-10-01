@@ -93,6 +93,8 @@
 !  18.09.2024	ggu	new parameter rfaccol, new log colorbar
 !  09.01.2025	ggu	avoid divide by zero in scale_legend(): 10 -> 10.
 !  18.05.2026	ggu	added bbox and badjust in blank_window()
+!  22.05.2026	ggu	update in legdate()
+!  22.09.2026	ggu	new variable wfact introduced
 ! 
 !  notes :
 ! 
@@ -1382,8 +1384,8 @@
 
         real array(ndim)
         save array
-        real xwind,ywind,lwwind,scwind,xtwind,ytwind
-        save xwind,ywind,lwwind,scwind,xtwind,ytwind
+        real xwind,ywind,lwwind,scwind,xtwind,ytwind,wfact
+        save xwind,ywind,lwwind,scwind,xtwind,ytwind,wfact
         integer iwtype,stwind
         save iwtype,stwind
         character*40 wtext,wunit
@@ -1411,16 +1413,17 @@
 	  call ptime_get_dtime(dtime)
 	  call iff_ts_init(dtime,file,nintp,nvar,idwind)
           !call exffil(file,nintp,nvar,nread,ndim,array)
-          xwind = getpar('xwind')
+          xwind = getpar('xwind')		!bottom of array
           ywind = getpar('ywind')
-          iwtype = nint(getpar('iwtype'))
-          lwwind = getpar('lwwind')
-          scwind = getpar('scwind')
+          iwtype = nint(getpar('iwtype'))	!wind type
+          lwwind = getpar('lwwind')		!line width
+          scwind = getpar('scwind')		!??
+          wfact = getpar('wfact')		!extra factor for text
 	  call make_absolute1(xwind,ywind)
 
-          xtwind = getpar('xtwind')
+          xtwind = getpar('xtwind')		!position of text
           ytwind = getpar('ytwind')
-          stwind = nint(getpar('stwind'))
+          stwind = nint(getpar('stwind'))	!point size of text
 	  call getfnm('wtext',wtext)
 	  call getfnm('wunit',wunit)
 	  call make_absolute1(xtwind,ytwind)
@@ -1471,6 +1474,7 @@
 	call qlwidth(-1.)      !FIXME -> use negative number to reset
 
 	if( stwind .gt. 0 ) call qtxts(stwind)
+	s = s * wfact				!conversion factor
         call make_wind_text(wtext,wunit,s,text)
 	call qtext(xtwind,ytwind,text)
 
@@ -1511,23 +1515,23 @@
         integer it,iday,ihour
         integer jd,year,month,day
         integer date,time
-        character*25 line
-        character*3 name
+	integer i
+	double precision d(1)
+        character*40 line
+        character*3 monthname
+	character*40, save :: tzstring
 
-        real xdate,ydate
-        save xdate,ydate
-        integer sdate,idate
-        save sdate,idate
+        real, save :: xdate,ydate
+        integer, save :: sdate,idate
 
 	real, save :: tzshow
 	integer itl
 
-        integer icall
-        save icall
-        data icall /0/
+        integer, save :: icall = 0
 
 	real getpar
 	double precision dgetpar
+	integer iscand
 
 	if( icall .eq. -1 ) return
 
@@ -1557,6 +1561,7 @@
           ydate = getpar('ydate')
           sdate = nint(getpar('sdate'))
           tzshow = getpar('tzshow')
+	  call getfnm('tzstring',tzstring)
 
 	  call make_absolute1(xdate,ydate)
 
@@ -1576,35 +1581,37 @@
 
 	itl = it + nint(tzshow*3600)		!correct for time zone
 
-        if( idate .eq. 1 ) then
+        if( idate .eq. 1 ) then		!2026-05-14::12:00:00
           call dtsgf(itl,line)
-	  !write(6,*) 'date/time for plot: ',itl,'  ',line
-        else if( idate .eq. 2 ) then
-          iday = itl / 86400
-          ihour = (itl - iday*86400 ) / 3600       !not yet finished
-          year = 2002
-          jd = iday
-          if( jd .le. 0 ) jd = 1
-          !write(6,*) 'legdate: ',itl,iday,jd,ihour
-          call j2date(jd,year,month,day)
-          call month_name(month,name)
-          !write(line,'(a,i2,1x,a3,1x,i4)') 'data ',day,name,year
-          write(line,'(i2,1x,a3,1x,i4)') day,name,year
-        else if( idate .eq. 3 ) then
+        else if( idate .eq. 2 ) then	!14 May 2026
+          call dtsgf(itl,line)
+	  i = iscand(line(1:4),d,1)
+	  year = nint(d(1))
+	  i = iscand(line(6:7),d,1)
+	  month = nint(d(1))
+	  i = iscand(line(9:10),d,1)
+	  day = nint(d(1))
+          call month_name(month,monthname)
+          write(line,'(i2,1x,a3,1x,i4)') day,monthname,year
+        else if( idate .eq. 3 ) then	!2026-05-14  12:00:00
           call dtsgf(itl,line)
 	  line(11:12) = '  '
-	  !write(6,*) 'date/time for plot: ',itl,'  ',line
-        else if( idate .eq. 4 ) then
+        else if( idate .eq. 4 ) then	!2026-05-14  12:00:00 GMT
           call dtsgf(itl,line)
 	  line(11:12) = '  '
 	  line(23:25) = 'GMT'
+	  line(23:25) = 'UTC'
 	  !write(6,*) 'date/time for plot: ',itl,'  ',line
-        else if( idate .eq. 5 ) then
+        else if( idate .eq. 5 ) then	!2026-05-14
           call dtsgf(itl,line)
 	  line(11:) = '  '
         else
           write(6,*) 'idate = ',idate
           stop 'error stop legdate: impossible value for idate'
+        end if
+
+        if( tzstring /= ' ' ) then
+          line = trim(line) // trim(tzstring)
         end if
 
 	if( sdate .gt. 0 ) call qtxts(sdate)

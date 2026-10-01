@@ -55,6 +55,9 @@
 ! 25.04.2025    ggu     new option -rfact
 ! 19.06.2025    ggu     check file format with nc_check_file_format()
 ! 13.11.2025    ggu     increase length of var
+! 09.06.2026    ggu     new option -coordinfo
+! 03.08.2026    ggu     new option -clayer
+! 11.08.2026    ggu     handle decreasing x/y coordinate
 !
 ! notes :
 !
@@ -106,12 +109,13 @@
         character*132 file
         character*80 var_name,files,sfile
         character*80 name,xcoord,ycoord,zcoord,tcoord,bathy,slmask
-        character*80 varline,descrpline,factline,rfactline,offline
+        character*80 varline,descrpline,factline,rfactline,offline,flagline
         character*80 text,fulltext,dstring
         character*80, allocatable :: vars(:)
         character*80, allocatable :: descrps(:)
         character*80, allocatable :: sfacts(:)
         character*80, allocatable :: soffs(:)
+        character*80, allocatable :: sflags(:)
         real, allocatable :: facts(:)		!factor for multiplication
         real, allocatable :: offs(:)		!offset to add
         real, allocatable :: flags(:)		!flag for no data
@@ -141,7 +145,8 @@
 	double precision t
 	logical bverb,bcoords,btime,binfo,bvars,bwrite,bdebug,bsilent
 	logical binvertdepth,binvertslm,bunform,bquiet,blist
-	logical bregular,bsingle,babout,btcorrect
+	logical bregular,bsingle,babout,btcorrect,bclayer
+	logical bcoordinfo
         logical binvert,bx_invert,by_invert
 	logical exists_var
 
@@ -176,6 +181,8 @@
         call clo_add_option('debug',.false.,'produce debug information')
         call clo_add_option('varinfo',.false.                           &
      &          ,'list variables contained in file')
+        call clo_add_option('coordinfo',.false.                         &
+     &          ,'list dims and coords contained in file')
         call clo_add_option('list',.false.                              &
      &          ,'list possible names for description')
 
@@ -193,6 +200,8 @@
      &          ,'invert depth values for bathymetry')
         call clo_add_option('invertslm',.false.                         &
      &          ,'invert slmask values (0 for sea)')
+        call clo_add_option('clayer',.false.                         &
+     &          ,'layer depths are given on center, not bottom')
         call clo_add_option('unform',.false.                            &
      &          ,'write fem file unformatted')
         call clo_add_option('tcorrect',.false.                          &
@@ -205,6 +214,8 @@
      &          ,'write variables given in text to out.fem')
         call clo_add_option('descrp text',' '                           &
      &          ,'use this description for variables')
+        call clo_add_option('flag flags',' '                            &
+     &          ,'use this value to indicate no value')
         call clo_add_option('fact facts',' '                            &
      &          ,'scale vars with these factors')
         call clo_add_option('rfact facts',' '                            &
@@ -247,16 +258,19 @@
 	call clo_get_option('silent',bsilent)
 	call clo_get_option('debug',bdebug)
 	call clo_get_option('varinfo',bvars)
+	call clo_get_option('coordinfo',bcoordinfo)
 	call clo_get_option('list',blist)
 	call clo_get_option('time',btime)
 	call clo_get_option('coords',bcoords)
 	call clo_get_option('bathy',bathy)
 	call clo_get_option('slmask',slmask)
+	call clo_get_option('clayer',bclayer)
 	call clo_get_option('vars',varline)
 	call clo_get_option('descrp',descrpline)
 	call clo_get_option('single',sfile)
 	call clo_get_option('domain',dstring)
 	call clo_get_option('regexpand',regexpand)
+	call clo_get_option('flag',flagline)
 	call clo_get_option('fact',factline)
 	call clo_get_option('rfact',rfactline)
 	call clo_get_option('offset',offline)
@@ -308,6 +322,12 @@
      &                  ,nt,nx,ny,nz                                    &
      &                  ,tcoord,xcoord,ycoord,zcoord)
 
+	!write(6,*) zcoord
+
+	if( bcoordinfo ) then
+	  call ncnames_write_info
+	end if
+
 	nxdim = max(1,nx)
 	nydim = max(1,ny)
 	nlvdim = max(1,nz)
@@ -348,13 +368,19 @@
 ! handle coordinates and special variables
 !-----------------------------------------------------------------
 
+	xlon = 0.
+	ylat = 0.
         call setup_coordinates(ncid,bverb,xcoord,ycoord                 &
      &                          ,nxdim,nydim,nx,ny                      &
      &                          ,xlon,ylat)
-	call setup_zcoord(ncid,bverb,zcoord,nlvdim,nz,zdep,nz1,hlv)
+	call matrix_2d_invert('longitude',nx,ny,xlon)
+	call matrix_2d_invert('latitude',nx,ny,ylat)
+	call setup_zcoord(ncid,bverb,bclayer,zcoord,nlvdim,nz,zdep,nz1,hlv)
         call setup_bathymetry(ncid,bverb,binvertdepth,bathy             &
      &                          ,nxdim,nydim,nx,ny,bat)
+	call matrix_2d_invert('bathymetry',nx,ny,bat)
 	call setup_sealand(ncid,bverb,slmask,nxdim,nydim,nx,ny,slm)
+	call matrix_2d_invert('sealand',nx,ny,slm)
 	if( binvertslm ) slm = 1.-slm
 
 !-----------------------------------------------------------------
@@ -368,7 +394,7 @@
         call check_regular_coords(nxdim,nydim,xlon,ylat                 &
      &                          ,bx_invert,by_invert                    &
      &                          ,bregular,regpar_data)
-	if( bverb ) write(6,*) bregular,regpar_data
+	if( bverb ) write(6,*) 'regpar: ',bregular,regpar_data
 	call handle_domain(bverb,dstring,bregular,regpar_data,regpar)
 
 	if( .not. bsilent ) then
@@ -434,6 +460,8 @@
 	call parse_strings(descrpline,nd,descrps)
 	call handle_variable_description(ncid,nd,vars,descrps,.not.bquiet)
 
+! variables sfacts, sflags, soffs are allocated in parse_strings()
+
 	allocate(facts(nd),offs(nd),flags(nd))
 
 	facts = 1.
@@ -450,6 +478,11 @@
 	  call setup_facts(nd,sfacts,facts)
 	  facts = 1. / facts
 	end if
+
+	flags = -1.e+20
+	call parse_strings(flagline,nd,sflags)
+	call setup_facts(nd,sflags,flags)
+	!write(6,*) 'flags: ',flags
 
 	offs = 0.
 	call parse_strings(offline,nd,soffs)
@@ -847,6 +880,7 @@
 	integer ids(nvar)
 	integer dims(nvar)
 	real, save :: my_flag = -999.
+	real, save :: no_flag = -1.e+20
 	real data(nx,ny,nz)
 	double precision atime,avalue,dtime
 	character*20 line,stime
@@ -900,7 +934,7 @@
 	  aname = '_FillValue'
 	  if( nc_has_var_attrib(ncid,var_id,aname) ) then
 	    call nc_get_var_attrib(ncid,var_id,aname,atext,avalue)
-	    flags(i) = avalue
+	    flags(i) = avalue	!no flag in options
 	  end if
 	  aname = 'scale_factor'
 	  if( nc_has_var_attrib(ncid,var_id,aname) ) then
@@ -1018,6 +1052,8 @@
      &                          ,nxnew,nynew,regpar,ilhkv               &
      &                          ,data,femdata,np)
 
+	use mod_histo
+
 	implicit none
 
 	integer ncid
@@ -1036,19 +1072,28 @@
 	integer np
 
 	logical debug
+	logical bdebug_local
 	integer ndim,nxy,k,iz
 	integer nxx,nyy,nzz,nlvddi
 	integer dims(10)
 	real data2d(nx,ny)
 	real femdata2d(nxnew*nynew)
 	real cdata(nx*ny,nz)
-	!real valnew(nxnew*nynew)
 	real, allocatable :: valnew(:,:)
 	real, save :: my_flag = -999.
 	character*80 file,filename
 
+	logical bcelia
+	integer nall,nbin
+	integer imin,imax,iflag,iu
+	real bin0,dbin,rmax,rmin,binx
+
 	logical must_interpol,is_single
 
+	bdebug_local = .true.
+	bdebug_local = .false.
+	bcelia = .true.
+	bcelia = .false.
 	debug = bdebug
 
 	nxy = nx*ny
@@ -1082,11 +1127,45 @@
 	!end if
 
 	where( data == flag ) data = my_flag
+	if( bcelia ) then
+	  where( data == 0.0 ) data = my_flag
+	end if
 
 	nxx = nx
 	nyy = ny
 	nzz = nz
 	nlvddi = nz
+
+	if( bdebug_local ) then
+	write(6,*) 'must interpolate: ',must_interpol()
+	call write_single_point(1,100,nx,ny,nz,data)
+	call write_single_point(50,50,nx,ny,nz,data)
+	call write_single_point(70,70,nx,ny,nz,data)
+	call write_single_point(90,90,nx,ny,nz,data)
+	nbin = 20
+	rmax = maxval(data,data/=my_flag)
+	rmin = minval(data,data/=my_flag)
+	iflag = count( data == my_flag )
+	imin = count( data == rmin )
+	imax = count( data == rmax )
+	bin0 = rmin
+	binx = rmax
+	dbin = ( binx-bin0 ) / (nbin-1)
+	nall = nx*ny*nz
+	call histo_init(nbin,bin0,dbin)
+	call histo_insert(nall,reshape(data,(/nall/)))
+	iu = 678
+	if( varname == 'votemper' ) iu = 679
+	write(iu,*) 'varname = ',trim(varname)
+	write(iu,*) 'flag = ',flag,my_flag
+	write(iu,*) 'nall = ',nall,nall-imin-imax
+	write(iu,*) 'imin/imax = ',imin,imax
+	write(iu,*) 'iflag = ',iflag
+	write(iu,*) 'rmin/rmax = ',rmin,rmax
+	call histo_info(iu)
+	end if
+
+	call matrix_3d_invert('variable',nx,ny,nz,data)
 
 	if( must_interpol() ) then
 	  np = nxnew*nynew
@@ -1322,6 +1401,21 @@
 	  write(6,*) '(You might have to install the nco package)'
 	  stop 'error stop check_invert: inverted coordinates'
 	end if
+
+	end
+
+!*****************************************************************
+
+	subroutine write_single_point(ix,iy,nx,ny,nz,data)
+
+	implicit none
+
+	integer ix,iy
+	integer nx,ny,nz
+	real data(nx,ny,nz)
+
+	write(69,*) 'data point: ',ix,iy
+	write(69,*) data(ix,iy,:)
 
 	end
 

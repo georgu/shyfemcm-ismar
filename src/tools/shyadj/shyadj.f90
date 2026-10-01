@@ -54,6 +54,7 @@
 !  23.02.2026   ggu     checks to avoid negative areas
 !  27.02.2026   ggu     write more information to terminal
 !  06.03.2026   ggu     completely restructured
+!  29.05.2026   ggu     avoid compiler warnings in show_strange_grades()
 ! 
 !  notes :
 ! 
@@ -412,6 +413,8 @@
 	integer igr(ngrdi)
 
 	igr = 0
+	igr(3) = 0	!this to avoid compiler warnings
+	igr(4) = 0
         do k=1,nkn
           if( nbound(k) .ne. 0 ) cycle
           n = ngrade(k)

@@ -183,6 +183,7 @@
         use shyfile
         use shyutil
         use shympi
+	use intp_fem_file
 
         use basin
         use levels
@@ -248,7 +249,7 @@
 
         integer, save 		        :: nn_old,nt_old,na_old
         integer n_act,n_new,n_ext,n_init,n_typ
-        integer ncust
+        integer ncust,llmax
         character*80 name
         logical ptime_ok,ptime_end
         integer irec,nplot,idx
@@ -344,7 +345,7 @@
 	!--------------------------------------------------------------
 
         call shy_get_iunit(id,iunit)
-        read(iunit) ncust
+	call lgr_get_header(iunit,nvers,llmax,ncust)
 
 	!--------------------------------------------------------------
 	! set time
@@ -352,6 +353,7 @@
 
         call ptime_init
 	call shy_get_date(id,date,time)
+	call iff_init_global_date_internal(date,time)
         call dts_to_abs_time(date,time,atime0)
         call ptime_set_date_time(date,time)
         call elabtime_date_and_time(date,time)
@@ -393,7 +395,7 @@
         else if( name .eq. 'lagage' ) then    !age [d]
            write(6,*)'Variable to be plotted: particles age'
         else if( name .eq. 'lagcus' ) then	!custom
-           write(6,*)'Variable to be plotted: particle custom prop.'
+           write(6,*)'Variable to be plotted: particle custom property'
         else
            goto 99
         end if

@@ -456,8 +456,19 @@
 	real x1,y1,x2,y2
 
 	dr = 0.001
+	dr = 0.0003
 
 	!write(6,*) 'plot_single_particel: ',x,y
+
+	call qarcf(x,y,dr,0.,360.)
+	return
+
+        x1=x-dr
+        y1=y-dr
+        x2=x+dr
+        y2=y+dr        
+	call qrfill(x1,y1,x2,y2)
+	return
 
         x1=x+dr
         y1=y+dr

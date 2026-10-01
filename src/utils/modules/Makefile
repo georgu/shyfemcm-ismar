@@ -53,6 +53,7 @@ MOD  = \
 	mod_system_matrix.o \
 	mod_ts.o \
 	mod_waves.o \
+	mod_lagrange.o \
 	mod_shyfem.o \
 
 OBJ  = \
@@ -177,6 +178,7 @@ zip:	cleanall
 ../../../lib/mod/mod_hydro_print.mod: mod_hydro_print.o
 ../../../lib/mod/mod_hydro_vel.mod: mod_hydro_vel.o
 ../../../lib/mod/mod_internal.mod: mod_internal.o
+../../../lib/mod/mod_lagrange.mod: mod_lagrange.o
 ../../../lib/mod/mod_layer_thickness.mod: mod_layer_thickness.o
 ../../../lib/mod/mod_meteo.mod: mod_meteo.o
 ../../../lib/mod/mod_nohyd.mod: mod_nohyd.o

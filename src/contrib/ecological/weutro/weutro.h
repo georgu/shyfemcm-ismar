@@ -28,9 +28,17 @@
 ! revision log :
 !
 ! 24.08.2004    ggu     some new variables (idbox, wdebug etc)
+! 24.09.2026    ggu     new variables (idnode, idlayer, bdiag)
 !
 !**************************************************************
-!
+
+	INTERFACE
+        subroutine wdiag(iu,vals)
+        integer iu
+        real vals(:)
+        end subroutine wdiag
+	END INTERFACE
+
 !--------------------------------------------------------------
 !--------------------------------------------------------------
 !	EUTRO.CMN	
@@ -39,10 +47,10 @@
 
 	integer segmax
 	parameter (segmax=1)
+	logical, parameter :: bdiag = .true.	!write diagnostics with wdiag
 
 	integer ISEG,graztype	!if graztype=1 simulate zoo if=0 use wasp form.
 
-	integer idbox
 	logical wdebug
 	logical topseg
 	logical botseg
@@ -52,8 +60,12 @@
 
         integer SYSBY(9)!bypass options for system: 0=simulated, 1=bypassed
 
-	common/general/ISEG,graztype,idbox,SYSBY
+	common/general/ISEG,graztype,SYSBY
 	save/general/
+
+	integer idbox,idnode,idlayer
+	common/general_id/idbox,idnode,idlayer
+	save/general_id/
 
 	common/general_log/wdebug,topseg,botseg,sedseg
 	save/general_log/

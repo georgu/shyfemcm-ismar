@@ -14,8 +14,11 @@ TOTAL = dsall.f
 
 #------------------------------------------------------
 
-EXES = stack queue hash tree sort spline
+EXES = stack queue hash tree sort spline heap iheap
 F77 = gfortran
+
+FFLAGS = -fcheck=all
+FFLAGS = -fbounds-check -g -fbacktrace
 
 #------------------------------------------------------
 
@@ -24,25 +27,28 @@ default: all
 all: $(EXES)
 
 stack: stack.o
-	$(F77) -o $@ $@.f
+	$(F77) -o $@ $@.f90
 
 queue: queue.o
-	$(F77) -o $@ $@.f
+	$(F77) -o $@ $@.f90
 
 hash: hash.o
-	$(F77) -o $@ $@.f
+	$(F77) -o $@ $@.f90
 
 tree: tree.o
-	$(F77) -o $@ $@.f
+	$(F77) -o $@ $@.f90
 
 sort: sort.o
-	$(F77) -o $@ $@.f
+	$(F77) -o $@ $@.f90
 
 spline: spline.o
-	$(F77) -o $@ $@.f
+	$(F77) -o $@ $@.f90
 
 heap: heap.o
-	$(F77) -o $@ $@.f
+	$(F77) -o $@ $@.f90
+
+iheap: iheap.o
+	$(F77) -o $@ $@.f90
 
 #------------------------------------------------------
 
@@ -83,6 +89,12 @@ copy:
 
 .f.o:
 	$(F77) -c $(FFLAGS) $<
+
+.f90.o:
+	$(F77) -c $(FFLAGS) $<
+
+%.o: %.f90
+	$(F77) $(FFLAGS) -c $<
 
 #------------------------------------------------------
 

@@ -42,6 +42,7 @@
 ! 05.06.2023    ggu     handle exceptions, show records with highest errrors
 ! 09.06.2023    ggu     handle non existing files
 ! 21.12.2024    ggu     more functionallity, possible dump of data record
+! 29.05.2026    ggu     avoid compiler warnings
 
 ! note :
 !
@@ -1013,8 +1014,10 @@
 
 	if( nh == size(ipv) ) then
 	  ipvv = ipv
+	  belem = .false.
 	else if( nh == size(ipev) ) then
 	  ipvv = ipev
+	  belem = .true.
 	else
 	  write(6,*) nh,size(ipv),size(ipev)
 	  stop 'error stop info_ival: unknown nh'
@@ -1034,6 +1037,7 @@
 	end if
 	if( iu > 0 ) write(iu,*) trim(text1) // trim(text2)
 
+	ierr = 0
 	do i=1,nh*nv
 	  iv = 1 + mod((i-1),nv)
 	  ih = 1 + (i-1)/nv

@@ -1129,6 +1129,8 @@ void PsRectFill( float x1 , float y1 , float x2 , float y2 )
 	NPlot++;
 }
 
+// for the arc command (PsArc, PsArcFill) the angles are in degrees
+
 void PsArc( float x0, float y0, float r, float ang1, float ang2 )
 
 {

@@ -39,6 +39,7 @@
 ! 16.02.2019	ggu	changed VERS_7_5_60
 ! 28.09.2023	ggu	include substituted with module
 ! 22.09.2024	ggu	revisited - allocate arrays
+! 28.06.2026	ggu	deal with flags, various other changes
 !
 !****************************************************************
 
@@ -48,8 +49,12 @@
 !	dbin					regular bin spacing
 !	rbin(nbin)				arbitrary bin definition
 !	n					total number of values
+!	flag					value not to count
 !	values(n)				values to be inserted
 !	value					single value to be inserted
+!	ac(nbin)				center value of bins
+!	ic(nbin)				count in bins
+!	iu					unit for output
 !
 !       call histo_init(nbin,bin0,dbin)
 !       call histo_init(nbin,rbin)
@@ -59,11 +64,15 @@
 !	call histo_make(n,values,nbin)
 !	call histo_make(n,values)		# default nbin = 20
 !	
+!	call histo_set_flag(flag)	
+!	call histo_unset_flag
+!	
 !	call histo_insert(value)
 !	call histo_insert(n,values)
 !
 !	call histo_return(nbin,ac,ic)
 !	call histo_info
+!	call histo_info(iu)
 !
 ! calling sequence:
 !
@@ -76,6 +85,14 @@
 !       call histo_make(n,values,nbin)		# or similar
 !	call histo_return(nbin,ac,ic)
 !
+! example: (nbin = 9)
+!
+! ac     1   2   3   4   5   6   7   8   9    ic
+!          |   |   |   |   |   |   |   |
+!        ---------------------------------
+!          |   |   |   |   |   |   |   | 
+! abin     1   2   3   4   5   6   7   8
+!
 !---------------------------------------------------------------------------
 
 !================================================================
@@ -87,6 +104,9 @@
 	private
 
         integer, save :: ncbin = 0			! total number of bins
+	logical, save :: bflag = .false.		! has values with flag
+	real, save :: histo_flag = 0.			! flag for values
+	integer, save :: icflag = 0			! count for flags
         integer, allocatable, save :: icount(:)		! count in bins
         real, allocatable, save :: acenter(:)		! center of bin
         real, allocatable, save :: abin(:)		! upper value of bin
@@ -103,8 +123,13 @@
         MODULE PROCEDURE histo_insert_value , histo_insert_values
         END INTERFACE
 
+        INTERFACE histo_info
+        MODULE PROCEDURE histo_info_std , histo_info_unit
+        END INTERFACE
+
 	public :: histo_init , histo_insert &
-     &			, histo_return , histo_make , histo_info
+     &			, histo_return , histo_make , histo_info &
+     &			, histo_set_flag
 
 !================================================================
 	contains
@@ -120,21 +145,35 @@
 	abin = 0.
 	acenter = 0.
 	icount = 0
+	icflag = 0
 
 	end
 
 !****************************************************************
 
-	subroutine histo_info
+	subroutine histo_info_std
+	call histo_info_unit(6)
+	end
+
+	subroutine histo_info_unit(iu)
+
+	integer iu
 
 	integer i
+	character*20, save :: scale = '12345678901234567890'
+	character*33, save :: empty = ' '
 
-	write(6,*) 'histo info:'
-	write(6,*) 'ncbin = ',ncbin
-	do i=1,ncbin
-	  write(6,*) i,abin(i),acenter(i),icount(i)
+	write(iu,*) 'histo info:'
+	write(iu,*) 'ncbin = ',ncbin
+	if( bflag ) write(iu,*) 'flag = ',histo_flag,'  count = ',icflag
+	write(iu,*) '        bin          min              mid' &
+     &			// '              max           count'
+	write(iu,*) 1,empty,abin(1),icount(1)
+	do i=2,ncbin-1
+	  write(iu,*) i,abin(i-1),acenter(i),abin(i),icount(i)
 	end do
-	write(6,*) 'end histo info:'
+	write(iu,*) i,abin(ncbin-1),empty,icount(1)
+	write(iu,*) 'end histo info:'
 
 	end
 
@@ -177,7 +216,11 @@
 	integer i
 	real bin0,vmin
 	
-	vmin = minval(values)
+	if( bflag ) then
+	  vmin = minval(values,values /= histo_flag)
+	else
+	  vmin = minval(values)
+	end if
 	bin0 = vmin + dbin
 
 	call histo_make_3(n,values,nbin,dbin,bin0)
@@ -199,8 +242,13 @@
 	real vmin,vmax,dv,dbin,bin0
 	real rnext
 	
-	vmin = minval(values)
-	vmax = maxval(values)
+	if( bflag ) then
+	  vmin = minval(values,values /= histo_flag)
+	  vmax = maxval(values,values /= histo_flag)
+	else
+	  vmin = minval(values)
+	  vmax = maxval(values)
+	end if
 
 	dv = vmax - vmin
 	dbin = dv / nbin
@@ -241,7 +289,7 @@
 	real ac(nbin)
 	integer ic(nbin)
 
-	if( nbin == 0 ) then
+	if( nbin == 0 ) then	!only return number of bins
 	  nbin = ncbin
 	  return
 	end if
@@ -289,7 +337,7 @@
         implicit none
 
         integer nbin            !total number of bins
-        real rbin(nbin)         !bin size limits (upper)
+        real rbin(nbin)         !bin size limits (upper) (rbin(nbin) not used)
 
 	call histo_alloc(nbin)
 
@@ -301,6 +349,33 @@
 
 !****************************************************************
 
+	subroutine histo_set_flag(flag)
+
+! sets flag for values not to count
+
+	implicit none
+
+	real flag
+
+	bflag = .true.
+	histo_flag = flag
+
+	end
+
+!****************************************************************
+
+	subroutine histo_unset_flag
+
+! unsets flag for values not to count
+
+	implicit none
+
+	bflag = .false.
+
+	end
+
+!****************************************************************
+
         subroutine histo_make_center(nbin,ab,ac)
 
 ! sets up icount and abin
@@ -308,8 +383,8 @@
         implicit none
 
         integer nbin            !total number of bins
-	real ab(nbin)
-	real ac(nbin)
+	real ab(nbin)		!values dividing bins [1,nbin-1]
+	real ac(nbin)		!center values of bins [1,nbin]
 
         integer i
 
@@ -332,6 +407,13 @@
         real value
 
         integer i
+
+	if( bflag ) then
+	  if( value == histo_flag ) then
+	    icflag = icflag + 1
+	    return
+	  end if
+	end if
 
         do i=1,ncbin-1
           if( value .le. abin(i) ) exit
@@ -374,8 +456,9 @@
 	integer n
 	real amed,drange,sigma
 
+	logical bflag
 	integer i,nbin
-	real r,vmin,vmax
+	real r,f,vmin,vmax,flag
 	real, allocatable :: ac(:)
 	integer, allocatable :: ic(:)
 	real, allocatable :: values(:)
@@ -384,28 +467,36 @@
 	nbin = 20
 	allocate(ac(nbin),ic(nbin))
 	allocate(values(n))
+	bflag = .true.
+	flag = -999.
 
 	do i=1,n
 	  call random_number(r)
 	  r = r * drange + amed
+	  call random_number(f)
+	  if( f >= 0.95 ) r = flag
 	  values(i) = r
 	end do
-	vmin = minval(values)
-	vmax = maxval(values)
+	if( bflag ) then
+	  vmin = minval(values,values /= flag)
+	  vmax = maxval(values,values /= flag)
+	else
+	  vmin = minval(values)
+	  vmax = maxval(values)
+	end if
 	  
 	write(6,*) 'n,vmin,vmax: ',n,vmin,vmax
 
+	call histo_set_flag(flag)
 	call histo_make(n,values,nbin)
         call histo_return(nbin,ac,ic)
 
 	file=trim(text)//'.tmp'
+	write(6,*) 'writing to file ',trim(file)
 	open(1,file=file,status='unknown',form='formatted')
 
-	write(6,*) nbin
-	do i=1,nbin
-	  write(6,*) i,ac(i),ic(i)
-	  write(1,*) ac(i),ic(i)
-	end do
+	call histo_info
+	call histo_info(1)
 
 	close(1)
 
@@ -419,8 +510,8 @@
 	end
 
 !****************************************************************
-	!program main_histo_test
-	!call histo_test
-	!end
+!	program main_histo_test
+!	call histo_test
+!	end
 !****************************************************************
 

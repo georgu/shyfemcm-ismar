@@ -30,15 +30,22 @@
 ! 24.01.2018	ggu	changed VERS_7_5_41
 ! 14.02.2019	ggu	changed VERS_7_5_56
 
+! notes :
+!
+! highest value is at the top (root)
+! top has index 1
+
 !**************************************************************
 
 
 	subroutine heap_sort(n,ra)
 
+! sort an array
+
 	implicit none
 
 	integer n
-	real ra(1)
+	real ra(n)
 
 	call heap_make(n,ra)
 	call heap_check(n,ra)
@@ -50,10 +57,12 @@
 
 	subroutine heap_make(n,ra)
 
+! given an array sorts it to make a heap
+
 	implicit none
 
 	integer n
-	real ra(1)
+	real ra(n)
 
 	integer l
 
@@ -69,10 +78,12 @@
 
 	subroutine heap_print(n,ra,text)
 
+! prints the heap
+
 	implicit none
 
 	integer n
-	real ra(1)
+	real ra(n)
 	character*(*) text
 
 	integer i
@@ -89,10 +100,12 @@
 
 	subroutine heap_swap(i1,i2,ra)
 
+! swap two values in the heap
+
 	implicit none
 
 	integer i1,i2
-	real ra(1)
+	real ra(*)
 
 	real rra
 
@@ -106,10 +119,12 @@
 
 	subroutine heap_check(n,ra)
 
+! checks heap structure
+
 	implicit none
 
 	integer n
-	real ra(1)
+	real ra(n)
 
 	integer i,j
 
@@ -130,10 +145,12 @@
 
 	subroutine heap_insert(n,ra,raa)
 
+! inserts value at the end and then propmotes it to the right place
+
 	implicit none
 
 	integer n
-	real ra(1)
+	real ra(n+1)
 	real raa
 
 	n = n + 1
@@ -145,12 +162,33 @@
 
 !******************************************************************
 
+	subroutine heap_remove(l,n,ra)
+
+! removes value at index l from heap
+
+	implicit none
+
+	integer l
+	integer n
+	real ra(n)
+
+	ra(l) = ra(n)
+	n = n - 1
+
+	call heap_adjust(l,n,ra)
+
+	end
+
+!******************************************************************
+
 	subroutine heap_retire(n,ra)
+
+! used for sorting
 
 	implicit none
 
 	integer n
-	real ra(1)
+	real ra(n)
 
 	integer ir
 
@@ -166,12 +204,12 @@
 
 	subroutine heap_adjust(l,n,ra)
 
-! adjusts entry l to right place
+! adjusts entry l to right place using both promotion and demotion
 
 	implicit none
 
 	integer l,n
-	real ra(1)
+	real ra(n)
 
 	call heap_promote(l,n,ra)
 	call heap_demote(l,n,ra)
@@ -182,12 +220,12 @@
 
 	subroutine heap_promote(l,n,ra)
 
-! promotes entry l to right place
+! promotes entry l to right place (from below to top)
 
 	implicit none
 
 	integer l,n
-	real ra(1)
+	real ra(n)
 
 	integer i,j
 	real rra
@@ -198,7 +236,7 @@
 
 	do while( j .ge. 1 )
 
-	  if( rra .gt. ra(j) ) then	!demote rra
+	  if( rra .gt. ra(j) ) then	!promote rra
 	    ra(i) = ra(j)
 	    i = j
 	    j = j/2
@@ -216,12 +254,12 @@
 
 	subroutine heap_demote(l,n,ra)
 
-! demotes entry l to right place
+! demotes entry l to right place (from top downwards)
 
 	implicit none
 
 	integer l,n
-	real ra(1)
+	real ra(n)
 
 	integer i,j
 	real rra
@@ -263,7 +301,6 @@
 
 	real ra(ndim)
 	real ra1(ndim)
-	real ra2(ndim)
 	real ra3(ndim)
 	real raa
 	integer i,n,j
@@ -279,7 +316,6 @@
 	  call random_number(raa)
 	  ra(i) = raa
 	  ra1(i) = ra(i)
-	  ra2(i) = ra(i)
 	  !write(6,*) i,ra(i)
 	  call heap_insert(j,ra3,raa)
 	  call heap_check(j,ra3)
@@ -290,21 +326,15 @@
 	call heap_check(n,ra3)
 	call heap_retire(n,ra3)
 
-	!write(6,*) 1,ra1(1),ra2(1)
 	do i=2,n
 	  if( ra1(i) .lt. ra1(i-1) ) then
-	    !write(6,*) 'not sorted... ',i,ra1(i),ra1(i-1)
-	    berror = .true.
-	  end if
-	  if( ra1(i) .ne. ra2(i) ) then
-	    !write(6,*) 'not equal... ',i,ra1(i),ra2(i)
+	    write(6,*) 'not sorted... ',i,ra1(i),ra1(i-1)
 	    berror = .true.
 	  end if
 	  if( ra1(i) .ne. ra3(i) ) then
-	    !write(6,*) 'not equal... ',i,ra1(i),ra2(i)
+	    write(6,*) 'ra1 and ra3 not equal... ',i,ra1(i),ra3(i)
 	    berror = .true.
 	  end if
-	  !write(6,*) i,ra1(i),ra2(i),ra3(i)
 	end do
 
 	if( berror ) then

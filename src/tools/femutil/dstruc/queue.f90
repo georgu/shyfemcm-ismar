@@ -427,8 +427,8 @@
 	end
 
 !******************************************************************
-	programme queue_main
+	program queue_main
 	call queue_test
-	end programme queue_main
+	end program queue_main
 !******************************************************************
 

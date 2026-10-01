@@ -339,10 +339,10 @@
 	    if( file(1:1) == '-' ) then
 	      write(6,*) 'option ',trim(file),' in wrong place'
 	      write(6,*) 'all options must lead files'
-	      stop 'error stop classify_files'
+	      stop 'error stop classify_files: file before options'
 	    else
 	      write(6,*) 'file not existing: ',trim(file)
-	      stop 'error stop classify_files'
+	      stop 'error stop classify_files: no such file'
 	    end if
 	  end if
 	  if( shy_is_shy_file(file) ) then
@@ -389,26 +389,26 @@
 	  end do
 	end if
 
-	if( nunk > 0 ) stop 'error stop classify_files'
+	if( nunk > 0 ) stop 'error stop classify_files: unknown file'
 	if( nshy > 1 ) then
 	  write(6,*) 'cannot plot more than one SHY file'
-	  stop 'error stop classify_files'
+	  stop 'error stop classify_files: too many files to plot'
 	end if
 	if( nfem > 1 ) then
 	  write(6,*) 'cannot plot more than one FEM file'
-	  stop 'error stop classify_files'
+	  stop 'error stop classify_files: too many files to plot'
 	end if
 	if( nlgr > 1 ) then
 	  write(6,*) 'cannot plot more than one LGR file'
-	  stop 'error stop classify_files'
+	  stop 'error stop classify_files: too many files to plot'
 	end if
 	if( nbas > 0 .and. ngrd > 0 ) then
 	  write(6,*) 'both BAS and GRD files given... cannot handle'
-	  stop 'error stop classify_files'
+	  stop 'error stop classify_files: both BAS and GRD given'
 	end if
 	if( nshy > 0 .and. nfem > 0 ) then
 	  write(6,*) 'both SHY and FEM files given... cannot handle'
-	  stop 'error stop classify_files'
+	  stop 'error stop classify_files: both SHY and FEM given'
 	end if
 	if( nshy > 0 ) then
 	  if( nbas > 0 .or. ngrd > 0 ) then

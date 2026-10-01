@@ -113,6 +113,10 @@ c-----------------------------------------------------------------
 	  call smooth_bathy(bnodes,niter,f)
 	end if
 
+	call rectify_element_depth
+	call rectify_element_depth	!second pass
+	call rectify_element_depth	!third pass
+
 	call transfer_depth(bnodes)	!copy to nodes/elements
 
 c-----------------------------------------------------------------
@@ -327,6 +331,70 @@ c*******************************************************************
 	end if
 
 	alpha = 0.0
+
+	end
+
+c*******************************************************************
+c*******************************************************************
+c*******************************************************************
+
+	subroutine rectify_element_depth
+
+! checks if depth in element is too much different from minimum depth around
+
+	use mod_depth
+	use evgeom
+	use basin
+	use basutil
+
+	integer ie,ii,k
+	integer nchange
+	real fact,hmed,hhmin,hnew,edepth
+
+	integer, save :: npass = 0
+
+	fact = 5.
+	fact = bfact
+	hkv = 10000.
+
+	if( bfact == 0. ) return
+
+	npass = npass + 1
+	write(6,*) 'rectifying with bfact = ',bfact,' pass = ',npass
+
+	! compute minimum depth of node using element depth
+
+	do ie=1,nel
+	  do ii=1,3
+	    k = nen3v(ii,ie)
+	    hkv(k) = min(hkv(k),hev(ie))
+	  end do
+	end do
+
+	! compute average depth of nodes -> if hev is too big, change
+
+	nchange = 0
+	do ie=1,nel
+	  edepth = hev(ie)
+	  hmed = 0.
+	  hhmin = 10000.
+	  do ii=1,3
+	    k = nen3v(ii,ie)
+	    hmed = hmed + hkv(k)
+	    hhmin = min(hhmin,hkv(k))
+	  end do
+	  hmed = hmed / 3.
+	  hnew = hmed
+	  hnew = hhmin
+
+	  if( fact*hnew < edepth ) then		!element depth too big
+	    nchange = nchange + 1
+	    hev(ie) = hnew
+	    !write(6,*) nchange,edepth,hnew
+	  end if
+	end do
+
+	write(6,*) 'total element depths rectified: ',nchange
 
 	end
 

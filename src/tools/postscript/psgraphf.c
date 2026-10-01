@@ -82,6 +82,7 @@
  *
  *	qarc(x0,y0,r,ang1,ang2)		draws arc with radius r around x0,y0
  *	qarcf(x0,y0,r,ang1,ang2)	fills arc with radius r around x0,y0
+ *					(angles are in degrees, circle: 0.,360.)
  *
  *	qtxts(ip)		sets text size in points
  *	qtxtr(angle)		rotate text strings with angle
@@ -301,6 +302,8 @@ void qrfill_( float *x1 , float *y1 , float *x2 , float *y2 )
 }
 
 /*****************************************************************/
+
+/* here the angles are in degrees */
 
 void qarc_( float *x0 , float *y0 , float *r , float *ang1, float *ang2 )
 

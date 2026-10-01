@@ -36,6 +36,7 @@
 ! 23.03.2022	ggu	bug fixes
 ! 03.05.2022    ggu     use new option -nlgtype
 ! 28.04.2023    ggu     update function calls for belem
+! 27.05.2026    ggu     new call to lgr_get_header()
 
 !**************************************************************
 
@@ -48,6 +49,7 @@
         use shyutil
         use shyelab_out
 	use shyfem_strings
+	use intp_fem_file
 
         use basin
         use mod_depth
@@ -173,6 +175,7 @@
 	!--------------------------------------------------------------
 	! open input files
 	!--------------------------------------------------------------
+
         call open_new_file(ifile,id,atstart)    !atstart=-1 if no new file
         if( atstart /= -1 ) then
           call dts_format_abs_time(atstart,aline)
@@ -184,6 +187,7 @@
         !--------------------------------------------------------------
         ! set up params and modules
         !--------------------------------------------------------------
+
         call shy_get_params(id,nkn,nel,npr,nlv,nvar)
 
         if( .not. bquiet ) call shy_info(id)
@@ -207,15 +211,18 @@
         !--------------------------------------------------------------
         ! read number of custom properties
         !--------------------------------------------------------------
+
         call shy_get_iunit(id,iu)
-        read(iu) ncust
-	llmax = 0
+	call lgr_get_header(iu,nvers,llmax,ncust)
+
+	write(*,*)'nvers: ', nvers
 	write(*,*)'llmax: ', llmax
 	write(*,*)'ncust: ', ncust
 
         !--------------------------------------------------------------
         ! set up aux arrays, sigma info and depth values
         !--------------------------------------------------------------
+
         call shyutil_init(nkn,nel,nlv)
         call init_sigma_info(nlv,hlv)
         call shy_make_area
@@ -224,7 +231,9 @@
 	!--------------------------------------------------------------
 	! time management
 	!--------------------------------------------------------------
+
         call shy_get_date(id,date,time)
+	call iff_init_global_date_internal(date,time)
         call dts_to_abs_time(date,time,atime0)
 	call elabtime_date_and_time(date,time)	!we work with absolute time
 	call elabtime_set_minmax(stmin,stmax)
@@ -238,6 +247,7 @@
 	!--------------------------------------------------------------
 	! initilize output for concentration and age
 	!--------------------------------------------------------------
+
         if ( blgdens ) then
           boutput = blgdens
           b2d = blg2d

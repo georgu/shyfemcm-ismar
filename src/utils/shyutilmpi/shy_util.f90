@@ -77,6 +77,7 @@
 ! 03.10.2025    ggu     for description return and print also short
 ! 16.10.2025    ggu     new routines for writing elemental files
 ! 17.10.2025    ggu     in shyfem_init_elem_file() use ftype==4 (bug)
+! 21.05.2026    ggu     in shy_check_nvar() check if file is empty and return
 !
 ! contents :
 !
@@ -945,6 +946,7 @@
 	integer id
 	integer nvar
 
+	logical bempty
 	integer irec,nrec,ierr,i,isub
 	integer ftype
 	integer ivar,n,m,lmax,ivar_first
@@ -968,6 +970,7 @@
 	irec = 0	!records with data
 	nrec = 0	!records read (also ivar<0)
 	ivar_first = -999
+	dtime0 = -1.
 
 	do
 	  call shy_skip_record(id,dtime,ivar,n,m,lmax,ierr)
@@ -982,6 +985,9 @@
 	  irec = irec + 1
 	end do
 
+	bempty = .false.
+	if( ierr == -1 .and. irec == 0 ) bempty = .true.
+
 	dtime0 = dtime
 	if( ierr /= 0 ) then
 	  call shy_back_one(id,ierr)	!this skips over EOF
@@ -991,6 +997,7 @@
 	call shy_back_records(id,nrec,ierr)
 	if( ierr /= 0 ) goto 97
 	if( irec == nvar ) return
+	if( bempty ) return
 
 !	here error management
 

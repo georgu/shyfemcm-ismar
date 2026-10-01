@@ -2,7 +2,7 @@
 #
 # progress bar implementation
 #
-# Usage: ProgressBar currentState totalState
+# Usage: ProgressBar currentState totalState [initial_string]
 #
 #------------------------------------------------------------------
 
@@ -14,6 +14,7 @@ function ProgressBar {
 
     [ "$2" = "0" ] && return
     [ "$1" -gt "$2" ] && return
+    [ -n "$3" ] && stringProgressBar=$3
 
     let _progress=(${1}*100/${2}*100)/100
     let _done=(${_progress}*4)/10

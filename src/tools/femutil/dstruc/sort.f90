@@ -49,16 +49,16 @@
 
         INTERFACE sort_array
         MODULE PROCEDURE         &
-     &				 sort_direct_i		!(n,array) &
-     &                          ,sort_indirect_i	!(n,array,index) &
-     &				,sort_direct_r		!(n,array) &
-     &                          ,sort_indirect_r	!(n,array,index)
+     &				 sort_direct_i		&	!(n,array)
+     &                          ,sort_indirect_i	&	!(n,array,index)
+     &				,sort_direct_r		&	!(n,array)
+     &                          ,sort_indirect_r		!(n,array,index)
         END INTERFACE
 
         INTERFACE copy_array
         MODULE PROCEDURE         &
-     &        			 copy_array_i		!(n,irank,iv) &
-     &        			,copy_array_r		!(n,irank,rv)
+     &        			 copy_array_i		&	!(n,irank,iv)
+     &        			,copy_array_r			!(n,irank,rv)
         END INTERFACE
 
 !==============================================================

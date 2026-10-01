@@ -230,6 +230,7 @@
 ! 21.10.2023    ggu     only post processing parameters
 ! 18.09.2024    ggu     new parameters lgrcol, lgrtyp, rfaccol
 ! 13.11.2025    ggu     new parameter rcircle
+! 22.05.2026    ggu     new parameter tzstring
 !
 !************************************************************************
 
@@ -1006,12 +1007,26 @@
 ! |xdate, ydate|	Starting point for the date text (lower left corner).
 ! |sdate|		Point size of the text. (Default 18)
 ! |idate|		Output mode. If 0 no date is written to the
-!			plot, else the date and time is written. (Default 0)
+!			plot, else the date and time is written with
+!			following format:
+!			\begin{description}
+!			\item[1] 2026-05-14::12:00:00
+!			\item[2] 13 May 200
+!			\item[3] 2026-05-14  12:00:00
+!			\item[4] 2026-05-14  12:00:00 GMT
+!			\item[5] 2026-05-14
+!			\end{description}
+!			(Default 0)
+! |tzstring|		Anything that should come after the date. 
+!			This is typically used to add a specific time zone.
+!			For example, tzstring=' (UTC)' adds this string
+!			after the date string. (Default ' ')
 
 	call addpar('xdate',0.)
 	call addpar('ydate',0.)
-	call addpar('sdate',18.)         !size
+	call addpar('sdate',18.)        !size
 	call addpar('idate',0.)         !mode
+	call addfnm('tzstring','')
 
 ! Wind data can be used to insert a wind vector into the figure.
 ! This is useful because in the case of variable wind 
@@ -1052,12 +1067,14 @@
 ! |stwind|		Point size of the text. (Default 18)
 ! |wtext|		Text used for the legend (Default 'Wind speed')
 ! |wunit|		Unit for the wind speed (Default 'm/s')
+! |wfact|		Extra factor for wind in legend (Default 1)
 
 	call addpar('xtwind',0.)
 	call addpar('ytwind',0.)
 	call addpar('stwind',18.)         !size
 	call addfnm('wtext','Wind speed') !legend for wind
 	call addfnm('wunit','m/s')	  !unit for wind
+	call addpar('wfact',1.)		  !extra factor for wind in legend
 
 ! DOCS	END
 

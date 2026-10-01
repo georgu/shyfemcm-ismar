@@ -843,7 +843,8 @@
           call clo_get_option('cover',coverfile)
 	end if
 
-	if( bshowall .or. bfemfile .or. bshyfile .or. blgrfile ) then
+	!if( bshowall .or. bfemfile .or. bshyfile .or. blgrfile ) then
+	if( bshowall .or. bfemfile .or. bshyfile ) then
           call clo_get_option('reg',regstring)
           call clo_get_option('regexpand',regexpand)
           call clo_get_option('resample',rbounds)

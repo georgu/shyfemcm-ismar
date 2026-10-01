@@ -59,19 +59,12 @@
 ! 04.03.2020	ggu	iunit converted to id
 ! 05.04.2022	ggu	in tracer_init_file only set existing layers
 ! 27.10.2022	ggu	tracer_init_file also working for 2d arrays
+! 22.09.2026	ggu	new routines vel_* and scalar_*
 !
 !*******************************************************************	
 !*******************************************************************	
 !*******************************************************************	
-
-	subroutine ts_file_descrp(id,name)
-	use intp_fem_file
-	implicit none
-	integer id
-	character*(*) name
-	call iff_set_description(id,0,name)
-	end
-
+! T/S routines (nvar == 1, on nodes) *******************************
 !*******************************************************************	
 !*******************************************************************	
 !*******************************************************************	
@@ -84,11 +77,11 @@
 
 	implicit none
 
-	character*(*) file		!name of file
-	double precision dtime		!initial time
-	integer np			!number of points expected
-	integer nlv			!vertical dimmension
-	integer id			!unit number (return)
+	character*(*), intent(in) :: file	!name of file
+	double precision, intent(in) :: dtime	!initial time
+	integer, intent(in) :: np		!number of points expected
+	integer, intent(in) :: nlv		!vertical dimmension
+	integer, intent(out) :: id		!unit number (return)
 
 	integer nvar,nexp,lexp,nintp
 	integer nodes(1)
@@ -117,12 +110,12 @@
 
 	implicit none
 
-	double precision dtime
-	integer id
-	integer nlvddi
-	integer nkn
-	integer nlv
-	real value(nlvddi,nkn)
+	double precision, intent(in) :: dtime
+	integer, intent(in) :: id
+	integer, intent(in) :: nlvddi
+	integer, intent(in) :: nkn
+	integer, intent(in) :: nlv
+	real, intent(out) :: value(nlvddi,nkn)
 
 	integer ldim,ndim,ivar
 	integer k,lmax
@@ -171,9 +164,24 @@
 
 	implicit none
 
-	integer id
+	integer, intent(in) :: id
 
 	call iff_forget_file(id)
+
+	end
+
+!*******************************************************************	
+
+	subroutine ts_file_descrp(id,name)
+
+	use intp_fem_file
+
+	implicit none
+
+	integer, intent(in) :: id
+	character*(*), intent(in) :: name
+
+	call iff_set_description(id,0,name)
 
 	end
 
@@ -187,8 +195,8 @@
 
 	implicit none
 
-	character*(*) file		!name of file
-	logical bexist
+	character*(*), intent(in) :: file		!name of file
+	logical, intent(out) :: bexist
 
 	call iff_file_exists(file,bexist)
 
@@ -197,7 +205,7 @@
 !*******************************************************************	
 !*******************************************************************	
 !*******************************************************************	
-!****** new routines ***********************************************	
+!****** tracer routines (nvar can be greater than 1) ***************	
 !*******************************************************************	
 !*******************************************************************	
 !*******************************************************************	
@@ -210,13 +218,13 @@
 
 	implicit none
 
-	character*(*) file		!name of file
-	double precision dtime		!time
-	integer nvar			!number of (state) variables
-	integer np			!number of points expected
-	integer nlv			!number of vertical levels
-	real val0(nvar)			!default initial condition
-	integer id			!id of file (return)
+	character*(*), intent(in) :: file	!name of file
+	double precision, intent(in) :: dtime	!time
+	integer, intent(in) :: nvar		!number of (state) variables
+	integer, intent(in) :: np		!number of points expected
+	integer, intent(in) :: nlv		!number of vertical levels
+	real, intent(in) :: val0(nvar)		!default initial condition
+	integer, intent(out) :: id		!id of file (return)
 
 	integer nexp,lexp,nintp
 	integer nodes(nvar)
@@ -249,13 +257,13 @@
 
 	implicit none
 
-	double precision dtime
-	integer id
-	integer nvar
-	integer nlvddi
-	integer nkn
-	integer nlv
-	real value(nlvddi,nkn,nvar)
+	double precision, intent(in) :: dtime
+	integer, intent(in) :: id
+	integer, intent(in) :: nvar
+	integer, intent(in) :: nlvddi
+	integer, intent(in) :: nkn
+	integer, intent(in) :: nlv
+	real, intent(out) :: value(nlvddi,nkn,nvar)
 
 	integer ldim,ndim,ivar
 	character*80 string
@@ -281,23 +289,6 @@
 
 !*******************************************************************	
 
-	subroutine tracer_file_descrp(id,text)
-
-! sets description for file
-
-	use intp_fem_file
-
-	implicit none
-
-	integer id
-	character*(*) text
-
-	call iff_set_description(id,0,text)
-
-	end
-
-!*******************************************************************	
-
 	subroutine tracer_file_close(id)
 
 ! closes tracer file
@@ -306,12 +297,319 @@
 
 	implicit none
 
-	integer id
+	integer, intent(in) :: id
 
 	call iff_forget_file(id)
 
 	end
 
+!*******************************************************************	
+
+	subroutine tracer_file_descrp(id,text)
+
+! sets description for file
+
+	use intp_fem_file
+
+	implicit none
+
+	integer, intent(in) :: id
+	character*(*), intent(in) :: text
+
+	call iff_set_description(id,0,text)
+
+	end
+
+!*******************************************************************	
+
+	subroutine tracer_file_exists(file,bexist)
+
+! checks if file exists (and no read error)
+
+	use intp_fem_file
+
+	implicit none
+
+	character*(*), intent(in) :: file		!name of file
+	logical, intent(out) :: bexist
+
+	call iff_file_exists(file,bexist)
+
+	end
+
+!*******************************************************************	
+!*******************************************************************	
+!*******************************************************************	
+!****** velocity routines (nvar == 2, on elements) *****************	
+!*******************************************************************	
+!*******************************************************************	
+!*******************************************************************	
+
+	subroutine vel_file_open(file,dtime,np,nlv,id)
+
+! opens vel file
+
+	use intp_fem_file
+
+	implicit none
+
+	character*(*), intent(in) :: file	!name of file
+	double precision, intent(in) :: dtime	!time
+	integer, intent(in) :: np		!number of points expected
+	integer, intent(in) :: nlv		!number of vertical levels
+	integer, intent(out) :: id		!id of file (return)
+
+	integer nvar,nexp,lexp,nintp
+	integer nodes(1)
+	real val0(2)				!default initial condition
+
+	nvar = 2
+	nexp = np
+	lexp = nlv
+	nintp = 2
+	nodes = 0
+	val0 = 0.
+
+!$OMP CRITICAL
+	call iff_init(dtime,file,nvar,nexp,lexp,nintp &
+     &                                  ,nodes,val0,id)
+!$OMP END CRITICAL
+
+	if( id <= 0 ) then
+	  write(6,*) 'Cannot open file: ',file
+	  stop 'error stop vel_file_open: error file open'
+	end if
+
+	end
+
+!*******************************************************************	
+
+	subroutine vel_file_next_record(dtime,id &
+     &					,nvar,nlvddi,nel,nlv,value)
+
+! reads next record of vel
+
+	use intp_fem_file
+
+	implicit none
+
+	double precision, intent(in) :: dtime
+	integer, intent(in) :: id
+	integer, intent(in) :: nvar
+	integer, intent(in) :: nlvddi
+	integer, intent(in) :: nel
+	integer, intent(in) :: nlv
+	real, intent(out) :: value(nlvddi,nel,nvar)
+
+	integer ldim,ndim,ivar
+	character*80 string
+
+!--------------------------------------------------------------
+! read new data
+!--------------------------------------------------------------
+
+	ndim = nel
+	ldim = nlvddi
+
+	call iff_read_and_interpolate(id,dtime)
+	do ivar=1,nvar
+	  call iff_time_interpolate(id,dtime,ivar,ndim,ldim &
+     &					,value(:,:,ivar))
+	end do
+
+!--------------------------------------------------------------
+! end of routine
+!--------------------------------------------------------------
+
+	end
+
+!*******************************************************************	
+
+	subroutine vel_file_close(id)
+
+! closes vel file
+
+	use intp_fem_file
+
+	implicit none
+
+	integer, intent(in) :: id
+
+	call iff_forget_file(id)
+
+	end
+
+!*******************************************************************	
+
+	subroutine vel_file_descrp(id,text)
+
+! sets description for file
+
+	use intp_fem_file
+
+	implicit none
+
+	integer, intent(in) :: id
+	character*(*), intent(in) :: text
+
+	call iff_set_description(id,0,text)
+
+	end
+
+!*******************************************************************	
+
+	subroutine vel_file_exists(file,bexist)
+
+! checks if file exists (and no read error)
+
+	use intp_fem_file
+
+	implicit none
+
+	character*(*), intent(in) :: file		!name of file
+	logical, intent(out) :: bexist
+
+	call iff_file_exists(file,bexist)
+
+	end
+
+!*******************************************************************	
+!*******************************************************************	
+!*******************************************************************	
+! scalar routines (nvar == 1, on nodes or elements) ****************
+!*******************************************************************	
+!*******************************************************************	
+!*******************************************************************	
+
+	subroutine scalar_file_open(file,dtime,np,nlv,id)
+
+! opens scalar file
+
+	use intp_fem_file
+
+	implicit none
+
+	character*(*), intent(in) :: file	!name of file
+	double precision, intent(in) :: dtime	!initial time
+	integer, intent(in) :: np		!number of points expected
+	integer, intent(in) :: nlv		!vertical dimmension
+	integer, intent(out) :: id		!unit number (return)
+
+	integer nvar,nexp,lexp,nintp
+	integer nodes(1)
+	real vconst(1)
+
+	nvar = 1
+	nexp = np
+	lexp = nlv
+	nintp = 2
+	nodes = 0
+	vconst = 0.
+
+!$OMP CRITICAL
+	call iff_init(dtime,file,nvar,nexp,lexp,nintp &
+     &                                  ,nodes,vconst,id)
+!$OMP END CRITICAL
+
+	end
+
+!*******************************************************************	
+
+	subroutine scalar_next_record(dtime,id,nlvddi,np,nlv,value)
+
+	use intp_fem_file
+
+	implicit none
+
+	double precision, intent(in) :: dtime
+	integer, intent(in) :: id
+	integer, intent(in) :: nlvddi
+	integer, intent(in) :: np
+	integer, intent(in) :: nlv
+	real, intent(out) :: value(nlvddi,np)
+
+	integer ldim,ndim,ivar
+	integer k,lmax
+        real vmin,vmax
+	character*80 string
+
+!--------------------------------------------------------------
+! read new data
+!--------------------------------------------------------------
+
+	ivar = 1
+	ndim = np
+	ldim = nlvddi
+
+	call iff_read_and_interpolate(id,dtime)
+	call iff_time_interpolate(id,dtime,ivar,ndim,ldim,value)
+
+!--------------------------------------------------------------
+! end of routine
+!--------------------------------------------------------------
+
+	end
+
+!*******************************************************************	
+!*******************************************************************	
+!*******************************************************************	
+! generic routines *************************************************
+!*******************************************************************	
+!*******************************************************************	
+!*******************************************************************	
+
+	subroutine generic_file_close(id)
+
+! closes file
+
+	use intp_fem_file
+
+	implicit none
+
+	integer, intent(in) :: id
+
+	call iff_forget_file(id)
+
+	end
+
+!*******************************************************************	
+
+	subroutine generic_file_descrp(id,text)
+
+! sets description for file
+
+	use intp_fem_file
+
+	implicit none
+
+	integer, intent(in) :: id
+	character*(*), intent(in) :: text
+
+	call iff_set_description(id,0,text)
+
+	end
+
+!*******************************************************************	
+
+	subroutine generic_file_exists(file,bexist)
+
+! checks if file exists (and no read error)
+
+	use intp_fem_file
+
+	implicit none
+
+	character*(*), intent(in) :: file		!name of file
+	logical, intent(out) :: bexist
+
+	call iff_file_exists(file,bexist)
+
+	end
+
+!*******************************************************************	
+!*******************************************************************	
+!*******************************************************************	
+! special routines *************************************************
 !*******************************************************************	
 !*******************************************************************	
 !*******************************************************************	

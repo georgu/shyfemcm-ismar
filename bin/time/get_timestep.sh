@@ -33,6 +33,7 @@ file=$name.inf
 
 $FEMBIN/getkey.pl  timestep  $file  > aaa.tmp
 $FEMBIN/clean_sync_dt.pl aaa.tmp > bbb.tmp
+$FEMBIN/time/analise_timestep.pl bbb.tmp
 mv bbb.tmp timestep.txt
 
 gp -u 1:5 timestep.txt

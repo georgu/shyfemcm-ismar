@@ -449,7 +449,7 @@
 	  !--------------------------------------
 
 	  dxygrd = getpar('dxygrd')
-	  x = x0 + dxygrd/2.
+	  x = x0 + dxygrd/2.			!FIXME
 	  y = y0 + dxygrd/2.
 	  call setgeo(x,y,dxygrd,dxygrd,-999.)
 

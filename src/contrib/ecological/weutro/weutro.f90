@@ -63,6 +63,7 @@
 ! 16.02.2019	ggu	changed VERS_7_5_60
 ! 13.03.2019	ggu	changed VERS_7_5_61
 ! 16.10.2025	ggu	read parameters from namelist - handle_param_init()
+! 25.09.2026	ggu	new routine wdiag(), new vars idnode and idlayer
 !
 ! notes :
 !
@@ -687,6 +688,8 @@
       integer i,n
 
         idbox = id
+	idnode = id / 1000
+	idlayer = idbox - 1000*idnode
 
       iseg = 1
       sedseg = .false.
@@ -1519,6 +1522,7 @@
       SR190 = KA*(CS - DO)
 
 !      write(88,*) KA,CS,SR190
+	call wdiag(88,(/KA,CS,SR190/))
 !
 !                 Evolution by phytoplankton
 !          growth of phytoplankton using CO2 and NH3
@@ -1567,6 +1571,8 @@
 !        write(54,'(8(f8.4,2x))') SR190,SR19PA,SR19PB,SK19P,SK1913,SK1918
 !     & ,SK19S 
 !        write(54,'(3(f8.4,2x))') SR19PA,SR19PB,GP1      !ggu
+	
+	call wdiag(54,(/SR190,SR19PA,SR19PB,SK19P,SK1913,SK1918/))
        
       RETURN
       END
@@ -2555,6 +2561,30 @@
         sedseg = seds
 
         end
+
+!***************************************************************
+
+	subroutine wdiag(iu,vals)
+
+	use mod_writevars
+
+	implicit none
+
+        !include 'weutro.h'
+	! the next is a HACK until we pass from wutro.h to a module
+	logical, parameter :: bdiag = .true.
+        integer idbox,idnode,idlayer
+        common/general_id/idbox,idnode,idlayer
+        save/general_id/
+
+	integer iu
+	real vals(:)
+
+	if( .not. bdiag ) return
+
+	call writevars_scalar(iu,idnode,vals)
+
+	end
 
 !***************************************************************
 
