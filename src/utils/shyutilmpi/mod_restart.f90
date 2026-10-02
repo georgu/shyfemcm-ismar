@@ -34,6 +34,8 @@
 ! 08.03.2025    ggu     extract module for restart routines
 ! 19.06.2025    ggu     updated
 ! 20.03.2026    ggu     new version 18
+! 01.10.2026    ggu     new routine get_hlv_restart()
+! 01.10.2026    ggu     new parameter nzadapt (new version 19)
 !
 ! notes :
 !
@@ -66,6 +68,7 @@
 ! 16	adapted for mpi
 ! 17	write bfm restart
 ! 18	write zov, zeov, iwetv
+! 19	write nzadapt
 !
 !*********************************************************************
 
@@ -82,8 +85,9 @@
 
 	integer, save :: idfrst = 749652	!id for restart file
 
-	integer, save :: nvmax = 18		!last version of file
-	integer, parameter :: nidmax = 9
+	integer, save :: nvmax = 19		!last version of file
+
+	integer, parameter :: nidmax = 9	!dimension for description
 
 	integer, save :: id_hydro_rst = 1	!1		hydro
 	integer, save :: id_depth_rst = 2	!10		depth
@@ -103,6 +107,9 @@
 	integer, save :: iturb_rst  = 0
 	integer, save :: ibfm_rst  = 0
 
+	integer, save :: nzadapt_rst  = -1
+	integer, save :: nzadapt_sim  = -1
+	
 	character*20, save :: descript_rst(nidmax) = (/    &
      &		 'hydrodynamics       '    &
      &		,'depth               '    &
@@ -194,6 +201,27 @@
         stop 'error stop get_nn_global: internal error'
 	end function
 	
+!--------------------------------
+
+	subroutine get_hlv_restart(hlv)
+
+	use shympi
+
+	real hlv(:)
+
+	integer ng,nl,n,nr
+
+	nl = size(hlv)
+	if( nl == 0 ) stop 'error stop get_hlv_restart: size hlv == 0'
+
+	nr = size(hlvrst)
+	if( nl > nr ) stop 'error stop get_hlv_restart: nl > nr'
+
+	n = min(nr,nl)
+	hlv(1:n) = hlvrst(1:n)
+
+	end
+
 !--------------------------------
 
 	subroutine restart_write_value_scalar_i(iu,ival)

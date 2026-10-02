@@ -45,6 +45,7 @@
 ! 14.04.2021    ggu     bug fix - atime was integer
 ! 05.10.2025    ggu     new routines to compute difference of rst files
 ! 21.04.2026    ggu     deal with new variables written
+! 01.10.2026    ggu     with bverbose write hlv() and nzadapt
 
 !******************************************************************
 
@@ -66,6 +67,7 @@
 
 	use clo
 	use mod_rstinf
+	use mod_restart
 
 	implicit none
 
@@ -105,11 +107,13 @@
 
 	use clo
 	use mod_rstinf
+	use mod_restart
 
 	implicit none
 
 	integer iunit,it,nvers,nrec,nknr,nelr,nlvr,iflag,ierr,ic
 	integer nread
+	real, allocatable :: hlvr(:)
 	double precision atime
 	double precision atime_anf
 	double precision atime_end
@@ -157,6 +161,13 @@
 	  if( nread == 0 ) then
             write(6,1000) trim(title1)
             write(6,1010) nvers,nrec,nknr,nelr,nlvr,iflag
+	    if( bverbose ) then
+	      write(6,*) 'nzadapt = ',nzadapt_rst
+	      allocate(hlvr(nlvr))
+	      call get_hlv_restart(hlvr)
+	      write(6,*) 'hlv: '
+	      write(6,'(5f12.2)') hlvr
+	    end if
             write(6,*)
             write(6,1001) trim(title2)
 	    atime_anf = atime

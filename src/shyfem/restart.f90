@@ -132,6 +132,8 @@
 ! 20.03.2026	ggu	new experimental version 18
 ! 29.04.2026	ggu	rst_get_vertical() re-introduced
 ! 29.05.2026	ggu	avoid compiler warning for ibarcl
+! 01.10.2026	ggu	in rst_read_vertical() protect for no shympi
+! 01.10.2026	ggu	nzadapt introduced
 !
 ! notes :
 !
@@ -597,6 +599,7 @@
         integer it
         integer ii,l,ie,k,i
 	integer ibarcl,iconz,ibio,ibfm,ieco,imerc,iturb
+	integer nzadapt
         integer nvers
 	integer date,time
 
@@ -618,6 +621,7 @@
 	iturb = nint(getpar('iturb'))
         date = nint(dgetpar('date'))
         time = nint(dgetpar('time'))
+        nzadapt = nint(dgetpar('nzadapt'))
 
 	ieco = ibio + ibfm
 	ieco = ibio
@@ -630,6 +634,7 @@
 	end if
 
 	if( b3d ) then
+          if( bmaster ) write(iunit) nzadapt
           if( bmaster ) write(iunit) hlv_global
 	  call restart_write_value(iunit,be,ilhv)
 	  call restart_write_value(iunit,bn,ilhkv)
@@ -994,6 +999,7 @@
           if( nlvaux .ne. nlv_global ) goto 99
 
 	  call rst_read_vertical(iunit,nvers,nkn,nel,nlv)
+	  call rst_check_vertical(nlv,hlv)	!checks hlv array with hlvrst
 
 	  id = id_hydro_rst
 	  call rst_add_flag(id,iflag)
@@ -1273,13 +1279,21 @@
 
 	integer iunit
 	integer nvers
-	integer nkn,nel,nlv
+	integer nkn,nel,nlv			!these are local values
+	integer n
 
 	logical, parameter :: be = .true.
 	logical, parameter :: bn = .false.
 
+	if( nzadapt_sim < 0 ) then
+	  call get_nzadapt_info(nzadapt_sim)	!value set by simulation
+	  !write(6,*) 'nzadapt_sim = ',nzadapt_sim
+	end if
+
 	if( .not. allocated(hlvrst) ) then
-	  allocate(hlvrst(nlv_global))
+	  n = nlv_global
+	  if( nlv_global == 0 ) n = nlv		!shympi has not been initialized
+	  allocate(hlvrst(n))
 	  allocate(ilhrst(nel))
 	  allocate(ilhkrst(nkn))
 	  hlvrst = 0.
@@ -1292,8 +1306,12 @@
 	  ilhrst = 1
 	  ilhkrst = 1
 	else
+	  nzadapt_rst = 0
+	  if( nvers .ge. 19 ) then
+	    read(iunit) nzadapt_rst		!reads nzadapt
+	  end if
 	  if( nvers .ge. 10 ) then
-	    read(iunit) hlvrst
+	    read(iunit) hlvrst		!reads global hlv
 	  end if
 	  if( nvers .ge. 13 ) then
 	    call restart_read_value(iunit,be,ilhrst)
@@ -1308,9 +1326,10 @@
 
         subroutine rst_get_vertical(nkn,nel,nlv,hlv,ilhv,ilhkv)
 
-! gets vertical arrays
+! gets vertical arrays (only called in non mpi environment)
 
         use mod_restart
+	use shympi
 
         implicit none
 
@@ -1319,10 +1338,14 @@
         integer ilhv(nel)
         integer ilhkv(nkn)
 
+	if( shympi_is_parallel() ) then
+	  stop 'error stop rst_get_vertical: cannot run in mpi mode'
+	end if
+
         if( nkn <= 0 .or. nel <= 0 .or. nlv <= 0 ) goto 98
 
         if( .not. allocated(hlvrst) ) then
-          stop 'error stop rst_get_vertical: hlvrst not allocated'
+          stop 'error stop rst_check_vertical: hlvrst not allocated'
         end if
         if( nlv /= size(hlvrst) ) goto 99
         if( nkn /= size(ilhkrst) ) goto 99
@@ -1342,6 +1365,45 @@
         write(6,*) 'nlv: ',nlv,size(hlvrst)
         stop 'error stop rst_get_vertical: arrays not compatible'
         end
+
+!*******************************************************************
+
+        subroutine rst_check_vertical(nlv,hlv)
+
+! checks vertical arrays
+
+        use mod_restart
+
+        implicit none
+
+        integer nlv			!local value
+        real hlv(nlv)
+
+        if( .not. allocated(hlvrst) ) then
+          stop 'error stop rst_check_vertical: hlvrst not allocated'
+        end if
+
+        if( nlv <= 0 ) goto 98
+        if( nlv > size(hlvrst) ) goto 99
+	if( nzadapt_sim /= nzadapt_rst ) goto 96
+	if( any( hlv(1:nlv) /= hlvrst(1:nlv) ) ) goto 97
+
+        return
+   96   continue
+        write(6,*) 'nzadapt_sim:    ',nzadapt_sim
+        write(6,*) 'nzadapt_rst:    ',nzadapt_rst
+        stop 'error stop rst_check_vertical: nzadapt_sim/=nzadapt_rst'
+   97   continue
+        write(6,*) 'hlv:    ',hlv(1:nlv)
+        write(6,*) 'hlvrst: ',hlvrst(1:nlv)
+        stop 'error stop rst_check_vertical: hlv arrays are not compatinle'
+   98   continue
+        write(6,*) 'nlv: ',nlv
+        stop 'error stop rst_check_vertical: error in parameters'
+   99   continue
+        write(6,*) 'nlv: ',nlv,size(hlvrst)
+        stop 'error stop rst_check_vertical: arrays not compatible'
+	end
 
 !*******************************************************************
 !*******************************************************************
