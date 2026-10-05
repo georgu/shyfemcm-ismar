@@ -2602,11 +2602,17 @@
         integer idbox,idnode,idlayer
         common/general_id/idbox,idnode,idlayer
         save/general_id/
+	integer, save :: icall = 0
 
 	integer iu
 	real vals(:)
 
 	if( .not. bdiag ) return
+
+	if( icall == 0 ) then
+	  call writevars_init(5,(/500,1000,1500,2000,2500/))
+	  icall = 1
+	end if
 
 	call writevars_scalar(iu,idnode,vals)
 
