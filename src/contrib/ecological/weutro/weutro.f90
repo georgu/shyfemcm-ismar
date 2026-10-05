@@ -2610,7 +2610,7 @@
 	if( .not. bdiag ) return
 
 	if( icall == 0 ) then
-	  call writevars_init(5,(/500,1000,1500,2000,2500/))
+	  call writevars_init(5,(/11652,11066,9735,11547,8717/))
 	  icall = 1
 	end if
 

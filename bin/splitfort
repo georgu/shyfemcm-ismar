@@ -28,6 +28,11 @@ if( $::help || $::h || !@ARGV ) {
   exit 0;
 }
 
+my $filename = $ARGV[0];
+$::unit = $filename;
+$::unit =~ s/fort.(\d+).*/$1/;
+print STDERR "filename = $filename    unit = $::unit\n";
+
 %::fhs = ();		#hash of filehandles
 
 while(<>) {
@@ -60,7 +65,7 @@ sub get_filehandle {
 
   # no filehandle -> open file
 
-  my $file = "fort.nodes.$node";
+  my $file = "fort.nodes.$::unit.$node";
   my $fh;
   open($fh,">$file") || die "*** cannot open file $file\n";
   $::fhs{$node} = $fh;

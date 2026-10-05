@@ -128,7 +128,7 @@
 	do i=1,ndim
 	  node = ipint(nodes(i))
 	  if( node == 0 ) cycle
-	  if( id_node(node) /= my_id ) node = 0	!take node from my_id
+	  if( id_node(node) /= my_id ) cycle	!take node from my_id
 	  inodes(i) = node
 	  node_id(i) = id_node(node)
 	  found(i) = 1
