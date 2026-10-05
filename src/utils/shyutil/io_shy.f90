@@ -125,7 +125,7 @@
 !     +                 ,l=1,il(i) )
 !     +                 ,i=1,n )
 !	 else
-!	   stop 'error stop: impossible combination of m, lmax'
+!	   !stop 'impossible combination of m, lmax'
 !	 end if
 !
 ! legend

@@ -1089,7 +1089,7 @@
 	write(6,*) 'no end of section found: ',sname
 	write(6,*) 'section line read: ',sect
 	write(6,*) line
-	stop 'error stop nls_read_table'
+	stop 'error stop nls_read_table: no section'
 	end function nls_read_table
 
 !******************************************************************

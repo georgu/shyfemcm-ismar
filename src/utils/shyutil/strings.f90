@@ -1018,7 +1018,7 @@
 	  lu = index(string,'[',back=.true.)
 	  if( lu == 0 ) then
 	    write(6,*) 'Cannot parse unit: ',trim(string)
-	    stop 'error stop string_direction_and_unit'
+	    stop 'error stop pop_direction_and_unit: cannot parse'
 	  end if
 	  unit = string(lu+1:l-1)
 	  l = len_trim(string(1:lu-1))	!pop trailing spaces and unit
@@ -1502,7 +1502,6 @@
 	call strings_add_new('ice thickness',86)
 	call strings_add_new('relaxation time',94)
 	call strings_add_new('time step',95)
-	call strings_add_new('time scale',96)
 	call strings_add_new('time over threshold',97)
 	call strings_add_new('water age',98)
 	call strings_add_new('renewal time',99)
@@ -1604,7 +1603,6 @@
 	call strings_set_short(86,'icethick')
 	call strings_set_short(94,'relaxtime')
 	call strings_set_short(95,'timestep')
-	call strings_set_short(96,'timescale')
 	call strings_set_short(97,'timeot')
 	call strings_set_short(98,'age')
 	call strings_set_short(99,'wrt')
@@ -1690,7 +1688,7 @@
 	  end if
 	  if( short == ' ' .or. full == ' ' ) then
 	    write(6,*) 'not equivalent: ',short,full
-	    stop 'error stop'
+	    stop 'error stop test_strings: not equivalent'
 	  end if
 	  call strings_get_ivar(full,iv)
 	  if( iv /= ivar ) then

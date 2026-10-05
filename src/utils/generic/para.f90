@@ -1402,7 +1402,7 @@
 	  else
 	    write(6,*) 'error itype...'
             write(iunit,2345) id,name,section,itype,value
-	    stop 'error stop chkparam'
+	    stop 'error stop chkparam: itype'
           end if
         end do
 

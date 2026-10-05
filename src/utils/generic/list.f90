@@ -503,7 +503,7 @@
         if( .not. bcheck ) then
           write(6,*) 'list_assertion: ',trim(text)
           call list_info(id)
-          stop 'assertion failed'
+          stop 'error stop list_assert: assertion failed'
         end if
         end
 

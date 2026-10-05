@@ -83,17 +83,17 @@
 	call check_shympi_check_init
 
 	nc = clo_number_of_files()
-	if( nc == 0 ) stop 'no file given'
-	if( nc > 2 ) stop 'error stop: cannot handle more than 2 files'
+	if( nc == 0 ) stop 'error stop check_shympi_check_sub: no file given'
+	if( nc > 2 ) stop 'error stop check_shympi_check_sub: more than 2 files'
 	call clo_get_file(1,name_one)
 	open(iu,file=name_one,status='old',form='unformatted',iostat=ios)
-	if( ios /= 0 ) stop 'error stop check500: cannot open file'
+	if( ios /= 0 ) stop 'error stop check_shympi_check_sub: open file 1'
 	write(6,*) 'file opened: ',trim(name_one)
 	if( nc == 2 ) then
 	  btwo = .true.
 	  call clo_get_file(2,name_two)
 	  open(iu2,file=name_two,status='old',form='unformatted',iostat=ios)
-	  if( ios /= 0 ) stop 'error stop check500: cannot open file 2'
+	  if( ios /= 0 ) stop 'error stop check_shympi_check_sub: open file 2'
 	  write(6,*) 'file opened: ',trim(name_two)
 	end if
 
@@ -140,17 +140,17 @@
 
 	if( ierr > 0 ) stop 'error stop check500: time record read error'
 
-	stop
+	call exit(0)
    98	continue
 	write(6,*) 'level records are not comparable:'
 	write(6,*) ll,nsize,nrec,icall
 	write(6,*) ll2,nsize2,nrec2,icall2
-	stop 'error stop 98'
+	stop 'error stop check_shympi_check_sub: level records'
    99	continue
 	write(6,*) 'time records are not comparable:'
 	write(6,*) dtime,isact,nsize,lmax,belem,trim(what)
 	write(6,*) dtime2,isact2,nsize2,lmax2,belem2,trim(what2)
-	stop 'error stop 99'
+	stop 'error stop check_shympi_check_sub: time records'
 	end
 
 !*************************************************************
@@ -180,7 +180,7 @@
 	end do
 	if( ierror > 0 ) then
 	  write(6,*) ierror,' errors found, max shown ',ierror_max
-	  stop 'error stop: error in ies'
+	  stop 'error stop compare_files: error in ies'
 	end if
 
 	if( all( vals == vals2 ) ) return
@@ -201,7 +201,7 @@
 	  else
 	    write(6,*) '*** errors found: ',ierror
 	  end if
-	  stop 'error stop: error in vals'
+	  stop 'error stop compare_files: error in vals'
 	end if
 
  1000	format(5i8,2e18.8)

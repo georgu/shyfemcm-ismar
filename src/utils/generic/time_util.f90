@@ -434,7 +434,7 @@
 	integer date,time,ierr
 
         call string2date(aline,date,time,ierr)
-        if( ierr /= 0 ) stop 'error converting date'
+        if( ierr /= 0 ) stop 'error stop convert_to_atime: converting date'
         call dts_to_abs_time(date,time,atime)
 
 	end subroutine convert_to_atime

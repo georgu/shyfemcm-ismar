@@ -237,7 +237,7 @@
         nn = idims(1) * idims(2)
 
 	if( nndim/=nkn ) then
-	  stop 'error stop: shy_make_basin_aver: nndim/=nkn'
+	  stop 'error stop shy_make_basin_aver: nndim/=nkn'
 	end if
 
 	if( abs(ivar) == 1 ) then		! water level - 2D
@@ -763,7 +763,9 @@
 	  do l=1,lmax
 	    id = nint( cv3(l,k)/adir )
 	    if( id == 0 ) id = idir
-	    if( id < 0 .or. id > idir ) stop 'error stop: direction'
+	    if( id < 0 .or. id > idir ) then
+		stop 'error stop shy_accum_dir: direction'
+	    end if
 	    dir(l,k,id,iv,ip) = dir(l,k,id,iv,ip) + 1.
 	  end do
 	end do

@@ -262,7 +262,9 @@
 
 	logical in_element
 
-	if( idmax == 0 ) stop 'fast_find_search: fast_find not initialized'
+	if( idmax == 0 ) then
+	  stop 'error stop fast_find_search: fast_find not initialized'
+	end if
 
 	ix = 1 + (x-xbmin)/box_size
 	iy = 1 + (y-ybmin)/box_size

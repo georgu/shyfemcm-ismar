@@ -440,7 +440,7 @@
         if( .not. bcheck ) then
           write(6,*) 'stack_assertion: ',trim(text)
           call stack_info(id)
-          stop 'assertion failed'
+          stop 'error stop stack_assert: assertion failed'
         end if
         end
 

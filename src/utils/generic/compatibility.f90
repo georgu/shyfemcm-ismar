@@ -191,7 +191,7 @@
 	cprofile = 'unknown'
 #endif
 	write(6,*) 'compiler profile: ',trim(cprofile)
-	stop
+	call exit(0)
 
 	call compiler(string)
 	write(6,*) 'compiler: ',trim(string)

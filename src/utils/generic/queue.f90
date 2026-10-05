@@ -404,7 +404,7 @@
 	      if( bdebug ) write(6,*) 'dequeue: ',value
 	      if( value /= valold ) then
 	        write(6,*) 'error dequeuing: ',value,valold
-	        stop 'error stop'
+	        stop 'error stop queue_test: dequeuing'
 	      end if
 	    else
 	      if( bdebug ) write(6,*) 'nothing to dequeue'

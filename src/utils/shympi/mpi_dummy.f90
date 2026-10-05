@@ -516,7 +516,7 @@
 	if( .not. basin_has_read_basin() ) then
 	  write(6,*) 'grd file has been read: ',nkn,nel,ngr
 	  if( nkn == 0 ) then
-	    stop 'error stop shympi_init: ' //			'basin has not been initialized'
+	    stop 'error stop shympi_init: ' // 'basin has not been initialized'
 	  end if
 	end if
 
@@ -532,13 +532,6 @@
 	bmpi_master = my_id == 0
 
 	bstop = .false.
-	if( shympi_is_master() ) then
-!	 if( b_want_mpi ) then
-!         write(6,*) 'program wants mpi but only one thread available'
-!	  write(6,*) 'the program has not been compiled with mpi support'
-!	 end if
-	end if
-	if( bstop ) stop 'error stop shympi_init'
 
 	ngr_global = ngr
 
@@ -947,7 +940,6 @@
 	integer ierr
 
 	call exit(ierr)
-	stop
 
 	end subroutine shympi_exit
 
@@ -958,16 +950,26 @@
 	character*(*) text
 
 	write(6,*) 'error stop shympi_stop: ',trim(text)
-	stop
+	call exit(0)
 
 	end subroutine shympi_stop
+
+!******************************************************************
+
+	subroutine shympi_error_stop(text)
+
+	character*(*) text
+
+	write(6,*) 'error stop ',trim(text)
+	call exit(0)
+
+	end subroutine shympi_error_stop
 
 !******************************************************************
 
 	subroutine shympi_abort
 
 	call exit(33)
-	stop
 
 	end subroutine shympi_abort
 
@@ -2261,10 +2263,10 @@
         
         if(control .ne. 0) then
           if(my_id .eq. 0) then
-            write(6,*)'error stop: partitioning file not found'
+            write(6,*)'partitioning file not found'
           end if
           call shympi_barrier
-        stop
+          stop 'error stop check_part_basin: no partition file'
         end if
 
         read( unit=108, fmt="(i12,i12,i12,A12)" ) pnkn, pnel, pn_threads, pwhat
@@ -2279,7 +2281,7 @@
      &          ,nkndi,neldi,n_threads,what
          end if
          call shympi_barrier
-         stop
+         stop 'error stop check_part_basin: no matching basin file'
         end if
 
         if(what .eq. 'nodes') then
@@ -2288,7 +2290,7 @@
      &          (allPartAssign(i),i=1,nkndi)
         else 
           write(6,*)'error partitioning file on nodes'
-          stop
+          stop 'error stop check_part_basin: nodes'
         end if
 
         close(108)
@@ -2346,7 +2348,7 @@
 
         write(6,*) 'assertion failed: ',trim(text)
         write(6,*) 1./r
-        stop 'error stop gassert'
+        stop 'error stop gassert: assertion failed'
 
         end subroutine gassert
 

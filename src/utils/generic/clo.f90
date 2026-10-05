@@ -299,7 +299,7 @@
 
 	write(6,*) 'error: ',trim(text),': ',trim(name)
 	call clo_usage
-	stop 'error stop clo_error'
+	stop 'error stop clo_error: general error'
 
 	end subroutine clo_error
 
@@ -1119,7 +1119,7 @@
 
 	write(6,*) routine_name(1:nr),' version ',version_name(1:nv)
 
-	stop
+	call exit(0)
 	end subroutine clo_version
 
 !**************************************************************
@@ -1134,7 +1134,7 @@
 	write(6,*) 'Usage: ',routine_name(1:nr) &
      &			,' [-h|-help] [-options] ',files_name(1:nf)
 
-	stop
+	call exit(0)
 	end subroutine clo_usage
 
 !**************************************************************
@@ -1193,7 +1193,7 @@
 	  write(6,*) '  ',text(1:len_trim(text))
 	end do
 
-	stop
+	call exit(0)
 	end subroutine clo_fullusage
 
 !**************************************************************

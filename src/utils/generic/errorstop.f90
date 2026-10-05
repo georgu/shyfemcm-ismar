@@ -66,7 +66,7 @@
 
 	end subroutine error_stop_2
 
-!******************************************************************
+!***************************************************************
 
 	subroutine error_stop_1(text)
 
@@ -78,7 +78,7 @@
 
 	end subroutine error_stop_1
 
-!******************************************************************
+!***************************************************************
 
 	subroutine error_stop_0
 
@@ -88,7 +88,7 @@
 
 	end subroutine error_stop_0
 
-!******************************************************************
+!***************************************************************
 
 	subroutine error_stop_i0(ierr)
 
@@ -100,7 +100,7 @@
 
 	end subroutine error_stop_i0
 
-!******************************************************************
+!***************************************************************
 
 	subroutine success_stop
 
@@ -112,3 +112,27 @@
 	end module mod_error_stop
 !===============================================================
 
+	subroutine error_stop(text)
+
+	implicit none
+
+	character*(*) text
+
+	integer i
+	character*80 text1,text2
+
+	i = index(text,":")
+	if( i == 0 ) then
+	  write(6,*) 'error stop: ',trim(text)
+	else
+	  text1 = text(1:i-1)
+	  text2 = text(i+1:)
+	  write(6,*) 'error stop ',trim(text1),':',trim(text2)
+	end if
+
+	flush(6)
+	call exit(7)
+
+	end subroutine error_stop
+
+!***************************************************************

@@ -498,7 +498,7 @@
 	write(6,*) 'error in parameter'
 	write(6,*) 'ivar,nvar: ',ivar,nvar
 	call iff_print_file_info(id)
-	stop 'error stop iff_get_var_description'
+	stop 'error stop iff_get_var_description: parameter'
 	end subroutine iff_get_var_description
 
 !****************************************************************
@@ -525,7 +525,7 @@
    99	continue
 	write(6,*) 'error in parameter'
 	write(6,*) 'ivar,nvar: ',ivar,nvar
-	stop 'error stop iff_set_var_description'
+	stop 'error stop iff_set_var_description: parameter'
 	end subroutine iff_set_var_description
 
 !****************************************************************
@@ -893,7 +893,7 @@
    90	continue
 	write(6,*) '*** error in opening file: ',trim(file)
 	write(6,*) 'iformat = ',iformat
-	stop 'error stop iff_init'
+	stop 'error stop iff_init: opening file'
    91	continue
 	write(6,*) '*** error opening file: ',trim(file)
 	id0 = iff_find_id_to_file(file)
@@ -903,23 +903,23 @@
 	else 
 	  write(6,*) 'iformat = ',iformat
 	end if
-	stop 'error stop iff_init'
+	stop 'error stop iff_init: file already open'
    92	continue
 	write(6,*) '*** error in file: ',trim(file)
 	write(6,*) 'file does not contain correct number of variables'
 	write(6,*) 'nvar file = ',nvar_read
 	write(6,*) 'nvar expected = ',nvar_orig
-	stop 'error stop iff_init'
+	stop 'error stop iff_init: nvar'
    93	continue
 	write(6,*) '*** error in file: ',trim(file)
 	write(6,*) 'iformat = ',iformat
-	stop 'error stop iff_init'
+	stop 'error stop iff_init: generic error'
    96	continue
 	write(6,*) '*** file does not contain expected data size'
 	write(6,*) 'expected number of points in shyfem: ',nexp
 	write(6,*) 'provided number of points in file  : ',np
 	call iff_print_file_info(id)
-	stop 'error stop iff_init'
+	stop 'error stop iff_init: data size'
    97	continue
 	write(6,*) '*** error in input parameters of routine: '
 	write(6,*) 'file: ',trim(file)
@@ -928,15 +928,15 @@
 	write(6,*) 'nintp: ',nintp
 	write(6,*) 'nkn_fem: ',nkn_fem
 	call iff_print_file_info(id)
-	stop 'error stop iff_init'
+	stop 'error stop iff_init: input parameters'
    98	continue
 	write(6,*) '*** error reading data description of file: ',trim(file)
 	call iff_print_file_info(id)
-	stop 'error stop iff_init'
+	stop 'error stop iff_init: data description'
    99	continue
 	write(6,*) '*** no such file: ',trim(file)
 	write(6,*) 'iformat = ',iformat
-	stop 'error stop iff_init'
+	stop 'error stop iff_init: no such file'
 	end subroutine iff_init
 
 !****************************************************************
@@ -1338,7 +1338,7 @@
    99	continue
 	write(6,*) 'read error in reading file header: ',ierr
 	call iff_print_file_info(id)
-	stop 'error stop iff_peek_next_record'
+	stop 'error stop iff_peek_next_record: file header'
         end function iff_peek_next_record
 
 !****************************************************************
@@ -1412,16 +1412,16 @@
    97	continue
 	write(6,*) 'read error in reading hlv header'
 	call iff_print_file_info(id)
-	stop 'error stop iff_read_header'
+	stop 'error stop iff_read_header: hlv header'
    98	continue
 	write(6,*) 'cannot change number of variables'
 	call iff_print_file_info(id)
 	write(6,*) 'nvar_old: ',pinfo(id)%nvar,' nvar_new: ',nvar
-	stop 'error stop iff_read_header'
+	stop 'error stop iff_read_header: change of variables'
    99	continue
 	write(6,*) 'read error in reading file header'
 	call iff_print_file_info(id)
-	stop 'error stop iff_read_header'
+	stop 'error stop iff_read_header: file header'
 	end function iff_read_header
 
 !****************************************************************
@@ -1512,7 +1512,7 @@
    99	continue
 	write(6,*) 'error in parameters: '
 	write(6,*) 'np = ',np,' lmax = ',lmax
-	stop 'error stop iff_allocate_file_arrays'
+	stop 'error stop iff_allocate_file_arrays: parameters'
 	end subroutine iff_allocate_file_arrays
 
 !****************************************************************
@@ -1569,12 +1569,12 @@
 	write(6,*) 'old: ',pinfo(id)%strings_file(i)
 	write(6,*) 'new: ',string
 	call iff_print_file_info(id)
-	stop 'error stop iff_read_data'
+	stop 'error stop iff_read_data: string description'
    99	continue
 	write(6,*) 'error reading data: ',ierr
 	call iff_write_dtime('time: ',dtime)
 	call iff_print_file_info(id)
-	stop 'error stop iff_read_data'
+	stop 'error stop iff_read_data: reading data'
 	end subroutine iff_read_data
 
 !****************************************************************
@@ -1730,19 +1730,19 @@
 	write(6,*) 'regular grid only for 2d field'
 	write(6,*) 'ireg,lexp: ',ireg,lexp
 	!call iff_print_file_info(id)
-	stop 'error stop iff_space_interpolate'
+	stop 'error stop iff_space_interpolate: only 2d field'
    97	continue
 	write(6,*) 'cannot yet handle ntype > 0'
 	!call iff_print_file_info(id)
-	stop 'error stop iff_space_interpolate'
+	stop 'error stop iff_space_interpolate: ntype>0'
    98	continue
 	write(6,*) 'error in number of points: ',np,nexp
 	!call iff_print_file_info(id)
-	stop 'error stop iff_space_interpolate'
+	stop 'error stop iff_space_interpolate: np/=nexp'
    99	continue
 	write(6,*) 'error in parameters: ',iintp,nintp
 	!call iff_print_file_info(id)
-	stop 'error stop iff_space_interpolate'
+	stop 'error stop iff_space_interpolate: parameters'
 	end subroutine iff_space_interpolate
 
 !****************************************************************
@@ -1815,7 +1815,7 @@
 	  do ivar=1,nvar
 	    data2dreg(:) = pinfo(id)%data_file(1,:,ivar)
 	    call intp_reg_single_nodes(nx,ny,x0,y0,dx,dy,flag,data2dreg   &
-               &			      ,nexp,pinfo(id)%nodes,data2dfem,ierr)
+               &		      ,nexp,pinfo(id)%nodes,data2dfem,ierr)
 	    forall(l=1:lexp,ip=1:nexp) data(l,ip,ivar) = data2dfem(ip)
 	    if( bneedall .and. ierr .ne. 0 ) goto 99
 	  end do
@@ -1824,8 +1824,6 @@
 	  write(6,*) 'Cannot handle... nodes should be given'
 	  stop 'error stop iff_handle_regular_grid_2d: nexp'
 	end if
-
-	!if( ierr /= 0 ) stop
 
 	if( .false. .and. bdebug ) then
 	  write(166,*) '2d interpolation: ',nvar,lexp,nexp
@@ -2070,7 +2068,7 @@
    99	continue
 	write(6,*) 'applying 3D data to 2D field'
 	call iff_print_file_info(id)
-	stop 'error stop iff_handle_vertical'
+	stop 'error stop iff_handle_vertical: 3d and 2d field'
 	end subroutine iff_handle_vertical
 
 !****************************************************************
@@ -2480,7 +2478,7 @@
 	write(6,*) 'record has not been populated with data'
 	write(6,*) 't,itlast: ',t,ilast
 	call iff_print_file_info(id)
-	stop 'error stop iff_time_interpolate'
+	stop 'error stop iff_time_interpolate: not populated'
    95	continue
 	write(6,*) 'id out of range: ',id,idlast
 	call iff_print_file_info(0)
@@ -2494,7 +2492,7 @@
 	write(6,*) 'ldim,lexp: ',ldim,lexp
 	write(6,*) 'ndim,nexp: ',ndim,nexp
 	call iff_print_file_info(id)
-	stop 'error stop iff_time_interpolate'
+	stop 'error stop iff_time_interpolate: incompatible dimensions'
    98	continue
 	write(6,*) 'file does not contain needed time value'
 	atime = itact + atime0_fem
@@ -2559,12 +2557,12 @@
 	write(6,*) 'record has not been populated with data'
 	write(6,*) 't,ilast: ',t,ilast
 	call iff_print_file_info(id)
-	stop 'error stop iff_file_has_data'
+	stop 'error stop iff_file_has_data: not populated'
    99   continue
         write(6,*) 'time record not in increasing sequence'
         write(6,*) 'it,tlast: ',tt,tlast
         call iff_print_file_info(id)
-        stop 'error stop iff_file_has_data'
+	stop 'error stop iff_file_has_data: times not increasing'
 	end function iff_file_has_data
 
 !****************************************************************
@@ -2596,7 +2594,7 @@
 	write(6,*) 'record has not been populated with data'
 	write(6,*) 't,ilast: ',t,ilast
 	call iff_print_file_info(id)
-	stop 'error stop iff_must_read'
+	stop 'error stop iff_must_read: not populated'
 	end function iff_must_read
 
 !****************************************************************
@@ -2667,12 +2665,12 @@
 	write(6,*) 'record has not been populated with data'
 	write(6,*) 't,ilast: ',t,ilast
 	call iff_print_file_info(id)
-	stop 'error stop iff_read_and_interpolate'
+	stop 'error stop iff_read_and_interpolate: not populated'
    99	continue
 	write(6,*) 'time record not in increasing sequence'
 	write(6,*) 'it,itlast: ',it,itlast
 	call iff_print_file_info(id)
-	stop 'error stop iff_read_and_interpolate'
+	stop 'error stop iff_read_and_interpolate: times not increasing'
 	end subroutine iff_read_and_interpolate
 
 !****************************************************************

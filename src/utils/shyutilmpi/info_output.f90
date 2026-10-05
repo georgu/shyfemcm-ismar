@@ -303,7 +303,7 @@
           iu = ifemop('.inf','formatted','new')
           if( iu .le. 0 ) then
             write(6,*) 'error in opening info file'
-            stop 'error stop getinfo'
+            stop 'error stop getinfo: opening file'
           end if
         end if
 

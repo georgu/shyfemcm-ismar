@@ -541,21 +541,21 @@
 	    if( ia_found == ia_needed ) cycle
 	    if( ia_found == my_ia ) then
 	      n = n_tvd_send(ia) + 1
-	      if( n > n_tvd_s ) stop 'error stop: n > n_tvd_s'
+	      if( n > n_tvd_s ) stop 'error stop tvd_mpi_init: n > n_tvd_s'
 	      tvd_send(n,ia) = i
 	      n_tvd_send(ia) = n
 	      n = n_tvd_index(ia) + 1
-	      if( n > n_tvd ) stop 'error stop: n > n_tvd'
+	      if( n > n_tvd ) stop 'error stop tvd_mpi_init: n > n_tvd'
 	      tvd_index(n,ia) = i
 	      n_tvd_index(ia) = n
 	      n_tvd_send_to(ia_needed) =  n_tvd_send_to(ia_needed) + 1
 	    else if( ia_needed == my_ia ) then
 	      n = n_tvd_receive(ia) + 1
-	      if( n > n_tvd_r ) stop 'error stop: n > n_tvd_r'
+	      if( n > n_tvd_r ) stop 'error stop tvd_mpi_init: n > n_tvd_r'
 	      tvd_receive(n,ia) = i
 	      n_tvd_receive(ia) = n
 	      n = n_tvd_index(ia) + 1
-	      if( n > n_tvd ) stop 'error stop: n > n_tvd'
+	      if( n > n_tvd ) stop 'error stop tvd_mpi_init: n > n_tvd'
 	      tvd_index(n,ia) = i
 	      n_tvd_index(ia) = n
 	      n_tvd_receive_from(ia_found) =  n_tvd_receive_from(ia_found) + 1
@@ -723,12 +723,12 @@
 	  if( ia == my_ia ) then
 	    if(any(tvd_receive(1:n,ia)/=tvd_index(1:n,ia))) then
 		write(6,*) 'receive,index: ',n_tvd_index(ia),n_tvd_receive(ia)
-		stop 'error stop: receive'
+		stop 'error stop tvd_mpi_init: receive'
 	    end if
 	  else
 	    if(any(tvd_send(1:n,ia)/=tvd_index(1:n,ia))) then
 		write(6,*)'send,index: ', n_tvd_index(ia),n_tvd_send(ia)
-		stop 'error stop: send'
+		stop 'error stop tvd_mpi_init: send'
 	    end if
 	  end if
 	end do
@@ -1518,7 +1518,7 @@
 	if( bassert ) return
 
 	write(6,*) 'assertion violated: ',trim(text)
-	stop 'error stop tvd_assert'
+	stop 'error stop tvd_assert: assertion violated'
 
 	end
 
@@ -1581,7 +1581,7 @@
 	do k=1,6
 	  call k2jii(k,j,ii)
 	  call jii2k(j,ii,m)
-	  if( k /= m ) stop 'error stop text_tvd_convert'
+	  if( k /= m ) stop 'error stop text_tvd_convert: k/=m'
 	  write(6,*) j,ii,k,m
 	end do
 

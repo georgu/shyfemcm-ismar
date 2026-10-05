@@ -1808,7 +1808,7 @@
 	  else
             write(6,*) 'keyword not recognized: ',what
             write(6,*) 'boundary: ',ibc
-            stop 'error stop get_boundary_file'
+            stop 'error stop get_boundary_file: keyword'
 	  end if
         end if
 

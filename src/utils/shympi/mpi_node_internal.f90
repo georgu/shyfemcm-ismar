@@ -193,7 +193,7 @@
 	  write(6,*) 'error in routine ',trim(routine)
 	  write(6,*) 'ierr = ',ierr,' while doing ',trim(what)
 	  write(6,*) 'error: ',trim(estring)
-	  stop 'error stop shympi_error'
+	  call exit(ierr)
 	end if
 
 	end subroutine shympi_error
@@ -670,7 +670,7 @@
 	  if( nbs(1,ia) /= nbs(2,ia) ) then
 	    nb = (nlvddi-n0+1) * n_ghost_max
 	    write(6,*) nb,nbs(1,ia),nbs(2,ia),my_id
-	    stop 'error stop nbs'
+	    stop 'error stop shympi_exchange_internal_r: nbs'
 	  end if
 	end do
 
