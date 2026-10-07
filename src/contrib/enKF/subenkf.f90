@@ -38,7 +38,7 @@ subroutine rst_read(rstname, atimea)
   real(dp) :: atimef
   integer, save :: icall = 0
   ! Single-precision parameters expected by addpar/daddpar (restart flags)
-  real*4 :: ibarcl4, iconz4, imerc4, iturb4, iwvert_rst4, ieco_rst4, zero4
+  real :: ibarcl4, iconz4, imerc4, iturb4, iwvert_rst4, ieco_rst4, nzadapt4, zero4
 
   zero4 = 0.0
 
@@ -69,6 +69,7 @@ subroutine rst_read(rstname, atimea)
      iconz4      = iconz_rst
      imerc4      = imerc_rst
      iturb4      = iturb_rst
+     nzadapt4     = nzadapt_rst
 
      call addpar('ibarcl', ibarcl4)
      call addpar('iconz' , iconz4 )
@@ -78,8 +79,7 @@ subroutine rst_read(rstname, atimea)
      call addpar('ibfm'  , zero4)
      call addpar('imerc' , imerc4)
      call addpar('iturb' , iturb4)
-
-     call addpar('nzadapt' , 0.) ! THIS SHOULD BE SAVED IN THE RST
+     call addpar('nzadapt', nzadapt4)
 
      call daddpar('date', 0.0_dp)
      call daddpar('time', 0.0_dp)
@@ -94,7 +94,7 @@ subroutine rst_read(rstname, atimea)
      write(*,*) 'imerc  = ', imerc_rst
      write(*,*) 'iturb  = ', iturb_rst
      write(*,*) 'nlv   = ', nlv
-     !write(*,*) 'hlvrst = ', hlvrst(1:nlv)
+     write(*,*) 'nzadapt   = ', nzadapt_rst
      write(*,*) 'hlv    = ', hlv(1:nlv)
 
      call set_sigma_info(nlv,0,10000.)
