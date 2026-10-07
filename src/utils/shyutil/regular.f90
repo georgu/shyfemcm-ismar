@@ -1672,12 +1672,6 @@
 
 	!write(6,*) 'intp_reg: ierr = ',ierr,iout,iflag
 
-	!if( ierr /= 0 ) then
-	!  write(6,*) 'reg: ',ierr,np
-	!  write(6,*) femval
-	!  stop
-	!end if
-
 	return
    97	continue
 	write(6,*) 'dx,dy: ',dx,dy

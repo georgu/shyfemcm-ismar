@@ -589,8 +589,7 @@
         if( .not. basin_has_read_basin() ) then
           write(6,*) 'grd file has been read: ',nkn,nel,ngr
           if( nkn == 0 ) then
-            stop 'error stop shympi_init: ' // &
-     &			'basin has not been initialized'
+            stop 'error stop shympi_init: basin not initialized'
           end if
         end if
 
@@ -619,7 +618,7 @@
 	  bstop = .true.
 	 end if
 	end if
-	if( bstop ) stop 'error stop shympi_init'
+	if( bstop ) stop 'error stop shympi_init: inconsistency'
 
 	ngr_global = ngr
 
@@ -1067,7 +1066,7 @@
 
 	call shympi_barrier_internal
 	call shympi_finalize_internal
-	stop 'finalizing...'
+	call exit(i_code_success)
 
 	end subroutine shympi_finalize
 
@@ -1082,7 +1081,6 @@
 	!call shympi_barrier_internal
 	call shympi_finalize_internal
 	call exit(ierr)
-	stop 'exiting...'
 
 	end subroutine shympi_exit
 
@@ -1099,16 +1097,33 @@
 	end if
 	!call shympi_barrier_internal
 	call shympi_abort_internal(i_code_error)
-	stop 'aborting...'
+	call exit(i_code_error)
 
 	end subroutine shympi_stop
+
+!******************************************************************
+
+	subroutine shympi_error_stop(text)
+
+! this is called as error stop - do not call barrier
+
+	character*(*) text
+
+	if( shympi_is_master() ) then
+	  write(6,*) 'error stop ',trim(text)
+	end if
+	!call shympi_barrier_internal
+	call shympi_abort_internal(i_code_error)
+	call exit(i_code_error)
+
+	end subroutine shympi_error_stop
 
 !******************************************************************
 
 	subroutine shympi_abort
 
 	call shympi_abort_internal(i_code)
-	stop 'error stop: abort'
+	stop 'error stop abort: aborting'
 
 	end subroutine shympi_abort
 
@@ -4038,7 +4053,7 @@
             write(6,*)'error stop: partitioning file not found'
           end if
           call shympi_barrier
-        stop
+          stop 'error stop check_part_basin: no partition file'
         end if
 
         read(unit=108, fmt="(i12,i12,i12,A12)") pnkn,pnel,pn_threads &
@@ -4054,7 +4069,7 @@
      &          ,nkndi,neldi,n_threads,what
          end if
          call shympi_barrier
-         stop
+         stop 'error stop check_part_basin: no matching basin'
         end if
 
         if(what .eq. 'nodes') then
@@ -4063,7 +4078,7 @@
      &          (allPartAssign(i),i=1,nkndi)
         else 
           write(6,*)'error partitioning file on nodes'
-          stop
+          stop 'error stop check_part_basin: partitioning on nodes'
         end if
 
         close(108)
@@ -4146,7 +4161,7 @@
 
 	write(6,*) 'assertion failed: ',trim(text)
 	write(6,*) 1./r
-	stop 'error stop gassert'
+	stop 'error stop gassert: assertion failed'
 
 	end subroutine gassert
 

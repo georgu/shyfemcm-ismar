@@ -267,7 +267,7 @@
 	  end if
 	end do
 
-	if( bstop ) stop 'error stop huniqu'
+	if( bstop ) stop 'error stop huniqu: no depth'
 
 	end
 
@@ -867,7 +867,7 @@
 	if( ios /= 0 ) then
 	  write(6,*) '*** cannot open file: ',trim(file)
 	  write(6,*) '...not initializing hev'
-	  if( berror ) stop 'error stop read_in_hev'
+	  if( berror ) stop 'error stop read_in_hev: opening file'
 	  return
 	end if
 

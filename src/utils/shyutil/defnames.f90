@@ -318,7 +318,7 @@
 	if( ifemopa .le. 0 ) then
 	  write(6,*) 'error opening file ',file
 	  write(6,*) text
-	  stop 'error stop ifemopa'
+	  stop 'error stop ifemopa: opening file'
 	end if
 
 	end
@@ -349,7 +349,7 @@
 	ifem_open_file = ifem_test_file(ext,status)
 
 	if( ifem_open_file .le. 0 ) then
-	  stop 'error stop ifem_open_file'
+	  stop 'error stop ifem_open_file: opening file'
 	end if
 
 	end

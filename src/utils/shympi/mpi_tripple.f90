@@ -324,7 +324,7 @@
 	write(6,*) 'finished tripple_points_init: '
 	end if
 
-	!stop	!debug stop
+	!stop 'forced stop for debug'	!debug stop
 
 	!--------------------------------------------------
 	! end of routine
@@ -422,7 +422,7 @@
 	!  do i=1,n
 	!    write(6,*) i,buffer_in(i),buffer_tripple_in(i,itr)
 	!  end do
-	!  stop 'error stop: buffer not equal...'
+	!  stop 'error stop exchange_elem_info: buffer not equal...'
 	!end if
 	!end if
 

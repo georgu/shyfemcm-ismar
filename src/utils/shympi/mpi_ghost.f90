@@ -386,7 +386,7 @@
 	  write(iu6,*) 'outer nodes',my_id,ic,nc
 	  do i=1,nc
 	    k = ghost_nodes_out(i,ia)
-	    if( id_node(k) == my_id ) stop 'error stop 600 2'
+	    if( id_node(k) == my_id ) stop 'error stop ghost_make: 600 2'
 	    kext = ipext(k)
 	    write(iu6,*) i,k,kext
 	  end do
@@ -394,7 +394,7 @@
 	  write(iu6,*) 'inner nodes',my_id,ic,nc
 	  do i=1,nc
 	    k = ghost_nodes_in(i,ia)
-	    if( id_node(k) /= my_id ) stop 'error stop 600 3'
+	    if( id_node(k) /= my_id ) stop 'error stop ghost_make: 600 3'
 	    kext = ipext(k)
 	    write(iu6,*) i,k,kext
 	  end do
@@ -402,7 +402,7 @@
 	  write(iu6,*) 'outer elems',my_id,ic,nc
 	  do i=1,nc
 	    ie = ghost_elems_out(i,ia)
-	    if( id_elem(1,ie) == my_id ) stop 'error stop 600 4'
+	    if( id_elem(1,ie) == my_id ) stop 'error stop ghost_make: 600 4'
 	    iext = ieext(ie)
 	    write(iu6,*) i,ie,iext
 	  end do
@@ -410,7 +410,7 @@
 	  write(iu6,*) 'inner elems',my_id,ic,nc
 	  do i=1,nc
 	    ie = ghost_elems_in(i,ia)
-	    if( id_elem(1,ie) /= my_id ) stop 'error stop 600 5'
+	    if( id_elem(1,ie) /= my_id ) stop 'error stop ghost_make: 600 5'
 	    iext = ieext(ie)
 	    write(iu6,*) i,ie,iext
 	  end do

@@ -64,6 +64,7 @@
 ! 13.03.2019	ggu	changed VERS_7_5_61
 ! 16.10.2025	ggu	read parameters from namelist - handle_param_init()
 ! 25.09.2026	ggu	new routine wdiag(), new vars idnode and idlayer
+! 29.09.2026	ggu	module introduced (not yet used)
 !
 ! notes :
 !
@@ -148,7 +149,31 @@
 !********************************************************************
 !********************************************************************
 
+! handle_param_init(param_file)				 reads parameter file
+! eutro0d(id,t,dt,vol,depth,vel,uws,stp,sal,qss,c,loads) runs eutro
+! eutroini() 						 initializes eutro
+
+!====================================================================
+	module mod_weutro
+!====================================================================
+
+        INCLUDE 'weutro.h'
+
+!====================================================================
+	end module mod_weutro
+!====================================================================
+
+!********************************************************************
+!********************************************************************
+!********************************************************************
+!********************************************************************
+!********************************************************************
+
 	subroutine handle_param_init(param_file)
+
+! reads in parameter file
+!
+! if file is not given initializes with standard values
 
 	implicit none
 
@@ -187,14 +212,15 @@
 
       subroutine param_init
 
+! initialization of parameters with standard values
+
       implicit none
+
       INCLUDE 'weutro.h'
 
 	real iavpar
         common /iavpar/ iavpar
         save /iavpar/
-
-!! initialization of parameters
 
 !       BYPASS OPTIONS FOR SYSTEMS 1-9. 1=BYPASS 0=SIMULATE
       
@@ -2576,11 +2602,17 @@
         integer idbox,idnode,idlayer
         common/general_id/idbox,idnode,idlayer
         save/general_id/
+	integer, save :: icall = 0
 
 	integer iu
 	real vals(:)
 
 	if( .not. bdiag ) return
+
+	if( icall == 0 ) then
+	  call writevars_init(5,(/11652,11066,9735,11547,8717/))
+	  icall = 1
+	end if
 
 	call writevars_scalar(iu,idnode,vals)
 

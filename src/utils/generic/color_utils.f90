@@ -372,7 +372,7 @@
    99	continue
 	write(6,*) r,g,b
 	write(6,*) h,s,v
-	stop 'error stop...'
+	stop 'error stop test_ct: color error'
  1000	format(9f8.3)
 	end
 

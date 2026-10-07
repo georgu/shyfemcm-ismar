@@ -1466,7 +1466,7 @@
 	    ip = ie/16
 	if( ip > ntot ) then
 	  write(6,*) i,ie,ip
-	  stop
+	  stop 'error stop write_debug_vel2: ip > ntot'
 	end if
 	    ug(ip) = uv(i)
 	  end if

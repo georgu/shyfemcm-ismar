@@ -208,7 +208,7 @@
 	integer ierr
 
 	call flx_peek_record(iunit,nvers,atime,ivar,ierr)
-	if( ierr /= 0 ) stop 'error stop: skipping record'
+	if( ierr /= 0 ) stop 'error stop flx_skip_record: peeking'
 
 	read(iunit) !peek_record backspaces, we do an empty read
 	

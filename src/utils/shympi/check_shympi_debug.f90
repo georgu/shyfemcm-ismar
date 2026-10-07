@@ -264,7 +264,7 @@
 	  end do
 	else
 	  write(6,*) 'cannot handle nt = ',nt
-	  stop 'error stop: nt'
+	  stop 'error stop read_data_record1: nt'
 	end if
 
 	end
@@ -368,12 +368,12 @@
 	open(1,file=name_one,status='old',form='unformatted',iostat=ios)
 	if( ios /= 0 ) then
 	  write(6,*) 'no such file: ',trim(name_one)
-	  stop 'error opening file 1'
+	  stop 'error stop compare_files: opening file 1'
 	end if
 	open(2,file=name_two,status='old',form='unformatted',iostat=ios)
 	if( ios /= 0 ) then
 	  write(6,*) 'no such file: ',trim(name_two)
-	  stop 'error opening file 2'
+	  stop 'error stop compare_files: opening file 2'
 	end if
 
 	if( .not. bquiet ) then
@@ -646,7 +646,7 @@
 	  read(1) (dval1(i),i=1,ntot)
 	else
 	  write(6,*) 'cannot handle nt = ',nt
-	  stop 'error stop: nt'
+	  stop 'error stop read_data_record1: nt'
 	end if
 
 	end
@@ -674,7 +674,7 @@
 	  read(2) (dval2(i),i=1,ntot)
 	else
 	  write(6,*) 'cannot handle nt = ',nt
-	  stop 'error stop: nt'
+	  stop 'error stop read_data_record2: nt'
 	end if
 
 	end
@@ -700,7 +700,7 @@
 	  call check_dval(dtime,nrec,nh,nv,dval1,dval2,idiff,diff)
 	else
 	  write(6,*) 'cannot handle nt = ',nt
-	  stop 'error stop: nt'
+	  stop 'error stop check_val: nt'
 	end if
 
 	end
@@ -726,7 +726,7 @@
 	  call info_dval(nh,nv,dval1,dval2,ipv,ipev,text)
 	else
 	  write(6,*) 'cannot handle nt = ',nt
-	  stop 'error stop: nt'
+	  stop 'error stop info_val: nt'
 	end if
 
 	end
@@ -1324,7 +1324,7 @@
 	  do j=1,imax
 	    if( diffs(j) == diffmin ) jmin = j
 	  end do
-	  if( jmin == 0 ) stop 'error stop: jmin == 0'
+	  if( jmin == 0 ) stop 'error stop insert_diffs: jmin == 0'
 	  diffs(jmin) = diff
 	  index(jmin) = i
 	  diffmin = minval(diffs)

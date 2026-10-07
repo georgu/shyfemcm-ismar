@@ -107,11 +107,11 @@
 !      check if nkn == nel (global)
 !      -----------------------------------------------------
 
-       if( nkn /= nkn_global ) stop 'error stop nkn /= nkn_global'
-       if( nel /= nel_global ) stop 'error stop nel /= nel_global'
+       if( nkn /= nkn_global ) stop 'error stop shympi_setup: nkn/=nkn_global'
+       if( nel /= nel_global ) stop 'error stop shympi_setup: nel/=nel_global'
        if( nkn == nel ) then
          write(6,*) 'my_id,nkn,nel: ',my_id,nkn,nel
-         stop 'error stop nkn == nel (global)'
+         stop 'error stop shympi_setup: nkn==nel (global)'
        end if
 
 !	-----------------------------------------------------
@@ -251,11 +251,11 @@
 !      check if nkn == nel (local)
 !      -----------------------------------------------------
 
-       if( nkn /= nkn_local ) stop 'error stop nkn /= nkn_local'
-       if( nel /= nel_local ) stop 'error stop nel /= nel_local'
+       if( nkn /= nkn_local ) stop 'error stop shympi_setup: nkn/=nkn_local'
+       if( nel /= nel_local ) stop 'error stop shympi_setup: nel/=nel_local'
        if( nkn == nel ) then
          write(6,*) 'my_id,nkn,nel: ',my_id,nkn,nel
-         !stop 'error stop nkn == nel (local)'
+         !stop 'error stop shympi_setup: nkn==nel (local)'
        end if
 
 !	-----------------------------------------------------
@@ -683,7 +683,7 @@
 
 	return
    98	continue
-	stop 'error 400'
+	stop 'error stop error adjust_indices: error 400'
    99	continue
 	write(6,*) 'error in element index: '
 	write(6,*) my_id,nel_inner,nel_unique,nel_local,nel

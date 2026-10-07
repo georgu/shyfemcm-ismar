@@ -1152,7 +1152,7 @@
 
         if( im .lt. 1 .or. im .gt. 12 ) then
           write(6,*) 'error in month : ',im
-          stop 'error stop monthname'
+          stop 'error stop month_name: error in month'
         end if
 
         if( lang .eq. 1 ) then
@@ -1965,7 +1965,7 @@
 	  call dts_to_abs_time(date,time,dtimenew)
 	  if( dtime .ne. dtimenew ) then
 	    write(6,*) dtime,dtimenew
-	    stop 'error stop: times are different'
+	    stop 'error stop test_abs_time: times are different'
 	  end if
 	end do
 

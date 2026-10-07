@@ -55,7 +55,7 @@
 	call dts_to_abs_time(date,time,atime0)
 
         nc = command_argument_count()
-	if( nc <= 0 ) stop 'no file given'
+	if( nc <= 0 ) stop 'error stop test_iff: no file given'
         call get_command_argument(nc,file)
 
 	call iff_init_global_simplified(date)
@@ -69,11 +69,11 @@
 
 	astart = '2013-01-01::00:00:00'
 	call dts_string2time(astart,atime,ierr)
-	if( ierr /= 0 ) stop 'error stop converting date'
+	if( ierr /= 0 ) stop 'error stop test_iff: converting date 1'
 	dstart = atime - atime0
 	aend = '2014-01-01::00:00:00'
 	call dts_string2time(aend,atime,ierr)
-	if( ierr /= 0 ) stop 'error stop converting date'
+	if( ierr /= 0 ) stop 'error stop test_iff: converting date 2'
 	dend = atime - atime0
 	dt = 86400.
 	dt = 3600.

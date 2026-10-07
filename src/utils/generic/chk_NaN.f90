@@ -742,7 +742,7 @@
 	  write(6,*) 'total number of Nan found:       ',inan
 	  write(6,*) 'total number out of range found: ',iout
 	  write(6,*) 'full list can be found in file fort.999'
-          stop 'error stop check1Dr'
+          stop 'error stop check1Dr: Nan or out of range'
 	end if
 
 	end
@@ -790,7 +790,7 @@
 	  write(6,*) 'total number of Nan found:       ',inan
 	  write(6,*) 'total number out of range found: ',iout
 	  write(6,*) 'full list can be found in file fort.999'
-          stop 'error stop check1Dd'
+          stop 'error stop check1Dd: Nan or out of range'
 	end if
 
 	end
@@ -840,7 +840,7 @@
 	  write(6,*) 'total number of Nan found:       ',inan
 	  write(6,*) 'total number out of range found: ',iout
 	  write(6,*) 'full list can be found in file fort.999'
-          stop 'error stop check2Dr'
+          stop 'error stop check1Dr: Nan or out of range'
 	end if
 
 	end

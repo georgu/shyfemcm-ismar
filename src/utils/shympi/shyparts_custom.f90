@@ -135,7 +135,7 @@
 	do k=1,nkn
 	  if( ngrade(k) == ngrmin ) exit
 	end do
-	if( k > nkn ) stop 'error stop: k>nkn'
+	if( k > nkn ) stop 'error stop do_sdda: k>nkn'
 
 	nroots = 1
 	kroots(nroots) = k
@@ -489,7 +489,7 @@
 	  if( counts(ia) /= 0 ) ind(ia) = 1
 	end do
 
-	stop
+	!stop
 
 	end
 
@@ -787,7 +787,7 @@
 		ia = 1+mod(is,3)	!use any color of the two available
 	        ic = color1(kk(ia))
 	      end if
-	      if( ic <= 0 ) stop 'error stop (1)'
+	      if( ic <= 0 ) stop 'error stop ffill: internal error (1)'
 	      do ii=1,3
 		k = kk(ii)
 		if( color1(k) == 0 ) then
@@ -813,7 +813,7 @@
 	    end if
 	  end if
 	end do
-	if( kn == 0 ) stop 'error stop: kn==0'
+	if( kn == 0 ) stop 'error stop ffill: kn==0'
 
 	kroots(np+1) = kn
 

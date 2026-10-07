@@ -769,17 +769,17 @@
 	  call wb2rh(ta,pp,val,rh1)
 	  diff = abs(rh-rh1)
 	  write(6,*) i,val,rh,diff
-	  if( diff > eps ) stop
+	  if( diff > eps ) stop 'error stop test_relative: rh1'
 	  call rh2dp(ta,pp,rh,val)
 	  call dp2rh(ta,pp,val,rh1)
 	  diff = abs(rh-rh1)
 	  write(6,*) i,val,rh,diff
-	  if( diff > eps ) stop
+	  if( diff > eps ) stop 'error stop test_relative: rh2'
 	  call rh2sh(ta,pp,rh,val)
 	  call sh2rh(ta,pp,val,rh1)
 	  diff = abs(rh-rh1)
 	  write(6,*) i,val,rh,diff
-	  if( diff > eps ) stop
+	  if( diff > eps ) stop 'error stop test_relative: rh3'
 	end do
 
 	end

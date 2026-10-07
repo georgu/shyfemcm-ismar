@@ -1049,7 +1049,7 @@
 	write(6,*) 'ierr = ',ierr
 	write(6,*) 'it = ',it
 	write(6,*) trim(text)
-	stop 'error stop off_error'
+	stop 'error stop off_error: module offline'
 
 	end
 
