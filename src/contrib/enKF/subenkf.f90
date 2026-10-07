@@ -79,7 +79,7 @@ subroutine rst_read(rstname, atimea)
      call addpar('imerc' , imerc4)
      call addpar('iturb' , iturb4)
 
-     call addpar('nzadapt' , 15.) ! THIS SHOULD BE SAVED IN THE RST
+     call addpar('nzadapt' , 0.) ! THIS SHOULD BE SAVED IN THE RST
 
      call daddpar('date', 0.0_dp)
      call daddpar('time', 0.0_dp)

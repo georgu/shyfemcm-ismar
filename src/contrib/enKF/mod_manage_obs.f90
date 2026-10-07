@@ -950,15 +950,16 @@ subroutine screen_observation(obs, x_ens, nmem, obs_std, k_std, k_rel, accept_ob
         return
     end if
 
-    ! 2) Relative-scale check
-    scale_value = max(abs(mean_model), abs(obs))
-    if (scale_value > 0.0_dp) then
-        if (abs(innovation) > k_rel * scale_value) then
-            accept_obs = .false.
-	    write(*,*) 'Relative-scale check. Observation removed: ',abs(innovation), k_rel * scale_value
-            return
-        end if
-    end if
+! Not so good
+!    ! 2) Relative-scale check
+!    scale_value = max(abs(mean_model), abs(obs))
+!    if (scale_value > 0.0_dp) then
+!        if (abs(innovation) > k_rel * scale_value) then
+!            accept_obs = .false.
+!	    write(*,*) 'Relative-scale check. Observation removed: ',abs(innovation), k_rel * scale_value
+!            return
+!        end if
+!    end if
 
     ! 3) Spread check
     ens_spread = sqrt(sum(x_ens**2)/real(nmem, dp) - mean_model**2)
