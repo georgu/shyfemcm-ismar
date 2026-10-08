@@ -69,7 +69,7 @@
      &			,ddt &
      &                  ,rkpar,difhv,difv &
      &			,difmol,cbound &
-     &		 	,itvd,itvdv,gradxv,gradyv &
+     &		 	,itvdh,itvdv,itvd,gradxv,gradyv &
      &			,cobs,robs,rtauv &
      &			,wsink,wsinkv &
      &			,rload,load &
@@ -91,8 +91,9 @@
 ! difv   vertical turbulent diffusivity
 ! difmol vertical molecular diffusivity
 ! cbound boundary condition (mass flux) [kg/s] -> now concentration [kg/m**3]
-! itvd	 type of horizontal transport algorithm used
+! itvdh  type of horizontal transport algorithm used
 ! itvdv	 type of vertical transport algorithm used
+! itvd	 type of TVD limiter
 ! gradxv,gradyv  gradient vectors for TVD algorithm
 ! cobs	 observations for nudging
 ! robs	 use observations for nuding (real)
@@ -147,7 +148,7 @@
 	implicit none
 
 ! arguments
-	integer, intent(in) :: curr_stage,nlvddi,nlev,itvd,itvdv,istot,isact
+	integer, intent(in) :: curr_stage,nlvddi,nlev,itvdh,itvdv,itvd,istot,isact
 	real, intent(in) :: difmol,robs,wsink,rload,ddt,rkpar
 	real,dimension(n_rkstages),intent(in) :: coeff_erk
 	real,dimension(n_rkstages+1),intent(in) :: coeff_srk
@@ -262,7 +263,7 @@
 !$OMP& DEFAULT(NONE) &
 !$OMP& FIRSTPRIVATE(jel,i) &
 !$OMP& PRIVATE(j,ie) &
-!$OMP& SHARED(curr_stage,nlvddi,nlev,itvd,itvdv,istot,isact,nchunk) &
+!$OMP& SHARED(curr_stage,nlvddi,nlev,itvdh,itvdv,itvd,istot,isact,nchunk) &
 !$OMP& SHARED(difmol,robs,wsink,rload,ddt,rkpar) &
 !$OMP& SHARED(rso,rsn,rsot,rsnt,dt,nkn) &
 !$OMP& SHARED(cn,cdiag,clow,chigh,subset_el,cc,co) &
@@ -281,7 +282,7 @@
      &			,dt &
      &                  ,rkpar,difhv,difv &
      &			,difmol,cbound &
-     &		 	,itvd,itvdv,gradxv,gradyv &
+     &		 	,itvdh,itvdv,itvd,gradxv,gradyv &
      &			,cobs,robs,rtauv &
      &			,wsink,wsinkv &
      &			,rload,load &
@@ -375,7 +376,7 @@
      &			,dt &
      &                  ,rkpar,difhv,difv &
      &			,difmol,cbound &
-     &		 	,itvd,itvdv,gradxv,gradyv &
+     &		 	,itvdh,itvdv,itvd,gradxv,gradyv &
      &			,cobs,robs,rtauv &
      &			,wsink,wsinkv &
      &			,rload,load &
@@ -401,7 +402,7 @@
       
       implicit none
       
-      integer,intent(in) :: curr_stage,ie,nlvddi,nlev,itvd,itvdv
+      integer,intent(in) :: curr_stage,ie,nlvddi,nlev,itvdh,itvdv,itvd
       real,intent(in) :: difmol,robs,wsink,rload,rkpar
       real,dimension(nlvddi,nkn),intent(in) :: cc,co,cbound
       real,dimension(nlvddi,nel),intent(in) :: difhv
@@ -421,8 +422,8 @@
       real,dimension(nlvdi,nkn,n_rkstages-1),intent(inout) :: crk_reg
       real,dimension(nlvdi,nkn,n_rkstages-1),intent(inout) :: srk_reg
 
-      logical :: btvdv,btvd
-      integer :: k,ii,l,iii,ll,ibase,lstart,ilevel,itot,isum
+      logical :: btvdh,btvdv
+      integer :: k,ii,l,iii,ll,ibase,lstart,ilevel
       integer :: jlevel
       integer :: n,i,iext
       integer :: istage,jstage,mstage
@@ -436,9 +437,10 @@
       double precision :: rstot,hn,ho,hc,cdummy,alow,adiag,ahigh,rrc
       double precision :: rkmin,rkmax,cconz
       double precision :: rhs_us,rhs_vs,sum_us,sum_vs
+      double precision :: conf,term
       double precision,dimension(curr_stage) :: us,vs
       double precision,dimension(3) :: fw,fd,fl,fnudge_o,fnudge_c
-      double precision,dimension(3) :: b,c,nx_fv,ny_fv,f,fv,wdiff
+      double precision,dimension(3) :: b,c,nx_fv,ny_fv,f,wdiff
       double precision,dimension(0:nlvddi+1) :: haver,presentl
       double precision,dimension(0:nlvddi+1,3) :: hnew,rtau,cob
       double precision,dimension(0:nlvddi+1,3) :: hold,hcur,vflux,wl
@@ -452,7 +454,7 @@
 !  initialize variables and parameters
 ! ----------------------------------------------------------------
 
-	btvd = itvd .gt. 0	!flags for tvd scheme
+	btvdh = itvdh .gt. 0	!flags for transport schemes
 	btvdv = itvdv .gt. 0
 
 !  renaming of special runge-kutta coefficients in Butcher tableaux
@@ -601,16 +603,9 @@
 
 	cbm=0.
 	ccm=0.
-	itot=0
-	isum=0
 	do ii=1,3
 	  k=kn(ii)
-	  f(ii)=us(curr_stage)*b(ii)+vs(curr_stage)*c(ii) !lrp-imex: replace nx_fv with b?
-	  fv(ii)=us(curr_stage)*nx_fv(ii)+vs(curr_stage)*ny_fv(ii)
-	  if(f(ii).lt.0.) then	!flux out of node
-	    itot=itot+1
-	    isum=isum+ii
-	  end if
+	  f(ii)=us(curr_stage)*nx_fv(ii)+vs(curr_stage)*ny_fv(ii)
 	  cbm=cbm+b(ii)*cl(l,ii)
 	  ccm=ccm+c(ii)*cl(l,ii)
 
@@ -692,54 +687,42 @@
 	end do
 
 ! 	----------------------------------------------------------------
-! 	contributions from horizontal advection (only explicit)
+! 	contributions from horizontal advection (upwind and explicit)
 ! 	----------------------------------------------------------------
 ! 
-! 	f(ii) > 0 ==> flux into node ii
-! 	itot=1 -> flux out of one node
-! 		compute flux with concentration of this node
-! 	itot=2 -> flux into one node
-! 		for flux use conz. of the other two nodes and
-! 		minus the sum of these nodes for the flux of this node
+! 	f(k) >= 0 ==> flux into node ii
 
-	if(itot.eq.1) then	!$$flux
-	  fl(1)=f(1)*cl(l,isum)
-	  fl(2)=f(2)*cl(l,isum)
-	  fl(3)=f(3)*cl(l,isum)
-	else if(itot.eq.2) then
-	  isum=6-isum
-	  fl(1)=f(1)*cl(l,1)
-	  fl(2)=f(2)*cl(l,2)
-	  fl(3)=f(3)*cl(l,3)
-	  fl(isum) = 0.
-	  fl(isum) = -(fl(1)+fl(2)+fl(3))
-	  isum=6-isum		!reset to original value
-	else			!exception	$$itot0
-	  fl(1)=0.
-	  fl(2)=0.
-	  fl(3)=0.
-	end if
+	fl = 0.
+	k = 0                                   !loop over the three edges ij=12,13,23
+	do i=1,2
+	  do ii=i+1,3
+	    k = k + 1
+            if( f(k) .gt. 0.d0 ) then           !f(k) >= 0 : i is upwind
+	      conf = cl(l,i)
+	    else
+              conf = cl(l,ii)
+	    end if
+            term = f(k) * conf                  !Numerical tracer flux
+            fl(i) = fl(i) - term
+            fl(ii) = fl(ii) + term
+	  end do
+	end do
 
 ! 	----------------------------------------------------------------
-! 	horizontal TVD scheme start - compute fluxes fl, otherwise leave as is
+! 	horizontal TVD scheme - compute fluxes fl, otherwise leave as is
 ! 	----------------------------------------------------------------
 
-        if( btvd ) then
-	  iext = 0
+        if( btvdh ) then
+	  iext = 0		!high order flux only for internal elements
 	  do ii=1,3
 	    k = nen3v(ii,ie)
 	    if( is_external_boundary(k) ) iext = iext + 1
 	  end do
 
           if( iext .eq. 0 ) then
-!	    call tvd_fluxes_old(ie,l,itot,isum,dt,cl,cc,gradxv,gradyv,f,fl) !lrp-imex
-	    call tvd_fluxes(ie,l,dt,cl,cc,gradxv,gradyv,fv,fl)
+	    call tvd_fluxes(ie,l,dt,cl,cc,gradxv,gradyv,f,fl)
 	  end if
 	end if
-
-! 	----------------------------------------------------------------
-! 	horizontal TVD scheme finish
-! 	----------------------------------------------------------------
 
 ! 	----------------------------------------------------------------
 ! 	contributions from nudging

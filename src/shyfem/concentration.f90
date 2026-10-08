@@ -656,8 +656,9 @@
 	logical btvd,btvd2,btvdgrad,btvddebug,bsubs
 	integer isact
 	integer istot
-	integer itvd
+	integer itvdh
 	integer itvdv
+	integer itvd
 	integer iuinfo
 	integer iunit,k
 	integer levdbg
@@ -685,14 +686,17 @@
 ! initialization
 !-------------------------------------------------------------
 
-	itvd = nint(getpar('itvd'))	!horizontal tvd scheme
-	itvdv = nint(getpar('itvdv'))	!vertical tvd scheme
+	itvdh = nint(getpar('itvdh'))	!horizontal transport scheme
+	itvdv = nint(getpar('itvdv'))	!vertical transport scheme
+	itvd  = nint(getpar('itvd'))	!limiter
 	levdbg = nint(getpar('levdbg'))
 	isubs = nint(getpar('isubs'))
 
 	btvd = itvd .gt. 0
 	btvd2 = itvd .eq. 2
-	btvdgrad = (itvd .eq. 1) .or. (itvd .ge. 3)
+	btvdgrad = (itvd .eq. 1) .or. (itvdh .ge. 3)
+					!gradient is needed for the limiter (itvd=1)
+					!or piecewise reconstruction scheme (itvdh=3)
 	btvddebug = .true.
 	btvddebug = btvddebug .and. btvd2
 	bsubs = (isubs .eq. 1) .and. (n_rkstages .eq. 1)
@@ -805,7 +809,7 @@
      &          ,dt &
      &          ,rkpar,difhv,difv,difmol &
      &          ,sbconz &
-     &		,itvd,itvdv,gradxv,gradyv &
+     &		,itvdh,itvdv,itvd,gradxv,gradyv &
      &		,cobs,robs,rtauv &
      &		,wsinkl,wsinkv &
      &		,rload,load &

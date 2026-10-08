@@ -41,6 +41,7 @@
 
         integer, private, save :: nel_tvd = 0
 
+	integer, save :: itvdh_type = 0
 	integer, save :: itvd_type = 0
 
         real, allocatable, save :: xtvdup(:,:,:)	!x-coordinate

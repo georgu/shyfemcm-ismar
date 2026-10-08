@@ -1120,39 +1120,50 @@
 
 	call addpar('dhpar',0.)		!diffusion parameter
 
-! The next parameters deal with the discretization of nonlinear advection
-! terms. For the momentum equation you only have first order upwind flux.
-! For horizontal momentum you can choose between two discretizations:
-! upwinding by node or by face. For scalar, you have the possibility
-! to prescribe the TVD numerical flux desired.
+! The following parameters deal with the discretization of nonlinear advection
+! terms. For the momentum equation, only a first-order upwind flux is available.
+! For horizontal momentum, you can choose between two discretizations:
+! upwinding by node or by face. For scalars, you can prescribe your
+! favourite TVD numerical flux:
 
-! |imtvd|	Type of the horizontal advection scheme used for 
+! |imtvd|	Type of horizontal advection scheme used for the
 !		momentum equation. You can choose between
-!		two upwind schemes. With 0 you have the default SHYFEM
-!		advection scheme where upwinding is introduced by node.
-!		With 1 you have standard numerical flux by face.
+!		two upwind schemes. A value of 0 selects the default SHYFEM
+!		advection scheme, where upwinding is introduced by node.
+!		A value of 1 selects a standard numerical flux by face.
 !		(Default 0)
-! |itvd|	Type of the horizontal advection scheme used for 
-!		the transport and diffusion
-!		equation. Normally an upwind scheme is used (0), but setting
-!		the parameter |itvd| to a value greater than 0 
-!		choses a TVD scheme. A value of 1 or 2 will use, as high order
-!		scheme, a Lax-Wendroff flux. 1 or 2 differ in the computation
-!		of the gradient to be used in the limiter.
-!		A value of 1 will use a centered average gradient
-!		and a value of 2 will use the gradient of the upwind node
-!		(recommended). Instead, a value of 3 will use the MUSCL flux.
-!		This feature is still experimental, so use with care. 
+! |itvdh|	Type of horizontal advection scheme used for the scalar
+!		transport and diffusion equation. Normally an upwind
+!		scheme is used (|itvdh=0|), but setting the parameter
+!		|itvdh| to a value greater than 0 chooses a second-order
+!		scheme. In particular, a value of 1 selects a Lax-Wendroff
+!		scheme, a value of 2 a MUSCL scheme, and a value of 3
+!		a Fromm scheme. Please note that these schemes are
+!		not monotone and can produce spurious oscillations
+!		near sharp fronts. For non-smooth flows, care must be
+!		taken to activate a TVD limiter with |itvd|.
+!		This feature is still experimental, so use it with care.
 !		(Default 0)
-! |itvdv|	Type of the vertical advection scheme used for 
-!		the transport and diffusion
+! |itvdv|	Type of vertical advection scheme used for the scalar
+!		transport and diffusion
 !		equation. Normally an upwind scheme is used (0), but setting
-!		the parameter |itvdv| to 1 choses a TVD scheme. This feature
-!		is still experimental, so use with care. (Default 0)
+!		the parameter |itvdv| to 1 chooses a TVD scheme. This feature
+!		is still experimental, so use it with care. (Default 0)
+! |itvd|	Type of limiter used for the high-order horizontal advection
+!		scheme in the transport and diffusion equation.
+!		|itvd=0| corresponds to an unlimited scheme, but setting
+!		the parameter |itvd| to a value greater than 0
+!		chooses a TVD scheme with a Superbee limiter. Values 1 and 2
+!		differ in the computation of the smoothness sensor used in
+!		the limiter. A value of 1 uses an approximation of the
+!		upwind gradient, while a value of 2 explicitly computes
+!		the gradient of the upwind cell.
+!		(Default 2).
 
 	call addpar('imtvd',0.)		!momentum horizontal scheme
-	call addpar('itvd',0.)		!scalar horizontal TVD scheme?
-	call addpar('itvdv',0.)		!scalar vertical TVD scheme?
+	call addpar('itvdh',0.)		!scalar horizontal scheme?
+	call addpar('itvdv',0.)		!scalar vertical scheme?
+	call addpar('itvd',0.)		!scalar TVD scheme?
 
 !c------------------------------------------------------------------------
 

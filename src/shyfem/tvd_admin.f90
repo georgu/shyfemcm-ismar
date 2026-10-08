@@ -129,7 +129,6 @@
 
         implicit none
 
-	integer itvd
 	integer, save :: icall = 0
 	!logical, save :: bdebug = .false.
 	logical, save :: bdebug = .true.
@@ -140,10 +139,9 @@
 	if( icall .ne. 0 ) return
 	icall = 1
 
-	itvd = nint(getpar('itvd'))
-
-	itvd_type = itvd
-	btvd2 = itvd == 2
+	itvdh_type = nint(getpar('itvdh'))
+	itvd_type  = nint(getpar('itvd'))
+	btvd2 = itvd_type == 2
 	!write(6,*) 'tvd type: ',itvd_type
 
 	if( btvd2 ) call mod_tvd_init(nel)
@@ -162,10 +160,10 @@
 	end if
 
 	if( print_not_quiet_once() ) then
-	if( itvd .eq. 0 ) then
+	if( itvd_type .eq. 0 ) then
 	  write(6,*) 'no horizontal TVD scheme used'
 	else
-	  write(6,*) 'horizontal TVD scheme initialized: ',itvd
+	  write(6,*) 'horizontal TVD scheme initialized: ',itvd_type
 	end if
 	end if
 
@@ -688,188 +686,6 @@
 
 !*****************************************************************
 
-	subroutine tvd_fluxes_old(ie,l,itot,isum,dt,cl,cv,gxv,gyv,f,fl)
-
-! computes horizontal tvd fluxes for one element
-!
-! this is called for:
-!
-! itvd == 1,2 Lax-Wendroff fluxes with flux limiter
-! In case itvd == 1 the gradient values gxv,gyv are used to
-! compute the slope limiter.
-! Otherwise (itvd==2) the gradient is computed as grad = cond - conu
-!
-! itvd == 3   Muscl fluxes with slope limiter.
-! The values gxv,gyv are used to compute grad.
-!
-! The routine is implemented as a standard extension of 1d fluxes
-! to unstructured triangular grids. The orientation is positive from
-! the upwind node (ic) to the downwind node (id)
-
-	use mod_tvd
-	use mod_hydro_vel
-	use evgeom
-	use levels, only : nlvdi,nlv
-	use basin
-
-	implicit none
-
-	integer, intent(in) :: ie,l
-	integer, intent(in) :: itot,isum
-	double precision, intent(in) :: dt
-	double precision, intent(in) :: cl(0:nlvdi+1,3)		!bug fix
-	real, intent(in) :: cv(nlvdi,nkn)
-        real, intent(in) :: gxv(nlvdi,nkn)
-        real, intent(in) :: gyv(nlvdi,nkn)
-	double precision, intent(in) :: f(3)
-	double precision, intent(out) :: fl(3)
-
-        logical btvd2,btvddebug
-        logical bdebug
-	integer ii,k
-        integer ic,kc,id,kd,ip,iop
-	integer itot1,itot2
-	integer tet1
-        real term,fact,grad
-        real conc,cond,conf,conu
-        real gcx,gcy,dx,dy
-        real u,v
-        real alfa,dis,aj
-        real psi
-        real vel
-        real gdx,gdy
-	real conu_aux(3)
-
-	real limiter
-	integer smartdelta
-
-	btvd2 = itvd_type .eq. 2
-	btvddebug = .true.
-	btvddebug = btvddebug .and. btvd2
-	bdebug = .true.
-	bdebug = .false.
-
-	if( bdebug ) then
-	  write(6,*) 'tvd: ',ie,l,itot,isum,dt
-	  write(6,*) 'tvd: ',btvd2,itvd_type
-	end if
-
-	fl = 0.
-	conu_aux = 0.
-
-	  if( itot .lt. 1 .or. itot .gt. 2 ) return
-
-	  itot2 = itot - 1
-	  itot1 = 2 - itot
-
-	  u = ulnv(l,ie)
-          v = vlnv(l,ie)
-	  aj = 24 * ev(10,ie)
-
-            ip = isum
-            !if( itot .eq. 2 ) ip = 6 - ip		!bug fix
-	    ip = itot2*(6-ip) + itot1*ip
-
-            do ii=1,3
-              if( ii .ne. ip ) then
-                !if( itot .eq. 1 ) then			!flux out of one node
-                !  ic = ip
-                !  id = ii
-                !  fact = 1.
-                !else					!flux into one node
-                !  id = ip
-                !  ic = ii
-                !  fact = -1.
-                !end if
-                ic = itot2*ii + itot1*ip
-		id = itot2*ip + itot1*ii
-		fact = -itot2 + itot1
-
-                kc = nen3v(ic,ie)
-                conc = cl(l,ic)
-                kd = nen3v(id,ie)
-                cond = cl(l,id)
-
-                !dx = xgv(kd) - xgv(kc)
-                !dy = ygv(kd) - ygv(kc)
-                !dis = sqrt(dx**2 +dy**2)
-		! next is bug fix for lat/lon
-		iop = 6 - (id+ic)			!opposite node of id,ic
-		tet1 = 1+mod(iop,3)
-		dx = aj * ev(6+iop,ie)
-		!if( tet1 .eq. id ) dx = -dx
-		dx = -2*smartdelta(tet1,id) * dx + dx
-		dy = aj * ev(3+iop,ie)
-		!if( tet1 .eq. ic ) dy = -dy
-		dy = -2*smartdelta(tet1,ic) * dy + dy
-							!====================
-                if ( itvd_type < 3 ) then		!lax-wendroff
-							!====================
-                  if( btvd2 ) then
-                    conu = cond
-                    !conu = 2.*conc - cond		!use internal gradient
-                    call tvd_get_upwind_c(ie,l,ic,id,conu,cv)
-		    conu_aux(ii) = conu
-                    grad = 0.5*(cond - conu)
-                  else
-                    gcx = gxv(l,kc)
-                    gcy = gyv(l,kc)
-                    grad = gcx*dx + gcy*dy
-                  end if
-
-		  psi = limiter(grad,cond-conc)		!flux limiter
-
-		  dis = ev(16+iop,ie)
-                  vel = abs( u*dx + v*dy ) / dis	!projected velocity
-                  alfa = ( dt * vel  ) / dis		!lxw parameter
-
-                  conf = conc + 0.5*psi*(cond-conc)*(1.-alfa)
-							!====================
-		else if ( itvd_type == 3 ) then		!muscl
-							!====================
-		  if( fact * f(ii) .ge. 0.d0 ) then
-                    gcx = gxv(l,kc)
-                    gcy = gyv(l,kc)
-		    grad = gcx*dx + gcy*dy		!projected gradient at node ic
-		    psi = limiter(grad,cond-conc)	!slope limiter
-
-		    conf = conc + 0.5*grad*psi		!reconstructed conc at edge ic-id from ic side
-		  else
-                    gcx = gxv(l,kd)
-                    gcy = gyv(l,kd)
-                    grad = gcx*dx + gcy*dy		!projected gradient at node id
-		    psi = limiter(grad,2.*grad-(cond-conc))
-
-		    conf = cond - 0.5*grad*psi		!reconstructed conc at edge ic-id from id side
-		  end if
-
-		end if
-
-                term = fact * conf * f(ii)
-                fl(ic) = fl(ic) - term
-                fl(id) = fl(id) + term
-              end if
-            end do
-
-	if( btvddebug ) call tvd_debug_accum(ie,l,conu_aux)
-
-	if( bdebug ) then
-	  write(6,*) 'tvd: --------------'
-	  write(6,*) 'tvd: ',gcx,gcy,grad
-	  write(6,*) 'tvd: ',psi
-	  write(6,*) 'tvd: ',conc,cond,conf
-	  write(6,*) 'tvd: ',term,fact
-	  write(6,*) 'tvd: ',f
-	  write(6,*) 'tvd: ',fl
-	  write(6,*) 'tvd: ',(cl(l,ii),ii=1,3)
-	  write(6,*) 'tvd: ',ic,id,kc,kd
-	  write(6,*) 'tvd: --------------'
-	end if
-
-	end
-
-!*****************************************************************
-
 	subroutine tvd_fluxes(ie,l,dt,cl,cv,gxv,gyv,f,fl)
 
 ! computes horizontal tvd fluxes for one element
@@ -890,12 +706,13 @@
 !       f(k) < 0 : transport from i to j
 !       f(k) > 0 : transport from j to i
 !
-! itvd == 1,2 : Lax-Wendroff flux with flux limiter
-! itvd == 3   : MUSCL flux with slope limiter
-! itvd == 4   : flux based on piecewise linear reconstruction
+! Different schemes are available:
 !
-! For itvd == 1,3,4 the nodal gradient gxv,gyv is used.
-! For itvd == 2 the upstream concentration is explicitly obtained.
+! itvdh == 1 : Lax-Wendroff flux with flux limiter
+! itvdh == 2  : MUSCL flux with slope limiter
+! itvdh == 3  : flux based on piecewise linear reconstruction
+!
+! The smoothness sensor is computed in the i to j direction.
 
 	use mod_tvd
 	use mod_hydro_vel
@@ -963,64 +780,93 @@
 
 	    dy = aj * ev(3+iop,ie)
 	    dy = -2*smartdelta(tet1,i) * dy + dy!orienting vector dx,dy from i to j
-
-	    dis = ev(16+iop,ie)
-	    vel = abs(u*dx+v*dy) / dis
-	    alfa = dt*vel/dis
-
-	    if( f(k) .gt. 0.d0 ) then		!f(k) >= 0 : i is upwind
-
-	      if( btvd2 ) then
-	        conu = concj
-	        call tvd_get_upwind_c(ie,l,i,j,conu,cv)
-	        conu_aux(k) = conu
-	        grad = 0.5*(concj-conu)
+! 
+!	    If f(k) >= 0, than i is upwind and j is downwind
+! 
+	    if( f(k) .gt. 0.d0 ) then
+! 
+!	      Here we compute the limiter psi. The unlimited
+!	      scheme psi=1 is dangerous!
+! 
+              if ( itvd_type .eq. 0 ) then
+                psi = 1.
 	      else
+	        if( btvd2 ) then
+	          conu = concj
+	          call tvd_get_upwind_c(ie,l,i,j,conu,cv)
+	          conu_aux(k) = conu
+	          grad = 0.5*(concj-conu)
+	        else
+	          gcx = gxv(l,ki)
+	          gcy = gyv(l,ki)
+	          grad = gcx*dx + gcy*dy	!projected gradient from i to j
+	        end if
+	        psi = limiter(grad,concj-conci)	!tvd limiter
+	      end if
+! 
+!	      Here we compute the upwind value
+! 
+              if ( itvdh_type .eq. 1 ) then	!Lax-Wendroff
+		dis = ev(16+iop,ie)
+		vel = abs(u*dx+v*dy) / dis
+		alfa = dt*vel/dis
+	        delta = 0.5*psi*(concj-conci) * (1.-alfa)
+	      else if ( itvdh_type .eq. 2 ) then!Muscl
+		delta = 0.5*psi*(concj-conci)
+	      else if ( itvdh_type .eq. 3 ) then!Piecewise linear reconstruction
 	        gcx = gxv(l,ki)
 	        gcy = gyv(l,ki)
-	        grad = gcx*dx + gcy*dy		!projected gradient from i to j
-	      end if
-
-	      psi = limiter(grad,concj-conci)	!tvd limiter
-
-              if ( itvd_type .le. 2 ) then	!Lax-Wendroff
-	        delta = 0.5*psi*(concj-conci) * (1.-alfa)
-	      else if ( itvd_type .eq. 3 ) then	!Muscl
-		delta = 0.5*psi*(concj-conci)
-	      else if ( itvd_type .eq. 4 ) then	!Piecewise linear reconstruction
-		delta = 0.5*grad
+	        grad = gcx*dx + gcy*dy
+		delta = 0.5*psi*grad
 	      end if
 
 	      conf = conci + delta
-
-	    else				!f(k) < 0 : j is upwind
-
-	      if( btvd2 ) then
-	        conu = conci
-	        call tvd_get_upwind_c(ie,l,j,i,conu,cv)
-	        conu_aux(k) = conu
-	        grad = 0.5*(conci-conu)
+! 
+!	    If f(k) < 0, than j is upwind and i is downwind
+! 
+	    else
+! 
+!	      Here we compute the limiter psi
+! 
+              if ( itvd_type .eq. 0 ) then
+                psi = 1.
 	      else
+	        if( btvd2 ) then
+	          conu = conci
+	          call tvd_get_upwind_c(ie,l,j,i,conu,cv)
+	          conu_aux(k) = conu
+	          grad = 0.5*(conu-conci)
+	        else
+	          gcx = gxv(l,kj)
+	          gcy = gyv(l,kj)
+	          grad = gcx*dx + gcy*dy
+	        end if
+	        psi = limiter(grad,concj-conci)	!tvd limiter
+	      end if
+! 
+!	      Here we compute the upwind value
+! 
+              if ( itvdh_type .eq. 1 ) then	!Lax-Wendroff
+		dis = ev(16+iop,ie)
+		vel = abs(u*dx+v*dy) / dis
+		alfa = dt*vel/dis
+		delta = 0.5*psi*(concj-conci) * (1.-alfa)
+	      else if ( itvdh_type .eq. 2 ) then!Muscl
+		delta = 0.5*psi*(concj-conci)
+	      else if ( itvdh_type .eq. 3 ) then!Piecewise linear reconstruction
 	        gcx = gxv(l,kj)
 	        gcy = gyv(l,kj)
 	        grad = gcx*dx + gcy*dy
-	      end if
-
-	      psi = limiter(grad,concj-conci)	!tvd limiter
-
-              if ( itvd_type .le. 2 ) then	!Lax-Wendroff
-		delta = 0.5*psi*(concj-conci) * (1.-alfa)
-	      else if ( itvd_type .eq. 3 ) then	!Muscl
-		delta = 0.5*psi*(concj-conci)
-	      else if ( itvd_type .eq. 4 ) then	!Piecewise linear reconstruction
-		delta = 0.5*grad
+		delta = 0.5*psi*grad
 	      end if
 
 	      conf = concj - delta
 
 	    end if
-
-	    term = f(k) * conf			!Numerical tracer flux
+! 
+!	    Here we compute the upwind value
+! 
+	    term = f(k) * conf
 
 	    fl(i) = fl(i) - term
 	    fl(j) = fl(j) + term
