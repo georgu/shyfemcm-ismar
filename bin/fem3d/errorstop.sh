@@ -14,18 +14,21 @@ FindErrorStop()
   grep "error stop" $files | sed -e 's/\.f90: */.f90 /' \
 				| grep -v ": " \
 				| grep -E -v 'f90\s*\!' \
+				| grep -E -v stopping \
 				| grep -E -v 'f90\s*write'
 
   echo "---------------------------------------"
 
   grep "error stop:" $files | sed -e 's/\.f90: */.f90 /' \
 				| grep -E -v 'f90\s*\!' \
+				| grep -E -v stopping \
 				| grep -E -v 'f90\s*write'
 
   echo "---------------------------------------"
 
   grep -E "\s+stop" $files | grep -v "error *stop" \
 				| grep -E -v 'f90\s*\!' \
+				| grep -E -v stopping \
 				| grep -E -v 'f90\s*write'
 
   cd $actdir

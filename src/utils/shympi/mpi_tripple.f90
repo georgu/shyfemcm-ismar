@@ -324,7 +324,7 @@
 	write(6,*) 'finished tripple_points_init: '
 	end if
 
-	!stop 'forced stop for debug'	!debug stop
+	!call shympi_error_stop('tripple_points_init: forced exit for debug')
 
 	!--------------------------------------------------
 	! end of routine

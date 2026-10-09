@@ -1407,7 +1407,7 @@
         call clo_add_option('quiet',.false.,'be quiet')
         call clo_add_option('nodiff',.false.,'do not show differences')
         call clo_add_option('verbose',.false.,'be verbose')
-        call clo_add_option('nostop',.false.,'do not stop at error')
+        call clo_add_option('nostop',.false.,'not stopping at error')
         call clo_add_option('summary',.false.,'do only summary')
         call clo_add_option('balance',.false.,'balance time records')
         call clo_add_option('maxdiff',0.,'maximum tolerated difference')

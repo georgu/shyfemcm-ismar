@@ -357,7 +357,7 @@
         call clo_add_option('quiet',.false.,'be quiet')
         call clo_add_option('nodiff',.false.,'do not show differences')
         call clo_add_option('verbose',.false.,'be verbose')
-        call clo_add_option('nostop',.false.,'do not stop at error')
+        call clo_add_option('nostop',.false.,'not stopping at error')
         call clo_add_option('write',.false.,'writes values over threshold')
         call clo_add_option('rthresh',0.,'threshold for writing values')
 

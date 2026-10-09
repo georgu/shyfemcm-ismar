@@ -1401,7 +1401,7 @@
 	  ip = nel_cum_domains
 	else
 	  write(6,*) 'n,nkn_global,nel_global: ',n,nkn_global,nel_global
-	  call shympi_stop('error stop shympi_get_array_internal_i:'// &
+	  call shympi_error_stop('shympi_get_array_internal_r:'// &
      &				' size of out array')
 	end if
 
@@ -1467,7 +1467,7 @@
 	  ip = nel_cum_domains
 	else
 	  write(6,*) 'n,nkn_global,nel_global: ',n,nkn_global,nel_global
-	  call shympi_stop('error stop shympi_get_array_internal_i:'// &
+	  call shympi_error_stop('shympi_get_array_internal_i:'// &
      &				' size of out array')
 	end if
 

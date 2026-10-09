@@ -45,7 +45,7 @@
 ! 23.04.2021    clr     formal change in MODULE PROCEDURE declarations for meson compatibility
 ! 08.06.2021    ggu     parameters in shympi_exchange_array_3() were integer
 ! 25.06.2021    ggu     in shympi_init() check if basin has been read
-! 20.10.2021    ggu     do not stop when reading grd file
+! 20.10.2021    ggu     not stopping when reading grd file
 ! 01.04.2022    ggu     new routine shympi_set_debug()
 ! 02.04.2022    ggu     new routines shympi_gather_array_3d_*()
 ! 06.04.2022    ggu     new routines for double precision
@@ -525,7 +525,7 @@
           write(6,*) 'nkn = ',nkn,'  nel = ',nel
           write(6,*) '*** basin contains no nodes or elements...'
 	 end if
-         call shympi_stop('error stop shympi_init')
+         call shympi_error_stop('shympi_init: no nodes or elements')
 	end if
 
 	bmpi = n_threads > 1
@@ -949,8 +949,8 @@
 
 	character*(*) text
 
-	write(6,*) 'error stop shympi_stop: ',trim(text)
-	call exit(0)
+	write(6,*) 'shympi_stop: ',trim(text)
+	call exit(5)
 
 	end subroutine shympi_stop
 
@@ -961,7 +961,7 @@
 	character*(*) text
 
 	write(6,*) 'error stop ',trim(text)
-	call exit(0)
+	call exit(9)
 
 	end subroutine shympi_error_stop
 

@@ -598,7 +598,7 @@
           write(6,*) 'nkn = ',nkn,'  nel = ',nel
           write(6,*) '*** basin contains no nodes or elements...'
          end if
-         call shympi_stop('error stop shympi_init')
+         call shympi_error_stop('shympi_init: no nodes or elements')
         end if
 
 	bmpi = n_threads > 1
@@ -1093,7 +1093,7 @@
 	character*(*) text
 
 	if( shympi_is_master() ) then
-	  write(6,*) 'error stop ',trim(text)
+	  write(6,*) 'shympi_stop ',trim(text)
 	end if
 	!call shympi_barrier_internal
 	call shympi_abort_internal(i_code_error)
@@ -1652,7 +1652,7 @@
 	    if( imax > 0 .and. icount >= imax ) exit
 	  end do
 	  flush(6)
-	  call error_stop('error stop shympi_check_array_i')
+	  call shympi_error_stop('shympi_check_array_i: ghost arrays')
         end if
 
 	return
@@ -1699,7 +1699,7 @@
 	    if( imax > 0 .and. icount >= imax ) exit
 	  end do
 	  flush(6)
-	  call error_stop('error stop shympi_check_array_r')
+	  call shympi_error_stop('shympi_check_array_r: ghost arrays')
         end if
 
 	return
@@ -1744,7 +1744,7 @@
 	    if( imax > 0 .and. icount >= imax ) exit
 	  end do
 	  flush(6)
-	  call error_stop('error stop shympi_check_array_d')
+	  call shympi_error_stop('shympi_check_array_d: ghost arrays')
         end if
 
 	return

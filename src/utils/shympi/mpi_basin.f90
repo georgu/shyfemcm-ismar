@@ -141,7 +141,7 @@
 	    write(6,*) 'number of threads = ',n_threads
 	    write(6,*) 'number of domains = ',nc+1
 	  end if
-	  call shympi_stop('shympi_setup: thread/domain mismatch')
+	  call shympi_error_stop('shympi_setup: thread/domain mismatch')
 	end if
 
 !	-----------------------------------------------------
@@ -261,14 +261,14 @@
 !	-----------------------------------------------------
 !	write domain*.grd files
 !	-----------------------------------------------------
-   ! call commented in merge meeting in Trieste gmicaletto
+
 	!if( bmpi_debug ) call write_grd_domain
 
 !	-----------------------------------------------------
 !	end of routine
 !	-----------------------------------------------------
 
-	!call shympi_stop('forced stop in shympi_setup')
+	!call shympi_error_stop('shympi_setup: forced exit')
 
 	end
 

@@ -155,7 +155,7 @@
 
         call set_geom
 
-        call link_set_stop(.false.)     !do not stop after error
+        call link_set_stop(.false.)     !not stopping after error
         call link_set_write(.false.)    !do not write error
 
 	nsave = iarnv
