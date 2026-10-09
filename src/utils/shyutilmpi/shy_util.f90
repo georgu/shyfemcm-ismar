@@ -78,6 +78,7 @@
 ! 16.10.2025    ggu     new routines for writing elemental files
 ! 17.10.2025    ggu     in shyfem_init_elem_file() use ftype==4 (bug)
 ! 21.05.2026    ggu     in shy_check_nvar() check if file is empty and return
+! 10.09.2026    ggu     check if time is readable (not a NaN)
 !
 ! contents :
 !
@@ -940,6 +941,7 @@
 	subroutine shy_check_nvar(id,nvar)
 
 	use shyfile
+	use mod_debug
 
 	implicit none
 
@@ -975,6 +977,7 @@
 	do
 	  call shy_skip_record(id,dtime,ivar,n,m,lmax,ierr)
 	  if( ierr /= 0 ) exit
+	  if( is_nonumber(dtime) ) goto 96
 	  nrec = nrec + 1
 	  if( ivar == ivar_first .and. dtime /= dtime0 ) exit	!new time record
 	  if( ivar_first == -999 ) then
@@ -1011,6 +1014,9 @@
 	call shy_set_params(id,nkn,nel,npr,nlv,nvar)
 
 	return
+   96   continue
+        write(6,*) 'dtime = ',dtime
+        stop 'error stop shy_check_nvar: dtime is not a number'
    97	continue
 	stop 'error stop shy_check_nvar: backspacing'
    99	continue

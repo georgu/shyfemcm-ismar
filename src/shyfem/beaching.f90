@@ -32,6 +32,7 @@
 ! 06.02.2026    ggu     routine made more general (rates for single area codes)
 ! 05.05.2026    ggu     more documentation, bug fix for iconz == 1
 ! 29.05.2026    ggu     avoid compiler warning
+! 10.09.2026    ggu     bug when writing not getting dtime in beaching_run()
 !
 !**************************************************************
 
@@ -288,6 +289,8 @@
 !-----------------------------------------------------------------
 
         if( next_output_d(da_beach) ) then
+          call get_act_dtime(dtime)
+          call get_act_timeline(aline)
           id = nint(da_beach(4))
           do iv=1,nvar
             ivar = 300 + iv
