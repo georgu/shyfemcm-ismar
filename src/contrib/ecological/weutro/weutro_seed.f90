@@ -170,7 +170,7 @@
 	berror = .false.
 	call n2int_mpi(n,nodes,berror)
 	write(6,*) 'berror = ',berror
-	if( berror ) stop 'error stop: load_init_area'
+	if( berror ) stop 'error stop seed_add_area: converting nodes'
 
         do i=1,n
 	  k = nodes(i)
@@ -204,7 +204,7 @@
 
         do k=1,nkn
 	  ia = aree(k)
-	  if( ia .gt. nareas ) stop 'error stop ia'
+	  if( ia .gt. nareas ) stop 'error stop seed_make_volume: ia>nareas'
 	  if( ia .gt. 0 ) then
             lmax = ilhkv(k)
             do l=1,lmax

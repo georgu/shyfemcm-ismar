@@ -65,6 +65,7 @@
 ! 16.10.2025	ggu	read parameters from namelist - handle_param_init()
 ! 25.09.2026	ggu	new routine wdiag(), new vars idnode and idlayer
 ! 29.09.2026	ggu	module introduced (not yet used)
+! 09.10.2026	ggu	wdiag finished
 !
 ! notes :
 !
@@ -202,6 +203,7 @@
 	end if
 
 	write(6,*) 'writing weutro parameters: ',trim(wparam_out)
+	iu = 1
 	open(iu,file=wparam_out,status='unknown',form='formatted')
 	call write_weutro_param(iu)
 	close(iu)
@@ -439,10 +441,10 @@
         real dt                 !time step [day]
         real vol                !volume [m**3]
         real depth              !depth of box [m]
-        real vel                !velocity [m/s]
+        real vel                !current velocity [m/s]
         real uws                !wind velocity [m/s]
-        real stp                !temperature [C]
-        real sal                !salinity [psu] == [per mille]
+        real stp                !water temperature [C]
+        real sal                !water salinity [psu] == [per mille]
         real qss                !solar radiation [W/m**2]
         real c(nstate)          !state variable [mg/L] == [g/m**3]
         real loads(nstate)      !loading for c [g/(m**3 day)]
@@ -505,9 +507,9 @@
 
       volold = vol
       volnew = vol
+      cold(:) = c(:)
 
       do i=1,nstate
-          cold(i) = c(i)
         mass = c(i) * volold
         mder = cds(i)
         c(i) = ( mass + dt * mder ) / volnew
@@ -2072,8 +2074,8 @@
             LAM = 3.0
             GAM = 6.5
       else
-!            write(6,*) 'iwtype: ',iwtype
-            stop 'error stop'
+            write(6,*) 'iwtype: ',iwtype
+            stop 'error stop KAWIND: iwtype'
       END IF
 !*
 ! CALCULATE DIFFUSIVITY OF OXYGEN IN WATER (DIFF) (CM**2/SEC), VISCOSIT
@@ -2299,7 +2301,7 @@
 
         open(1,file='michol.dat',status='old',form='formatted')
         read(1,*) n_params
-        if( n_params .gt. ndim ) stop 'error stop: ndim - n_params'
+        if( n_params .gt. ndim ) stop 'error stop param_read: n_params>ndim'
         read(1,*) (v_params(i),i=1,n_params)
         close(1)
 
@@ -2592,13 +2594,17 @@
 
 	subroutine wdiag(iu,vals)
 
+! writes diagnostic variables
+
 	use mod_writevars
 
 	implicit none
 
         !include 'weutro.h'
 	! the next is a HACK until we pass from wutro.h to a module
-	logical, parameter :: bdiag = .true.
+
+	logical, parameter :: bdiag = .false.	!write diagnostic variables?
+
         integer idbox,idnode,idlayer
         common/general_id/idbox,idnode,idlayer
         save/general_id/
@@ -2607,14 +2613,30 @@
 	integer iu
 	real vals(:)
 
+!----------------------------------------------------------
+! check if diagnostic output is needed
+!----------------------------------------------------------
+
 	if( .not. bdiag ) return
+
+!----------------------------------------------------------
+! initialize diagnostic output -> give nodes where to output
+!----------------------------------------------------------
 
 	if( icall == 0 ) then
 	  call writevars_init(5,(/11652,11066,9735,11547,8717/))
 	  icall = 1
 	end if
 
+!----------------------------------------------------------
+! write diagnostic output to unit iu
+!----------------------------------------------------------
+
 	call writevars_scalar(iu,idnode,vals)
+
+!----------------------------------------------------------
+! end of routine
+!----------------------------------------------------------
 
 	end
 
