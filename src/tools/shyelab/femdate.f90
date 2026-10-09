@@ -24,7 +24,7 @@
 !
 !--------------------------------------------------------------------------
 
-! elaborates fem files
+! manipulates fem file data
 !
 ! revision log :
 !
@@ -42,6 +42,7 @@
 ! 16.02.2019	ggu	changed VERS_7_5_60
 ! 27.01.2022	ggu	minor changes
 ! 16.03.2022	ggu	femadd newly written
+! 09.10.2026	ggu	femdate has now three actions: -date0, start, end
 !
 !******************************************************************
 
@@ -63,14 +64,15 @@
 	logical bextend
 	logical bverb,bquiet,bsilent
 	logical bunform
+	logical bchange,bstart,bend
 	character*20 aline
 	character*80 sextend,s(2)
 	character*80 stime
-	double precision astart,aend
+	double precision alast
 	type(femfile_type), allocatable :: ffinfo(:)
 	type(femfile_type) :: ffiout
 	type(femrec_type), allocatable :: finfo(:)
-	type(femrec_type) :: fout
+	type(femrec_type) :: fout,fin,frec
 	type(femrec_type) :: fextra
 
 	integer iscans
@@ -82,9 +84,9 @@
 ! set command line options
 !--------------------------------------------------------------
 
-	call clo_init('femadd','fem-files','1.0')
+	call clo_init('femdate','fem-file','1.0')
 
-	call clo_add_info('adds vars of multiple fem-files into one')
+	call clo_add_info('info on (and evtl. change of) time in fem-file')
 
         call clo_add_sep('output options')
 
@@ -95,6 +97,8 @@
         call clo_add_sep('action')
 
 	call clo_add_option('date0 time',' ','change time in records')
+	call clo_add_option('start',.false.,'returns time of first record')
+	call clo_add_option('end',.false.,'returns time of last record')
 
         call clo_add_extra('time is YYYY-MM-DD[::hh:mm:ss]')
 
@@ -115,9 +119,17 @@
 	if( bsilent ) bquiet = .true.
 
 	call clo_get_option('date0',stime)
+	call clo_get_option('start',bstart)
+	call clo_get_option('end',bend)
 
-	if( stime == ' ' ) then
-	  stop 'error stop femdate: no date/time given'
+	bchange = .false.
+	if( stime /= ' ' ) bchange = .true.
+
+	if( bchange .or. bstart .or. bend ) then
+	  !ok
+	else
+	  write(6,*) 'no action specified'
+	  call clo_usage
 	end if
 
 !--------------------------------------------------------------
@@ -146,8 +158,11 @@
 	call femutil_open_for_read(infile,0,ffinfo(1),ierr)
 	if( ierr /= 0 ) goto 99
 
-	iformat = 1
-	call femutil_open_for_write('out.fem',iformat,ffiout)
+	if( bchange ) then
+	  !iformat = 1
+	  iformat = ffinfo(1)%iformat
+	  call femutil_open_for_write('out.fem',iformat,ffiout)
+	end if
 
 !--------------------------------------------------------------
 ! loop on files and read data
@@ -156,6 +171,7 @@
 	nrecs = 0
 	nvar0 = 0
 	nvar = 0
+	alast = 0
 
 	do
 
@@ -171,16 +187,33 @@
 
 	  nrecs = nrecs + 1
 
-	  fout = finfo(i)
-	  call time_change(stime,fout)
-	  call femutil_get_time(fout,atime)
+	  frec = finfo(i)
+	  if( bchange ) then
+	    call time_change(stime,frec)
+	    call femutil_get_time(frec,atime)
 
-          call dts_format_abs_time(atime,aline)
-	  if( .not. bquiet ) write(6,*) atime,'  ',aline
-	  call femutil_write_record(ffiout,fout)
+            call dts_format_abs_time(atime,aline)
+	    if( .not. bquiet ) write(6,*) atime,'  ',aline
+	    call femutil_write_record(ffiout,frec)
+	  else
+	    if( bstart ) then
+	      call femutil_get_time(frec,atime)
+              call dts_format_abs_time(atime,aline)
+	      write(6,'(a)') aline
+	      call exit(0)
+	    else if( bend ) then
+	      alast = atime
+	    end if
+	  end if
 
-	  if( nrecs == 5 ) exit
+	  if( bdebug .and. nrecs == 5 ) exit
 	end do
+
+	if( bend ) then
+          call dts_format_abs_time(alast,aline)
+	  write(6,'(a)') aline
+	  call exit(0)
+	end if
 
 	if( .not. bsilent ) then
 	  write(6,*) 'total number of records treated: ',nrecs
