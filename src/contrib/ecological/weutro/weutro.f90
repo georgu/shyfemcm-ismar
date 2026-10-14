@@ -1905,9 +1905,8 @@
 
       real tday,aux
 
-      real t_old,iinst_old
-      save t_old,iinst_old
-      data t_old,iinst_old /0.,0./      !hope we are not in Antarktic
+      real, save :: t_old = 0.
+      real, save :: iinst_old = 0.
 
       if( t .eq. t_old ) then            !if for same daytime we are done
         iinst = iinst_old

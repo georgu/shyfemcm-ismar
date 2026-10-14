@@ -20,6 +20,7 @@
 # 29.04.2021	ggu	-join_lines and -min_area
 # 30.04.2021	ggu	-clean and -unused
 # 15.06.2022	ggu	new -write for elems and lines, set must_invert
+# 10.10.2026	ggu	new -boxes option to recreate grid with type info
 #
 #----------------------------------------------------------------
 
@@ -47,6 +48,7 @@ $::min_dist = 0 unless $::min_dist;
 $::clean = "" unless $::clean;
 $::unused = "" unless $::unused;
 $::unify_node = "-1" unless $::unify_node;
+$::boxes = "" unless $::boxes;
 
 if( $::n or $::e or $::l ) {	#explicitly given -> only on these items
   $::n = 0 unless $::n;
@@ -70,6 +72,10 @@ $::trans = "" unless defined($::trans);
 $::latlon = "" unless defined($::latlon);
 
 $::unused = 1 if $::min_area;
+
+if( $::boxes ) {
+  read_boxes_file($::boxes);
+}
 
 if( $::nodes ) {
   @::nodes = split(",",$::nodes);
@@ -166,6 +172,7 @@ sub FullUsage {
   print STDERR "  -trans=dx,dy  translate selected nodes by dx/dy\n";
   print STDERR "  -nodes=list   extract info about given nodes in list\n";
   print STDERR "  -delete       delete selected items\n";
+  print STDERR "  -boxes=bfile  recreates type info from box files\n";
   print STDERR "                                    \n";
   print STDERR "  -invert       invert selection - modify outer area\n";
   print STDERR "  -exclude      exclude border line items from selection\n";
@@ -182,6 +189,7 @@ sub FullUsage {
   print STDERR "  -unused       deletes unused nodes\n";
   print STDERR "                                    \n";
   print STDERR "islands are closed lines\n";
+  print STDERR "bfile is either boxes.txt or boxes_geom.txt\n";
 }
 
 sub Usage {
@@ -347,6 +355,10 @@ sub modify_element {
     $elem->{h} = -$elem->{h};
   } elsif( $::unset_depth ) {
     $elem->{h} = $::depth_flag;
+  } elsif( $::boxes ) {
+    my $type = $::boxes_types{$number};
+    die("no such element number in boxes: $number\n") unless defined $type;
+    $elem->{type} = $type;
   }
 }
 
@@ -724,6 +736,64 @@ sub adjust_end_lines {
   }
 }
 
+sub read_boxes_file {
+
+  # reads either boxes.txt or boxes_geom.txt to recreate grid with box info
+
+  my $filename = shift;
+
+  return unless $filename;
+
+  %::boxes_types = ();
+
+  my $itype;
+  my $id_boxes = 473226;
+
+  open(BOXES,"<$filename") || die "Cannot open file: $filename\n";
+
+  # reads first header
+
+  $_ = <BOXES>;
+  chomp;
+  if( /^#/ ) {		#probably boxes_geom.txt
+    $itype = 7;
+    $_ = <BOXES>;
+    chomp;
+    s/#//;
+  } else {
+    $itype = 9;
+  }
+
+  my ($id,$ftype,$nvers) = split;
+  print STDERR "id ftype nvers: $id $ftype $nvers\n";
+
+  # error checking
+
+  die "error in id: $id $id_boxes\n" if $id != $id_boxes;
+  die "error in file type: $itype $ftype\n" if $itype != $ftype;
+  die "error in version: $nvers\n" if $itype == 7 and $nvers < 7;
+  die "error in version: $nvers\n" if $itype == 9 and $nvers != 3;
+
+  # reads second header
+
+  <BOXES> if $itype == 7;	#skip explanation
+  $_ = <BOXES>;
+  chomp;
+  <BOXES> if $itype == 7;	#skip explanation
+
+  my ($ne,@f) = split;
+
+  # reads element list and box information
+
+  for( my $i=0; $i<$ne; $i++ ) {
+    $_ = <BOXES>;
+    chomp;
+    my ($iext,$type) = split;
+    $::boxes_types{$iext} = $type;
+  }
+
+  close(BOXES);
+}
 
 #-----------------------------------------------------------------
 

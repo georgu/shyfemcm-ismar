@@ -71,6 +71,7 @@
 ! 15.09.2025	ggu	new id_tentative, do not compress '_'
 ! 03.10.2025	ggu	new routine ivar2short() and variable 78
 ! 27.01.2026	ggu	add weutro description (populate_strings_weutro)
+! 13.10.2026	ggu	new routine inum2filename()
 !
 ! contents :
 !
@@ -106,6 +107,7 @@
 !-------------------------------------------------------
 !
 !       subroutine string2ivar(string,ivar)
+!	subroutine inum2filename(inum,filename)
 !       subroutine ivar2string(ivar,string,isub)
 !       subroutine ivar2short(ivar,short)
 !	subroutine ivar2filename(ivar,filename)
@@ -831,6 +833,29 @@
 
 !****************************************************************
 !****************************************************************
+!****************************************************************
+
+	subroutine inum2filename(inum,filename)
+
+! use this to create unique filename
+
+	use shyfem_strings
+
+	implicit none
+
+	integer inum
+	character*(*) filename
+
+	integer isub,i
+	character*80 string
+	character*1, parameter :: dir(2) = (/'x','y'/)
+	integer, save :: idir = 0
+
+        write(filename,'(i4)') inum
+        filename = adjustl(filename)
+
+	end
+
 !****************************************************************
 
 	subroutine ivar2filename(ivar,filename)

@@ -108,6 +108,7 @@
 ! 17.12.2024	ggu	bug fixes for vertical variables, still no 3dmass cons.
 ! 20.12.2024	ggu	finished 3d mass conservation check
 ! 09.03.2025	ggu	avoid access out of bounds in finalize_nslayers()
+! 13.10.2026	ggu	some more docs and writing in boxes_mass_balance_2d()
 !
 ! notes :
 !
@@ -2985,9 +2986,9 @@
 	  volf = vol(ib)			!volume change by fluxes
 	  vole = voledif(ib)			!volume change by eta
 	  vola = max(abs(volf),abs(vole))
-	  vold = abs(volf-vole)
+	  vold = abs(volf-vole)			!absolute difference
 	  volr = 0.
-	  volr = vold/volb	!use total volume
+	  volr = vold/volb			!relative diff, use total volume
 	  errv(ib) = volr
 	  errd(ib) = vold
 	  if( volr .gt. eps ) then
@@ -3007,10 +3008,15 @@
 	end if
 
 	if( bmasserror .and. bw ) then
-	  write(601,*) trim(string),erraver,errmax,eps
+	  string = 'boxes mass balance 2d: '
+	  write(601,*) trim(string),'     aver error' &
+     &				// '        max error   eps'
+	  write(601,*) trim(aline),erraver,errmax,eps
 	  write(601,*) nbox
+	  write(601,*) '        box         relative' &
+     &				// '     absolute       volume'
 	  do ib=1,nbox
-	    write(601,*) ib,errv(ib),errd(ib)
+	    write(601,*) ib,errv(ib),errd(ib),bvol2d(ib)
 	  end do
 	end if
 

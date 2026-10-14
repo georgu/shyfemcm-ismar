@@ -197,6 +197,7 @@
 ! 12.06.2025    clc     set dvols to 0 to avoid compiler warning
 ! 20.03.2026    ggu     changes in sp111() init and set_mass_flux() -> mode
 ! 21.04.2026    ggu     eliminated adjust_mass_flux()
+! 13.10.2026    ggu     call init_flux() for all boundary types
 !
 !***************************************************************
 
@@ -917,7 +918,7 @@
 
         ibtyp = itybnd(ibc)
 	!if( ibtyp <= 0 ) return
-	if( ibtyp <= 1 ) return
+	!if( ibtyp <= 1 ) return
 
         call kmanfend(ibc,kranf,krend)
 

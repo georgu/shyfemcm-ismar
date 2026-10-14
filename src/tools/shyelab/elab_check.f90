@@ -36,6 +36,7 @@
 ! 23.09.2019	ggu	in fem_check handle case when atime==-1
 ! 17.04.2020	ggu	better handling of directional variables
 ! 18.05.2020	ggu	period week implemented
+! 13.10.2026	ggu	in fem_check() use varnum instead of varid if ivar==-1
 
 !**************************************************************************
 
@@ -83,6 +84,7 @@
 	integer, save :: naccum,ivect
 	logical, save :: bfirst = .true.
 	logical, save :: bmeteo = .false.
+	logical, save :: bvarid = .true.
 	double precision, save :: atime0,aatime,atimelast
 	double precision, allocatable, save :: accum(:)
 	double precision, allocatable, save :: astd(:)
@@ -130,6 +132,7 @@
 	  idt = 0				!compute total
 	  ivect = 0
 	  aatime = 0.
+	  bvarid = .true.			!hopefully we have a varid
 	  string = "all year month day week none"
 	  i = index(string,trim(scheck))
 	  if( i == 0 ) then
@@ -141,7 +144,7 @@
 	  if( scheck == 'year' ) idt = 1	!compute on year
 	  if( scheck == 'month' ) idt = 2	!compute on month
 	  if( scheck == 'day' ) idt = 3		!compute on day
-	  if( scheck == 'week' ) idt = 7	!compute on day
+	  if( scheck == 'week' ) idt = 7	!compute on week
 	  if( scheck == 'none' ) idt = -1	!output every time step
 	  do iv=1,nvar
 	    string = strings(iv)
@@ -174,6 +177,7 @@
             end if
 
             call ivar2filename(ivar,filename)
+	    if( ivar == -1 ) call inum2filename(iv,filename)
 	    call ivar2string(ivar,string,isub)
             call strings_pop_direction(filename)
             file = 'aver.' // trim(filename) // '.txt'
@@ -185,6 +189,7 @@
 	    ius(iv) = iu
 	    ivars(iv) = ivar
 	    strings_out(iv) = string
+	    if( ivar == -1 ) bvarid = .false.		!we do not have a varid
 	  end do
 
 	  if( ivect > 0 .and. .not. bquiet ) then
@@ -278,17 +283,23 @@
 
 	  if( bfirst  .and. bw .and. bfile ) then
 	    write(6,*)
-	    write(6,'(a)') 'varid naccum         date_and_time'// &
+	    if( bvarid ) then
+	      write(6,'(a)') ' varid naccum         date_and_time'// &
      &			'    minimum       average       maximum'
+	    else
+	      write(6,'(a)') 'varnum naccum         date_and_time'// &
+     &			'    minimum       average       maximum'
+	    end if
 	    bfirst = .false.
 	  end if
 
 	  do iv=1,nvar
 	    if( bw .and. bfile ) then
 	      ivar = ivars(iv)
+	      if( ivar == -1 ) ivar = iv	!use varnum
 	      write(6,1000) ivar,naccum,dline,amin(iv),accum(iv),amax(iv)
 	    end if
- 1000	    format(i5,i7,2x,a20,2x,3e14.6)
+ 1000	    format(i6,i7,2x,a20,2x,3e14.6)
 	    iu = ius(iv)
 	    if( bfile ) then
 	      write(iu,1010) dline,amin(iv),accum(iv),amax(iv),astd(iv)
