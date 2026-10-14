@@ -239,3 +239,61 @@
 !
 !**********************************************************************
 
+!
+!**********************************************************************
+!
+!---------------------------------------------------------------
+!
+!         s i m p l i f i e d   e q u a t i o n   o f   s t a t e
+!
+!           linearized density of sea-water
+!
+!                  sigma_lin(s,t) = rho(s,t) - 1000.
+!
+!     linearized around the reference state:
+!
+!          t0 = 10. degrees centigrade
+!          s0 = 35. promille
+!          rho0 = 1025. kg/m**3   (density at reference state,
+!				   default SHYFEM one)
+!
+!     standard coefficients for sea-water:
+!
+!          alpha = 2.0e-4  1/degC     (thermal expansion coefficient)
+!          beta  = 7.6e-4  1/promille (saline contraction coefficient)
+!
+!     input units (real) :
+!
+!          t - temperature in degree centigrade
+!          s - salinity in promille
+!
+!     output units (real) :
+!
+!          sigma_lin = rho - 1000.   with rho in kg/m**3
+!
+!---------------------------------------------------------------
+!
+	real function sigma_lin(s,t)
+!
+! computes linearized density
+!
+	implicit none
+!
+	real s,t
+!
+	real t0,s0
+	real alpha,beta
+	real rho0
+!
+	parameter( t0 = 10. )
+	parameter( s0 = 35. )
+	parameter( alpha = 2.0e-4 )
+	parameter( beta = 7.6e-4 )
+	parameter( rho0 = 1025. )
+!
+	sigma_lin = rho0 * ( 1. - alpha*(t-t0) + beta*(s-s0) ) - 1000.
+!
+	return
+	end
+!
+!**********************************************************************

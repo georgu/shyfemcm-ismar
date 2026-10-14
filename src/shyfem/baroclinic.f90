@@ -721,6 +721,7 @@
 	double precision dresid
 ! functions
 	real sigma_stp
+	!real sigma_lin
 
 	rho0 = rowass
 	sigma0 = rho0 - 1000.
@@ -760,6 +761,7 @@
 	
 	    salt = max(0.,saltv(l,k))
 	    rhop = sigma_stp(salt,tempv(l,k),pres) - sigma0
+	    !rhop = sigma_lin(salt,tempv(l,k)) - sigma0
 	    call set_rhomud(k,l,rhop)
 
 	    nresid = nresid + 1
@@ -816,6 +818,7 @@
 	double precision dresid
 ! functions
 	real sigma_stp
+	!real sigma_lin
 
 	iter_max = 10
 	eps = 1.e-7
@@ -857,6 +860,7 @@
 	
 	    salt = max(0.,saltv(l,k))
 	    rhop = sigma_stp(salt,tempv(l,k),pres) - sigma0
+	    !rhop = sigma_lin(salt,tempv(l,k)) - sigma0
 	    call set_rhomud(k,l,rhop)
 
 	    dresid = dresid + (rhov(l,k)-rhop)**2
