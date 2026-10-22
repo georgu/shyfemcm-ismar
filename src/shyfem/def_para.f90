@@ -1121,7 +1121,7 @@
 	call addpar('dhpar',0.)		!diffusion parameter
 
 ! The following parameters deal with the discretization of nonlinear advection
-! terms. For the momentum equation, only a first-order upwind flux is available.
+! terms. For the momentum equation, only a first-order upwind scheme is available.
 ! For horizontal momentum, you can choose between two discretizations:
 ! upwinding by node or by face. For scalars, you can prescribe your
 ! favourite TVD numerical flux:
@@ -1138,27 +1138,31 @@
 !		|itvdh| to a value greater than 0 chooses a second-order
 !		scheme. In particular, a value of 1 selects a Lax-Wendroff
 !		scheme, a value of 2 a MUSCL scheme, and a value of 3
-!		a Fromm scheme. Please note that these schemes are
+!		a Fromm scheme. Please note that Fromm scheme is
 !		not monotone and can produce spurious oscillations
-!		near sharp fronts. For non-smooth flows, care must be
-!		taken to activate a TVD limiter with |itvd|.
-!		This feature is still experimental, so use it with care.
-!		(Default 0)
+!		near sharp fronts. For non-smooth flows, choose a value
+!		of 1 or 2. (Default 0)
 ! |itvdv|	Type of vertical advection scheme used for the scalar
 !		transport and diffusion
 !		equation. Normally an upwind scheme is used (0), but setting
-!		the parameter |itvdv| to 1 chooses a TVD scheme. This feature
-!		is still experimental, so use it with care. (Default 0)
-! |itvd|	Type of limiter used for the high-order horizontal advection
-!		scheme in the transport and diffusion equation.
+!		the parameter |itvdv| to a value greater than 0 chooses a
+!		second order scheme. In particular, a value of 1 selects
+!		a Lax-Wendroff scheme, a value of 2 a MUSCL scheme, and a value of 3
+!		a Fromm scheme.  Please note that Fromm scheme is
+!		not monotone and can produce spurious oscillations
+!		near sharp fronts. For non-smooth flows, choose a value
+!		of 1 or 2. (Default 0)
+! |itvd|	Type of limiter used for the second order horizontal advection
+!		scheme in the transport and diffusion equation in case of
+!		|itvdh=1,2|.
 !		|itvd=0| corresponds to an unlimited scheme, but setting
 !		the parameter |itvd| to a value greater than 0
 !		chooses a TVD scheme with a Superbee limiter. Values 1 and 2
-!		differ in the computation of the smoothness sensor used in
-!		the limiter. A value of 1 uses an approximation of the
+!		differ in the computation of the smoothness sensor on
+!		unstructured triangular grids.
+!		A value of 1 uses an approximation of the
 !		upwind gradient, while a value of 2 explicitly computes
-!		the gradient of the upwind cell.
-!		(Default 2).
+!		the gradient of the upwind cell. (Default 2)
 
 	call addpar('imtvd',0.)		!momentum horizontal scheme
 	call addpar('itvdh',0.)		!scalar horizontal scheme?

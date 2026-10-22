@@ -140,6 +140,7 @@
 	icall = 1
 
 	itvdh_type = nint(getpar('itvdh'))
+	itvdv_type = nint(getpar('itvdv'))
 	itvd_type  = nint(getpar('itvd'))
 	btvd2 = itvd_type == 2
 	!write(6,*) 'tvd type: ',itvd_type
@@ -817,7 +818,7 @@
 	        gcx = gxv(l,ki)
 	        gcy = gyv(l,ki)
 	        grad = gcx*dx + gcy*dy
-		delta = 0.5*psi*grad
+		delta = 0.5*grad
 	      end if
 
 	      conf = conci + delta
@@ -857,7 +858,7 @@
 	        gcx = gxv(l,kj)
 	        gcy = gyv(l,kj)
 	        grad = gcx*dx + gcy*dy
-		delta = 0.5*psi*grad
+		delta = 0.5*grad
 	      end if
 
 	      conf = concj - delta
@@ -1007,6 +1008,7 @@
 !                     l+2             u
 ! ------------------- l+2 -----------------------
 
+	use mod_tvd
 	use levels, only : nlvdi,nlv
 
 	implicit none
@@ -1025,10 +1027,10 @@
         double precision eps
         parameter (eps=1.e-8)
 
-	integer ii,l,lu
+	integer ii,l,lu,ld,lc
 	double precision w,fl
 	double precision conc,cond,conu,conf
-	double precision hdis,alfa,rf,psi
+	double precision hdis,alfa,rf,psi,delta
 
 	double precision, parameter :: zero = 0.
 	double precision, parameter :: one = 1.
@@ -1049,28 +1051,38 @@
 
 	  if( btvdv ) then
 	    if( w .gt. 0. ) then
-	      !conc = cl(l+1,ii)
-	      cond = cl(l,ii)
-	      conu = cond
-	      lu = l + 2
-	      if( lu .le. lmax ) conu = cl(lu,ii)
+	      ld = l
+	      lc = l + 1
+	      lu = min(l + 2, lmax)
 	    else
-	      !conc = cl(l,ii)
-	      cond = cl(l+1,ii)
-	      conu = cond
-	      lu = l - 1
-	      if( lu .ge. lmin ) conu = cl(lu,ii)
+	      ld = l + 1
+	      lc = l
+	      lu = max(l - 1, lmin)
 	    end if
 
-	    hdis = 0.5*(hold(l,ii)+hold(l+1,ii))
+	    !conc = cl(lc,ii)
+	    cond = cl(ld,ii)
+	    conu = cond				!upwind method at first internal interface
+	    if((lu .ge. lmin) .and. (lu .le. lmax)) conu = cl(lu,ii)
+
+	    hdis = 0.5*(hold(ld,ii)+hold(lc,ii))
 	    alfa = dt * abs(w) / hdis
             if( abs(conc-cond) .lt. eps ) then
               rf = -1.
             else
               rf = (cond-conu) / (cond-conc) - 1.
             end if
-            psi = max(zero,min(one,two*rf),min(two,rf))  ! superbee
-            conf = conc + half*psi*(cond-conc)*(one-alfa)
+            psi = max(zero,min(one,two*rf),min(two,rf))	! superbee
+
+	    if ( itvdv_type .eq. 1 ) then		!Lax-Wendroff
+              delta = half*psi*(cond-conc)*(one-alfa)
+	    else if ( itvdv_type .eq. 2 ) then		!Muscl
+	      delta = half*psi*(cond-conc)
+	    else if ( itvdv_type .eq. 3 ) then		!Fromm
+	      hdis = 0.5*(hold(lu,ii)+hold(lc,ii)) + 0.5*(hold(lc,ii)+hold(ld,ii))
+	      delta = half*(cond-conu)/hdis * hold(lc,ii)
+	    end if
+            conf = conc + delta
 	  end if
 
 	  vflux(l,ii) = w * conf
