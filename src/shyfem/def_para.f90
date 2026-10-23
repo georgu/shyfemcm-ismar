@@ -639,7 +639,8 @@
 !		smaller than 1 in order to allow for fractional time steps.
 !		A value of 0.001 allows for time steps of down to
 !		1 millisecond. (Default 1)
-! |isubs|	By default, the time step for the scalar equation is
+! |isubs|	Substepping the scalar equation.
+!		By default, the time step for the scalar equation is
 !		automatically adjusted to produce a Courant number for the
 !		scalar equation of 1, which may correspond to time-stepping the scalar
 !		equation with a smaller time step than the hydrodynamics.
@@ -718,10 +719,28 @@
 	call addpar('rkscheme',111.)		!type of runge-kutta scheme
 
 
-! These parameters define the weighting of time level in the
-! ImEx algorithm |rkscheme=111|. With these parameters the damping
-! of gravity or Rossby waves can be controlled. Only modify them if
-! you know what you are doing.
+! The partitioning of the right-hand side of the shallow water equations into
+! stiff and non-stiff components follows the requirement of using a large time
+! step that is not restricted by the gravity wave speed or by the vertical
+! viscosity/diffusivity. This is obtained by treating the mass flux term in the
+! continuity equation, the free surface gradient term, and all vertical
+! viscous/diffusive terms in the momentum/scalar equation semi-implicitly. The viscous
+! term may be very stiff in shallow areas and is typically treated with an
+! L-stable scheme. The Coriolis force can be treated implicitly to avoid
+! anti-frictional effects that produce spurious acceleration, or to avoid an
+! energy imbalance from the time discretization of the rotation term; for
+! example, the Crank-Nicolson scheme conserves the energy of an inertial
+! oscillator. Additionally, on a steep bathymetry the mass-transfer function
+! between the layers may be large, and in such cases the vertical advection
+! terms severely restrict the explicit time step. The vertical advection terms
+! in the scalar equation can therefore be treated implicitly.
+! The remaining nonlinear advection terms and the internal pressure gradient
+! term in the momentum equation are treated explicitly.
+
+! The next parameters allows to tune the above choices,
+! fixing the implicitness level in the algorithm |rkscheme=111|.
+! With these parameters the damping of gravity and Rossby waves can be
+! controlled. Only modify them if you known what you are doing.
 !
 ! |azpar|	Weighting of the new time level of the transport
 !		terms in the continuity equation. (Default 0.5)

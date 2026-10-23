@@ -80,6 +80,7 @@
 	double precision am,at,az,af,av,ad,aa,gamma,chi,a32
 	real getpar
 	integer itemp,isalt,iconz
+	logical btvdv
 
 	!The ImEx triplet $(s, \sigma, p)$ identifies a scheme where:
 	!1/ $s$ is the number of non-trivial stages of the implicit scheme,
@@ -87,9 +88,16 @@
 	!3/ $p$ is the combined order of accuracy.
 	rkscheme = nint(getpar('rkscheme'))
 
+	!Are there tracers? We need to allocate register vectors for them.
 	itemp = nint(getpar('itemp'))
 	isalt = nint(getpar('isalt'))
 	iconz = nint(getpar('iconz'))
+
+	!Is the vertical tracer advection scheme TVD? With TVD tracer
+	!advection, vertical advection cannot be treated implicitly.
+	!Depending on the ImEx scheme, this either raises an error or
+	!silently falls back to an explicit scheme.
+	btvdv = nint(getpar('itvdv')) .gt. 0
 
         if( rkscheme .ne. 111  .and.  &
      &      rkscheme .ne. 222  .and.  &
@@ -178,6 +186,18 @@
             write(6,*) 'adpar and atpar must be equal.'
             stop 'error stop mod_rungekutta_init: incompatible params'
           end if
+	  if( btvdv .and. aa .ne. 0. ) then
+            write(6,*) 'You are using the rkscheme=111 with:'
+	    write(6,*) 'aapar = ',aa
+	    write(6,*) 'btvdv = ',btvdv
+	    write(6,*) 'Cannot use vertical TVD scheme'
+	    write(6,*) 'together with implicit vertical advection.'
+	    write(6,*) 'Please set:'
+	    write(6,*) 'itvdv = 0 (no vertical TVD)'
+	    write(6,*) 'or:'
+	    write(6,*) 'aapar = 0 (explicit scheme) in the STR file.'
+	    stop 'error stop mod_rungekutta_init: incompatible params'
+	  end if
 
           n_rkstages = 1
 
@@ -255,8 +275,6 @@
 	  a_irk(2,3) = gamma
 
 	  a_srk = a_irk
-	  a_crk = 0.
-	  a_crk(:,1:n_rkstages) = a_erk
 
 	  b_erk(1)  = 1.-1./(2.*gamma)
 	  b_erk(2)  = 1./(2.*gamma)
@@ -266,11 +284,18 @@
 	  b_irk(3)  = gamma
 
 	  b_srk  = b_irk
-	  b_crk  = 0.
-	  b_crk(1:n_rkstages) = b_erk
 
 	  c_rk(1)  = gamma
 	  c_rk(2)  = 1.
+
+	  a_crk = a_irk
+	  b_crk = b_irk
+	  if( btvdv ) then
+	    a_crk = 0.
+	    a_crk(:,1:n_rkstages) = a_erk
+	    b_crk = 0.
+	    b_crk(1:n_rkstages) = b_erk
+	  end if
 
 	!Another ARK(2,2,2) of (Noelle.2014). The implicit scheme is
 	!composed of a first stage with Heun’s method followed by a
@@ -302,8 +327,6 @@
 	  a_irk(2,3) = 0.5
 
 	  a_srk = a_irk
-	  a_crk = 0.
-	  a_crk(:,1:n_rkstages) = a_erk
 
 	  b_erk(1)  = 0.
 	  b_erk(2)  = 1.
@@ -313,11 +336,18 @@
 	  b_irk(3)  = 0.5
 
 	  b_srk  = b_irk
-	  b_crk  = 0.
-	  b_crk(1:n_rkstages) = b_erk
 
 	  c_rk(1)  = 0.5
 	  c_rk(2)  = 1.
+
+	  a_crk = a_irk
+	  b_crk = b_irk
+	  if( btvdv ) then
+	    a_crk = 0.
+	    a_crk(:,1:n_rkstages) = a_erk
+	    b_crk = 0.
+	    b_crk(1:n_rkstages) = b_erk
+	  end if
 
 	!The ARK(2,3,2) where the implicit scheme is TR-BDF2 introduced
 	!in (Bank,1985) and analysed in (Hosea,1996) and the explicit scheme
@@ -379,8 +409,6 @@
 	  a_irk(3,4) = 0.
 
 	  a_srk = a_irk
-	  a_crk = 0.
-	  a_crk(:,1:n_rkstages) = a_erk
 
 	  b_erk(1)  = 1.-(1.-2.*chi)/(4.*chi)-chi
 	  b_erk(2)  = (1.-2.*chi)/(4.*chi)
@@ -392,12 +420,19 @@
 	  b_irk(4)  = 0.
 
 	  b_srk  = b_irk
-	  b_crk  = 0.
-	  b_crk(1:n_rkstages) = b_erk
 
 	  c_rk(1)  = 2*chi
 	  c_rk(2)  = 1.
 	  c_rk(3)  = 1.
+
+	  a_crk = a_irk
+	  b_crk = b_irk
+	  if( btvdv ) then
+	    a_crk = 0.
+	    a_crk(:,1:n_rkstages) = a_erk
+	    b_crk = 0.
+	    b_crk(1:n_rkstages) = b_erk
+	  end if
 
 	!The third order Strong Stability Preserving SSP scheme.
 	!The implicit scheme is coded as the explicit one with zero
@@ -442,8 +477,6 @@
 	  a_irk(3,4) = 0.
 
 	  a_srk = a_irk
-	  a_crk = 0.
-	  a_crk(:,1:n_rkstages) = a_erk
 
 	  b_erk(1)  = 1./6.
 	  b_erk(2)  = 1./6.
@@ -455,12 +488,19 @@
 	  b_irk(4)  = 0.
 
 	  b_srk  = b_irk
-	  b_crk  = 0.
-	  b_crk(1:n_rkstages) = b_erk
 
 	  c_rk(1)  = 1.
 	  c_rk(2)  = 1./2.
 	  c_rk(3)  = 1.
+
+	  a_crk = a_irk
+	  b_crk = b_irk
+	  if( btvdv ) then
+	    a_crk = 0.
+	    a_crk(:,1:n_rkstages) = a_erk
+	    b_crk = 0.
+	    b_crk(1:n_rkstages) = b_erk
+	  end if
 
 	end if
 

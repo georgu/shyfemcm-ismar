@@ -213,16 +213,6 @@
 	dt=ddt/rstot
 	
 	btvdv = itvdv .gt. 0
-	if( btvdv .and. coeff_crk(curr_stage+1) .ne. 0. ) then
-	  write(6,*) 'aapar = ',coeff_crk(curr_stage+1)
-	  write(6,*) 'itvdv = ',itvdv
-	  write(6,*) 'Cannot use vertical TVD scheme'
-	  write(6,*) 'together with implicit vertical advection.'
-	  write(6,*) 'Please set:'
-	  write(6,*) 'itvdv = 0 (no vertical TVD) in the STR file.'
-	  write(6,*) 'or use an implicit vertical advection scheme.'
-	  stop 'error stop conz3d: vertical tvd scheme'
-	end if
 
 	btvd2 = itvd == 2
 	if( btvd2 ) call tvd_mpi_run(cc)
