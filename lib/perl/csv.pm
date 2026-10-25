@@ -220,19 +220,19 @@ sub info {
 
   my $names = $self->{names};
 
-  print "file name: $self->{file}\n";
-  print "separator: $self->{separator}\n";
-  print "extension: $self->{extension}\n";
-  print "lines:     $self->{nlines}\n";
-  print "columns:   $self->{ncols}\n";
+  print STDERR "file name: $self->{file}\n";
+  print STDERR "separator: $self->{separator}\n";
+  print STDERR "extension: $self->{extension}\n";
+  print STDERR "lines:     $self->{nlines}\n";
+  print STDERR "columns:   $self->{ncols}\n";
 
-  print "names of columns:\n";
+  print STDERR "names of columns:\n";
   my $sep = "";
   foreach my $item (@$names) {
-    print "$sep$item";
+    print STDERR "$sep$item";
     $sep = "|";
   }
-  print "\n";
+  print STDERR "\n";
 }
 
 #-------------------------------------------------------

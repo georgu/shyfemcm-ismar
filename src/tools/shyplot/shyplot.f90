@@ -848,6 +848,7 @@
 
 	call open_next_file_by_name(shyfilename,idold,id)
 	if( id == 0 ) stop
+	call set_id_standard(id)
 
 	if( bprogress ) call handle_progress(aline,shyfilename)
 
@@ -985,7 +986,7 @@
 	call init_regular
 	call info_regular(bregplot,nx,ny,dx,dy)
 	if( bregplot .and. .not. bquiet ) then
-	  write(6,*) 'regular grid plotting: ',nx,ny,dx,dy
+	  write(6,*) 'regular grid: ',nx,ny,dx,dy
 	end if
 
         call initialize_color
@@ -1469,7 +1470,7 @@
 	call init_regular
 	call info_regular(bregplot,nx,ny,dx,dy)
 	if( bregplot .and. bquiet ) then
-	  write(6,*) 'regular grid plotting: ',nx,ny,dx,dy
+	  write(6,*) 'regular grid: ',nx,ny,dx,dy
 	end if
 
         call initialize_color

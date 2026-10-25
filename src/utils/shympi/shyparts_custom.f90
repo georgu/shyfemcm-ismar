@@ -29,6 +29,7 @@
 ! 12.04.2022	ggu	adapted
 ! 29.10.2023	ggu	ready for custom partitioning
 ! 10.04.2024	ggu	restructured for sdda algorithm
+! 25.10.2026	ggu	added iaux for new call to floodfill_elem()
 !
 !****************************************************************
 
@@ -860,16 +861,17 @@
 	integer epart(nel)
 	
 	integer nmax,i,iae
+	integer iaux(max(nkn,nel))
 
 	nmax = maxval(npart)
 	write(6,*) 'stats: ',nmax
 	call domain_stats(nmax,nel,epart)
 
 	do i=0,nmax
-	  call floodfill_elem(nel,epart,i,iae)
+	  call floodfill_elem(nel,epart,i,iae,iaux)
 	  write(6,*) 'domain by elems: ',i,iae
 	  if( iae > 1 ) goto 99
-	  call floodfill_elem(nkn,npart,i,iae)
+	  call floodfill_elem(nkn,npart,i,iae,iaux)
 	  write(6,*) 'domain by nodes: ',i,iae
 	  if( iae > 1 ) goto 99
 	end do

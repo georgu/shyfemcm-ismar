@@ -57,6 +57,7 @@
 ! 09.05.2023    lrp     introduce top layer index variable
 ! 05.06.2023    lrp     introduce z-star
 ! 17.10.2024    ggu     in shy_make_basin_aver() allow for percentile
+! 25.10.2026    ggu     new variable idstd and routine set_id_standard()
 !
 !***************************************************************
 
@@ -82,6 +83,8 @@
         double precision, save, allocatable :: std(:,:,:,:)
         double precision, save, allocatable :: dir(:,:,:,:,:)
 
+	integer, save :: idstd = 0
+
         integer, parameter :: idir = 16
         real, parameter :: adir = 360. / idir
 
@@ -93,6 +96,16 @@
 !==================================================================
 	contains
 !==================================================================
+
+	subroutine set_id_standard(id)
+
+	integer id
+
+	idstd = id
+
+	end
+
+!***************************************************************
 
 	subroutine shyutil_init(nkn,nel,nlv)
 

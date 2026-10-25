@@ -96,6 +96,7 @@
 ! 11.11.2025    ggu     new option layer
 ! 13.11.2025    ggu     new option stnames
 ! 09.01.2026    ggu     new code for cover option
+! 25.10.2026    ggu     new option exgrd
 !
 !************************************************************
 
@@ -187,6 +188,7 @@
 	integer, save :: ifreq			= 0
 	logical, save :: b2d			= .false.
 	logical, save :: bvorticity		= .false.
+	logical, save :: bexgrd			= .false.
 
 	logical, save :: bsumvar		= .false.
         character*80, save :: sumvarid		= ' '
@@ -672,6 +674,9 @@
 	call clo_add_option('vorticity',.false. &
      &			,'compute vorticity for hydro file')
 
+        call clo_add_option('exgrd',.false. &
+     &                  ,'extract grid from shy file to out_basin.grd')
+
 	call clo_add_option('smooth alpha,loop',ssmooth &
      &			,'smooths field with alpha and loop')
 
@@ -864,12 +869,13 @@
           call clo_get_option('sumvarid',sumvarid)
           call clo_get_option('sumvarnum',sumvarnum)
           call clo_get_option('threshold',threshold)
+          call clo_get_option('percentile',perc)
           call clo_get_option('fact',fact)
           call clo_get_option('freq',ifreq)
           call clo_get_option('2d',b2d)
           call clo_get_option('vorticity',bvorticity)
+          call clo_get_option('exgrd',bexgrd)
           call clo_get_option('smooth',ssmooth)
-          call clo_get_option('percentile',perc)
 	end if
 
 	if( bshowall .or. bshyfile ) then

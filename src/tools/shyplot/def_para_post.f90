@@ -231,6 +231,7 @@
 ! 18.09.2024    ggu     new parameters lgrcol, lgrtyp, rfaccol
 ! 13.11.2025    ggu     new parameter rcircle
 ! 22.05.2026    ggu     new parameter tzstring
+! 25.10.2026    ggu     new parameters hzdry and iconnect
 !
 !************************************************************************
 
@@ -427,6 +428,14 @@
 !			will not fill dry areas with gray color.
 !			(Default -1)
 
+! |hzdry|		Minimum water column for the element to be wet.
+!			If there is less water in the element, 
+!			the element is considered to be dry.
+!			(Default 0.05)
+
+! |iconnect|		If this parameter is 1, also the non connected
+!			areas will be plotted with the value of |dgray|.
+
 ! |hgray|		Whereas |dgray| is normally only coloring
 !			elements that are dry, you can also color elements
 !			shallower than a given depth |hgray|. E.g., a value
@@ -435,6 +444,8 @@
 !			marshes). (Default -10000)
 
 	call addpar('dgray',-1.)
+	call addpar('hzdry',0.05)
+	call addpar('iconnect',0.)
 	call addpar('hgray',-10000.)	!gray all elems with h < hgray
 
 ! |dxygrd|		Grid size if the results are interpolated on

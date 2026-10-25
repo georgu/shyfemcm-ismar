@@ -148,6 +148,7 @@
 !  13.10.2025	ggu	introduced bintp
 !  18.05.2026	ggu	bug fix for regular plot
 !  19.05.2026	ggu	more bug fixes for regular plot
+!  25.10.2026	ggu	new routine handle_mask()
 ! 
 !  notes :
 ! 
@@ -683,6 +684,115 @@
 
 ! **********************************************************
 
+	subroutine handle_mask
+
+! handle setting up mask for dry and not connected areas
+
+	use basin
+	use mod_hydro_plot
+	use shyutil
+	use shyfile
+	!use mod_geom
+	use mod_connect
+	use plotutil
+
+	implicit none
+
+	logical, save :: bdebug = .true.
+	logical bnocon
+	integer id,ierr
+	integer ic,ia,ie,netot
+	integer idry,iwet,imain
+	integer icmax,iamax
+	real href,hzoff,hzdry
+	real simpar(3)
+	real getpar
+	integer nareas
+	integer, allocatable :: iareas(:),acode(:),icount(:)
+
+!-----------------------------------------------------------
+! set up parameters
+!-----------------------------------------------------------
+
+	id = idstd
+        call shy_get_simpar(id,simpar)
+	href = 0.
+	hzoff = simpar(2)
+	hzdry = getpar('hzdry')
+	bnocon = ( nint(getpar('iconnect')) == 1 )
+
+!-----------------------------------------------------------
+! set up mask for dry areas - bwater is true for wet areas
+!-----------------------------------------------------------
+
+        call reset_dry_mask
+        call adjust_no_plot_area
+	call set_dry_mask(bwater,shy_znv,shy_zenv,href,hzdry)
+        call make_dry_node_mask(bwater,bkwater)
+	iwet = count( bwater )
+	idry = nel - iwet
+
+!-----------------------------------------------------------
+! count not connected areas
+!-----------------------------------------------------------
+
+	call connect_init(nkn,nel,nen3v,ierr)
+	if( ierr /= 0 ) stop 'error stop handle_mask: connect_init'
+
+	allocate(iareas(nel),acode(nel))
+	acode = 0
+	where( .not. bwater ) acode = 1		!dry
+	call floodfill_elem(nel,acode,0,nareas,iareas)
+	allocate(icount(0:nareas))
+	icount = 0
+	do ie=1,nel
+	  ia = iareas(ie)
+	  icount(ia) = icount(ia) + 1
+	end do
+	netot = 0
+	icmax = 0
+	do ia=0,nareas
+	  ic = icount(ia)
+	  !if( ia < 10 ) write(6,*) ia,ic
+	  netot = netot + ic
+	  if( ic > icmax ) then
+	    icmax = ic			!max count of basin
+	    iamax = ia			!area of max count
+	  end if
+	end do
+	imain = icount(iamax)
+
+	if( nel /= netot ) stop 'error stop handle_mask: internal error'
+
+!-----------------------------------------------------------
+! if needed also do not plot not connected areas
+!-----------------------------------------------------------
+
+	if( bnocon ) where( iareas /= iamax ) bwater = .false.
+
+!-----------------------------------------------------------
+! debug output
+!-----------------------------------------------------------
+
+	if( bsdebug ) then
+	  write(6,*) 'href,hzdry: ',href,hzdry
+	  write(6,*) 'total number of domains found: ',nareas
+	  write(6,*) 'global connected domain: ',iamax,icmax
+	  write(6,*) 'total elems:         ',netot
+	  write(6,*) 'wet elems:           ',iwet
+	  write(6,*) 'dry elems:           ',idry
+	  write(6,*) 'not connected elems: ',netot-imain-idry
+	  write(6,*) 'eliminated elems:    ',count(.not.bwater)
+	end if
+	
+!-----------------------------------------------------------
+! end of routine
+!-----------------------------------------------------------
+
+	end
+
+! **********************************************************
+
 	subroutine plo_scal_val(n,pa,title)
 
 	use basin
@@ -692,6 +802,8 @@
 	integer n
 	real pa(n)
         character*(*) title
+
+	call handle_mask
 
 	if( n == nkn ) then
 	  call ploval(nkn,pa,title)
@@ -2501,10 +2613,11 @@
 
 	use mod_hydro_plot
 	use basin
+	use plotutil
 
 	implicit none
 
-	integer ie
+	integer ie,idry
 	real dgray,hgray,h
 	real x(3),y(3)
 
@@ -2513,6 +2626,9 @@
 	dgray = dgetpar('dgray')
 	hgray = dgetpar('hgray')
 	if( dgray < 0 ) return
+
+	idry = count( .not. bwater )
+	if( bverb ) write(6,*) 'plotting dry areas with color ',dgray,idry
 
 	call qgray(dgray)
 

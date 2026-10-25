@@ -85,6 +85,7 @@
 ! 10.10.2025    ggu     bug fix for vorticity computation (belem was true)
 ! 17.10.2025    ggu     prepared for elemental values
 ! 11.11.2025    ggu     updated with layer indication
+! 25.10.2026    ggu     implemented bexgrd to extract grid from shy to grd file
 !
 !**************************************************************
 
@@ -225,6 +226,11 @@
 	call shy_copy_levels_from_shy(id)
 
 	call shy_proj
+
+        if( bexgrd ) then
+          call basin_to_grd
+          call grd_write('out_basin.grd')
+        end if
 
 	!call test_internal_numbering(id)
 
