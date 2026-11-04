@@ -236,6 +236,7 @@
 ! 16.04.2025    ggu     new parameter wsettl
 ! 14.09.2026    ggu     new parameter velobs
 ! 22.09.2026    ggu     new parameter veltau
+! 03.11.2026    ggu     new parameters idtbox and idtbeach
 !
 !************************************************************************
 
@@ -1255,7 +1256,7 @@
 
 !c------------------------------------------------------------------------
 
-! DOCS	CC	Concentrations
+! DOCS	LIM	Limiting concentrations
 !
 ! The next parameters deal with limiting the scalars of temperature,
 ! salinity, and concentration to reasonable values. They should only
@@ -1305,6 +1306,46 @@
 ! DOCS	END
 
 !c------------------------------------------------------------------------
+
+! DOCS	BOXES		Generation of box files for the box model
+!
+! The next parameters define the output frequency of the
+! box files that are needed by the box model GESTAS. If the parameter
+! |idtbox| is 0, then no box data will be produced. Please note that
+! in the section |$name| the parameter |boxes| must be set to the
+! file that contains the information on the box layout.
+!
+! |idtbox|, |itmbox|	Time step and start time for writing the box files
+
+	call addpar('idtbox',0.)	!for boxes
+	call addpar('itmbox',-1.)
+
+! DOCS	END
+
+!c------------------------------------------------------------------------
+
+! DOCS	Beaching	Beaching algorithm
+!
+! The next parameters define the output frequency of the
+! beaching (|.beach.shy|) and burrying (|.burry.shy|) files.
+! The beaching algorithm is an Eulerian algorithm that simulates
+! the concentration of material along the coastline. Similar, the
+! burrying algorithm decides how much of the tracer is accumulating
+! in the sediments. To be meaningfull, the values of the sinking
+! velocities should be set (negative for buoyant tracers).
+!
+! |idtbeach|, |itmbeach|	Time step and start time for writing the 
+!				beaching and burrying files for the
+!				beaching algorithm. If |idtbeach| is 0
+!				the beaching algorithm is not run
+!				and no output is produced.
+
+	call addpar('idtbeach',0.)	!for beaching
+	call addpar('itmbeach',-1.)
+
+! DOCS	END
+
+!c------------------------------------------------------------------------
 !c------------------------------------------------------------------------
 !c------------------------------------------------------------------------
 !c------------------------------------------------------------------------
@@ -1346,9 +1387,6 @@
 !c rain
 
 	call addpar('zdist',0.)		!distributed water level
-
-	call addpar('idtbox',0.)	!for boxes
-	call addpar('itmbox',-1.)
 
 	call addpar('ihwadv',0.)        !vert advection of horiz momentum
 
@@ -2093,6 +2131,11 @@
 
         call addfnm('bfmini',' ')
 	call addfnm('offlin',' ')
+
+! |boxes|	Name of file that contains the information to run 
+!		the box model. This was formally called |boxes.txt|.
+
+        call addfnm('boxes',' ')
 
 ! |fricin|	Name of file containing initial values for friction. The values
 !		must be compatible with the friction type given by |ireib|.

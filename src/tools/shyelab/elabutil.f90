@@ -97,6 +97,7 @@
 ! 13.11.2025    ggu     new option stnames
 ! 09.01.2026    ggu     new code for cover option
 ! 25.10.2026    ggu     new option exgrd
+! 28.10.2026    ggu     new option csv (bcsv and scsv)
 !
 !************************************************************
 
@@ -165,6 +166,9 @@
 
 	logical, save :: bcheck			= .false.
         character*80, save :: scheck		= ' '
+
+	logical, save :: bcsv			= .false.
+        character*80, save :: scsv		= ' '
 
         character*80, save :: newstring		= ' '
         character*80, save :: factstring	= ' '
@@ -721,6 +725,8 @@
      &			,'give dates for averaging in file')
         call clo_add_option('influencemap',.false. &
      &			,'computes influence map from multi-conz')
+        call clo_add_option('csv scenario',' ' &
+     &			,'writes csv file with scenario name')
 
 	call clo_show_next_options
 
@@ -887,6 +893,7 @@
           call clo_get_option('areas',areafile)
           call clo_get_option('dates',datefile)
           call clo_get_option('influencemap',binfluencemap)
+          call clo_get_option('csv',scsv)
 	end if
 
 	if( bshowall .or. blgrfile ) then
@@ -961,6 +968,7 @@
 	barea = ( areafile /= ' ' )
 	bcheck = ( scheck /= ' ' )
 	bresample = ( rbounds /= ' ' )
+	bcsv = ( scsv /= ' ' )
 
 	if( sumvarid /= ' ') bsumvar = .true.
 	if( sumvarnum /= ' ') bsumvar = .true.

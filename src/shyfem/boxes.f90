@@ -109,6 +109,7 @@
 ! 20.12.2024	ggu	finished 3d mass conservation check
 ! 09.03.2025	ggu	avoid access out of bounds in finalize_nslayers()
 ! 13.10.2026	ggu	some more docs and writing in boxes_mass_balance_2d()
+! 03.11.2026	ggu	changed names of output files
 !
 ! notes :
 !
@@ -208,7 +209,7 @@
 
 	logical, save :: bextra = .true.		!write extra info
 	logical, save :: bflush = .true.		!flush after write
-	character*80, save :: boxfile = 'boxes.txt'	!file name of box info
+	character*80, save :: boxfile = ' '		!file name of box info
 	logical, parameter :: bbox3d = .true.		!write 3d results
 	logical, parameter :: bmasserror = .false.	!write mass error
 	logical, parameter :: bmass2d = .true.		!check mass error 2d
@@ -216,6 +217,8 @@
 	logical, parameter :: bassert = .true.		!check consistency
 	logical, parameter :: b777 = .false.		!write debug to 777
 	logical, save :: bdebug_global = .false.	!enable debug
+
+	character*80, save :: simname = ' '		!name of simulation
 
         integer, save :: nbxdim = 0	!maximum for nbox
         integer, save :: nscboxdim = 0	!maximum for nsect
@@ -488,6 +491,10 @@
           	if( .not. has_output_d(da_out) ) icall = -1
 
                 if( icall .eq. -1 ) return
+
+		call getfnm('runnam',simname)	!gets simulation name
+		call getfnm('boxes',boxfile)	!gets name of boxes file
+		if( boxfile == ' ' ) goto 95
 
 		nbc_ob = nbnds()
 		nk_ob = nkbnd()
@@ -865,6 +872,10 @@
 !-----------------------------------------------------------------
 
 	return
+   95	continue
+	write(6,*) 'no name for boxfile given'
+	write(6,*) 'please set boxes in section $name'
+	stop 'error stop wrboxa: no box file'
    97	continue
 	write(6,*) 'error writing record of boxes flx file: ',ivar
 	stop 'error stop wrboxa: record'
@@ -1293,6 +1304,7 @@
 	use basin
 	use mod_depth
 	use evgeom
+	use box, only: simname
 	use shympi
 
 	implicit none
@@ -1343,6 +1355,7 @@
 !-----------------------------------------------------------------
 
 	file = 'boxes_stats.txt'
+	file = trim(simname)//'.boxes.stats.txt'
 	if( shympi_is_master() ) then
 	  iu = ifileo(0,file,'formatted','new')
 	  if( iu <= 0 ) stop 'error stop boxes: opening file'
@@ -1465,6 +1478,7 @@
 !-----------------------------------------------------------------
 
 	file = 'boxes_geom.txt'
+	file = trim(simname)//'.boxes.geom.txt'
 	if( shympi_is_master() ) then
 	  iu = ifileo(0,file,'formatted','new')
 	  if( iu <= 0 ) stop 'error stop boxes: opening file'
@@ -1602,6 +1616,7 @@
 
 ! writes initial conditions boxes_init.txt for eta - still to be done : T/S
 
+	use box, only: simname
 	use shympi
 
 	implicit none
@@ -1616,6 +1631,7 @@
 	integer ifileo
 
 	file = 'boxes_init.txt'
+	file = trim(simname) // '.boxes.init.txt'
 	if( shympi_is_master() ) then
 	  iu = ifileo(0,file,'formatted','new')
 	  if( iu <= 0 ) stop 'error stop boxes: opening file'
@@ -1681,6 +1697,7 @@
 	integer, save :: iu = 0
 
 	file = 'boxes_2d.txt'
+	file = trim(simname) // '.boxes.2d.txt'
 	if( shympi_is_master() ) then
 	  if( iu == 0 ) then
 	    iu = ifileo(0,file,'formatted','new')
@@ -1808,6 +1825,7 @@
 	bcheck = .true.
 
 	file = 'boxes_3d.txt'
+	file = trim(simname) // '.boxes.3d.txt'
 	if( shympi_is_master() ) then
 	  if( iu == 0 ) then
 	    iu = ifileo(0,file,'formatted','new')
@@ -1941,6 +1959,7 @@
 	!          12345678901234567890123456789012345678901234567890
 
 	file = 'boxes_vertical.txt'
+	file = trim(simname) // '.boxes.vertical.txt'
 	if( shympi_is_master() ) then
 	  if( iu == 0 ) then
 	    iu = ifileo(0,file,'formatted','new')
@@ -2875,6 +2894,7 @@
 	integer, save :: iu = 0
 
 	file = 'boxes_meteo.txt'
+	file = trim(simname) // '.boxes.meteo.txt'
 	if( shympi_is_master() ) then
 	  if( iu == 0 ) then
 	    iu = ifileo(0,file,'formatted','new')
@@ -3491,6 +3511,7 @@
 	integer ibox_domain(nbox,n_threads)
 	integer lbox_domain(nbox,n_threads)
 	integer nlv_domain(n_threads)
+	character*80 file
 
 	do ib=1,nbox
 	  header(ib) = mod(ib,10)
@@ -3519,7 +3540,9 @@
 	if( my_id /= 0 ) return
 
 	iu = 1
-	open(iu,file='boxes_matrix.txt',status='unknown',form='formatted')
+	file = 'boxes_matrix.txt'
+	file = trim(simname) // '.boxes.matrix.txt'
+	open(iu,file=file,status='unknown',form='formatted')
 
 	write(iu,1000) 0,header(:)
 	write(iu,*) '---------------------------------'

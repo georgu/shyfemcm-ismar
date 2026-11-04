@@ -33,6 +33,7 @@
 ! 05.05.2026    ggu     more documentation, bug fix for iconz == 1
 ! 29.05.2026    ggu     avoid compiler warning
 ! 10.09.2026    ggu     bug when writing not getting dtime in beaching_run()
+! 03.11.2026    ggu     use idtbeach to decide if beaching has to be run
 !
 !**************************************************************
 
@@ -77,12 +78,16 @@
 	integer nvar,ivar,id
 	logical b2d
 	double precision dtime
+	double precision idtbeach
 	character*10 type
 
+	double precision dgetpar
 	logical is_open_boundary_node
         logical has_output_d
 
 	real, allocatable :: value(:)
+
+	bbeach = ( dgetpar('idtbeach') /= 0. )
 
 	if( .not. bbeach ) return
 
@@ -115,6 +120,8 @@
 	if( nvar <= 1 ) then
 	  write(6,*) 'cannot run beaching algorithm for iconz <= 1'
 	  write(6,*) 'please set iconz at least to 2'
+	  write(6,*) 'this is a temprary limitation and it will '
+	  write(6,*) 'be removed in future versions'
 	  stop 'error stop beaching_init: iconz <= 1'
 	end if
 
@@ -147,7 +154,7 @@
 ! initialize output files
 !-----------------------------------------------------------------
 
-        call init_output_d('itmcon','idtcon',da_beach)
+        call init_output_d('itmbeach','idtbeach',da_beach)
         if( has_output_d(da_beach) ) then
           call shyfem_init_scalar_file('beach',nvar,b2d,id)
           da_beach(4) = id

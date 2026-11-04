@@ -86,6 +86,7 @@
 ! 17.10.2025    ggu     prepared for elemental values
 ! 11.11.2025    ggu     updated with layer indication
 ! 25.10.2026    ggu     implemented bexgrd to extract grid from shy to grd file
+! 28.10.2026    ggu     implemented bcsv to write csv file
 !
 !**************************************************************
 
@@ -472,6 +473,14 @@
 
 	 call shy_make_zeta(ftype)
 	 call shy_make_volume		!comment for constant volume
+
+	 !--------------------------------------------------------------
+	 ! write csv file
+	 !--------------------------------------------------------------
+
+	 if( bcsv ) then
+	   call make_csv(aline,scsv,nndim,nvar,cv3all,idims)
+	 end if
 
 	 !--------------------------------------------------------------
 	 ! initialize record header for output
@@ -1154,6 +1163,112 @@
 	area_e = sum(areae)
 	write(6,*) 'areas: ',area_k,area_e
 
+	end
+
+!***************************************************************
+
+	subroutine make_csv(aline,scenario,nndim,nvar,cv3all,idims)
+
+! writes values to file csv
+
+	use basin
+	use levels
+
+	implicit none
+
+	character*(*) aline
+	character*(*) scenario
+	integer nndim,nvar
+	real cv3all(nlv,nndim,0:nvar)
+	integer idims(4,nvar)
+
+	logical bhydro
+	integer iv,n,m,lmax,ivar,nn,k,kext,nk,nstep
+	integer, save :: iu = 0
+	real x,y,z,s,d,t
+	character*80 header0,header1,header2
+	character*256 header
+	character*80 femstring
+	character*80 position
+	character*20 atime
+	character*20 what
+	character*80 file
+	character*1 sep
+        real znv(nkn)
+        real uprv(nlvdi,nkn)
+        real vprv(nlvdi,nkn)
+        real sv(nlvdi,nkn)
+        real dv(nlvdi,nkn)
+
+	integer ipext
+
+	header0 = 'scenario_id,timestamp,location_id,longitude,latitude'
+	header1 = 'water_level,current_speed,current_direction'
+	header2 = 'temperature,salinity'
+
+        n = idims(1,1)
+        ivar = idims(4,1)
+	nstep = n/10
+	nstep = 30
+	bhydro = ( ivar == 1 ) 
+
+	if( iu == 0 ) then
+	  if( bhydro ) then
+	    iu = 66
+	    what = 'hydro'
+	    header = trim(header0) // ',' // trim(header1)
+	  else if( ivar == 11 ) then
+	    iu = 67
+	    what = 'ts'
+	    header = trim(header0) // ',' // trim(header2)
+	  else
+	    call ivar2filename(ivar,femstring)
+	    write(6,*) 'var = ',ivar
+	    write(6,*) 'string = ',trim(femstring)
+	    stop 'error stop make_csv: not yet ready for this variable'
+	  end if
+	  file = trim(what) // '.csv'
+	  write(6,*) 'writing csv file: ',trim(file)
+	  open(iu,file=file,status='unknown',form='formatted')
+	  write(iu,'(a)') trim(header)
+	end if
+
+	sep = ','
+	atime = aline(1:10) // 'T' // aline(13:20) // 'Z'
+
+	if( bhydro ) then
+          call prepare_hydro(.true.,nndim,cv3all,znv,uprv,vprv)
+          call convert_to_speed(uprv,vprv,sv,dv)
+	end if
+
+	nk = 0
+	do k=1,n,nstep
+	  nk = nk + 1
+	  kext = ipext(k)
+	  write(position,'(a,i6.6)') 'Node_',kext
+	  x = xgv(k)
+	  y = ygv(k)
+
+	  if( bhydro ) then
+	    z = znv(k)
+	    s = sv(1,k)
+	    d = dv(1,k)
+	    write(iu,1000) trim(scenario),sep,trim(atime),sep &
+     &		,trim(position),sep,x,sep,y,sep &
+     &		,z,sep,s,sep,d
+	  else
+	    s = cv3all(1,k,1)
+	    t = cv3all(1,k,2)
+	    write(iu,1000) trim(scenario),sep,trim(atime),sep &
+     &		,trim(position),sep,x,sep,y,sep &
+     &		,t,sep,s
+	  end if
+	end do
+
+	write(6,*) 'make_csv record written: ',atime,'  ',nk
+
+	return
+ 1000	format(6a,f8.4,a,f8.4,a,f8.4,a,f8.4,a,f8.4)
 	end
 
 !***************************************************************

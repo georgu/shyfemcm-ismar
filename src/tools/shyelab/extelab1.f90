@@ -54,17 +54,20 @@
 ! 06.03.2020	ggu	check for time step
 ! 12.06.2025	ggu	prepare for writing station name
 ! 10.11.2025	ggu	error if file is not existing
+! 29.11.2025	ggu	write more headings for bsplit
 !
 !**************************************************************
 
 !==============================================================
-	module extelab_strings
+	module extelab_global
 !==============================================================
 
+	real, allocatable :: x(:)
+	real, allocatable :: y(:)
 	character*80, allocatable :: strings(:)
 
 !==============================================================
-	end module extelab_strings
+	end module extelab_global
 !==============================================================
 
 	subroutine extelab
@@ -73,7 +76,7 @@
 	use elabutil
 	use elabtime
 	use shyfem_strings
-	use extelab_strings
+	use extelab_global
 
         use basin
         use mod_depth
@@ -87,8 +90,6 @@
 	integer, allocatable :: knaus(:)
 	integer, allocatable :: il(:)
 	real, allocatable :: hdep(:)
-	real, allocatable :: x(:)
-	real, allocatable :: y(:)
 	real, allocatable :: hl(:)
 	!character*80, allocatable :: strings(:)
 	integer, allocatable :: ivars(:)
@@ -105,7 +106,7 @@
 	integer, allocatable :: naccu(:)
 	double precision, allocatable :: accum(:,:,:)
 
-	logical btskip
+	logical btskip,bsphe
 	integer nread,nelab,nrec,nout,nin,nn
 	integer nvers
 	integer nknnos,nelnos,nvar
@@ -115,6 +116,7 @@
 	integer ip,nb,naccum
 	integer knausm
 	integer date,time
+	integer iformat
 	character*80 title,name,file,femver,format,range
 	character*20 dline
 	character*80 basnam,simnam
@@ -220,10 +222,17 @@
 	  write(6,*) 'Nodes contained in file:'
           write(6,*) ' i    node  il      hdep' // &
      &			'           x           y  description'
+	  call check_spherical(knausm,x,y,bsphe)
 	  do i=1,knausm
-            write(6,1000) i,knaus(i),il(i),hdep(i),x(i),y(i) &
+	    if( bsphe ) then
+              write(6,2000) i,knaus(i),il(i),hdep(i),x(i),y(i) &
      &					,'  ',trim(strings(i))
- 1000	    format(i3,i8,i4,f10.2,2f12.2,a,a)
+ 2000	      format(i3,i8,i4,f10.2,2f12.4,a,a)
+	    else
+              write(6,1000) i,knaus(i),il(i),hdep(i),x(i),y(i) &
+     &					,'  ',trim(strings(i))
+ 1000	      format(i3,i8,i4,f10.2,2f12.2,a,a)
+	    end if
 	  end do
 	end if
 
@@ -364,6 +373,7 @@
 	    else
 	      val(:,:) = vals(:,:,1)
 	      call average_val(knausm,lmax,il,hl,hdep,zeta,val,val0)
+	      !val0(:) = val(1,:)	!surface value
 	    end if
 	  end if
 
@@ -539,21 +549,24 @@
         real vv(knausm)
 
 	integer j,ii,iu
+	integer ivar
 	real s,d
         character*80 name
         character*20 dline
 	integer, save :: icall = 0
 	integer, save, allocatable :: iusplit(:,:)
 	character*80 station
+	character*80 text
 	character*20, save :: time_date = '#          date_time'
 	character*80, save :: title(niu) =  &
      &			(/'      velx' &
-     &			,'      vely' &
-     &			,'      zeta' &
-     &			,'     speed' &
-     &			,'       dir' &
-     &			,'       all' &
+     &			 ,'      vely' &
+     &			 ,'      zeta' &
+     &			 ,'     speed' &
+     &			 ,'       dir' &
+     &			 ,'       all' &
      &			/)
+	integer, save :: ivars(niu) = (/2,2,1,6,7,0/)
 	character*80, save :: all =	 &
      &  '      zeta        velx        vely       speed         dir'
 
@@ -566,6 +579,9 @@
 	    do ii=1,niu
 	      call make_iunit_name(what(ii),'','2d',j,iu)
 	      iusplit(ii,j) = iu
+	      ivar = ivars(ii)
+	      call make_first_line(j,ivar,text)
+	      write(iu,'(a)') trim(text)
 	      write(iu,'(3a)') time_date,'  ',trim(title(ii))
 	    end do
 	  end do
@@ -602,6 +618,8 @@
 
 ! splits 2d scalar records
 
+	use extelab_global
+
         implicit none
 
 	double precision atime
@@ -616,6 +634,7 @@
         character*20 dline
 	character*10 short
 	character*80 station
+	character*80 text
 	integer, save :: icall = 0
 	integer, save, allocatable :: iusplit(:,:)
 	character*20, save :: time_date = '#          date_time'
@@ -632,6 +651,8 @@
 	    call get_station_name(j,station)
 	    call set_iunit_string(station)
 	    call make_iunit_name(filename,'','2d',j,iu)
+	    call make_first_line(j,ivar,text)
+	    write(iu,'(a)') trim(text)
 	    write(iu,'(2a)') time_date,trim(title)
 	    iusplit(j,iv) = iu
 	  end do
@@ -680,8 +701,10 @@
         character*20 dline
 	character*10 short
 	character*80 station
+	character*80 text
 	integer, save :: icall = 0
 	integer, save, allocatable :: iusplit(:)
+	character*20, save :: time_date = '#          date_time'
 
 	if( icall == 0 ) then
 	  allocate(iusplit(knausm))
@@ -694,6 +717,9 @@
 	    call get_station_name(j,station)
 	    call set_iunit_string(station)
 	    call make_iunit_name(filename,'','2d',j,iu)
+	    call make_first_line(j,ivar,text)
+	    write(iu,'(a)') trim(text)
+	    write(iu,'(2a)') time_date,'    wheight    wper    wdir'
 	    iusplit(j) = iu
 	  end do
 	end if
@@ -715,6 +741,7 @@
      &				,m,nvar,ivar,iv,vals)
 
 ! splits 3d values
+
 	use shyfem_strings
 
         implicit none
@@ -730,12 +757,15 @@
 	integer l,lm
 	real u(lmax),v(lmax),s(lmax),d(lmax)
         character*80 name,format
+	character*256 slevels
 	character*80 station
+	character*80 text
         character*20 dline
         character*20 filename
 	character*10 short
 	character*5 :: what(niu) = (/'velx ','vely ','speed','dir  '/)
 	character*20, save :: time_date = '#          date_time'
+	integer, save :: ivars(niu) = (/2,2,6,7/)
 	integer, save, allocatable :: iusplit(:,:,:)
 	integer, save :: icall = 0
 
@@ -749,13 +779,20 @@
 	  do j=1,knausm
 	    call get_station_name(j,station)
 	    call set_iunit_string(station)
+	    call make_level_header(il(j),slevels)
 	    if( ivar == 2 ) then	!velocities
 	      do ii=1,niu
 	        call make_iunit_name(what(ii),'','3d',j,iu)
+	        call make_first_line(j,ivars(ii),text)
+	        write(iu,'(a)') trim(text)
+	        write(iu,'(2a)') time_date,trim(slevels)
 	        iusplit(ii,j,iv) = iu
 	      end do
 	    else
 	      call make_iunit_name(filename,'','3d',j,iu)
+	      call make_first_line(j,ivar,text)
+	      write(iu,'(a)') trim(text)
+	      write(iu,'(2a)') time_date,trim(slevels)
 	      iusplit(1,j,iv) = iu
 	    end if
 	  end do
@@ -851,7 +888,7 @@
 
 	subroutine get_station_name(j,name)
 
-	use extelab_strings
+	use extelab_global
 
 	implicit none
 
@@ -863,3 +900,99 @@
 	end
 
 !***************************************************************
+
+	subroutine check_spherical(n,x,y,bsphe)
+
+	implicit none
+
+	integer n
+	real x(n),y(n)
+	logical bsphe
+
+	real xmin,ymin,xmax,ymax
+
+	xmin = minval(x)
+	ymin = minval(y)
+	xmax = maxval(x)
+	ymax = maxval(y)
+
+	!write(6,*) 'min/max: ',xmin,ymin,xmax,ymax
+
+	bsphe = .false.
+	if( xmin < -180 ) return
+	if( ymin < -90 ) return
+	if( xmax > +180 ) return
+	if( ymax > +90 ) return
+	bsphe = .true.
+
+	end
+
+!***************************************************************
+
+	subroutine make_first_line(j,ivar,text)
+
+	use extelab_global
+
+	implicit none
+
+	integer j
+	integer ivar
+	character*(*) text
+
+	integer, save :: ic = 0
+	character*80 station
+	character*80 femstring
+	character*80 text1,text2,text3
+
+	call get_station_name(j,station)
+	call ivar2femstring(ivar,femstring)
+
+	if( ivar == 2 ) then
+	  if( mod(ic,2) == 0 ) then
+	    femstring = trim(femstring) // '-x'
+	  else
+	    femstring = trim(femstring) // '-y'
+	  end if
+	  ic = ic + 1
+	end if
+
+	write(text1,1000) '# ',trim(femstring)
+ 1000	format(a,a)
+	write(text2,2000) '   x =',x(j),' y =',y(j)
+ 2000	format(a,f12.4,a,f12.4)
+	write(text3,3000) '  ' // trim(station)
+ 3000	format(a)
+
+	text = trim(text1)//trim(text2)//trim(text3)
+	!write(6,'(a)') trim(text1)//trim(text2)//trim(text3)
+
+	end
+
+!***************************************************************
+
+	subroutine make_level_header(lmax,slevels)
+
+	implicit none
+
+	integer lmax
+	character*(*) slevels
+
+	integer l
+	character*3 num
+	character*8 slevel
+
+	slevels = ' '
+
+	do l=1,lmax
+	  write(num,'(i3.3)') l
+	  slevel = '  lev' // num
+	  !write(6,*) lmax,slevel
+	  slevels = trim(slevels) // slevel
+	end do
+
+	!write(6,*) 'slevels: ',trim(slevels)
+
+	end
+
+!***************************************************************
+
