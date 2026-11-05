@@ -893,7 +893,7 @@
 	if( iwvel .gt. 0 ) nvar = nvar + 1
 	if( iqpnv .gt. 0 ) nvar = nvar + 1
 
-	call init_output_d('itmcon','idtcon',da_out)
+	call init_output_d('itmout','idtout',da_out)
 
 	if( has_output_d(da_out) ) then
 	  call shyfem_init_scalar_file('nhyd',nvar,.false.,id)
@@ -928,17 +928,12 @@
 
 	inhwrt = nint(getpar('inhwrt'))
 
-	if( iwvel .gt. 0 ) then
-          do l=1,nlv
-            wprv(l,:)=0.5*(wlnv(l,:)+wlnv(l-1,:))
-          end do
-	end if
-
 	id = nint(da_out(4))
 
         if (inhwrt .gt. 0) then
           if (iwrt .eq. inhwrt ) then
 	    if( iwvel .gt. 0 ) then
+	      call nh_vertical(wprv)
               call shy_write_scalar_record(id,dtime,17,nlvdi,wprv)
 	    end if
 	    if( iqpnv .gt. 0 ) then
@@ -950,6 +945,7 @@
 	else
 	  if( next_output_d(da_out) ) then
 	    if( iwvel .gt. 0 ) then
+	      call nh_vertical(wprv)
               call shy_write_scalar_record(id,dtime,17,nlvdi,wprv)
 	    end if
 	    if( iqpnv .gt. 0 ) then
@@ -1054,5 +1050,172 @@
 !-----------------------------------------------------------------
 
         end
+
+!********************************************************************
+
+	subroutine nh_vertical(wprv)
+
+! computes vertical fluid velocities
+!
+! velocities are computed on S/T points (top and bottom of layer)
+! bottom velocity of the whole column is assumed to be 0
+!
+! vertical velocity is computed from the jump relationship of
+! Fernandez Nieto et al. (2014).
+! Differently from mass-exchange, the vertical velocity is
+! discontinuous at the interface. We compute the upper vertical
+! velocity with the following relationship:
+!
+! w^{-}_{l-1/2} = -G_{l+1/2} + dz_{l-1/2}/dt
+!                 + grad ( z_{l-1/2} ) u_{l-1}
+!
+! Note that in SHYFEM -G_{l+1/2} = wlnv(l).
+! For the air-sea interface (l=1) we use the velocity of the
+! first layer u_{l}.
+! Vertical velocity is needed only for post-processing, so
+! variables are evaluated at the time step midpoint with a
+! semi-implicit scheme, not with the Runge--Kutta scheme
+! used for the actual solution.
+
+	use mod_layer_thickness
+	use mod_hydro_vel
+	use mod_hydro
+	use evgeom
+	use levels
+	use basin
+	use shympi
+
+	implicit none
+
+! argument
+	real wprv(nlv,nkn)
+! local
+	logical debug
+	integer k,ie,ii,kk,l,lmax,lmin,ie_mpi
+	integer ilevel,jlevel
+	real aj,wbot,atop,jump
+	real b,c
+	real dzdx,dzdy,ul,vl
+	real hlkov,hlknv,dt,dvdt
+	real hleov(3),hlenv(3)
+	real, allocatable :: wprv_aux(:,:)
+	real, allocatable :: va(:,:)
+	real, allocatable :: vj(:,:)
+
+! 2d -> nothing to be done
+
+	wprv = 0.
+	if( nlv_global == 1 ) return	!MPI_bug
+
+! initialize
+
+	call get_timestep(dt)
+
+	allocate(va(nlvdi,nkn),vj(nlvdi,nkn))
+	allocate(wprv_aux(0:nlv,nkn))
+
+	va = 0.
+	vj = 0.
+	wprv_aux = wlnv
+
+!	------------------------------------------------------
+!	nodal grad(z_{l-1/2}) with an area average
+!	------------------------------------------------------
+
+	do ie_mpi=1,nel
+
+          ie = ip_sort_elem(ie_mpi)
+	  !if( isein(ie) ) then		!FIXME
+	  aj=4.*ev(10,ie)		!area of triangle / 3
+	  ilevel = ilhv(ie)
+	  jlevel = jlhv(ie)
+
+	  hleov = zeov(:,ie)
+	  hlenv = zenv(:,ie)
+	  do l=jlevel,ilevel
+
+	    dzdx = 0.
+	    dzdy = 0.
+	    do ii=1,3
+	      kk=nen3v(ii,ie)
+	      b = ev(ii+3,ie)
+	      c = ev(ii+6,ie)
+
+              dzdx = dzdx + b * 0.5 * (hlenv(ii)+hleov(ii))
+              dzdy = dzdy + c * 0.5 * (hlenv(ii)+hleov(ii))
+
+	      hleov(ii) = hleov(ii) - hdkov(l-1,kk) !interface depth (element)
+	      hlenv(ii) = hlenv(ii) - hdknv(l-1,kk)
+	    end do
+
+	    if( l .eq. jlevel ) then
+              ul = 0.5 * (ulnv(l,ie)+ulov(l,ie))
+              vl = 0.5 * (vlnv(l,ie)+vlov(l,ie))
+	    else
+              ul = 0.5 * (ulnv(l-1,ie)+ulov(l-1,ie))
+              vl = 0.5 * (vlnv(l-1,ie)+vlov(l-1,ie))
+	    end if
+
+	    jump = dzdx * ul + dzdy * vl
+
+	    do ii=1,3
+	      kk=nen3v(ii,ie)
+	      va(l,kk) = va(l,kk) + aj
+	      vj(l,kk) = vj(l,kk) + aj * jump
+	    end do
+	  end do
+	  !end if
+	end do
+
+	if( shympi_partition_on_elements() ) then
+          !call shympi_comment('shympi_elem: exchange vf,va')
+          call shympi_exchange_and_sum_3d_nodes(va)
+          call shympi_exchange_and_sum_3d_nodes(vj)
+	end if
+
+!	------------------------------------------------------
+!	Finalize vertical velocity with interface velocity
+!	------------------------------------------------------
+
+	do k=1,nkn
+	  lmax = ilhkv(k)
+	  lmin = jlhkv(k)
+	  if( debug ) then
+	    write(670,*) '----------------------'
+	    write(670,*) va(lmin:lmax,k)
+	    write(670,*) vj(lmin:lmax,k)
+	  end if
+	  hlkov = zov(k)
+	  hlknv = znv(k)
+	  do l=lmin,lmax
+	    atop = va(l,k)
+	    jump = vj(l,k)
+	    dvdt = (hlknv-hlkov)/dt
+	    wprv_aux(l-1,k) = wprv_aux(l-1,k) + dvdt + jump/atop
+	    hlkov = hlkov - hdkov(l,k)		!interface depth (nodal)
+	    hlknv = hlknv - hdknv(l,k)
+	    if( debug ) then
+	      write(670,*) k,l
+	      write(670,*) wprv_aux(l,k),wprv_aux(l-1,k)
+	      write(670,*) hdknv(l,k),hdkov(l,k)
+	    end if
+	  end do
+	end do
+
+	deallocate(va,vj)
+
+	!if( shympi_partition_on_nodes() ) then	!no need to exchange
+	!  !call shympi_comment('exchanging wprv_aux')
+        !  call shympi_exchange_3d0_node(wprv_aux)
+	!  !call shympi_barrier
+	!end if
+
+        do l=1,nlv
+          wprv(l,:)=0.5*(wprv_aux(l,:)+wprv_aux(l-1,:))
+        end do
+
+	deallocate(wprv_aux)
+
+	end
 
 !********************************************************************

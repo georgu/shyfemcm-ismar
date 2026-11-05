@@ -1611,7 +1611,8 @@
 	subroutine hydro_vertical(curr_stage,coeff_erk, &
      &			coeff_irk,dzeta)
 
-! computes vertical velocities
+! computes mass transfer function between layers:
+! for z-layers this is vertical velocity.
 !
 ! velocities are computed on S/T points (top and bottom of layer)
 ! bottom velocity of the whole column is assumed to be 0
