@@ -46,6 +46,7 @@ OBJ  = \
 	trace_point.o \
 	mod_restart.o \
 	writevars.o \
+	drywet.o \
 
 OBSOLETE = \
 	evgeom.o \

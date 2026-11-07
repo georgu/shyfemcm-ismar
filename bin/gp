@@ -10,10 +10,18 @@
 #
 # shell for gnuplot
 #
+# info:
+#
+# https://gnuplot.sourceforge.net/demo_svg/
+# https://gnuplot.sourceforge.net/docs_4.2/node1.html
+#
 #########################################################
 
-version=2.06
+version=2.09
 
+# 2.09	06.11.2026	implement also solid for xband
+# 2.08	05.11.2026	plot vertical transparent band (-xband)
+# 2.07	05.11.2026	better x-axis labeling with dates
 # 2.06	01.02.2025	bug fix for parsing time in date string
 # 2.05	17.10.2024	lt for dash substituted with dt
 # 2.04	06.05.2024	debug option and ParseTime()
@@ -96,6 +104,7 @@ color=""
 solid=""
 width=""
 xtics=""
+iband=0
 outfile=""
 ghost='gv'
 
@@ -110,6 +119,7 @@ psgnu="$FEMBIN/gps/psgnu.pl"
 extractcol="$FEMBIN/col/extractcol.pl"
 scalecol="$FEMBIN/col/scalecol.pl"
 xrange_pl="$FEMBIN/xrange.pl"
+atime_pl="$FEMBIN/time/atime.pl"
 gpsmerge="$FEMBIN/gps/gpsmerge.pl"
 gpsinsert="$FEMBIN/gps/gpsinsert.sh"
 gpgnustyle="$FEMBIN/gpgnustyle.pl"
@@ -176,12 +186,13 @@ FullUsage()
   echo "  -y2              use second y-axis for following files"
   echo "  -sx xfact        scale x-coordinate with xfact"
   echo "  -sy yfact        scale y-coordinate with yfact"
+  echo "  -xband band-spec plots vertical transparent band using band-spec"
   echo "  -label label     inserts text given in label"
   echo "  -labels lfile    inserts labels from file lfile"
-  #echo "  -lrotate         rotates labels"
   echo "  -l  string       string that is removed from legend if found"
-  echo "  -logo            insert logo"
+  #echo "  -lrotate         rotates labels"
   #echo "  -logo_where pos  insert logo at position pos (see gpsinsert)"
+  echo "  -logo            insert logo"
   echo "  -verbose         writes some diagnostic messages"
   echo ""
   echo "Possible style options are:"
@@ -195,6 +206,11 @@ FullUsage()
   echo "Possible dash styles are: 1,2,3,... (1 solid line)"
   echo "Possible xtics options are:"
   echo "   xdtics, xmtics, mesi, months or (custom)"
+  echo "Format for band-spec is:"
+  echo "   from:to[,color[,solid]]"
+  echo "   from,to are numbers or dates depending on x-axis"
+  echo "   color options can be found with -showcolor"
+  echo "   solid [0-1] indicates transparency"
   echo "Column 0 indicates automatically generated index"
   echo "-u 0:all uses generated index on all data columns"
   echo "xformat is determined automatically but can be given explicitly"
@@ -433,18 +449,20 @@ HandleXaxis()
     return
   elif [ $days -lt 30 ]; then
     xformat=%m-%d
+    xformat="%m-%d\n%Y"
     return
   fi
   months=$(( $days / 30 ))
   if [ $months -lt 6 ]; then
     xformat=%m-%d
+    xformat="%m-%d\n%Y"
     return
   elif [ $months -lt 12 ]; then
-    xformat=%m
+    xformat="%m-%d\n%Y"
     return
   fi
   years=$(( $months / 12 ))
-  if [ $years -lt 4 ]; then
+  if [ $years -lt 6 ]; then
     xformat=%Y-%m
     return
   else
@@ -592,6 +610,7 @@ Plotting()
     fi
     if [ -n "$solid" -a "$solid" != "none" ]; then
       fs="fs transparent solid $solid"
+      #fs="fs solid $solid"
     fi
 
     [ -z "$2" ] && eol=' '
@@ -683,6 +702,11 @@ AdjustSpecial()
   mv out.tmp out.ps
 }
 
+#-------------------------------------------------------------------
+
+determin_debug="YES"
+determin_debug="NO"
+
 DetermineXrange()
 {
 #  first_date=$( echo $first_data_line | sed -E 's/^\s*//' \
@@ -694,14 +718,30 @@ DetermineXrange()
   last_date=$( echo $last_data_line | sed -E 's/^\s*//' \
 		| sed -E 's/\s+.*//' )
 
-  echo "first and last date: $first_date - $last_date"
+  if [ $determin_debug = "YES" ]; then
+    echo "first and last date: $first_date - $last_date"
+  fi
 
   #fs=$( date --date "$first_date" +%s )
   #ls=$( date --date "$last_date" +%s )
   #echo "period: $fs $ls"
 
-  xrange=$( $xrange_pl -round "$first_date:$last_date" )
-  echo "after rounding xrange: $xrange"
+  xlow=$first_date
+  xhigh=$last_date
+
+  if [ -z "$xrange" ]; then	#no xrange set
+    xrange=$( $xrange_pl -round "$first_date:$last_date" )
+    xrange=$( echo $xrange | sed -e 's/=/:/' )
+  else				#xrange is set - extract xlow-xhigh
+    xlow=$( echo $xrange | sed -e 's/:.*//' )
+    xhigh=$( echo $xrange | sed -e 's/.*://' )
+  fi
+
+  if [ $determin_debug = "YES" ]; then
+    echo "after rounding xrange: $xrange"
+    echo "   xlow: $xlow"
+    echo "  xhigh: $xhigh"
+  fi
 
   #secs=$(( ls - fs ))
   #hours=$(( $secs / 3600 ))
@@ -713,7 +753,7 @@ DetermineXrange()
 
 HandleXrange()
 {
-  SplitXrange
+  SplitXrange $xrange
 
   xrange=""
   [ -z "$xlow" -a -z "$xhigh" ] && return
@@ -727,18 +767,131 @@ HandleXrange()
 
 SplitXrange()
 {
+  local xr=$1
+  [[ -z $xr ]] && return
+
   xlow=""
   xhigh=""
 
-  if [[ -n $xrange ]]; then
-    out=$( $xrange_pl $xrange)
-    xlow=$( echo $out | sed -E 's/(.*)=.*/\1/' )
-    xhigh=$( echo $out | sed -E 's/.*=(.*)/\1/' )
-    #echo "debug SplitXrange: $out $xlow $xhigh"
-  fi
+  out=$( $xrange_pl $xr)
+  xlow=$( echo $out | sed -E 's/(.*)=.*/\1/' )
+  xhigh=$( echo $out | sed -E 's/.*=(.*)/\1/' )
+  #echo "debug SplitXrange: $out $xlow $xhigh"
 
   #echo "SplitXrange: ($out)  xlow=$xlow  xhigh=$xhigh"
 }
+
+#--------------------------------------------------
+
+band_debug="YES"
+band_debug="NO"
+
+InsertXband()
+{
+  if [ $iband -eq 0 ]; then
+    xband_array=( )
+  fi
+  iband=$(( iband + 1 ))
+
+  [ $band_debug = "YES" ] && echo "InsertXband: $iband $1"
+
+  xband_array[$iband]=$1
+}
+
+HandleXband()
+{
+  local ib=0
+
+  while true
+  do
+    ib=$(( ib + 1 ))
+    [ $ib -gt $iband ] && break
+    string=${xband_array[$ib]}
+    [ $band_debug = "YES" ] && echo "HandleXband: $ib $string"
+    ProcessXband $ib $string
+  done
+}
+
+ProcessXband()
+{
+  local fromto from to
+  local color solid
+  local cstring sstring
+
+  local ib=$1
+  local string=$2
+
+  [ $band_debug = "YES" ] && echo "ProcessXband: $ib $string"
+
+  IFS=',' read -r fromto color solid <<< "$string"
+
+  #if [ "$idate" = "YES" ]; then
+  #  DetermineXrange
+  #fi
+  #if [ "$date" = "YES" ]; then
+  #  DetermineXrange	  #determines full range of file
+  #  HandleXrange          #splits and quotes
+  #fi
+
+  out=$( $xrange_pl $fromto)
+  from=$( echo $out | sed -E 's/(.*)=.*/\1/' )
+  to=$( echo $out | sed -E 's/.*=(.*)/\1/' )
+
+  if [ $band_debug = "YES" ]; then
+  echo "------------------------"
+  echo "iband = $ib"
+  echo "string = $string"
+  echo "idate = $idate  date = $date"
+  echo "xlow = $xlow  xhigh = $xhigh"
+  echo "fromto = $fromto  color = $color  solid = $solid"
+  echo "from = $from  to = $to"
+  fi
+
+  alow=$( $atime_pl $xlow )
+  ahigh=$( $atime_pl $xhigh )
+  afrom=$( $atime_pl $from )
+  ato=$( $atime_pl $to )
+
+  xrlow=$( bc <<< "scale=4; ($afrom-$alow)/($ahigh-$alow)" )
+  xrhigh=$( bc <<< "scale=4; ($ato-$alow)/($ahigh-$alow)" )
+
+  header="set obj $ib rect"
+  where="from graph $xrlow, graph 0 to graph $xrhigh, graph 1"
+  cstring=""
+  [ -n "$color" ] && cstring="fc rgb \"$color\""
+  sstring=""
+  [ -n "$solid" ] && sstring="fs solid $solid"
+
+  xband_print[$ib]="$header $where $cstring $sstring"
+
+  if [ $band_debug = "YES" ]; then
+    echo "xrlow = $xrlow  xrhigh = $xrhigh"
+    echo "${xband_print[$ib]}"
+    echo "------------------------"
+  fi
+}
+
+PrintXband()
+{
+  local ib=0
+
+  local bandsolid="0.15"
+
+  [ -n "$solid" ] && bandsolid=$solid	#default
+
+  echo "set style rect fc lt -1 fs solid $bandsolid noborder" >> gnu.tmp
+
+  while true
+  do
+    ib=$(( ib + 1 ))
+    [ $ib -gt $iband ] && break
+    string=${xband_print[$ib]}
+    #[ $band_debug = "YES" ] && echo "PrintXband: $ib $string"
+    echo "$string" >> gnu.tmp 
+  done
+}
+
+#--------------------------------------------------
 
 SplitLabel()
 {
@@ -819,6 +972,7 @@ do
 	-sx)		xfact=$2; shift;;
 	-sy)		yfact=$2; shift;;
 	-l)		nolegend=$2; shift;;
+	-xband)		InsertXband $2; shift;;
 	-label)		label=$2; shift;;
 	-labels)	labels=$2; shift;;
 	-logo)		logo=1;;
@@ -844,15 +998,18 @@ fi
 ######################################################### handle Xaxis
 
 GetFirstAndLastDataLine
-CheckForDate
+CheckForDate				#sets variable date=YES
 if [ "$idate" = "YES" ]; then
   DetermineXrange
 fi
 if [ "$date" = "YES" ]; then
+  DetermineXrange
   HandleXrange		#splits and quotes
   HandleXaxis
   [ $debug == "YES" ] && echo "xformat: $xformat" >&2
 fi
+
+HandleXband
 
 ######################################################### write header
 
@@ -955,6 +1112,10 @@ if [ -n "$xtics" ]; then
   fi
 fi
 
+if [ $iband -gt 0 ]; then
+  :
+fi
+
 if [ -n "$y2label" -o -n "$y2range" ]; then		#second y-axis
   echo "set ytics nomirror" >> gnu.tmp
   echo "set y2tics" >> gnu.tmp
@@ -970,6 +1131,8 @@ if [ -n "$labels" -a -f "$labels" ]; then		#file with labels avail
   echo "" >> gnu.tmp
   cat $labels >> gnu.tmp
 fi
+
+PrintXband
 
 echo "" >> gnu.tmp
 

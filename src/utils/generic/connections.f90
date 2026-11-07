@@ -168,6 +168,7 @@
 	if( ngr > 0 ) call connect_internal_deallocate
 
 	call make_grade(nkn_l,nel_l,nen3v_l,ngr_l,ierr)
+	if( ierr /= 0 ) return
 	call connect_internal_allocate(nkn_l,nel_l,ngr_l,nen3v_l)
 
 	call make_ne_list

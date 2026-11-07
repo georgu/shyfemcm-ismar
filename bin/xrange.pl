@@ -10,6 +10,10 @@
 #
 # splits xrange in lower and upper part
 #
+# returns parts as low=high
+#
+# works also with relative time (integers)
+#
 # year is needed, other parts can be obmitted
 # format: YYYY-MM-DD::hh:mm:ss
 #
@@ -22,6 +26,7 @@ use date;
 $::date = new date;
 
 $::round = 0 unless $::round;
+$::debug = 0 unless $::debug;
 
 my $xrange = $ARGV[0];
 
@@ -30,8 +35,13 @@ my $xrange = $ARGV[0];
 my $xhigh = "";
 my $xlow = "";
 
+my $left = index($xrange, ":");
+my $right = rindex($xrange, ":");
+
 if( $xrange =~ /^\s*$/ ) {
   ;
+} elsif( $left == $right ) {			# exactly one occurrence of :
+  ($xlow,$xhigh) = relative($xrange);
 } elsif( $xrange =~ /^:(.*)$/ ) {		# only high
   $xhigh = regular($1);
 } elsif( $xrange =~ /^(.*):$/ ) {		# only low
@@ -47,10 +57,10 @@ if( $xrange =~ /^\s*$/ ) {
 }
 
 if( $round ) {
-  print STDERR "rounding...\n";
-  print STDERR "$xlow:$xhigh\n";
+  print STDERR "rounding...\n" if $::debug;
+  print STDERR "$xlow:$xhigh\n" if $::debug;
   ($xlow,$xhigh) = round_xrange($xlow,$xhigh);
-  print "$xlow:$xhigh\n";
+  print "$xlow=$xhigh\n";
 } else {
   print "$xlow=$xhigh\n";
 }
@@ -67,7 +77,7 @@ sub round_xrange {
   my $hs = $::date->unformat_abs($xh);
 
   my $secs = $hs - $ls;
-  print STDERR "period $ls $hs - $secs\n";
+  print STDERR "period $ls $hs - $secs\n" if $::debug;
 
   if( $secs < 60 ) {
     $sep = 0;
@@ -124,12 +134,21 @@ sub round_secs {
   my $sec = $hs - $ls;;
   my $rsec = $hsec - $lsec;;
 
-  print STDERR "rounded secs: $sec - $rsec\n";
+  print STDERR "rounded secs: $sec - $rsec\n" if $::debug;
 
   return ($xl,$xh);
 }
 
 #---------------------------------------------
+
+sub relative {
+
+  my $string = shift;
+
+  my ($dd,$tt) = split(/:/,$string);
+
+  return ($dd,$tt);
+}
 
 sub regular {
 
