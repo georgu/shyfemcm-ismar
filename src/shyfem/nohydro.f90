@@ -1204,15 +1204,13 @@
 
 	deallocate(va,vj)
 
-	!if( shympi_partition_on_nodes() ) then	!no need to exchange
-	!  !call shympi_comment('exchanging wprv_aux')
-        !  call shympi_exchange_3d0_node(wprv_aux)
-	!  !call shympi_barrier
-	!end if
-
         do l=1,nlv
           wprv(l,:)=0.5*(wprv_aux(l,:)+wprv_aux(l-1,:))
         end do
+
+        if( shympi_partition_on_nodes() ) then  !no need to exchange
+          call shympi_exchange_3d_node(wprv)
+        end if
 
 	deallocate(wprv_aux)
 
