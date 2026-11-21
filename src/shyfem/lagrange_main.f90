@@ -125,6 +125,7 @@
 ! 27.05.2026	ggu	write lgr header with lgr_write_header()
 ! 27.05.2026	ggu	new routine write_time()
 ! 09.06.2026	ggu	compiler error in write_time()
+! 10.11.2026	wjm	new vars btrw and breleasefrq, use sinking vel from str
 !
 !****************************************************************            
 
@@ -144,6 +145,7 @@
 
         double precision, save		:: dtlanf,dtlend
 	double precision, save		:: ddtl,dtranf,dtrend,dtrnext
+	double precision, save		:: dtrw		!wjm
         double precision		:: dtime
 	real, save			:: ldecay
 
@@ -151,6 +153,7 @@
         real 				:: getpar
 
 	logical				:: brelease
+	logical				:: breleasefrq	!wjm
         character*20 			:: aline
         double precision, save          :: da_lgr(4) = 0
 	integer, save			:: iu
@@ -277,8 +280,13 @@
             call shy_get_iunit(id,iu)
 	    call lgr_write_header(iu,nlv,ncust)
           end if
+
 	end if
          
+!---------------------------------------------------------------
+! end of initialization
+!---------------------------------------------------------------
+
 !---------------------------------------------------------------
 ! run lagrangian 
 !---------------------------------------------------------------
@@ -293,6 +301,7 @@
 ! new release of particles (more release event, homogeneous or lines)
 !---------------------------------------------------------------
 	
+	dtrw = dtrnext
 	if( dtime >= dtrnext .and. dtime <= dtrend ) then
           call get_timeline(dtime,aline)
 	  write(6,*) 'release of particles for lagrangian model'
@@ -322,9 +331,12 @@
 !---------------------------------------------------------------
 
 	brelease = dtime >= dtranf .and. dtime <= dtrend
+	breleasefrq = dtime == dtrw 		!wjm
 
 	if( brelease ) then
-	  call lagr_continuous_release_shell
+	  if( breleasefrq ) then
+	    call lagr_continuous_release_shell
+	  end if
 	end if
 	
         call lagr_connect_continuous_points(brelease)
@@ -460,13 +472,21 @@
 
         implicit none
 
-        logical, intent(in)           :: bsedim  !true for sediment lagrangian module
+        logical, intent(in)           :: bsedim  !true for sediment lagr module
         logical, intent(in)           :: blarvae !true for larvae module
         logical, intent(in)           :: boilsim !true for oil module
         integer, intent(inout)        :: pt      !particle type
         double precision, intent(out) :: ps      !settling velocity [m/s]
         real, intent(out)             :: pc      !custom property
         integer, intent(out)          :: nc      !number of custom properties
+
+        double precision              :: dgetpar
+	integer, save		      :: icall = 0
+        
+	if( icall == 0 ) then
+          ps = dgetpar('setvel')	!read sinking velocity value from str
+	  icall = 1
+	end if
 
         ps = 0.
         pc = 0.

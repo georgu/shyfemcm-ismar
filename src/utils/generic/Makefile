@@ -78,6 +78,7 @@ OBJ  = \
 	compatibility.o \
 	spline.o \
 	progress.o \
+	regintp.o \
 
 OBSOLETE = \
 	expand.o \

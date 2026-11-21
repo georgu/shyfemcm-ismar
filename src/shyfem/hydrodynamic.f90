@@ -281,6 +281,7 @@
 ! 21.04.2026    ggu     use vqv to deal with dry nodes, also in hydro_vertical()
 ! 28.04.2026    ggu     insert more timing calls
 ! 04.06.2026    ggu     insert code to avoid divide by 0 (eps7)
+! 05.11.2026    ggu     new routine drywet_test_encryption() - not yet active
 !
 !******************************************************************
 
@@ -304,6 +305,7 @@
 	use shympi_debug
         use mod_zeta_system, only : solver_type
 	use mod_trace_point
+	use mod_connect
 
 	implicit none
 
@@ -312,7 +314,7 @@
 	integer i,l,ie,ier,ii
 	!integer i,l,k,ie,ier,ii
 	integer nrand
-	integer iw,iwa,iloop
+	integer iw,iwa,iloop,ierr
 	integer nmat
 	integer kspecial
 	!integer iwhat
@@ -445,6 +447,10 @@
 	call check_volume		!checks for negative volume 
 	call trace_point('arper')
         call arper
+
+	!call connect_init(nkn,nel,nen3v,ierr)
+	!if( ierr /= 0 ) stop 'errorrrrrrrrr'
+	!call drywet_test_encryption(iwegv)	!test encryption - delete later
 
 !-----------------------------------------------------------------
 ! vertical velocities and non-hydrostatic step

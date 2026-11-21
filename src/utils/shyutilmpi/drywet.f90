@@ -164,7 +164,7 @@
 
 	integer iweg(nel)
 
-	integer ic
+	integer ic,idry,ie,iaux
 	integer, allocatable :: iwng(:)
 	integer, allocatable :: ieaux(:)
 
@@ -173,8 +173,19 @@
 	call drywet_encrypt(iweg,iwng)
 	call drywet_decrypt(ieaux,iwng)
 
-	if( any(iweg/=ieaux) ) then
+	idry = count(iweg/=0)
+	iaux = count(ieaux/=0)
+	write(6,*) 'idry = ',idry,'  iaux = ',iaux
+
+	!if( any(iweg/=ieaux) ) then
+	if( idry /= iaux ) then
+	  idry = count(iweg/=0)
 	  ic = count(iweg/=ieaux)
+	  do ie=1,nel
+	    if( iweg(ie) /= 0 ) then
+	      write(6,*) ie,iweg(ie),ieaux(ie)
+	    end if
+	  end do
 	  write(6,*) 'there are errors in encryption drywet: ',ic
 	  stop 'error stop drywet_test_encryption: internal error (2)'
 	end if

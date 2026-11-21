@@ -237,6 +237,7 @@
 ! 14.09.2026    ggu     new parameter velobs
 ! 22.09.2026    ggu     new parameter veltau
 ! 03.11.2026    ggu     new parameters idtbox and idtbeach
+! 10.11.2026    wjm     new parameter setvel
 !
 !************************************************************************
 
@@ -1546,12 +1547,12 @@
 
 ! |dripar|	Parameter to account for drifter inertia by multiplying
 !		the advective transports. Usually it assumes values between 
-!		0.9 and 1.2. (Default 1).
+!		0.9 and 1.2. (Default 1)
 
         call addpar('dripar',1.)
 
 ! |lbeach|	Parameter to account for particles beaching on the shore. It 
-!		assumes values between 0 (no beaching) and 1 (Default 0).
+!		assumes values between 0 (no beaching) and 1. (Default 0)
 
         call addpar('lbeach',0.)
 
@@ -1583,6 +1584,11 @@
 !c Default = -1, i.e., no transit times are computed
 
         call addpar('artype',-1.)
+
+! |setvel|	Parameter to apply vertical settling/sinking velocity of        
+!		Lagrangian particles. (Default = 0)
+
+        call addpar('setvel',0.)
 
 !c still to be commented
 
@@ -2021,7 +2027,7 @@
 
 	subroutine fnminh
 
-! initializes section $name
+! initializes default values for section $name
 
 	use para
 
@@ -2087,7 +2093,7 @@
 ! |velobs|	File with 3d velocities from observation. These
 !		data can be used for assimilation into the model.
 ! |veltau|	Name of file containing the time scale for nudging 
-!		of velocities (surface and 3d)
+!		of velocities (surface and 3d).
 ! |restrt|	Name of the file if a restart is to be performed. The
 !		file has to be produced by a previous run
 !		with the parameter |idtrst| different

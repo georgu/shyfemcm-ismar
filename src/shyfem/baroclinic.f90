@@ -167,6 +167,7 @@
 ! 30.01.2026    ggu     fixed bug in nudging (with tau given as parameter)
 ! 05.05.2026    ggu     some more info messages
 ! 24.09.2026    ggu     new routine ts_debug() to show writing with writevars
+! 05.11.2026    ggu     extra variables to be written (not yet active)
 !
 ! notes :
 !
@@ -1236,6 +1237,10 @@
 	if( isalt .gt. 0 ) nvar = nvar + 1
 	if( irho  .gt. 0 ) nvar = nvar + 1
 
+	da_out = 0
+	if( nvar == 0 ) return		!nothing to write
+	!nvar = nvar + 2		!extra variables z and dry
+
 	call init_output_d('itmcon','idtcon',da_out)
 
 	if( has_output_d(da_out) ) then
@@ -1267,6 +1272,7 @@
 	
 	if( next_output_d(da_out) ) then
 	  id = nint(da_out(4))
+	  !call shy_write_dry_info(id,dtime)	!writes hidden variables
 	  if( isalt .gt. 0 ) then
 	    call shy_write_scalar_record(id,dtime,11,nlvdi,saltv)
 	  end if
