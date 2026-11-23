@@ -43,8 +43,15 @@ CheckExe()
   popd > /dev/null
 }
 
-#pwd
+#--------------------------------------------------
+
+if [ ! -f VERSION ]; then
+  echo "must be in base directory to run this script... aborting"
+  exit 1
+fi
 
 CheckExe bin
 CheckExe bin/check
+
+#--------------------------------------------------
 

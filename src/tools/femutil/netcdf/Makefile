@@ -58,10 +58,11 @@ LIBFS      = $(LIBF_NETCDF)
 
 # nc_dim_coords.f90 should be converted to ncf_dim_coords.f90
 
-OBJS = ncf_util.o subclo.o ncf_dim_coords.o convert.o
+OBJS = ncf_util.o subclo.o ncf_dim_coords.o convert.o ncf_out.o
 OBJS_BASE = ncf_util.o ncf_dim_coords.o subclo.o convert.o
 OBJS_INFO = ncf_util.o subclo.o
-OBJS_UGRID = ncf_util.o subclo.o convert.o
+OBJS_UGRID = regintp.o subclo.o convert.o \
+		ncf_util.o ncu_params.o ncu_topo.o ncf_out.o
 OBJS_ELAB = ncf_util.o subclo.o convert.o 
 OBJS_BGC = ncf_util.o ncf_dim_coords.o subclo.o convert.o bgc_util.o subgeo.o
 OBJS_GR = ncf_util.o subclo.o
@@ -70,9 +71,10 @@ OBJS_DIMS = ncf_dim_coords.o
 OBJS_BGC += $(OBJS_TIME)
 OBJS_ELAB += $(OBJS_TIME) $(OBJS_DIMS)
 OBJS_INFO += $(OBJS_TIME)
+OBJS_UGRID += $(OBJS_TIME)
 
 EXES = gr gw ncinfo ncelab
-EXES = ncinfo ncbgc ncelab ncugrid grnew
+EXES = ncinfo ncbgc ncelab ncugrid grnew ncuintp ncucombine
 
 DATA = $(HOME)/work/nc2fem/data
 
@@ -92,6 +94,12 @@ ncelab: $(OBJS_ELAB) $(LIBFS) ncelab.o
 	gfortran -o $@ $@.o $(OBJS_ELAB) $(LIBGS)
 
 ncugrid: $(OBJS_UGRID) $(LIBFS) ncugrid.o
+	gfortran -o $@ $@.o $(OBJS_UGRID) $(LIBGS)
+
+ncuintp: $(OBJS_UGRID) $(LIBFS) ncuintp.o
+	gfortran -o $@ $@.o $(OBJS_UGRID) $(LIBGS)
+
+ncucombine: $(OBJS_UGRID) $(LIBFS) ncucombine.o
 	gfortran -o $@ $@.o $(OBJS_UGRID) $(LIBGS)
 
 gr: $(OBJS_GR) $(LIBFS) gr.o
@@ -153,18 +161,29 @@ bgc_util.o: ncf.mod
 clo.mod: subclo.o
 dts.mod: subdts.o
 gr.o: ncf.mod
+grnew.o: ncf.mod
 iso8601.mod: subiso8601.o
 mod_ncbgc.mod: ncbgc.o
-mod_ncinfo.mod: ncelab.o
+mod_ncelab.mod: ncelab.o
 mod_ncinfo.mod: ncinfo.o
+mod_ncucombine.mod: ncucombine.o
+mod_ncugrid.mod: ncugrid.o
+mod_ncuintp.mod: ncuintp.o
+mod_ncuparams.mod: ncu_params.o
 nc_time.mod: ncf_tutil.o
 ncbgc.o: clo.mod ncf.mod
 ncelab.o: clo.mod ncf.mod
 ncf.mod: ncf_util.o
 ncf_dim_coords.o: ncf.mod
+ncf_out.o: ncf.mod
 ncf_tutil.o: iso8601.mod ncf.mod
 ncf_util.o: netcdf.inc
 ncinfo.o: clo.mod ncf.mod
+ncnames.mod: nc_dim_coords.o
 ncnames.mod: ncf_dim_coords.o
+ncu_topo.o: ncf.mod
+ncucombine.o: clo.mod dts.mod ncf.mod
+ncugrid.o: clo.mod ncf.mod
+ncuintp.o: clo.mod ncf.mod
 scan_string.mod: convert.o
 

@@ -20,6 +20,7 @@ $::debug = 0;
 $::exit_on_error = 1;
 $::write_on_error = 0;
 $::has_copyright = 0;
+$::has_other_copyright = 0;
 $::out_of_header = 0;
 
 #$::check_rev_log = 0;
@@ -28,15 +29,21 @@ $::compare_date = "none" unless $::compare_date;
 
 my $file = $ARGV[0];
 
-my $ext = $file;
-$ext =~ s/^.*\.//;
-$ext = "NONE" if $ext eq $file;
+my $aux = $file;
+$aux =~ s/.*\.\.\///;				#file starts with ../
+$aux =~ s/\.\///;				#file starts with ./
+my $ext = $aux;
+$ext =~ s/^.*\.//;				#pop everything before .
+$ext = "NONE" if $ext eq $aux;			#no extension
+$ext = "HIDDEN" if $aux =~ /^\./;		#file starts with .
 
 if( $::debug ) {
+  print STDERR "--------------------------\n";
   print STDERR "file: $file\n";
   print STDERR "extension: $ext\n";
   print STDERR "compare date: $::compare_date\n";
   print STDERR "check_only: $::check_only\n";
+  print STDERR "--------------------------\n";
 }
 
 if( $ext eq "f90" ) {
@@ -59,8 +66,15 @@ if( $ext eq "f90" ) {
   } elsif( $file eq "README" ) {
     treat_for_copyright();
   } else {
-    ignore();
+    if( is_script() ) {
+      treat_for_copyright();
+    } else {
+      treat_for_copyright();
+      exit 17;				#no extension, no script - warning
+    }
   }
+} elsif( $ext eq "HIDDEN" ) {
+  ignore();
 } else {
   if( $::write_on_error ) {
     print STDERR "  *** cannot yet handle extension $ext\n";
@@ -74,14 +88,12 @@ if( $::debug ) {
   print STDERR "using compare date: $::compare_date\n";
 }
 
-unless ( $::has_copyright ) {
-}
-
 #----------------------------------------------
 
 sub treat_f90
 {
   my $in_revision_log = 0;
+  my $has_revision_log = 0;
   my $revs = 0;
   my $date_old = "";
   my $error = 0;
@@ -93,6 +105,7 @@ sub treat_f90
     check_copyright();
     if( /^[!cC]\s+revision log/ ) {
       $in_revision_log = 1;
+      $has_revision_log = 1;
       <>;				# skip next empty line
     } elsif( $in_revision_log ) {
       last if /^\s*$/;
@@ -115,8 +128,7 @@ sub treat_f90
       }
       if( $date ge $::compare_date ) {
 	$revs++;
-        print "  $_\n" unless $::check_only;
-        #print "  $_\n";
+        print STDERR "  $_\n" unless $::check_only;
       }
       $date_old = $date;
     }
@@ -128,21 +140,32 @@ sub treat_f90
     }
     exit 7;
   }
-  if( $::has_copyright == 0 ) {
+  if( $::has_copyright == 0 and $::has_other_copyright == 0 ) {
     if( $::write_on_error ) {
       print STDERR "  *** no copyright found\n";
     }
     exit 9;
   }
-  if( $revs == 0 ) {
+  if( $has_revision_log == 0 ) {
     if( $::write_on_error ) {
       print STDERR "  *** no revision log found\n";
     }
+    exit 13;
+  }
+  if( $revs == 0 ) {
+    if( $::write_on_error ) {
+      print STDERR "  *** no update to revision log found\n";
+    }
     exit 5;
+  }
+  if( $::has_other_copyright == 1 ) {
+    exit 19;
   }
 
   exit 0;
 }
+
+#----------------------------------------------
 
 sub treat_for_copyright
 {
@@ -153,13 +176,31 @@ sub treat_for_copyright
     last if $::out_of_header;		# we are out of header
     check_copyright();
   }
-  if( $::has_copyright == 0 ) {
+  if( $::has_other_copyright == 1 ) {
+    exit 19;
+  } elsif( $::has_copyright == 0 ) {
     if( $::write_on_error ) {
       print STDERR "  *** no copyright found\n";
     }
     exit 9;
   }
 }
+
+#----------------------------------------------
+
+sub is_script
+{
+  $_ = <>;
+  if( /^\#!\/bin\/bash/ ) {
+    return 1;
+  } elsif( /^\#!\/bin\/sh/ ) {
+    return 1;
+  } else {
+    return 0;
+  }
+}
+
+#----------------------------------------------
 
 sub ignore
 {
@@ -185,6 +226,8 @@ sub check_copyright
   if( /Copyright \(C\)/ ) {
     #print STDERR "  info: Copyright found\n";
     $::has_copyright = 1;
+  } elsif( /COPYRIGHT/i ) {
+    $::has_other_copyright = 1;
   }
 }
 

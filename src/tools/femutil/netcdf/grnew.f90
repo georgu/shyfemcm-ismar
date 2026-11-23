@@ -1,24 +1,33 @@
 
-!---------------------------------------------------------------------
+!--------------------------------------------------------------------------
 !
-!     This is part of the netCDF package.
-!     Copyright 2006 University Corporation for Atmospheric Research/Unidata.
-!     See COPYRIGHT file for conditions of use.
+!    Copyright (C) 2022-2026  Georg Umgiesser
 !
-!     This is an example which reads some surface pressure and
-!     temperatures. The data file read by this program is produced
-!     comapnion program sfc_pres_temp_wr.f. It is intended to illustrate
-!     the use of the netCDF fortran 77 API.
+!    This file is part of SHYFEM.
 !
-!     This program is part of the netCDF tutorial:
-!     http://www.unidata.ucar.edu/software/netcdf/docs/netcdf-tutorial
+!    SHYFEM is free software: you can redistribute it and/or modify
+!    it under the terms of the GNU General Public License as published by
+!    the Free Software Foundation, either version 3 of the License, or
+!    (at your option) any later version.
 !
-!     Full documentation of the netCDF Fortran 77 API can be found at:
-!     http://www.unidata.ucar.edu/software/netcdf/docs/netcdf-f77
+!    SHYFEM is distributed in the hope that it will be useful,
+!    but WITHOUT ANY WARRANTY; without even the implied warranty of
+!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+!    GNU General Public License for more details.
 !
-!     $Id: sfc_pres_temp_rd.f,v 1.8 2007/01/24 19:45:09 russ Exp $
+!    You should have received a copy of the GNU General Public License
+!    along with SHYFEM. Please see the file COPYING in the main directory.
+!    If not, see <http://www.gnu.org/licenses/>.
 !
-!---------------------------------------------------------------------
+!    Contributions to this file can be found below in the revision log.
+!
+!--------------------------------------------------------------------------
+
+! revision log :
+!
+! 16.05.2017    ggu     started from gr.f90
+
+!*********************************************************************
 
       program grnew
 

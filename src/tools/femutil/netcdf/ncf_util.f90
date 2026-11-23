@@ -35,6 +35,7 @@
 !
 ! https://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf-f77/
 ! https://www.unidata.ucar.edu/software/netcdf/examples/programs/
+! https://docs.unidata.ucar.edu/netcdf-fortran/current/nc_f77_interface_guide.html
 ! http://nco.sourceforge.net/nco.html
 
 !--------------------------------------------------------------------------
@@ -148,8 +149,11 @@
 	integer, parameter :: NF_MAX_STRLEN = 1024
 
 	integer, parameter :: nfc_string_id = 2
-	integer, parameter :: nfc_float_id = 5
+	integer, parameter :: nfc_int_id = 4
+	integer, parameter :: nfc_real_id = 5
 	integer, parameter :: nfc_double_id = 6
+
+	integer, parameter :: nfc_unlimited = nf_unlimited
 
         type :: dim_item
 	  integer :: ndims				  !number of dimensions
@@ -223,6 +227,27 @@
      &				, ncf_get_record_d2 &
      &				, ncf_get_record_d3 &
      &				, ncf_get_record_d4
+        END INTERFACE
+
+        INTERFACE ncf_var_put
+        MODULE PROCEDURE 	  ncf_var_put_vitem &
+     &				, ncf_var_put_double0 &
+     &				, ncf_var_put_real2nt &
+     &				, ncf_var_put_real2 &
+     &        			, ncf_var_put_real3nt &
+     &				, ncf_var_put_real3
+        END INTERFACE
+
+        INTERFACE ncf_make_att
+        MODULE PROCEDURE 	  ncf_make_att_char &
+     &				, ncf_make_att_int &
+     &				, ncf_make_att_real &
+     &				, ncf_make_att_double
+        END INTERFACE
+
+        INTERFACE ncf_print_variable
+        MODULE PROCEDURE 	  ncf_print_variable_vitem &
+     &				, ncf_print_variable_varid 
         END INTERFACE
 
 	private bdebug
@@ -302,6 +327,7 @@
 	integer i
 
 	i = ncf_find_ncid(ncid)
+	!write(6,*) 'item number = ',i,nfill,ncids(1:nfill)
 	ncf_get_nitem => nitems(i)
 
 	end function ncf_get_nitem
@@ -626,11 +652,20 @@
 	integer ncid
 
 	integer id
+        type(nc_item), pointer :: nitem
 
 	retval = nf_create(file, nf_clobber, ncid)
 	call ncf_handle_err(retval)
 
 	call ncf_insert_ncid(ncid)
+
+        nitem => ncf_get_nitem(ncid)
+
+        nitem%filename = file
+        nitem%ncid = ncid
+        nitem%nvars = 0
+        nitem%ngatts = 0
+        nitem%idunlim = 0
 
 	end
 
@@ -669,7 +704,7 @@
 
 	subroutine ncf_make_dim(ncid,ndims,len,name)
 
-! makes dimensions for output file
+! makes dimension for output file
 
 	implicit none
 
@@ -691,6 +726,111 @@
 	end
 
 !*****************************************************************
+
+	subroutine ncf_make_var(ncid,name,xtype,nvdims,vdims,varid)
+
+! makes variable for output file
+
+	implicit none
+
+	integer ncid
+	character*(*) name
+	integer xtype
+	integer nvdims
+	integer vdims(nvdims)
+	integer varid
+
+        retval = nf_def_var(ncid,name,xtype,nvdims,vdims,varid)
+	call ncf_handle_err(retval)
+
+	end
+
+!*****************************************************************
+
+	subroutine ncf_make_att_char(ncid,varid,name,text)
+
+! makes attribute for output file
+
+	implicit none
+
+	integer ncid
+	integer varid
+	character*(*) name
+	character*(*) text
+
+	integer len
+
+	len = len_trim(text)
+
+        retval = nf_put_att_text(ncid,varid,name,len,text)
+	call ncf_handle_err(retval)
+
+	end
+
+!*****************************************************************
+
+	subroutine ncf_make_att_int(ncid,varid,name,val)
+
+! makes attribute for output file
+
+	implicit none
+
+	integer ncid
+	integer varid
+	character*(*) name
+	integer val
+
+	integer, save :: xtype = nfc_int_id
+	integer, save :: len = 1
+
+        retval = nf_put_att_int(ncid,varid,name,xtype,len,val)
+	call ncf_handle_err(retval)
+
+	end
+
+!*****************************************************************
+
+	subroutine ncf_make_att_real(ncid,varid,name,val)
+
+! makes attribute for output file
+
+	implicit none
+
+	integer ncid
+	integer varid
+	character*(*) name
+	real val
+
+	integer, save :: xtype = nfc_real_id
+	integer, save :: len = 1
+
+        retval = nf_put_att_real(ncid,varid,name,xtype,len,val)
+	call ncf_handle_err(retval)
+
+	end
+
+!*****************************************************************
+
+	subroutine ncf_make_att_double(ncid,varid,name,val)
+
+! makes attribute for output file
+
+	implicit none
+
+	integer ncid
+	integer varid
+	character*(*) name
+	double precision val(1)
+
+	integer, save :: xtype = nfc_double_id
+	integer, save :: len = 1
+
+        retval = nf_put_att_double(ncid,varid,name,xtype,len,val)
+	call ncf_handle_err(retval)
+
+	end
+
+!*****************************************************************
 !*****************************************************************
 !*****************************************************************
 ! dimensions
@@ -708,6 +848,34 @@
 
         retval = NF_INQ_VARNDIMS(ncid,varid,ndims)
 	call ncf_handle_err(retval)
+
+	end
+
+!*****************************************************************
+
+	subroutine ncf_var_diminfo(ncid,varid,ndims,dimids,dimlens)
+
+! gets dimension ids of var varid
+
+	implicit none
+
+	integer ncid,varid,ndims
+	integer dimids(ndims)
+	integer dimlens(ndims)
+
+	integer i,dimid,dimlen
+
+        retval = NF_INQ_VARDIMID(ncid,varid,dimids)
+	call ncf_handle_err(retval)
+
+	do i=1,ndims
+	  dimid = dimids(i)
+          retval = NF_INQ_DIMLEN(ncid,dimid,dimlen)
+          call ncf_handle_err(retval)
+	  dimlens(i) = dimlen
+	end do
+
+	!write(6,'(a,10i6)') 'diminfo: ',varid,ndims,dimids,dimlens
 
 	end
 
@@ -824,9 +992,11 @@
 	integer varid
 	type(var_item) :: vitem
 
+	logical, save :: bdebug = .false.
 	integer ndims
 	integer len,rlen,l,i,dimid,idunlim
 	type(nc_item), pointer :: nitem
+	type(dim_item), pointer :: ditem
         character*(NF_MAX_NAME) :: dname
 
 	retval = NF_INQ_VARNDIMS(ncid,varid,ndims)
@@ -850,7 +1020,24 @@
 	vitem%is_string = ( vitem%xtype == NF_CHAR )
 
 	nitem => ncf_get_nitem(ncid)
+	!nitem = ncf_get_nitem(ncid)
 	idunlim = nitem%idunlim
+
+	if( bdebug ) then
+	write(6,*) '------------------------'
+	write(6,*) varid
+	write(6,*) trim(vitem%name)
+	write(6,*) vitem%xtype
+	write(6,*) vitem%ndims
+	write(6,*) vitem%dimids
+	write(6,*) vitem%natts
+	do i=1,ndims
+	  retval = NF_INQ_DIMLEN(ncid,vitem%dimids(i),l)
+	  call ncf_handle_err(retval)
+	  write(6,*) vitem%dimids(i),l
+	end do
+	write(6,*) '------------------------'
+	end if
 
 	len = 1
 	rlen = 1
@@ -858,7 +1045,11 @@
 	vitem%tlen = 1
 	do i=1,ndims
 	  dimid = vitem%dimids(i)
+	!write(6,*) 'ggguuu ',i,dimid
+	  !ditem = nitem%ditem
+          !l = ditem%len(dimid)
           l = nitem%ditem%len(dimid)
+          !dname = ditem%name(dimid)
           dname = nitem%ditem%name(dimid)
 	  !GGU write(6,*) 'dimmm: ',i,dimid,l,trim(dname)
 	  vitem%start(i) = 1
@@ -968,8 +1159,14 @@
 	end
  
 !*****************************************************************
+!*****************************************************************
+!*****************************************************************
+! writing variables
+!*****************************************************************
+!*****************************************************************
+!*****************************************************************
 
-	subroutine ncf_var_put(ncid,vitem)
+	subroutine ncf_var_put_vitem(ncid,vitem)
 
 ! writes variable data in vitem to file
 
@@ -988,6 +1185,132 @@
 	  retval = NF_PUT_VAR_DOUBLE(ncid,varid,vitem%value)
 	  call ncf_handle_err(retval)
 	end if
+
+	end
+
+!*****************************************************************
+
+	subroutine ncf_var_put_real2nt(ncid,varid,val)
+	implicit none
+	integer ncid,varid
+	real val(:)
+	call ncf_var_put_real2(ncid,varid,0,val)
+	end
+
+	subroutine ncf_var_put_real2(ncid,varid,irec,val)
+
+! writes variable data to file
+
+	implicit none
+
+	integer ncid
+	integer varid
+	integer irec
+	real val(:)
+
+	integer, parameter :: ndim = 2
+	integer, save :: start(ndim) = (/1,0/)
+	integer, save :: count(ndim) = (/0,1/)
+	integer, save :: start0(ndim-1) = (/1/)
+	integer, save :: count0(ndim-1) = (/0/)
+	integer ndims
+	integer dimids(ndim)
+	integer dimlens(ndim)
+
+	integer dimid,len,retval
+
+	dimids = 0
+	dimlens = 0
+        call ncf_var_ndims(ncid,varid,ndims)
+	if( ndims > ndim ) stop 'error stop ncf_var_put: ndims>ndim'
+        call ncf_var_diminfo(ncid,varid,ndims,dimids,dimlens)
+	start(ndim) = irec
+	count(1:ndim-1) = dimlens(1:ndim-1)
+	if( .false. ) then
+	write(6,*) '----------------- ncf_var_put_real2 start'
+	write(6,*) ndims,start,count,dimlens
+	write(6,*) ndims,start(1),count(1),dimlens(1)
+	count0(1) = dimlens(1)-1
+	write(6,*) ndims,start0,count0,dimlens(1)
+	write(6,*) size(val)
+	write(6,*) '----------------- ncf_var_put_real2 end'
+	end if
+
+	retval = NF_INQ_DIMID (NCID,'longitude',dimid)
+	retval = NF_INQ_DIMLEN (NCID,DIMID,len)
+	if( .false. ) write(6,*) 'dimid: ',dimid,'  len: ',len
+
+	retval = NF_PUT_VARA_REAL(ncid,varid,start,count,val)
+	call ncf_handle_err(retval)
+
+	end
+ 
+!*****************************************************************
+
+	subroutine ncf_var_put_real3nt(ncid,varid,val)
+	implicit none
+	integer ncid,varid
+	real val(:,:)
+	call ncf_var_put_real3(ncid,varid,0,val)
+	end
+
+	subroutine ncf_var_put_real3(ncid,varid,irec,val)
+
+! writes variable data to file
+
+	implicit none
+
+	integer ncid
+	integer varid
+	integer irec
+	real val(:,:)
+
+	integer, parameter :: ndim = 3
+	integer, save :: start(ndim) = (/1,1,0/)
+	integer, save :: count(ndim) = (/0,0,1/)
+	integer ndims
+	integer dimids(ndim)
+	integer dimlens(ndim)
+
+        call ncf_var_ndims(ncid,varid,ndims)
+	if( ndims > ndim ) stop 'error stop ncf_var_put: ndims>ndim'
+        call ncf_var_diminfo(ncid,varid,ndims,dimids,dimlens)
+	start(ndim) = irec
+	count(1:ndim-1) = dimlens(1:ndim-1)
+
+	retval = NF_PUT_VARA_REAL(ncid,varid,start,count,val)
+	call ncf_handle_err(retval)
+
+	end
+ 
+!*****************************************************************
+
+	subroutine ncf_var_put_double0(ncid,varid,irec,val)
+
+! writes variable data to file
+
+	implicit none
+
+	integer ncid
+	integer varid
+	integer irec
+	double precision val
+
+	integer, parameter :: ndim = 1
+	integer, save :: start(ndim) = (/0/)
+	integer, save :: count(ndim) = (/1/)
+	integer ndims
+	integer dimids(ndim)
+	integer dimlens(ndim)
+
+        call ncf_var_ndims(ncid,varid,ndims)
+	if( ndims > ndim ) stop 'error stop ncf_var_put: ndims>ndim'
+        call ncf_var_diminfo(ncid,varid,ndims,dimids,dimlens)
+	start(ndim) = irec
+	!count(1:ndim-1) = dimlens(1:ndim-1)
+
+	retval = NF_PUT_VARA_DOUBLE(ncid,varid,start,count,val)
+	call ncf_handle_err(retval)
 
 	end
  
@@ -1193,7 +1516,42 @@
 !*****************************************************************
 !*****************************************************************
 
-	subroutine ncf_print_variable(ncid,vitem)
+	subroutine ncf_print_variable_varid(ncid,varid)
+
+! prints variable
+
+	implicit none
+
+        integer ncid
+	integer varid
+
+	integer i,dimid,len
+	integer xtype,ndims,natts
+	integer dimids(10)
+        character*80 :: name
+
+	retval = NF_INQ_VAR(ncid,varid,name,xtype,ndims,dimids,natts)
+	call ncf_handle_err(retval)
+
+!NF_INQ_VAR (INTEGER NCID, INTEGER VARID, CHARACTER*(*) name, INTEGER xtype, INTEGER ndims, INTEGER dimids(*), INTEGER natts)
+!NF_INQ_DIM (INTEGER NCID, INTEGER DIMID, CHARACTER*(*) name, INTEGER len)
+
+	write(6,*) '======================================= start print var'
+	write(6,*) varid,xtype,ndims,natts
+	write(6,*) trim(name)
+	do i=1,ndims
+	  dimid = dimids(i)
+	  retval = NF_INQ_DIM(ncid,dimid,name,len)
+	  call ncf_handle_err(retval)
+	  write(6,*) i,dimid,len,trim(name)
+	end do
+	write(6,*) '======================================= end print_var'
+
+	end
+
+!*****************************************************************
+
+	subroutine ncf_print_variable_vitem(ncid,vitem)
 
 ! prints variable
 

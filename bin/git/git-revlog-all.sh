@@ -1,5 +1,13 @@
 #!/bin/bash
 #
+#--------------------------------------------------------------------------
+#
+#    Copyright (C) 1985-2026  Georg Umgiesser
+#
+#    This file is part of SHYFEM.
+#
+#--------------------------------------------------------------------------
+#
 # checks all files with code
 #
 #---------------------------------------------------------
@@ -7,12 +15,14 @@
 bindir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 actdir=$( pwd )
 
-exts="f90 f"
+exts="f90 f sh pl"
 exclude="tmp netcdf arc"
+exclude="tmp arc"
 
 #--------------------------------------------------------
 
-subdirs=$( iterdir.sh -dir pwd . )
+#subdirs=$( iterdir.sh -dir pwd . )
+subdirs=$( find . -type d )
 
 for dir in $subdirs
 do

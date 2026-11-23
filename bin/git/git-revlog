@@ -1,5 +1,13 @@
 #!/bin/bash
 #
+#------------------------------------------------------------------------
+#
+#    Copyright (C) 1985-2026  Georg Umgiesser
+#
+#    This file is part of SHYFEM.
+#
+#------------------------------------------------------------------------
+
 #-----------------------------------------------
 # define functions
 #-----------------------------------------------
@@ -8,7 +16,7 @@ GetExtension()
 {
   local file=$1
   local extension="${file##*.}"
-  [ $extension = $file ] && extension="NONE"
+  [ "$extension" = $file ] && extension="NONE"
   echo $extension
 }
 
@@ -75,10 +83,13 @@ bindir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 #-----------------------------------------------
 
 norev_count=0
+norev_log=0
 ext_error=0
 date_error=0
 copy_error=0
+copy_warning=0
 errors=0
+warnings=0
 
 #-----------------------------------------------
 # set mode (git or files)
@@ -120,12 +131,21 @@ do
   elif [ $status -eq 3 ]; then
     echo "  ${red}$file: cannot handle extension $ext${normal}"
     ext_error=$(( ext_error + 1 ))
+  elif [ $status -eq 17 ]; then
+    echo "  ${yellow}$file: file has no extension${normal}"
+    copy_warning=$(( copy_warning + 1 ))
+  elif [ $status -eq 13 ]; then
+    echo "  ${red}$file: no revision log found${normal}"
+    norev_log=$(( norev_log + 1 ))
   elif [ $status -eq 5 ]; then
     echo "  ${cyan}$file: no update to revision log found${normal}"
     norev_count=$(( norev_count + 1 ))
   elif [ $status -eq 7 ]; then
     echo "  ${red}$file: some dates were out of order${normal}"
     date_error=$(( date_error + 1 ))
+  elif [ $status -eq 19 ]; then
+    echo "  ${yellow}$file: other copyright found${normal}"
+    copy_warning=$(( copy_warning + 1 ))
   elif [ $status -eq 9 ]; then
     echo "  ${red}$file: no copyright found${normal}"
     copy_error=$(( copy_error + 1 ))
@@ -138,8 +158,12 @@ if [ $mode = "git" ]; then
   echo "------------------------------------"
 fi
 
-if [ $norev_count -gt 0 ]; then
+if [ $norev_log -gt 0 ]; then
   errors=$(( errors + 1 ))
+  echo "${red}some files had no revison log: $norev_log${normal}"
+fi
+if [ $norev_count -gt 0 ]; then
+  warnings=$(( warnings + 1 ))
   echo "${cyan}some files had no update to revison log: $norev_count${normal}"
 fi
 if [ $ext_error -gt 0 ]; then
@@ -150,11 +174,18 @@ if [ $date_error -gt 0 ]; then
   errors=$(( errors + 1 ))
   echo "${red}some dates were out of order: $date_error${normal}"
 fi
+if [ $copy_warning -gt 0 ]; then
+  warnings=$(( warnings + 1 ))
+  echo "${yellow}some files had other copyright: $copy_warning${normal}"
+fi
 if [ $copy_error -gt 0 ]; then
   errors=$(( errors + 1 ))
   echo "${red}some files had no copyright: $copy_error${normal}"
 fi
 
+if [ $warnings -gt 0 ]; then
+  echo "${yellow}some warnings have been found${normal}"
+fi
 if [ $errors -gt 0 ]; then
   echo "${red}some errors have been found${normal}"
   exit 1

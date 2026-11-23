@@ -1,26 +1,29 @@
 
-! **************************************************************************
-! 
-!      This is part of the netCDF package.
-!      Copyright 2006 University Corporation for Atmospheric Research/Unidata.
-!      See COPYRIGHT file for conditions of use.
-! 
-!      This is an example which reads some surface pressure and
-!      temperatures. The data file read by this program is produced
-!      comapnion program sfc_pres_temp_wr.f. It is intended to illustrate
-!      the use of the netCDF fortran 77 API.
-! 
-!      This program is part of the netCDF tutorial:
-!      http://www.unidata.ucar.edu/software/netcdf/docs/netcdf-tutorial
-! 
-!      Full documentation of the netCDF Fortran 77 API can be found at:
-!      http://www.unidata.ucar.edu/software/netcdf/docs/netcdf-f77
-! 
-!      $Id: sfc_pres_temp_rd.f,v 1.8 2007/01/24 19:45:09 russ Exp $
-! 
-! **************************************************************************
+!--------------------------------------------------------------------------
+!
+!    Copyright (C) 2025  Georg Umgiesser
+!
+!    This file is part of SHYFEM.
+!
+!    SHYFEM is free software: you can redistribute it and/or modify
+!    it under the terms of the GNU General Public License as published by
+!    the Free Software Foundation, either version 3 of the License, or
+!    (at your option) any later version.
+!
+!    SHYFEM is distributed in the hope that it will be useful,
+!    but WITHOUT ANY WARRANTY; without even the implied warranty of
+!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+!    GNU General Public License for more details.
+!
+!    You should have received a copy of the GNU General Public License
+!    along with SHYFEM. Please see the file COPYING in the main directory.
+!    If not, see <http://www.gnu.org/licenses/>.
+!
+!    Contributions to this file can be found below in the revision log.
+!
+!--------------------------------------------------------------------------
 
-! routine to write information on nc files
+! routine to write grd file from information in ugrid
 !
 ! revision log :
 !
@@ -53,14 +56,16 @@
 
         integer ncid
 
-        integer nvars, natts, ngatts, idunlim
+	integer ierr
+	integer n
+        integer nvars, natts, ngatts, idunlim, nrecs
         integer nc,ia,varid,attid
 
 	integer nt,nx,ny,nz
-	character*80 tcoord,xcoord,ycoord,zcoord
 
         integer id
 	character*80 ncfile
+	character*80 name
 
 	type(var_item) :: vitem
 	type(att_item) :: aitem
@@ -75,6 +80,7 @@
 	double precision, allocatable :: x(:), y(:), c(:,:), z(:)
 	real, allocatable :: rx(:), ry(:), rz(:)
 	integer, allocatable :: ic(:,:)
+	integer, allocatable :: nen3v(:,:)
 
 !---------------------------------------------------------------------
 ! open netcdf file
@@ -92,67 +98,62 @@
 ! find mesh topology of ugrid file
 !---------------------------------------------------------------------
 
-	call find_mesh_topology(ncid,varcid,varxid,varyid)
+	call find_mesh_topology(ncid,varcid,varxid,varyid,ierr)
+	if( ierr /= 0 ) then
+	  call find_custom_topology(ncid,varcid,varxid,varyid,ierr)
+	  if( ierr /= 0 ) then
+	    stop 'error stop ncugrid: no mesh topology found'
+	  end if
+	end if
 
 !---------------------------------------------------------------------
 ! extract variables that contain mesh topology
 !---------------------------------------------------------------------
 
-	nx = 0
-	ny = 0
-	nz = 0
-	n3 = 0
+	call get_connectivity_dim(ncid,varcid,n)
+	nel = n
+	allocate(nen3v(3,nel))
+	call get_connectivity(ncid,varcid,nel,nen3v)
 
-	call ncf_var_inf(ncid,varxid,vitem)
-	if( bwrite ) write(6,*) trim(vitem%name),vitem%ndims,vitem%dims
-	if( vitem%ndims /= 1 ) goto 98
-	nx = vitem%dims(1)
-	allocate(x(nx))
-	allocate(rx(nx))
-	call ncf_get_data(ncid,varxid,x)
-	rx = x
-	
-	call ncf_var_inf(ncid,varyid,vitem)
-	if( bwrite ) write(6,*) trim(vitem%name),vitem%ndims,vitem%dims
-	if( vitem%ndims /= 1 ) goto 98
-	ny = vitem%dims(1)
-	allocate(y(ny))
-	allocate(ry(nx))
-	call ncf_get_data(ncid,varyid,y)
-	ry = y
-	
+	call get_xy_dim(ncid,varxid,nx)
+	call get_xy_dim(ncid,varyid,ny)
 	if( nx /= ny ) goto 97
 	nkn = nx
+	allocate(rx(nkn),ry(nkn))
+	call get_xy(ncid,varxid,nkn,rx)
+	call get_xy(ncid,varyid,nkn,ry)
 
-	call ncf_var_inf(ncid,varcid,vitem)
-	if( bwrite ) write(6,*) trim(vitem%name),vitem%ndims,vitem%dims
-	if( vitem%ndims /= 2 ) goto 98
-	n3 = vitem%dims(1)
-	nel = vitem%dims(2)
-	allocate(c(n3,nel))
-	allocate(ic(n3,nel))
-	call ncf_get_data(ncid,varcid,c)
-	ic = nint(c)
-
-	if( n3 /= 3 ) goto 97
-	
 !---------------------------------------------------------------------
 ! topology is in rx,ry,ic - now write grid file
 !---------------------------------------------------------------------
 
 !---------------------------------------------------------------------
-! if needed, extract variable for writing
-!---------------------------------------------------------------------
-
-	allocate(rz(nkn))
-	call get_variable(ncid,variable,irec,flag,nkn,rz)
-
-!---------------------------------------------------------------------
 ! write grid file
 !---------------------------------------------------------------------
 
-	call write_grd(nkn,nel,rx,ry,ic,flag,rz)
+	allocate(rz(nkn))
+	rz = flag
+	call write_grd(nkn,nel,rx,ry,nen3v,flag,rz)
 	if( .not. bsilent ) write(6,*) 'grid file ugrid.grd has been written'
+
+!---------------------------------------------------------------------
+! loop over data
+!---------------------------------------------------------------------
+
+	varid = 0
+	name = 'water_surface_height_above_reference_datum'
+	call identify_variable(ncid,name,varid,nrecs)
+	if( varid == 0 ) goto 96
+	call ncf_var_inf(ncid,varid,vitem)
+	call ncf_print_variable(ncid,vitem)
+
+	do irec=1,nrecs
+	  if( bverbose ) write(6,*) 'irec = ',irec
+	  variable = ' '
+	  call get_variable(ncid,varid,variable,irec,flag,nkn,rz)
+	end do
+
+	write(6,*) nrecs,' records have been handled'
 
 !---------------------------------------------------------------------
 ! close netcdf file
@@ -166,7 +167,7 @@
 
 	return
    96	continue
-	write(6,*) 'cannot find variable ',trim(variable)
+	write(6,*) 'cannot find variable ',trim(name)
 	stop 'error stop ncugrid: no such variable'
    97	continue
 	write(6,*) 'error in dimensions: ',nx,ny,n3
@@ -175,127 +176,6 @@
 	write(6,*) 'wrong number of dimensions: ',vitem%ndims
 	stop 'error stop ncugrid: number of dimensions'
 	end program
-
-!*********************************************************************
-
-	subroutine find_mesh_topology(ncid,varcid,varxid,varyid)
-
-! finds mesh topology - returns varcid,varxid,varyid
-
-	use ncf
-	use mod_ncugrid
-
-	implicit none
-
-	integer ncid
-	integer varcid,varxid,varyid
-
-	type(nc_item) :: nitem
-	type(var_item) :: vitem
-	type(att_item) :: aitem
-	type(dim_item) :: ditem
-	integer nvars,varid
-	integer natts,attid
-	integer mtvid,mtaid
-	integer ianz
-	character*80 vstring,astring,attname
-	character*80 varname,varcname,varxname,varyname
-	character*80 vars(2)
-
-	integer iscans
-
-!---------------------------------------------------------------------
-! looks up variable containing cf_role = "mesh_topology"
-!---------------------------------------------------------------------
-
-	attname = 'cf_role'
-
-	mtvid = 0
-	mtaid = 0
-
-	nitem = ncf_get_nitem(ncid)
-        call ncf_set_var_name_length(ncid,nitem)
-	nvars = nitem%nvars
-	if( bwrite ) write(6,*) 'nvars = ',nvars
-
-	do varid=1,nvars
-	  call ncf_var_inf(ncid,varid,vitem)
-	  call ncf_natts(vitem,natts)
-	  call ncf_att_id(ncid,varid,attname,attid)
-	  if( attid > 0 ) then
-	    call ncf_att_inf(ncid,varid,attid,aitem)
-	    vstring = vitem%name
-	    astring = aitem%string
-	    if( bwrite ) write(6,*) varid,attid,'  ' &
-     &				,trim(vstring),'  ',trim(astring)
-	    if( astring == 'mesh_topology' ) then
-	      mtvid = varid
-	      mtaid = attid
-	    end if
-	  end if
-	end do
-
-	if( mtvid > 0 .and. .not. bsilent ) then
-	  write(6,*) 'mesh topology found: ', trim(vstring),'  ',trim(astring)
-	else
-	  write(6,*) 'cannot find mesh topology... aborting'
-	  stop 'error stop find_mesh_topology: no mesh topology found'
-	end if
-
-!---------------------------------------------------------------------
-! mesh topology is in mtvid
-!---------------------------------------------------------------------
-
-	varid = mtvid
-	call ncf_var_inf(ncid,varid,vitem)
-	call ncf_natts(vitem,natts)
-
-!---------------------------------------------------------------------
-! look for variables containg info on x,y, and connectivity
-!---------------------------------------------------------------------
-
-	attname='face_node_connectivity'
-	call ncf_att_id(ncid,varid,attname,attid)
-	if( attid == 0 ) goto 99
-	call ncf_att_inf(ncid,varid,attid,aitem)
-	varcname = aitem%string
-	if( bwrite ) write(6,*) trim(attname),'  :  ',trim(varcname)
-	
-	attname='node_coordinates'
-	call ncf_att_id(ncid,varid,attname,attid)
-	if( attid == 0 ) goto 99
-	call ncf_att_inf(ncid,varid,attid,aitem)
-	varname = aitem%string
-	if( bwrite ) write(6,*) trim(attname),'  :  ',trim(varname)
-	
-	ianz = iscans(varname,vars,2)
-	if( ianz /= 2 ) goto 99
-	varxname = vars(1)
-	varyname = vars(2)
-
-!---------------------------------------------------------------------
-! get varids for variables
-!---------------------------------------------------------------------
-
-	call ncf_var_id(ncid,varcname,varcid)
-	call ncf_var_id(ncid,varxname,varxid)
-	call ncf_var_id(ncid,varyname,varyid)
-
-	if( bwrite ) then
-	write(6,*) 'c  ',varcid,'  :  ',trim(varcname)
-	write(6,*) 'x  ',varxid,'  :  ',trim(varxname)
-	write(6,*) 'y  ',varyid,'  :  ',trim(varyname)
-	end if
-
-!---------------------------------------------------------------------
-! end of routine
-!---------------------------------------------------------------------
-
-	return
-   99	continue
-	write(6,*) 'attribute not found: ',trim(attname)
-	stop 'error stop find_mesh_topology: attribute not found'
-	end subroutine
 
 !*********************************************************************
 
@@ -361,12 +241,110 @@
 
 !*********************************************************************
 
-	subroutine get_variable(ncid,varname,ir,flag,n,rz)
+	subroutine identify_variable(ncid,name,varid,nrecs)
+
+! identifies variable in nc file
+
+	use ncf
+	use mod_ncugrid
+
+	implicit none
+
+	integer ncid
+	character*(*) name
+	integer varid
+	integer nrecs
+
+	logical :: bprint
+	integer nvars,natts,attid,idunlim,itime,ndims
+        type(nc_item) :: nitem
+        type(var_item) :: vitem
+        type(att_item) :: aitem
+        type(dim_item) :: ditem
+	character*80 vstring,astring,attname
+
+	bprint = bverbose
+
+	nitem = ncf_get_nitem(ncid)
+        call ncf_set_var_name_length(ncid,nitem)
+	nvars = nitem%nvars
+
+        do varid=1,nvars
+          call ncf_var_inf(ncid,varid,vitem)
+          call ncf_natts(vitem,natts)
+	  attname = 'standard_name'
+          call ncf_att_id(ncid,varid,attname,attid)
+          if( attid > 0 ) then
+            call ncf_att_inf(ncid,varid,attid,aitem)
+            vstring = vitem%name
+            astring = aitem%string
+            if( bprint ) write(6,*) varid,attid,'  ' &
+     &                          ,trim(vstring),'  ',trim(astring)
+            if( astring == name ) exit
+          end if
+        end do
+
+	if( varid > nvars ) varid = 0
+	if( varid == 0 ) return
+
+	idunlim = nitem%idunlim
+        !call ncf_var_inf(ncid,idunlim,vitem)
+	!call ncf_print_variable(ncid,vitem)
+	ditem = nitem%ditem
+	nrecs = ditem%len(idunlim)
+
+        call ncf_var_inf(ncid,varid,vitem)
+
+	if( bprint ) then
+	  write(6,*) nitem%idunlim
+	  write(6,*) vitem%ndims
+	  write(6,*) vitem%dimids
+	  write(6,*) vitem%dims
+	  write(6,*) vitem%idtime
+	  write(6,*) vitem%len,vitem%rlen,vitem%tlen
+	end if
+
+!---------------------------------------------------------------------
+! check if variable has time dimension
+! if it has time dimension it must be the last dimension
+!---------------------------------------------------------------------
+
+	ndims = vitem%ndims
+	idunlim = nitem%idunlim
+	itime = findloc(vitem%dimids,idunlim,1)
+	if( bprint ) write(6,*) 'itime = ',itime
+	if( itime == 0 ) then
+	  write(6,*) 'variable has no time dimension'
+	else if( itime == ndims ) then
+	  write(6,*) 'variable has as last dimension time dimension'
+	  ndims = ndims - 1	!pop time dimension
+	else
+	  write(6,*) 'time dimension is not last dimension... aborting'
+	  stop 'error stop identify_variable: garbled dimensions'
+	end if
+
+	write(6,*) 'variable has ',ndims,' dimensions (excluding time)'
+
+!---------------------------------------------------------------------
+! basic checks - cannot handle more than 2 dimensions
+!---------------------------------------------------------------------
+
+	if( ndims > 2 ) then
+	  write(6,*) 'cannot handle more than 2 dimensions (l,k)'
+	  stop 'error stop identify_variable: ndims > 2'
+	end if
+
+	end
+
+!*********************************************************************
+
+	subroutine get_variable(ncid,varid,varname,ir,flag,n,rz)
 
 ! extracts variable from nc file
 !
 ! if variable is 3D, only surface layer is returned
 ! if variable has time dimension, record ir is returnd
+! variable can be identified either by varid or varname
 
 	use ncf
 	use mod_ncugrid
@@ -396,7 +374,9 @@
 !---------------------------------------------------------------------
 
 	rz = flag
-	if( varname == ' ' ) return
+	if( varid == 0 ) then
+	  if( varname == ' ' ) return
+	end if
 
 !---------------------------------------------------------------------
 ! get info on file and variable
@@ -405,21 +385,8 @@
 	nitem = ncf_get_nitem(ncid)
         call ncf_set_var_name_length(ncid,nitem)
 
-	call ncf_var_id(ncid,varname,varid)
+	if( varid == 0 ) call ncf_var_id(ncid,varname,varid)
 	call ncf_var_inf(ncid,varid,vitem)
-
-!---------------------------------------------------------------------
-! print info on file and variable
-!---------------------------------------------------------------------
-
-	if( bprint ) then
-	  write(6,*) nitem%idunlim
-	  write(6,*) vitem%ndims
-	  write(6,*) vitem%dimids
-	  write(6,*) vitem%dims
-	  write(6,*) vitem%idtime
-	  write(6,*) vitem%len,vitem%rlen,vitem%tlen
-	end if
 
 !---------------------------------------------------------------------
 ! check if variable has time dimension
@@ -429,18 +396,14 @@
 	ndims = vitem%ndims
 	idunlim = nitem%idunlim
 	itime = findloc(vitem%dimids,idunlim,1)
-	write(6,*) 'itime = ',itime
-	if( itime == 0 ) then
-	  write(6,*) 'variable has no time dimension'
+	if( itime == 0 ) then	!no time dimentsion
+	  !ok
 	else if( itime == ndims ) then
-	  write(6,*) 'variable has as last dimension time dimension'
 	  ndims = ndims - 1	!pop time dimension
 	else
 	  write(6,*) 'time dimension is not last dimension... aborting'
 	  stop 'error stop get_variable: garbled dimensions'
 	end if
-
-	write(6,*) 'variable has ',ndims,' dimensions (excluding time)'
 
 !---------------------------------------------------------------------
 ! basic checks - cannot handle more than 2 dimensions
@@ -485,6 +448,24 @@
 !---------------------------------------------------------------------
 
 	end subroutine
+
+!*********************************************************************
+!*********************************************************************
+!*********************************************************************
+
+	subroutine get_ncugrid_vars(bverbose_l,bquiet_l,bsilent_l)
+
+	use mod_ncugrid
+
+	implicit none
+
+	logical bverbose_l,bquiet_l,bsilent_l
+
+	bverbose_l = bverbose
+	bquiet_l = bquiet
+	bsilent_l = bsilent
+
+	end
 
 !*********************************************************************
 !*********************************************************************

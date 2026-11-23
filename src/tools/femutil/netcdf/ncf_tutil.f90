@@ -76,6 +76,7 @@
 	integer, save :: date0 = 0
 	integer, save :: time0 = 0
 	integer, save :: datetime0(2) = 0
+	character*256, save :: time_units = ' '
 
 	double precision, save :: atime0
 	double precision, save :: time_fact
@@ -111,8 +112,12 @@
 	time_varid = varid		! save for later
 	var_id = varid
 
+	write(6,*) 'ncf_init_time: ',ncid,varid
+	!call ncf_time_info(ncid,varid)
 	attname = 'units'
 	call ncf_var_inf(ncid,var_id,vitem)
+	call ncf_print_variable(ncid,vitem)
+	call ncf_print_attributes(ncid,vitem)
 	call ncf_att_id(ncid,var_id,attname,att_id)
 	if( att_id == 0 ) then
 	  write(6,*) 'no units attribute for time coordinate'
@@ -121,6 +126,8 @@
 	end if
 	call ncf_att_inf(ncid,var_id,att_id,aitem)
 	atext = aitem%string
+	time_units = atext
+	write(6,*) 'ncf_init_time atext: ',trim(atext)
 
 	ndims = vitem%ndims
 	nit = vitem%tlen
@@ -140,6 +147,7 @@
 
 	date0 = datetime0(1)
 	time0 = datetime0(2)
+	write(6,*) 'datetime...... ',date0
 	call dtsini(date0,time0)
 	call dts_to_abs_time(date0,time0,atime0)
 	call dts_format_abs_time(atime0,tstring)
@@ -172,6 +180,10 @@
 
         double precision t
 
+	if( time_type .eq. 0 ) then
+	  stop 'error stop ncf_get_time: time utilities not initialized'
+	end if
+
 	call ncf_get_record(ncid,time_varid,irec,t)
 
 	if( time_type .eq. 1 ) then
@@ -184,6 +196,38 @@
 	end if
 
 	call correct_nc_time(ncid,t,atime)
+
+	end
+
+!*****************************************************************
+
+        subroutine ncf_get_reference_time(atime)
+
+! returns reference time
+
+	use nc_time
+
+	implicit none
+
+	double precision atime
+
+	atime = atime0
+
+	end
+
+!*****************************************************************
+
+        subroutine ncf_get_time_units(units)
+
+! returns reference time
+
+	use nc_time
+
+	implicit none
+
+	character*(*) units
+
+	units = time_units
 
 	end
 
@@ -523,6 +567,56 @@
 
 	call dts_to_abs_time(date,time,atime)
 	!call dts_format_abs_time(atime,tstring)
+
+	end
+
+!*****************************************************************
+
+	subroutine ncf_time_info(ncid,varid)
+
+	use ncf
+
+	implicit none
+
+	integer ncid,varid
+
+	integer xtype,ndims,dimids(1),natts
+	integer iatt
+	character*256 varname,attname,string
+	double precision value
+
+	write(6,*) '====================================='
+	write(6,*) 'ncf_time_info: ',ncid,varid
+
+	!INTEGER FUNCTION NF_INQ_VAR (INTEGER NCID, INTEGER VARID, CHARACTER*(*) name, INTEGER xtype, INTEGER ndims, INTEGER dimids(*), INTEGER natts) 
+	  !NF_INQ_ATTNAME(INTEGER NCID, INTEGER VARID, INTEGER ATTNUM, CHARACTER*(*) name) 
+	!NF_INQ_ATTTYPE(INTEGER NCID, INTEGER VARID, CHARACTER*(*) NAME, INTEGER xtype)
+
+	retval = NF_INQ_VAR(ncid,varid,varname,xtype,ndims,dimids,natts)
+	call ncf_handle_err(retval)
+
+	write(6,*) trim(varname)
+	write(6,*) xtype,ndims,natts
+	write(6,*) 'attributes:'
+
+	do iatt=1,natts
+	  retval = NF_INQ_ATTNAME(ncid,varid,iatt,attname)
+	  call ncf_handle_err(retval)
+	  retval = NF_INQ_ATTTYPE(ncid,varid,attname,xtype)
+	  call ncf_handle_err(retval)
+	  write(6,*) 'att: ',iatt,'  ',trim(attname),xtype
+	  if( xtype == NF_CHAR ) then
+	    retval = NF_GET_ATT_TEXT(ncid,varid,attname,string)
+	    call ncf_handle_err(retval)
+	    write(6,*) trim(string)
+	  else
+	    retval = NF_GET_ATT_DOUBLE(ncid,varid,attname,value)
+	    call ncf_handle_err(retval)
+	    write(6,*) value
+	  end if
+	end do
+
+	write(6,*) '====================================='
 
 	end
 
