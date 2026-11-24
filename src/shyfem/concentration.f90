@@ -274,6 +274,7 @@
 ! 21.04.2026    ggu     use bdry to see if mfluxv should be used
 ! 28.04.2026    ggu     insert more timing calls
 ! 08.05.2026    ggu     adjust qflux if node is dry
+! 13.07.2026    clr     bug fix for stability in conzstab: use element thickness
 !
 !*********************************************************************
 
@@ -1689,6 +1690,7 @@
 	double precision aa,aat,ad,adt
 	double precision aj,rk3,rv,aj4
 	double precision hmed,hmbot,hmtop
+	double precision hmed_ele    !element thickness used for hor. diffusion
 	double precision rvptop,rvpbot
 	double precision dt,w,aux
 	double precision aux1,aux2,aux3,aux4,aux5
@@ -2001,8 +2003,23 @@
 	ciadv = 0.
 	do ii=1,3
 	  k=kn(ii)
-          hmed = hold(l,ii)                      !new ggu   !HACK
-          chdiff = dt * aj4 * rk3 * hmed * wdiff(ii)	!bug fix 12.2.2010
+          hmed = hold(l,ii)                      !new ggu   !HACK 
+          hmed_ele = max( hdeov(l,ie) , hdenv(l,ie) )         ! clr Bug fix 2026-07-13 
+          chdiff = dt * aj4 * rk3 * hmed_ele * wdiff(ii)      ! clr Bug fix 2026-07-13
+
+!         clr Bug fix 2026-07-13 : compute stability index depending on element 
+!         instead of node thickness following diffusion formulation in conz3d:
+!	  the horizontal diffusive flux assembled in conz3d is scaled by the
+!	  ELEMENT thickness (haver=rso*hdenv + rsot*hdeov in conz3d), not by the 
+!         node thickness hold = hdknv/hdkov.
+!         Using hold here let it cancel against the node volume in cdiag
+!         below, leaving a stability index that doesd not depend on depth at all. 
+!         Since rsot=1-rso and rso<1 , using hmed_ele=max(hdenv,hdeov)
+!         >=haver garanties that chdiff is an upper
+!	  bound on the diffusive flux conz3d actually applies. 
+!         hmed itself is left as the node thickness since the nudging term below 
+!         still needs it.
+
 	  cvdiff = dt * aj4 * fd(ii)
           chadv = dt * aj4 * 3. * f(ii)
 	  cviadv = dt * aj4 * fwin(ii)
