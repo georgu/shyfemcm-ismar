@@ -12,6 +12,10 @@
 # 
 # checks if dates are in increasing order
 #
+# still to be done:
+#
+#	check c files
+#
 #----------------------------------------------
 
 use strict;
@@ -22,6 +26,8 @@ $::write_on_error = 0;
 $::has_copyright = 0;
 $::has_other_copyright = 0;
 $::out_of_header = 0;
+$::in_revision_log = 0;
+$::special_revision_log = 0;			#use this with gotm files (F90)
 
 #$::check_rev_log = 0;
 $::check_only = 0 unless $::check_only;
@@ -49,6 +55,9 @@ if( $::debug ) {
 if( $ext eq "f90" ) {
   treat_f90();
 } elsif( $ext eq "f" ) {
+  treat_f90();
+} elsif( $ext eq "F90" ) {
+  $::special_revision_log = 1;
   treat_f90();
 } elsif( $ext eq "sh" ) {
   treat_for_copyright();
@@ -107,6 +116,10 @@ sub treat_f90
       $in_revision_log = 1;
       $has_revision_log = 1;
       <>;				# skip next empty line
+    } elsif( $::special_revision_log and /^!\$Id:/ ) {
+      #$in_revision_log = 1;
+      $revs = 1;			# fake update on revlog
+      $has_revision_log = 1;
     } elsif( $in_revision_log ) {
       last if /^\s*$/;
       last if /^[!cC]\s*$/;
@@ -223,10 +236,12 @@ sub invert_date
 
 sub check_copyright
 {
+  return if $::in_revision_log;
+
   if( /Copyright \(C\)/ ) {
     #print STDERR "  info: Copyright found\n";
     $::has_copyright = 1;
-  } elsif( /COPYRIGHT/i ) {
+  } elsif( / COPYRIGHT /i ) {
     $::has_other_copyright = 1;
   }
 }
@@ -235,6 +250,8 @@ sub check_copyright
 
 sub check_header
 {
+  $::in_revision_log = 1 if( /^[!cC]\s+revision log/ );
+
   return if /^\s*$/;
   return if /^\s*[!cC]/;
   return if /^\s*[#]/;

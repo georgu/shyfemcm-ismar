@@ -24,6 +24,10 @@
 !
 !--------------------------------------------------------------------------
 
+! revision log :
+!
+! 15.06.2025    ggu     last update
+
 ! Pelagic kinetic model ALUKAS_II
 ! Version with variables calculated in subroutines
 ! Version with dissolved inorganic carbon and alkalinity as

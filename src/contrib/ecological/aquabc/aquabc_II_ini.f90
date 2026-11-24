@@ -24,6 +24,10 @@
 !
 !--------------------------------------------------------------------------
 
+! revision log :
+!
+! 15.06.2025    ggu     last update
+
 !module aquabc_II_vars
 !module aquabc_II_layers_data
 !not used module aquabc_II_wc_ini 

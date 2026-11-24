@@ -236,7 +236,7 @@
                 x(i)=xgv(kn)
                 y(i)=ygv(kn)
                 z(i)=afem(kn)
-                if( z(i) > pzlreg ) iwet = iwet + 1
+                if( z(i) > flag ) iwet = iwet + 1
             end do
             if( iwet .ne. 3 ) cycle
 
@@ -518,6 +518,35 @@
         write(6,'(4x,a,2f16.6)') 'flag : ',flag
 
         end
+
+!******************************************************
+
+	subroutine print_matrix(nx,ny,areg,flag)
+
+	implicit none
+
+	integer nx,ny
+	real areg(nx,ny)
+	real flag
+
+	integer ix,iy
+	character*256 line
+	character*1 c
+
+	do iy=ny,1,-1
+	  line = ' '
+	  do ix=1,nx
+	    if( areg(ix,iy) == flag ) then
+	      c = '.'
+	    else
+	      c = '*'
+	    end if
+	    line(ix:ix) = c
+	  end do
+	  write(66,*) trim(line)
+	end do
+
+	end
 
 !******************************************************
 

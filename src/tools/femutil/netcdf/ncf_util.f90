@@ -564,6 +564,7 @@
 	logical, parameter :: bwrite = .true.
 
 	if( bdebug ) then
+	  write(6,*) 'ncf_check_dims:'
 	  write(6,*) 'ndim:  ',ndim
 	  write(6,*) 'dims:  ',dims
 	  write(6,*) 'ndims: ',vitem%ndims
@@ -1226,15 +1227,6 @@
         call ncf_var_diminfo(ncid,varid,ndims,dimids,dimlens)
 	start(ndim) = irec
 	count(1:ndim-1) = dimlens(1:ndim-1)
-	if( .false. ) then
-	write(6,*) '----------------- ncf_var_put_real2 start'
-	write(6,*) ndims,start,count,dimlens
-	write(6,*) ndims,start(1),count(1),dimlens(1)
-	count0(1) = dimlens(1)-1
-	write(6,*) ndims,start0,count0,dimlens(1)
-	write(6,*) size(val)
-	write(6,*) '----------------- ncf_var_put_real2 end'
-	end if
 
 	retval = NF_INQ_DIMID (NCID,'longitude',dimid)
 	retval = NF_INQ_DIMLEN (NCID,DIMID,len)

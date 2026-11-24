@@ -24,7 +24,7 @@
 !
 !--------------------------------------------------------------------------
 
-! utility routines for shyelab: elabutil
+! utility routines for shyplot: plotutil
 !
 ! revision log :
 !

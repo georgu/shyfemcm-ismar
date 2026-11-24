@@ -8,6 +8,10 @@
 ! Licensed under the University of Illinois-NCSA License.
 !==============================================================================
 
+! revision log :
+!
+! 30.05.2026    lrp     written from scratch
+
 	!! \section{The ocean component: SHYFEM}
 	!!
 	!! We are cascading into the objects hierarchy. We miss the last step: we need

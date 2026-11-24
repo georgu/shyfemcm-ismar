@@ -24,6 +24,10 @@
 !
 !--------------------------------------------------------------------------
 
+! revision log :
+!
+! 15.06.2025    ggu     last update
+
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 ! Main routines for bottom sediment model No1
 ! CONTENT:

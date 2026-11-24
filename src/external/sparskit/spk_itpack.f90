@@ -27,6 +27,10 @@
 !
 !--------------------------------------------------------------------------
 
+! revision log :
+!
+! 29.10.2023    ggu     imported into SHYFEM
+
       SUBROUTINE JCG (NN,IA,JA,A,RHS,U,IWKSP,NW,WKSP,IPARM,RPARM,IERR)
 !       
 !     ITPACK 2C MAIN SUBROUTINE  JCG  (JACOBI CONJUGATE GRADIENT)   

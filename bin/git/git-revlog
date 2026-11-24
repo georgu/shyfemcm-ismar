@@ -38,6 +38,7 @@ FullUsage()
   echo "       -h|-help      this info"
   echo "       -modified     check modified files"
   echo "       -nowrite      writes file name only in case of error"
+  echo "       -dir dir      writes complete file name with directory dir"
   echo "       -date cdate   uses this date for comparing revlog"
 }
 
@@ -48,6 +49,7 @@ FullUsage()
 cdate=""
 show_file="YES"
 check_modified="NO"
+dir=""
 
 while [ -n "$1" ]
 do
@@ -55,6 +57,7 @@ do
         -date)          cdate=$2; shift;;
         -nowrite)       show_file="NO";;
         -modified)      check_modified="YES";;
+        -dir)           dir="$2"; shift;;
         -h|-help)       FullUsage; exit 0;;
         -*)             ErrorOption $1; exit 1;;
         *)              break;;
@@ -126,6 +129,7 @@ do
   $bindir/git-revlog.pl $option -compare_date=$last $file
   status=$?
   #echo "status = $status"
+  [ -n $dir ] && file=$dir/$file
   if [ $status -eq 0 ]; then
     :
   elif [ $status -eq 3 ]; then

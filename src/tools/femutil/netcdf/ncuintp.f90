@@ -62,7 +62,7 @@
         integer nvars, natts, ngatts, idunlim, nrecs
         integer nc,ia,varid,attid
 
-	real xmin,ymin,xmax,ymax,dx,dy
+	real xmin,ymin,xmax,ymax,dx,dy,dxy
 	real regpar(7)
 
 	integer nt,nx,ny,nz
@@ -157,8 +157,9 @@
 ! loop over data and interpolate
 !---------------------------------------------------------------------
 
-	dx = 0.5
-	dy = 0.5
+	dxy = 0.2
+	dx = dxy
+	dy = dxy
 	xmin = minval(rx)
 	xmax = maxval(rx)
 	ymin = minval(ry)
@@ -227,6 +228,7 @@
 	  variable = ' '
 	  call get_variable(ncid,varzid,variable,irec,flag,nkn,rz)
 	  call fem2reg(nel,nen3v,nkn,rz,rx,ry,regpar,nx,ny,areg)
+	if( irec == 1 ) call print_matrix(nx,ny,areg,flag)
 	  call ncf_var_put(ncid_out,varttid,irec,dtime)
 	  call ncf_var_put(ncid_out,varzzid,irec,areg)
 	end do

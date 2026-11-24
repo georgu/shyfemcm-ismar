@@ -25,6 +25,10 @@
 !
 !--------------------------------------------------------------------------
 
+! revision log :
+!
+! 15.06.2025    ggu     last update
+
 ! CONTENT:
 !  module AQUABC_II_GLOBAL
 !  subroutine AQUABC_II      - controls calls to pelagic and BS routines
@@ -35,6 +39,7 @@
 !  subroutine derived_vars   - calculates derived variables
 !
 !  subroutine get_nodal_area_code(k,ncode)(placed into subn35.f) - routine to get sediment type areas
+
 !********************************************************************
 !********************************************************************
 

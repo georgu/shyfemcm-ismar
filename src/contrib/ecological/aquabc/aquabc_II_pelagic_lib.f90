@@ -24,6 +24,10 @@
 !
 !--------------------------------------------------------------------------
 
+! revision log :
+!
+! 15.06.2025    ggu     last update
+
 ! Auxilary routines for the pelagic model
 
 ! Contents:

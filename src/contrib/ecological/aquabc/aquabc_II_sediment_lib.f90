@@ -24,6 +24,10 @@
 !
 !--------------------------------------------------------------------------
 
+! revision log :
+!
+! 15.06.2025    ggu     last update
+
 ! Content:
 !subroutine SED_POC_DISSOLUTION
 !subroutine SED_DOC_MINERALIZATION

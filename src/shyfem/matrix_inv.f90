@@ -34,6 +34,10 @@
 !
 !--------------------------------------------------------------------------
 
+! revision log :
+!
+! 09.11.2023    ggu     compiled and inserted copyright
+
       subroutine sgbco(abd,lda,n,ml,mu,ipvt,rcond,z)
       integer lda,n,ml,mu,ipvt(1)
       real abd(lda,1),z(1)

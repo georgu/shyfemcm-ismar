@@ -215,6 +215,25 @@ sub compact_years
   return ($line,$nyears,$first);
 }
 
+sub show_developers
+{
+  make_dev_names();
+
+  print "developer names:\n";
+  foreach my $key (sort keys %::dev_names) {
+    my $name = $::dev_names{$key};
+    print "  $key  ->  $name\n";
+  }
+
+  print "substitutions:\n";
+  foreach my $key (sort keys %::subst_dev_names) {
+    my $subst = $::subst_dev_names{$key};
+    my $name = $::dev_names{$subst};
+    print "  $key  ->  $subst ($name)\n";
+  }
+
+}
+
 #--------------------------------------------------------------
 #--------------------------------------------------------------
 #--------------------------------------------------------------

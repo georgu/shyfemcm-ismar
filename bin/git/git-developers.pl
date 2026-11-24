@@ -9,6 +9,9 @@ use lib ("$ENV{SHYFEMDIR}/var/copyright");
 
 use utils_develop
 
+show_developers();
+exit 0;
+
 make_dev_names();
 
 foreach my $key (sort keys %::dev_names) {

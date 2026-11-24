@@ -40,6 +40,10 @@
 !
 !--------------------------------------------------------------------------
 
+! revision log :
+!
+! 29.10.2023    ggu     imported into SHYFEM
+
       subroutine runrc(n,rhs,sol,ipar,fpar,wk,guess,a,ja,ia, &
      &     au,jau,ju,solver)
       implicit none

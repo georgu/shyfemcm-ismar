@@ -23,6 +23,10 @@
 !
 !--------------------------------------------------------------------------
 
+! revision log :
+!
+! 15.06.2025    ggu     last update
+
 ! AQUABC utilities mostly related to interface with SHYFEM
 ! Contains:
 ! subroutine open_scalar_file_bio (not used more)
