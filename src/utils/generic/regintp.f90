@@ -29,6 +29,7 @@
 !
 ! 15.11.2026    ggu     created from scratch
 ! 25.11.2026    ggu     eliminated useless routine
+! 25.11.2026    ggu     call to get/set_regpar has changed
 
 !****************************************************************
 
@@ -311,7 +312,7 @@
         if( x0 > xmin .or. x1 < xmax ) goto 95
         if( y0 > ymin .or. y1 < ymax ) goto 95
 
-        call set_regpar(regpar,nx,ny,x0,y0,dx,dy,flag)
+        call set_regpar(regpar,nx,ny,dx,dy,x0,y0,x1,y1,flag)
 
         return
    95   continue
@@ -364,13 +365,14 @@
 
 !******************************************************
 
-        subroutine set_regpar(regpar,nx,ny,x0,y0,dx,dy,flag)
+        subroutine set_regpar(regpar,nx,ny,dx,dy,x0,y0,x1,y1,flag)
 
         implicit none
 
         real regpar(7)
         integer nx,ny
-        real x0,y0,dx,dy
+        real dx,dy
+        real x0,y0,x1,y1
         real flag
 
         regpar(1) = nx
@@ -381,17 +383,20 @@
         regpar(6) = dy
         regpar(7) = flag
 
+	!x1,y1 are not used
+
         end
 
 !******************************************************
 
-        subroutine get_regpar(regpar,nx,ny,x0,y0,dx,dy,flag)
+        subroutine get_regpar(regpar,nx,ny,dx,dy,x0,y0,x1,y1,flag)
 
         implicit none
 
         real regpar(7)
         integer nx,ny
-        real x0,y0,dx,dy
+        real dx,dy
+        real x0,y0,x1,y1
         real flag
 
         nx = nint(regpar(1))
@@ -401,6 +406,9 @@
         dx = regpar(5)
         dy = regpar(6)
         flag = regpar(7)
+
+        x1 = x0 + (nx-1)*dx
+        y1 = y0 + (ny-1)*dy
 
         end
 
@@ -441,10 +449,8 @@
         real x0,y0,dx,dy,x1,y1
         real flag
 
-        call get_regpar(regpar,nx,ny,x0,y0,dx,dy,flag)
+        call get_regpar(regpar,nx,ny,dx,dy,x0,y0,x1,y1,flag)
 
-        x1 = x0 + (nx-1)*dx
-        y1 = y0 + (ny-1)*dy
         write(6,'(4x,a,2i16)') 'nx,ny: ',nx,ny
         write(6,'(4x,a,2f16.6)') 'x0,y0: ',x0,y0
         write(6,'(4x,a,2f16.6)') 'x1,y1: ',x1,y1
