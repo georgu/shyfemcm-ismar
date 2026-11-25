@@ -10,10 +10,9 @@
 #
 # shows all tags and commits available
 #
-# -tagsonly
-#
 #--------------------------------------------------------------
 
+$::tagsonly = 0 unless $::tagsonly;
 $::maxlines = 0 unless $::maxlines;
 $::short = 0 unless $::short;
 $::all = 0 unless $::all;
@@ -23,7 +22,7 @@ $::h = 0 unless $::h;
 my $maxdef = 30;
 
 if( $::help or $::h ) {
-  print STDERR "git-tag [-maxlines #] [-short|-all]\n";
+  print STDERR "git-tags [-tagsonly] [-maxlines #] [-short|-all]\n";
   print STDERR "  maxlines defaults to $maxdef lines\n";
   exit 0;
 } elsif( $::maxlines ) {
@@ -69,7 +68,7 @@ foreach $com (@coms) {
   #print "$line\n";
 }
 
-my $max = $::maxlines;
+my $max = $::maxlines;		# for -all $::maxlines is 0
 if( $max > 0 ) {
   my @new = splice(@lines,0,$max);
   @lines = @new;

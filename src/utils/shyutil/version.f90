@@ -401,6 +401,7 @@
 ! 10.03.2025	ggu	version 8.2.4   bug fix edition
 ! 12.06.2025	ggu	version 8.2.5   Sankt Antonius edition
 ! 26.11.2025	ggu	version 8.2.6   Ebbe edition
+! 25.11.2026	ggu	version 8.2.7   Vangelis edition
 !
 !*****************************************************************
 
@@ -410,9 +411,9 @@
 
 ! DOCS	START	P_version
 !
-! \newcommand{\VERSION}{8.2.6}
-! \newcommand{\version}{8\_2\_6}
-! \newcommand{\COMMIT}{2025-11-26}
+! \newcommand{\VERSION}{8.2.7}
+! \newcommand{\version}{8\_2\_7}
+! \newcommand{\COMMIT}{2026-11-25}
 !
 ! DOCS	END
 
@@ -420,9 +421,9 @@
 
 	logical, save		:: bshort = .false.
 
-        character*10, parameter :: version = '8.2.6'
-        character*10, parameter :: commit  = '2025-11-26'
-        character*50, parameter :: lcommit = '8.2.6-develop-108'
+        character*10, parameter :: version = '8.2.7'
+        character*10, parameter :: commit  = '2026-11-25'
+        character*50, parameter :: lcommit = '8.2.7-develop-2'
         character*17, parameter :: text    = 'SHYFEM VERSION = '
 
         character*40, parameter :: string = text//version//'  '//commit
@@ -430,7 +431,7 @@
 	character*50, parameter :: acronym =                        &
       &	    	'System of HydrodYnamic Finite Element Modules'
 	character*50, parameter :: copyright =                      &
-      &		'Copyright (C) The Shyfem Team 1985-2025'
+      &		'Copyright (C) The Shyfem Team 1985-2026'
 
 !=================================================================
 	end module shyfem_version

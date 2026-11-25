@@ -119,7 +119,7 @@ fi
 intags="NO"
 [ -z "$start" ] && intags="YES"
 
-tags=`git-tags -tagsonly`
+tags=`git-tags -tagsonly -all`
 first="YES"
 exists="NO"
 

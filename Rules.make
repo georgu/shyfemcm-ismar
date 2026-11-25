@@ -112,8 +112,8 @@ INTEL_VERSION = IFORT
 PARALLEL_OMP = false
 #PARALLEL_OMP = true
 
-#PARALLEL_MPI = NONE
-PARALLEL_MPI = NODE
+PARALLEL_MPI = NONE
+#PARALLEL_MPI = NODE
 #PARALLEL_MPI = ELEM
 
 ##############################################
@@ -141,12 +141,11 @@ PARALLEL_MPI = NODE
 #
 ##############################################
 
-#PARTS = NONE
-PARTS = METIS
+PARTS = NONE
+#PARTS = METIS
 #PARTS = PARMETIS
-#METISDIR = 
-METISDIR = /home/georg/lib/metis
-#METISDIR = ${METIS_HOME}
+METISDIR = 
+METISDIR = ${METIS_HOME}
 #METISDIR = /usr/local
 #METISDIR = $(HOME)/lib/metis
 #METISDIR = $(LD_LIBRARY_PATH)
@@ -264,11 +263,11 @@ GPU=NONE
 #
 ##############################################
 
-#NETCDF = false
-NETCDF = true
+NETCDF = false
+#NETCDF = true
 #NETCDFDIR =
-#NETCDFDIR = ${NETCDF_C_HOME}
-#NETCDFFDIR =${NETCDF_FORTRAN_HOME}
+NETCDFDIR = ${NETCDF_C_HOME}
+NETCDFFDIR =${NETCDF_FORTRAN_HOME}
 
 ##############################################
 # GOTM library
@@ -304,7 +303,7 @@ GOTM = true
 ##############################################
 
 ECOLOGICAL = NONE
-ECOLOGICAL = EUTRO
+#ECOLOGICAL = EUTRO
 #ECOLOGICAL = AQUABC
 #ECOLOGICAL = BFM
 
