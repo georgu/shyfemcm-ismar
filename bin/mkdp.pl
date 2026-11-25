@@ -31,6 +31,7 @@ use strict;
 			'ifposix.mod'			=> 	1,
 			'iso_c_binding.mod'		=> 	1,
 			'iso_fortran_env.mod'		=> 	1,
+			'ieee_exceptions.mod'		=> 	1,
 		    );
 
 %::ignore_define_modules = (

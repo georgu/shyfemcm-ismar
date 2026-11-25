@@ -64,6 +64,7 @@
 ! 16.02.2019	ggu	changed VERS_7_5_60
 ! 21.03.2022    ggu     upgraded to da_out
 ! 22.09.2026    ggu     velocity nudging introduced
+! 25.11.2026    ggu     bug fix for not available tau file for velocities
 !
 !****************************************************************
 
@@ -716,7 +717,7 @@
 	call get_act_dtime(dtime)
 
 	call getfnm(what,vel3dfile)
-	if( vel3dfile == ' ' ) return
+	if( vel3dfile == ' ' ) return	!no velocity nudging required
 
 	call getfnm('surfvel',surffile)
 	if( surffile /= ' ' ) then
@@ -733,7 +734,15 @@
 	taudefvel = getpar('tauvel')
 	call getfnm('veltau',vtauf)
 
-        call ts_file_exists(vtauf,bexist)
+	if( vtauf /= ' ' ) then
+          call ts_file_exists(vtauf,bexist)
+	  if( .not. bexist ) then
+	    write(6,*) 'no such file: ',trim(vtauf)
+	    stop 'error stop init_surface_velocity_nudging: file not existing'
+	  end if
+	else
+	  bexist = .false.	!no tau file given
+	end if
 
 	if( .not. bexist .and. taudefvel <= 0. ) then
 	  write(6,*)  'no time scale given for velocity'
@@ -756,7 +765,9 @@
           call generic_file_descrp(idtau,'3d tauvel')
 	end if
 
-	call scalar_next_record(dtime,idtau,nlvdi,np,nlv,rtauvel)
+	if( idtau > 0 ) then
+	  call scalar_next_record(dtime,idtau,nlvdi,np,nlv,rtauvel)
+	end if
 
 !	---------------------------------------------
 !	open velocity data

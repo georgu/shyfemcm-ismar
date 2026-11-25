@@ -13,10 +13,10 @@ todo for a new version:
 iterate:
 	git status
 	git diff <file>
+	make depend
 	make test_compile
 	make regress
 	make doc
-	make depend
 	bin/revision/revision_last.sh [-log] -> LOG, BUG and RELEASE_NOTES
 	git add -u
 

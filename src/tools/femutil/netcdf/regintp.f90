@@ -28,73 +28,7 @@
 ! revision log :
 !
 ! 15.11.2026    ggu     created from scratch
-
-!****************************************************************
-
-	subroutine regular_interpolation(nxin,nyin,xa,ya,val,regpar,newval)
-
-	implicit none
-
-	integer nxin,nyin
-	real xa(nxin,nyin),ya(nxin,nyin)
-	real val(nx,ny)
-	real regpar(7)
-	real newval(nint(regpar(1)),nint(regpar(2)))
-
-	integer nx,ny
-	integer jx,jy,ix,iy
-	integer ixmin,iymin,ixmax,iymax
-	real x0,y0,dx,dy,flag,x1,y1
-	real xmin,ymin,xmax,ymax
-	real xxmin,yymin,xxmax,yymax
-	real x,y
-
-	nx = nint(regpar(1))
-	ny = nint(regpar(2))
-	x0 = regpar(3)
-	y0 = regpar(4)
-	dx = regpar(5)
-	dy = regpar(6)
-	flag = regpar(7)
-
-	x1 = x0 + (nx-1)*dx
-	y1 = y0 + (ny-1)*dy
-
-	do jy=2,nyin
-	  do jx=2,nxin
-	    xmin = min(xa(jx-1,jy-1),xa(jx-1,jy),xa(jx,jy-1),xa(jx,jy))
-	    xmax = max(xa(jx-1,jy-1),xa(jx-1,jy),xa(jx,jy-1),xa(jx,jy))
-	    ymin = min(ya(jx-1,jy-1),ya(jx-1,jy),ya(jx,jy-1),ya(jx,jy))
-	    ymax = max(ya(jx-1,jy-1),ya(jx-1,jy),ya(jx,jy-1),ya(jx,jy))
-
-	    ixmin = (xmin-x0)/dx
-	    iymin = (ymin-y0)/dy
-	    ixmax = 1+(xmax-x0)/dx
-	    iymax = 1+(ymax-y0)/dy
-
-	    xxmax = x0 + (ixmax-1)*dx
-	    yymax = y0 + (iymax-1)*dy
-	    if( xxmax < xmax ) goto 99
-	    if( yymax < ymax ) goto 99
-
-	    ixmin = max(1,ixmin)
-	    iymin = max(1,iymin)
-	    ixmax = min(nx,ixmax)
-	    iymax = min(ny,iymax)
-
-	    do iy=iymin,iymax
-	      do ix=ixmin,ixmax
-		x = x0 + (ix-1)*dx
-		y = y0 + (iy-1)*dy
-	      end do
-	    end do
-	  end do
-	end do
-
-	return
-   99	continue
-	stop 'error stop regular_interpolation: max index'
-	end
+! 25.11.2026    ggu     eliminated useless routine
 
 !****************************************************************
 

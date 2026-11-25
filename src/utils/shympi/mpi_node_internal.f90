@@ -203,9 +203,11 @@
 	subroutine shympi_init_internal(my_id,n_threads,binit)
 
 	use shympi_internal
-        use ieee_exceptions, only: ieee_divide_by_zero, ieee_invalid, &
+        use ieee_exceptions, only: ieee_divide_by_zero, &
+		      & ieee_invalid, &
                       & ieee_overflow, &
-                      & ieee_set_halting_mode, ieee_get_halting_mode
+                      & ieee_set_halting_mode, &
+		      & ieee_get_halting_mode
 
 	implicit none
 

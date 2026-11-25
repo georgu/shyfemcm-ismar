@@ -120,7 +120,8 @@
 ! 07.11.2025    ggu     set time array out of iff_space_interpolate()
 ! 10.11.2025    ggu     introduced iuout, better info writing
 ! 08.05.2026    ggu     new routine iff_ts_has_data()
-! 29.05.2026    ggu     bug fix in iff_file_has_data() (bok not set)
+! 08.05.2026    ggu     new routine iff_ts_has_data()
+! 25.11.2026    ggu     check if id > 0
 !
 !****************************************************************
 !
@@ -2397,6 +2398,8 @@
 	logical bok,bdebug
 	double precision t,tc
 
+	if( id == 0 ) goto 90
+
 	if( bflow ) then
 	  write(iflow,*) 'iff: iff_time_interpolate: ',id,ivar,itact
 	end if
@@ -2474,6 +2477,9 @@
 	!---------------------------------------------------------
 
 	return
+   90	continue
+	write(6,*) 'file id is 0 (no file opened): ',id
+	stop 'error stop iff_time_interpolate: id==0'
    94	continue
 	write(6,*) 'record has not been populated with data'
 	write(6,*) 't,itlast: ',t,ilast
@@ -2523,6 +2529,8 @@
 	integer ilast,ifirst,nintp
 	double precision tlast,tfirst,tt,tc
 
+	if( id == 0 ) goto 90
+
         nintp = pinfo(id)%nintp
         ilast = pinfo(id)%ilast			!index of last record
 	if( ilast <= 0 ) goto 98
@@ -2553,6 +2561,9 @@
         iff_file_has_data = .true.
 
 	return
+   90	continue
+	write(6,*) 'file id is 0 (no file opened): ',id
+	stop 'error stop iff_file_has_data: id==0'
    98	continue
 	write(6,*) 'record has not been populated with data'
 	write(6,*) 't,ilast: ',t,ilast
@@ -2578,6 +2589,8 @@
 	integer ilast,nintp,ifirst
 	double precision tc
 
+	if( id == 0 ) goto 90
+
         nintp = pinfo(id)%nintp
         ilast = pinfo(id)%ilast			!index of last record
 	if( ilast <= 0 ) goto 98
@@ -2590,6 +2603,9 @@
         iff_must_read = ( tc < t )
 
 	return
+   90	continue
+	write(6,*) 'file id is 0 (no file opened): ',id
+	stop 'error stop iff_must_read: id==0'
    98	continue
 	write(6,*) 'record has not been populated with data'
 	write(6,*) 't,ilast: ',t,ilast
@@ -2627,6 +2643,8 @@
 	double precision itlast,it
 	double precision tc		!check time
 
+	if( id == 0 ) goto 90
+
 	if( bflow ) then
 	  write(iflow,*) 'iff: iff_read_and_interpolate: ',id,t
 	end if
@@ -2661,6 +2679,9 @@
         pinfo(id)%ilast = ilast
 
 	return
+   90	continue
+	write(6,*) 'file id is 0 (no file opened): ',id
+	stop 'error stop iff_read_and_interpolate: id==0'
    98	continue
 	write(6,*) 'record has not been populated with data'
 	write(6,*) 't,ilast: ',t,ilast

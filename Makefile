@@ -456,8 +456,9 @@ compiler_version:
 	$(CC) $(CINFOFLAGS)
 	@echo "major compiler version: $(MAJOR)"
 
+tag: last_commit
 last_commit:
-	@gittags | tail -1
+	@git-tags -tagsonly | tail -1 | tr -d '[:space:]'
 
 shyfemdir:
 	@echo "shyfemdir: $(SHYFEMDIR)"

@@ -70,9 +70,11 @@ if( $ext eq "f90" ) {
 } elsif( $ext eq "o" ) {
   ignore();
 } elsif( $ext eq "NONE" ) {
-  if( $file eq "Makefile" ) {
+  my $filename = $file;
+  $filename =~ s/^.*\///;		#get last part of file
+  if( $filename eq "Makefile" ) {
     treat_for_copyright();
-  } elsif( $file eq "README" ) {
+  } elsif( $filename eq "README" ) {
     treat_for_copyright();
   } else {
     if( is_script() ) {
