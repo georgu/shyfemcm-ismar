@@ -200,7 +200,7 @@ depend:
 
 ../../../lib/mod/elabtime.mod: elabtime.o
 ../../../lib/mod/elabutil.mod: elabutil.o
-../../../lib/mod/extelab_strings.mod: extelab1.o
+../../../lib/mod/extelab_global.mod: extelab1.o
 ../../../lib/mod/mod_dbg_box.mod: dbg_box.o
 ../../../lib/mod/mod_dbg_flx.mod: dbg_flx.o
 ../../../lib/mod/shy_extract.mod: shyelab_extract.o
@@ -252,6 +252,7 @@ lgrelab1.o: ../../../lib/mod/basin.mod ../../../lib/mod/clo.mod \
 		../../../lib/mod/elabtime.mod \
 		../../../lib/mod/elabutil.mod \
 		../../../lib/mod/evgeom.mod \
+		../../../lib/mod/intp_fem_file.mod \
 		../../../lib/mod/levels.mod \
 		../../../lib/mod/mod_depth.mod \
 		../../../lib/mod/shyelab_out.mod \

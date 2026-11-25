@@ -1304,8 +1304,6 @@
 	call addpar('irho',0.)		!write rho
 	call addpar('iskin',0.)		!write skin temperature
 
-! DOCS	END
-
 !c------------------------------------------------------------------------
 
 ! DOCS	BOXES		Generation of box files for the box model
@@ -1320,8 +1318,6 @@
 
 	call addpar('idtbox',0.)	!for boxes
 	call addpar('itmbox',-1.)
-
-! DOCS	END
 
 !c------------------------------------------------------------------------
 
@@ -1343,6 +1339,10 @@
 
 	call addpar('idtbeach',0.)	!for beaching
 	call addpar('itmbeach',-1.)
+
+!c------------------------------------------------------------------------
+!c close documentation file
+!c------------------------------------------------------------------------
 
 ! DOCS	END
 

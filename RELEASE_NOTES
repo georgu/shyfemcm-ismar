@@ -1,4 +1,19 @@
 
+25.11.2026	VERS_8_2_7	Vangelis edition
+
+	some changes dealing with dry nodes
+	beaching algorithm introduced
+	better assimilation in assimil_admin.f90
+	velocity assimilation (velobs,veltau)
+	closing routines adapted for MPI
+	bug fix for stability in conzstab
+	shyadj and helper files adjusted
+	bug fixes for writing nc files
+	bug fixes in optintp.f90
+	better gridr.f90 to reduce points on line
+	weutro started to refactor
+	disable FPE trapping to avoid floating point exception (MPI)
+
 26.11.2025	VERS_8_2_6	Ebbe edition
 
 	new sections inSTR file for assimilation

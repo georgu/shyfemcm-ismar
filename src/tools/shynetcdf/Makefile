@@ -209,6 +209,7 @@ depend:
 
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
+../../../lib/mod/nc_coords.mod: nc_util.o
 ../../../lib/mod/nc_domain.mod: nc_domain.o
 ../../../lib/mod/nc_interpol.mod: nc_domain.o
 ../../../lib/mod/nc_time.mod: nc_tutil.o
@@ -220,6 +221,7 @@ elab_nc.o: ../../../lib/mod/basin.mod ../../../lib/mod/levels.mod \
 elab_nc_dummy.o: ../../../lib/mod/basin.mod \
 		../../../lib/mod/levels.mod 
 nc2fem.o: ../../../lib/mod/clo.mod ../../../lib/mod/iso8601.mod \
+		../../../lib/mod/mod_histo.mod \
 		../../../lib/mod/nc_time.mod \
 		../../../lib/mod/ncnames.mod \
 		../../../lib/mod/shyfem_strings.mod 

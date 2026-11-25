@@ -448,8 +448,9 @@ baroclinic.o: ../../lib/mod/basin.mod ../../lib/mod/levels.mod \
 		../../lib/mod/mod_info_output.mod \
 		../../lib/mod/mod_layer_thickness.mod \
 		../../lib/mod/mod_trace_point.mod \
-		../../lib/mod/mod_ts.mod ../../lib/mod/pkonst.mod \
-		../../lib/mod/shympi.mod 
+		../../lib/mod/mod_ts.mod \
+		../../lib/mod/mod_writevars.mod \
+		../../lib/mod/pkonst.mod ../../lib/mod/shympi.mod 
 bcvel.o: ../../lib/mod/basin.mod ../../lib/mod/levels.mod \
 		../../lib/mod/mod_bclfix.mod \
 		../../lib/mod/mod_geom_dynamic.mod \
@@ -623,6 +624,9 @@ discharge_flux.o: ../../lib/mod/basin.mod ../../lib/mod/evgeom.mod \
 		../../lib/mod/mod_hydro.mod \
 		../../lib/mod/mod_hydro_baro.mod \
 		../../lib/mod/mod_hydro_vel.mod 
+drywrite.o: ../../lib/mod/basin.mod \
+		../../lib/mod/mod_geom_dynamic.mod \
+		../../lib/mod/mod_hydro.mod 
 elems_dealing.o: ../../lib/mod/basin.mod ../../lib/mod/evgeom.mod \
 		../../lib/mod/levels.mod \
 		../../lib/mod/mod_area.mod \
@@ -696,6 +700,7 @@ hydrodynamic.o: ../../lib/mod/basin.mod ../../lib/mod/evgeom.mod \
 		../../lib/mod/mod_area.mod \
 		../../lib/mod/mod_bound_dynamic.mod \
 		../../lib/mod/mod_bound_geom.mod \
+		../../lib/mod/mod_connect.mod \
 		../../lib/mod/mod_depth.mod \
 		../../lib/mod/mod_diff_visc_fric.mod \
 		../../lib/mod/mod_fluidmud.mod \

@@ -177,6 +177,7 @@ zip:	cleanall
 ../../../lib/mod/mod_offline.mod: io_off.o
 ../../../lib/mod/mod_restart.mod: mod_restart.o
 ../../../lib/mod/mod_trace_point.mod: trace_point.o
+../../../lib/mod/mod_writevars.mod: writevars.o
 ../../../lib/mod/shyutil.mod: shy_util1.o
 bnd_admin.o: ../../../lib/mod/mod_bnd.mod \
 		../../../lib/mod/mod_bound_geom.mod \
@@ -190,6 +191,9 @@ depth_util.o: ../../../lib/mod/basin.mod \
 		../../../lib/mod/mod_depth.mod \
 		../../../lib/mod/mod_info_output.mod \
 		../../../lib/mod/shympi.mod 
+drywet.o: ../../../lib/mod/basin.mod \
+		../../../lib/mod/mod_connect.mod \
+		../../../lib/mod/shympi.mod 
 info_output.o: ../../../lib/mod/mod_shyfem.mod \
 		../../../lib/mod/shympi.mod 
 intp_fem_file.o: ../../../lib/mod/mod_info_output.mod \
@@ -199,6 +203,7 @@ io_off.o: ../../../lib/mod/basin.mod \
 		../../../lib/mod/shympi.mod 
 mod_restart.o: ../../../lib/mod/shympi.mod
 shy_util.o: ../../../lib/mod/basin.mod ../../../lib/mod/levels.mod \
+		../../../lib/mod/mod_debug.mod \
 		../../../lib/mod/mod_info_output.mod \
 		../../../lib/mod/mod_trace_point.mod \
 		../../../lib/mod/shyfile.mod \
@@ -216,4 +221,5 @@ topo_update.o: ../../../lib/mod/basin.mod \
 		../../../lib/mod/mod_geom_dynamic.mod \
 		../../../lib/mod/shympi.mod 
 trace_point.o: ../../../lib/mod/shympi.mod
+writevars.o: ../../../lib/mod/shympi.mod
 

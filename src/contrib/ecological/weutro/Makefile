@@ -133,13 +133,14 @@ strip:
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
 ../../../../lib/mod/eutro.mod: bio3d.o
+../../../../lib/mod/mod_weutro.mod: weutro.o
 bio3d.o: ../../../../lib/mod/basin.mod \
 		../../../../lib/mod/levels.mod \
 		../../../../lib/mod/mkonst.mod \
 		../../../../lib/mod/mod_diff_visc_fric.mod 
 bio3d_util.o: ../../../../lib/mod/basin.mod \
 		../../../../lib/mod/levels.mod donata.h 
-weutro.o: donata.h weutro.h
+weutro.o: ../../../../lib/mod/mod_writevars.mod donata.h weutro.h
 weutro_param.o: weutro.h
 weutro_sedim.o: donata.h weutro.h
 weutro_seed.o: ../../../../lib/mod/basin.mod \

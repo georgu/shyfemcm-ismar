@@ -177,6 +177,7 @@ plotutil.o: ../../../lib/mod/basin.mod ../../../lib/mod/clo.mod \
 shyplot.o: ../../../lib/mod/basin.mod ../../../lib/mod/clo.mod \
 		../../../lib/mod/elabtime.mod \
 		../../../lib/mod/evgeom.mod \
+		../../../lib/mod/intp_fem_file.mod \
 		../../../lib/mod/levels.mod \
 		../../../lib/mod/mod_depth.mod \
 		../../../lib/mod/mod_geom.mod \
@@ -234,7 +235,9 @@ supsim.o: ../../../lib/mod/basin.mod ../../../lib/mod/levels.mod \
 		../../../lib/mod/mod_hydro.mod \
 		../../../lib/mod/mod_hydro_plot.mod \
 		../../../lib/mod/mod_hydro_vel.mod \
-		../../../lib/mod/plotutil.mod 
+		../../../lib/mod/plotutil.mod \
+		../../../lib/mod/shyfile.mod \
+		../../../lib/mod/shyutil.mod 
 supver.o: ../../../lib/mod/basin.mod ../../../lib/mod/evgeom.mod \
 		../../../lib/mod/levels.mod \
 		../../../lib/mod/mod_hydro.mod \

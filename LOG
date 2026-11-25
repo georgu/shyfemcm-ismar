@@ -1,4 +1,443 @@
 
+25.11.2026
+
+! ./src/shyfem/elems_dealing.f90:
+! 19.03.2026    ggu     all routines dealing with layer use _layer_
+!
+! ./src/shyfem/lagrange_main.f90:
+! 27.05.2026	ggu	write lgr header with lgr_write_header()
+! 27.05.2026	ggu	new routine write_time()
+! 09.06.2026	ggu	compiler error in write_time()
+! 10.11.2026	wjm	new vars btrw and breleasefrq, use sinking vel from str
+!
+! ./src/shyfem/restart.f90:
+! 20.03.2026	ggu	new experimental version 18
+! 29.04.2026	ggu	rst_get_vertical() re-introduced
+! 29.05.2026	ggu	avoid compiler warning for ibarcl
+! 01.10.2026	ggu	in rst_read_vertical() protect for no shympi
+! 01.10.2026	ggu	nzadapt introduced
+!
+! ./src/shyfem/rstinf.f90:
+! 21.04.2026    ggu     deal with new variables written
+! 01.10.2026    ggu     with bverbose write hlv() and nzadapt
+!
+! ./src/shyfem/heat_admin2.f90:
+! 08.05.2026    ggu     introduced minimum depth hm_min for heat computation
+! 09.05.2026    ggu     more debug code, bhandle to decide if use heat flux
+!
+! ./src/shyfem/nuopc_shyfem_cap.f90:
+! 30.05.2026    lrp     written from scratch
+!
+! ./src/shyfem/lagrange_init.f90:
+! 08.05.2026	ggu	better error message in lagbound_read_next()
+!
+! ./src/shyfem/nohydro.f90:
+! 21.04.2026	ggu	use vqv to deal with dry nodes
+!
+! ./src/shyfem/bnd_routines.f90:
+! 20.03.2026    ggu     changes in sp111() init and set_mass_flux() -> mode
+! 21.04.2026    ggu     eliminated adjust_mass_flux()
+! 13.10.2026    ggu     call init_flux() for all boundary types
+!
+! ./src/shyfem/boxes.f90:
+! 13.10.2026	ggu	some more docs and writing in boxes_mass_balance_2d()
+! 03.11.2026	ggu	changed names of output files
+!
+! ./src/shyfem/mkdistance.f90:
+! 25.02.2026	ggu	some factorization
+! 20.03.2026	ggu	mpi bug fix in mkdist_mpi()
+!
+! ./src/shyfem/assimil.f90:
+! 13.12.2025    ggu     new routine make_vertical_correlation()
+!
+! ./src/shyfem/beaching.f90:
+! 06.02.2026    ggu     routine made more general (rates for single area codes)
+! 05.05.2026    ggu     more documentation, bug fix for iconz == 1
+! 29.05.2026    ggu     avoid compiler warning
+! 10.09.2026    ggu     bug when writing not getting dtime in beaching_run()
+! 03.11.2026    ggu     use idtbeach to decide if beaching has to be run
+!
+! ./src/shyfem/baroclinic.f90:
+! 28.01.2026    ggu     new routine ts_nudge_check()
+! 30.01.2026    ggu     fixed bug in nudging (with tau given as parameter)
+! 05.05.2026    ggu     some more info messages
+! 24.09.2026    ggu     new routine ts_debug() to show writing with writevars
+! 05.11.2026    ggu     extra variables to be written (not yet active)
+!
+! ./src/shyfem/nudge.f90:
+! 22.09.2026    ggu     velocity nudging introduced
+!
+! ./src/shyfem/lagrange_inout.f90:
+! 27.05.2026	ggu	update to lgr_write_header()
+!
+! ./src/shyfem/sedim_admin.f90:
+! 29.05.2026    ggu     avoid compiler warning
+!
+! ./src/shyfem/transforms.f90:
+! 20.03.2026    ggu     new routines compute_derived_variables() and uvint_old()
+!
+! ./src/shyfem/drywrite.f90:
+! 05.11.2026    ggu     (from scratch)
+!
+! ./src/shyfem/shyfem_subs.f90:
+! 28.04.2026    ggu	insert more timing calls
+!
+! ./src/shyfem/assimil_admin.f90:
+! 13.12.2025    ggu     prepared for 3d assimilation
+! 13.01.2026    ggu     added documentation
+!
+! ./src/shyfem/lnkmpi.f90:
+! 22.04.2026    ggu&clc bug fix adjusting kantv (kk<1)
+!
+! ./src/shyfem/hydrodynamic.f90:
+! 21.04.2026    ggu     use vqv to deal with dry nodes, also in hydro_vertical()
+! 28.04.2026    ggu     insert more timing calls
+! 04.06.2026    ggu     insert code to avoid divide by 0 (eps7)
+! 05.11.2026    ggu     new routine drywet_test_encryption() - not yet active
+!
+! ./src/shyfem/tsfile_admin.f90:
+! 22.09.2026	ggu	new routines vel_* and scalar_*
+!
+! ./src/shyfem/discharge_flux.f90:
+! 21.04.2026	ggu	use is_dry_node() to see if mfluxv should be used
+!
+! ./src/shyfem/def_para.f90:
+! 14.09.2026    ggu     new parameter velobs
+! 22.09.2026    ggu     new parameter veltau
+! 03.11.2026    ggu     new parameters idtbox and idtbeach
+! 10.11.2026    wjm     new parameter setvel
+!
+! ./src/shyfem/bndo.f90:
+! 12.01.2026	ggu	extra info on boundary error
+!
+! ./src/shyfem/check.f90:
+! 21.04.2026    ggu     use bdry to see if mfluxv should be used
+!
+! ./src/shyfem/closing.f90:
+! 11.12.2025	ggu	adapted for MPI
+!
+! ./src/shyfem/concentration_omp.f90:
+! 21.04.2026    ggu     use bdry to see if mfluxv should be used
+! 29.04.2026    ggu     timing calls inserted
+! 08.05.2026    ggu     debug code (also passing debug vals to other routines)
+!
+! ./src/shyfem/turbulence.f90:
+! 04.06.2026	ggu	avoid divide by 0 while computing ri
+!
+! ./src/shyfem/meteo_forcing.f90:
+! 08.05.2026    ggu     pop trailing "- x" and "- y" from description
+!
+! ./src/shyfem/heat_test.f90:
+! 03.10.2026    ggu     written from scratch
+!
+! ./src/shyfem/concentration.f90:
+! 21.04.2026    ggu     use bdry to see if mfluxv should be used
+! 28.04.2026    ggu     insert more timing calls
+! 08.05.2026    ggu     adjust qflux if node is dry
+! 13.07.2026    clr     bug fix for stability in conzstab: use element thickness
+!
+! ./src/shyfem/waves_spm.f90:
+! 30.05.2026    ggu     extracted from wave file
+!
+! ./src/shyfem/icemodel.f90:
+! 29.05.2026    ggu	avoid compiler warning for isi_it
+!
+! ./src/tools/shyadj/shyadj.f90:
+!  23.02.2026   ggu     checks to avoid negative areas
+!  27.02.2026   ggu     write more information to terminal
+!  06.03.2026   ggu     completely restructured
+!  29.05.2026   ggu     avoid compiler warnings in show_strange_grades()
+!
+! ./src/tools/shyadj/mod_adj_grade.f90:
+! 23.02.2026    ggu     checks to avoid negative areas
+! 06.03.2026    ggu     completely restructured
+!
+! ./src/tools/shyadj/adjneu.f90:
+!  23.02.2026   ggu     checks to avoid negative areas
+!  06.03.2026   ggu     completely restructured
+!
+! ./src/tools/shyadj/adj575.f90:
+!  23.02.2026   ggu     checks to avoid negative areas
+!  06.03.2026   ggu     completely restructured
+!
+! ./src/tools/shyadj/adjgrd.f90:
+!  06.03.2026   ggu     completely restructured
+!
+! ./src/tools/shyadj/adj5el.f90:
+!  23.02.2026   ggu     checks to avoid negative areas
+!  27.02.2026   ggu     some more checks
+!  06.03.2026   ggu     completely restructured
+!
+! ./src/tools/shyadj/adj4el.f90:
+!  23.02.2026	ggu	checks to avoid negative areas
+!  06.03.2026	ggu	completely restructured
+!
+! ./src/tools/shyadj/adj7el.f90:
+!  23.02.2026   ggu     checks to avoid negative areas
+!  06.03.2026   ggu     completely restructured
+!
+! ./src/tools/shyadj/adjplo.f90:
+!  06.03.2026   ggu     completely restructured
+!
+! ./src/tools/shyadj/adjvar.f90:
+!  23.02.2026   ggu     checks to avoid negative areas
+!  27.02.2026   ggu     checks grade index for not unique nodes
+!  06.03.2026   ggu     completely restructured
+!
+! ./src/tools/shyplot/shyplot.f90:
+! 15.01.2026    ggu     write layer number that is plotted to terminal
+!
+! ./src/tools/shyplot/supsim.f90:
+!  18.05.2026	ggu	bug fix for regular plot
+!  19.05.2026	ggu	more bug fixes for regular plot
+!  25.10.2026	ggu	new routine handle_mask()
+!
+! ./src/tools/shyplot/def_para_post.f90:
+! 22.05.2026    ggu     new parameter tzstring
+! 25.10.2026    ggu     new parameters hzdry and iconnect
+!
+! ./src/tools/shyplot/supano.f90:
+!  18.05.2026	ggu	added bbox and badjust in blank_window()
+!  22.05.2026	ggu	update in legdate()
+!  22.09.2026	ggu	new variable wfact introduced
+!
+! ./src/tools/shyelab/elab_check.f90:
+! 13.10.2026	ggu	in fem_check() use varnum instead of varid if ivar==-1
+!
+! ./src/tools/shyelab/femcombine.f90:
+! 23.04.2026	ggu	adapted from femadd
+! 22.06.2026	ggu	use iformat from the files read
+!
+! ./src/tools/shyelab/shyelab_output.f90:
+! 19.09.2026    ggu     with bsilent nc-file was not closed (bug)
+!
+! ./src/tools/shyelab/femelab1.f90:
+! 09.01.2026	ggu	new code for cover option
+! 22.09.2026	ggu	blayer introduced
+!
+! ./src/tools/shyelab/list_strings.f90:
+! 13.01.2026    ggu     written using already existing subroutines
+!
+! ./src/tools/shyelab/shyelab1.f90:
+! 25.10.2026    ggu     implemented bexgrd to extract grid from shy to grd file
+! 28.10.2026    ggu     implemented bcsv to write csv file
+!
+! ./src/tools/shyelab/femintp.f90:
+! 23.04.2026	ggu	copied from femadd
+! 22.06.2026    ggu     use iformat from the files read
+!
+! ./src/tools/shyelab/elabutil.f90:
+! 09.01.2026    ggu     new code for cover option
+! 25.10.2026    ggu     new option exgrd
+! 28.10.2026    ggu     new option csv (bcsv and scsv)
+!
+! ./src/tools/shyelab/lgrelab1.f90:
+! 27.05.2026    ggu     new call to lgr_get_header()
+!
+! ./src/tools/shyelab/femadd.f90:
+! 22.04.2026	ggu	some more error messages
+! 23.04.2026	ggu	bug fix for time extension
+!
+! ./src/tools/shyelab/extelab1.f90:
+! 29.11.2025	ggu	write more headings for bsplit
+!
+! ./src/tools/shyelab/femelab_cover.f90:
+! 09.01.2026    ggu     written from scratch
+! 12.01.2026    ggu     finished option -cover
+!
+! ./src/tools/shyelab/femdate.f90:
+! 09.10.2026	ggu	femdate has now three actions: -date0, start, end
+!
+! ./src/tools/shynetcdf/nc2fem.f90:
+! 09.06.2026    ggu     new option -coordinfo
+! 03.08.2026    ggu     new option -clayer
+! 11.08.2026    ggu     handle decreasing x/y coordinate
+!
+! ./src/tools/shynetcdf/netcdf.f90:
+! 15.01.2026	ggu	better error message in nc_define_3d_reg()
+! 06.05.2026	ggu	new routine nc_get_quiet()
+! 09.06.2026	ggu	introduced bcomperror for handling compiler error
+!
+! ./src/tools/shynetcdf/nc_util.f90:
+! 08.05.2026	ggu	in check_monotone() handle negative depth layers
+! 03.08.2026	ggu	handle new option clayer
+! 11.08.2026	ggu	new routines to handle decreasing x/y coordinates
+! 12.08.2026	ggu	new routines check_2d_monotone() -> still to be tested
+!
+! ./src/tools/shynetcdf/elab_nc.f90:
+! 30.01.2026	ggu	change in call to get_lmax_reg() to avoid out of bounds
+!
+! ./src/tools/shynetcdf/nc_dim_coords.f90:
+! 22.04.2026	ggu	new vertical coordinate height_2
+! 09.06.2026	ggu	new routine ncnames_write_info()
+!
+! ./src/tools/shynetcdf/netcdf_util.f90:
+! 30.01.2026    ggu     change in call to get_lmax_reg() to avoid out of bounds
+!
+! ./src/tools/femutil/optintp/test_oi.f90:
+! 30.05.2026    ggu     written from scratch
+!
+! ./src/tools/femutil/optintp/optintp.f90:
+! 19.04.2026	ggu	some bug fixes, more documentation
+!
+! ./src/tools/femutil/dstruc/iheap.f90:
+! 12.09.2026	ggu	implemented indirect heap
+!
+! ./src/tools/femutil/dstruc/spline.f90:
+! 02.12.2025	ggu	double version, 1st and 2nd derivative
+! 03.12.2025	ggu	integrated spline_compute_extremum()
+!
+! ./src/tools/femutil/netcdf/regintp.f90:
+! 15.11.2026    ggu     created from scratch
+!
+! ./src/tools/femutil/netcdf/ncf_out.f90:
+! 05.10.2026    ggu     written from scratch
+!
+! ./src/tools/femutil/netcdf/ncucombine.f90:
+! 12.11.2026    ggu     written from scratch
+!
+! ./src/tools/femutil/netcdf/ncuintp.f90:
+! 12.11.2026    ggu     written from scratch
+!
+! ./src/tools/femutil/netcdf/ncu_topo.f90:
+! 15.11.2026    ggu     written from scratch
+!
+! ./src/tools/femutil/netcdf/ncu_params.f90:
+! 12.11.2026    ggu     written from scratch
+!
+! ./src/tools/femutil/spline/gridr.f90:
+! 12.01.2026    ggu     large arrays transformed to allocatable
+! 12.02.2026    ggu     new routine despike, bug fix for retriv
+! 01.08.2026    ggu     new routine reduce_points_strait(), not finished
+!
+! ./src/tools/femutil/spline/hash.f90:
+! 12.01.2026    ggu     large arrays transformed to allocatable
+!
+! ./src/contrib/ecological/bfm/strings/parse_bfm.f90:
+! 30.05.2026    ggu     written from scratch
+!
+! ./src/contrib/ecological/weutro/weutro_param.f90:
+! 30.05.2026    ggu     written from scratch
+!
+! ./src/contrib/ecological/weutro/bio3d.f90:
+! 27.01.2026	ggu	documentation on weutro state variables
+!
+! ./src/contrib/ecological/weutro/weutro.f90:
+! 25.09.2026	ggu	new routine wdiag(), new vars idnode and idlayer
+! 29.09.2026	ggu	module introduced (not yet used)
+! 09.10.2026	ggu	wdiag finished
+!
+! ./src/utils/shympi/shyparts_basutil.f90:
+! 22.04.2026    ggu     documentation integrated
+!
+! ./src/utils/shympi/shyparts_custom.f90:
+! 25.10.2026	ggu	added iaux for new call to floodfill_elem()
+!
+! ./src/utils/shympi/mpi_tripple.f90:
+! 29.05.2026    ggu     avoid compiler warnings
+!
+! ./src/utils/shympi/check_shympi_debug.f90:
+! 29.05.2026    ggu     avoid compiler warnings
+!
+! ./src/utils/shympi/mpi_node_internal.f90:
+! 29.05.2026    ggu     avoid compiler warnings
+! 29.05.2026    ggu     disable FPE trapping to avoid floating point exception
+! 09.06.2026    ggu     added ieee_get_halting_mode
+!
+! ./src/utils/generic/time_util.f90:
+! 29.04.2026	ggu	new routines for cpu_time_ routines
+! 05.05.2026	ggu	adjusted overflow for d1000
+!
+! ./src/utils/generic/progress.f90:
+! 26.01.2026    ggu     implemented from the internet
+! 06.03.2026    ggu     calls simplified
+!
+! ./src/utils/generic/random.f90:
+! 25.02.2026	ggu	portable random generator and seed introduced
+!
+! ./src/utils/generic/flood.f90:
+! 25.10.2026    ggu     new calls to floodfill routines (nodes not yet finished)
+!
+! ./src/utils/generic/histogram.f90:
+! 28.06.2026	ggu	deal with flags, various other changes
+!
+! ./src/utils/generic/regintp.f90:
+! 15.11.2026    ggu     created from scratch
+!
+! ./src/utils/generic/clo.f90:
+! 19.04.2026	ggu	introduced iemax
+!
+! ./src/utils/generic/color.f90:
+! 29.05.2026	ggu	bug fix in color_elems() (ie not set)
+!
+! ./src/utils/generic/spline.f90:
+! 02.12.2025	ggu	double version, 1st and 2nd derivative
+! 03.12.2025	ggu	integrated spline_compute_extremum()
+!
+! ./src/utils/generic/femfile.f90:
+! 22.09.2026	ggu	some reformatting
+!
+! ./src/utils/generic/iso8601.f90:
+! 22.04.2026	ggu	bug fix for YYYY-M-DD (bless more)
+!
+! ./src/utils/shyutilmpi/bnd_admin.f90:
+! 25.02.2026	ggu	updated documentation for nad
+!
+! ./src/utils/shyutilmpi/writevars.f90:
+! 24.09.2026    ggu     written from scratch
+!
+! ./src/utils/shyutilmpi/drywet.f90:
+! 07.11.2026    ggu     started from scratch
+!
+! ./src/utils/shyutilmpi/shy_util.f90:
+! 21.05.2026    ggu     in shy_check_nvar() check if file is empty and return
+! 10.09.2026    ggu     check if time is readable (not a NaN)
+!
+! ./src/utils/shyutilmpi/intp_fem_file.f90:
+! 08.05.2026    ggu     new routine iff_ts_has_data()
+! 29.05.2026    ggu     bug fix in iff_file_has_data() (bok not set)
+!
+! ./src/utils/shyutilmpi/shy_util1.f90:
+! 25.10.2026    ggu     new variable idstd and routine set_id_standard()
+!
+! ./src/utils/shyutilmpi/mod_restart.f90:
+! 20.03.2026    ggu     new version 18
+! 01.10.2026    ggu     new routine get_hlv_restart()
+! 01.10.2026    ggu     new parameter nzadapt (new version 19)
+!
+! ./src/utils/shyutil/femfile_util.f90:
+! 22.04.2026    ggu     better error messaging
+! 23.04.2026    ggu     new routine femutil_interpolate_recs()
+!
+! ./src/utils/shyutil/strings.f90:
+! 27.01.2026	ggu	add weutro description (populate_strings_weutro)
+! 13.10.2026	ggu	new routine inum2filename()
+!
+! ./src/utils/shyutil/strings_cbms.f90:
+! 30.01.2026	ggu&clc	automatically generated by bfm.sh
+!
+! ./src/utils/shyutil/topological.f90:
+! 22.04.2026	ggu	make clear that errors can be ignored
+!
+! ./src/utils/shyutil/strings_bfm.f90:
+! 14.01.2026	ggu&clc	automatically generated by bfm.sh
+!
+! ./src/utils/shyutil/io_lgr.f90:
+! 27.05.2026	ggu	adjourned routine lgr_get_header()
+!
+! ./src/utils/shyutil/io_shy.f90:
+! 15.01.2026    ggu     use new version 15, better error handling
+!
+! ./src/utils/shyutil/sigma.f90:
+! 13.12.2025	ggu	new routine has_sigma_levels()
+!
+! ./src/utils/modules/mod_lagrange.f90:
+! 27.05.2026	ggu	new variables lgr_nvers, lgr_mtype
+!
+! ./var/check/random/random.f90:
+! 25.02.2026	ggu	portable random generator and seed introduced
+
+
 26.11.2025
 
 ! ./src/shyfem/restart.f90:

@@ -533,7 +533,7 @@
 !			boundary the non linear terms are switched off. For
 !			|nad=0| all terms are computed for the boundary. For
 !			the default value of -1 the value of |nad| is taken
-!			from the global value of !nadist|.
+!			from the global value of |nadist|.
 !			(Default -1)
 
 	call addpar('nad',-1.)		!no advective terms for this boundary

@@ -16,10 +16,14 @@ use strict;
 
 $::write_txt = 0;	# write also txt files
 
+$::debug = 0;
 $::indocs = "";
 $::descrp = "";
+$::line = 0;
 
 while(<>) {
+
+  $::line++;
 
   if( /^[cC!] DOCS\s+END/ ) { 
 	docs_end(); 
@@ -41,8 +45,11 @@ sub docs_end {
 
   if( not $::indocs ) {
 	print STDERR "No DOCS file opened. Cannot close.\n";
+	print STDERR "error happens at line $::line of file $ARGV\n";
 	die "*** Error in structure of documentation.\n";
   }
+
+  print STDERR "docs_end $::indocs\n" if $::debug;
 
   $::indocs = "";
   close(DOCS);
@@ -55,10 +62,13 @@ sub docs_start {
   my $file = shift;
 
   if( $::indocs ) {
-	print STDERR "Old file $::indocs must be closed befor\n";
+	print STDERR "old file $::indocs must be closed befor\n";
 	print STDERR "new file $file can be opened.\n";
+	print STDERR "error happens at line $::line of file $ARGV\n";
 	die "*** Error in structure of documentation.\n";
   }
+
+  print STDERR "docs_start $::indocs\n" if $::debug;
 
   $::indocs = $file;
   print STDERR "writing file $file.tex\n";
@@ -104,7 +114,7 @@ sub docs_new_paragraph {
 
 sub docs_close_description {
 
-  #print STDERR "close description $::descrp\n";
+  print STDERR "  close description $::descrp\n" if $::debug;
 
   if( $::descrp ) {
 	$::descrp = "";
@@ -121,7 +131,7 @@ sub docs_open_description {
   $::descrp =~ s/ //g;		#remove blanks
   $::descrp =~ s/,/\\\\/g;	#substitute comma with new line
 
-  #print STDERR "open description $::descrp\n";
+  print STDERR "  open description $::descrp\n" if $::debug;
 
   $line =~ s/^\s+//;
 
@@ -137,10 +147,10 @@ sub docs_continue_description {
 
   my $line = shift;
 
-  #print STDERR "continue description $::descrp\n";
+  print STDERR "    continue description $::descrp\n" if $::debug;
 
   unless( $::descrp ) {
-	print STDERR "*** Error in line:\n";
+	print STDERR "*** Error in line $::line of file $ARGV:\n";
 	print STDERR "\n";
 	print STDERR "$line\n";
 	print STDERR "\n";
