@@ -411,9 +411,9 @@
 
 ! DOCS	START	P_version
 !
-! \newcommand{\VERSION}{8.2.7}
-! \newcommand{\version}{8\_2\_7}
-! \newcommand{\COMMIT}{2026-11-25}
+! \newcommand{\VERSION}{8.2.8}
+! \newcommand{\version}{8\_2\_8}
+! \newcommand{\COMMIT}{2026-11-26}
 !
 ! DOCS	END
 
@@ -421,9 +421,9 @@
 
 	logical, save		:: bshort = .false.
 
-        character*10, parameter :: version = '8.2.7'
-        character*10, parameter :: commit  = '2026-11-25'
-        character*50, parameter :: lcommit = '8.2.7-develop-5'
+        character*10, parameter :: version = '8.2.8'
+        character*10, parameter :: commit  = '2026-11-26'
+        character*50, parameter :: lcommit = '8.2.8-develop-2'
         character*17, parameter :: text    = 'SHYFEM VERSION = '
 
         character*40, parameter :: string = text//version//'  '//commit
