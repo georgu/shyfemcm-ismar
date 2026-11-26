@@ -38,7 +38,7 @@ init:
 	cd GRID; shypre $(GRID).grd
 	cd GRID; shypre $(GRID1).grd
 
-run_all: init
+run_all:
 	./make_all_sims.sh
 
 #-----------------------------------------------------------

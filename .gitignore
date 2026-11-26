@@ -43,6 +43,14 @@ tags
 *.swp
 *__genmod.f90
 
+*.bas
+*.inf
+*.ext
+*.shy
+*.2d.*
+out*.ps
+mm_*.ps
+
 #-----------------------------------------------
 
 .directory

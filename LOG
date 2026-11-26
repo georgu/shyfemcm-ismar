@@ -1,4 +1,24 @@
 
+26.11.2026
+
+! ./src/shyfem/nudge.f90:
+! 25.11.2026    ggu     bug fix for not available tau file for velocities
+!
+! ./src/tools/shynetcdf/elab_nc_dummy.f90:
+! 26.11.2026	ggu	new routine nc_has_netcdf()
+!
+! ./src/tools/femutil/netcdf/regintp.f90:
+! 25.11.2026    ggu     eliminated useless routine
+! 25.11.2026    ggu     call to get/set_regpar has changed
+!
+! ./src/utils/generic/regintp.f90:
+! 25.11.2026    ggu     eliminated useless routine
+! 25.11.2026    ggu     call to get/set_regpar has changed
+!
+! ./src/utils/shyutilmpi/intp_fem_file.f90:
+! 25.11.2026    ggu     check if id > 0
+
+
 25.11.2026
 
 ! ./src/shyfem/elems_dealing.f90:

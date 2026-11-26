@@ -31,6 +31,19 @@
 ! 21.05.2019	ggu	changed VERS_7_5_62
 ! 17.07.2019	ggu	error in calling nc_output_record()
 ! 24.10.2025	ggu	routine nc_set_ref_date() was not defined
+! 26.11.2026	ggu	new routine nc_has_netcdf()
+
+!**************************************************************************
+
+	function nc_has_netcdf()
+
+	implicit none
+
+	logical nc_has_netcdf
+
+	nc_has_netcdf = .false.
+
+	end
 
 !**************************************************************************
 

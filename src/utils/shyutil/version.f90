@@ -423,7 +423,7 @@
 
         character*10, parameter :: version = '8.2.7'
         character*10, parameter :: commit  = '2026-11-25'
-        character*50, parameter :: lcommit = '8.2.7-develop-4'
+        character*50, parameter :: lcommit = '8.2.7-develop-5'
         character*17, parameter :: text    = 'SHYFEM VERSION = '
 
         character*40, parameter :: string = text//version//'  '//commit

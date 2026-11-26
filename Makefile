@@ -32,6 +32,8 @@ include ./Rules.make
 
 #---------------------------------------------------------------
 
+MAKEFLAGS += --no-print-directory
+
 RULES_MAKE_EXPECTED = 1.11
 RULES_MAKE_COMPATIBILITY = RULES_MAKE_OK
 ifneq ($(RULES_MAKE_VERSION),"0.0")
@@ -427,6 +429,12 @@ rules_diff:
 
 rules_std:
 	$(RULES_DIST_DIR)/rules.sh std
+
+rules_netcdf:
+	$(RULES_DIST_DIR)/rules.sh netcdf
+
+rules_no_netcdf:
+	$(RULES_DIST_DIR)/rules.sh no_netcdf
 
 rules_mpi:
 	$(RULES_DIST_DIR)/rules.sh mpi

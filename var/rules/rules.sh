@@ -1,5 +1,13 @@
 #!/bin/sh
 #
+#------------------------------------------------------------------------
+#
+#    Copyright (C) 1985-2026  Georg Umgiesser
+#
+#    This file is part of SHYFEM.
+#
+#------------------------------------------------------------------------
+#
 # changes Rules.make file according to given instructions
 #
 #----------------------------------------------------------
@@ -9,6 +17,7 @@ ShowTargets()
   echo "possible targets:"
   echo "  std		set standard options"
   echo "  netcdf	set netcdf"
+  echo "  no_netcdf	unset netcdf"
   echo "  mpi		set mpi on nodes"
   echo "  omp		set omp"
   echo "  petsc		set petsc solver"
@@ -60,6 +69,8 @@ do
     make rules_dist
   elif [ $target = "netcdf" ]; then
     SetMacro NETCDF true
+  elif [ $target = "no_netcdf" ]; then
+    SetMacro NETCDF false
   elif [ $target = "intel" ]; then
     SetMacro FORTRAN_COMPILER INTEL
     SetMacro C_COMPILER INTEL

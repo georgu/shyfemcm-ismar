@@ -67,6 +67,8 @@ if( $ext eq "f90" ) {
   treat_for_copyright();
 } elsif( $ext eq "make" ) {
   treat_for_copyright();
+} elsif( $ext eq "pdf" ) {
+  ignore();
 } elsif( $ext eq "o" ) {
   ignore();
 } elsif( $ext eq "NONE" ) {
@@ -76,6 +78,8 @@ if( $ext eq "f90" ) {
     treat_for_copyright();
   } elsif( $filename eq "README" ) {
     treat_for_copyright();
+  } elsif( $filename eq "LOG" ) {
+    ignore();
   } else {
     if( is_script() ) {
       treat_for_copyright();

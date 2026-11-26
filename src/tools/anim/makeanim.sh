@@ -254,9 +254,11 @@ if [ $output = "avi" ]; then
   mencoder mf://*.jpg -mf w=800:h=600:fps=$fps:type=jpg -ovc lavc \
        -lavcopts vcodec=mpeg4:mbd=2:trell -oac copy -o anim.avi
   echo "created anim.avi with fps $fps"
+  echo "display this file with \"mplayer anim.avi\""
 elif [ $output = "gif" ]; then
   gifsicle --delay $delay --optimize --colors 256 plot.*.gif > anim.gif
   echo "created anim.gif with delay $delay"
+  echo "display this file with \"animate anim.gif\""
 else
   echo "Unknown output format: $output"
 fi

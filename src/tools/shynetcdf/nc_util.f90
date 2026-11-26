@@ -44,6 +44,7 @@
 ! 03.08.2026	ggu	handle new option clayer
 ! 11.08.2026	ggu	new routines to handle decreasing x/y coordinates
 ! 12.08.2026	ggu	new routines check_2d_monotone() -> still to be tested
+! 26.11.2026	ggu	new routine nc_has_netcdf()
 !
 !*****************************************************************
 !*****************************************************************
@@ -58,6 +59,21 @@
 	integer, save :: izinvert = 0	!z-coords are decreasing -> must invert
 
 	end module nc_coords
+
+!*****************************************************************
+!*****************************************************************
+!*****************************************************************
+
+        function nc_has_netcdf()
+
+        implicit none
+
+        logical nc_has_netcdf
+
+        nc_has_netcdf = .true.
+
+        end
+
 
 !*****************************************************************
 !*****************************************************************

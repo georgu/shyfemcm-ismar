@@ -11,6 +11,8 @@ FEMDIR = ..
 BINDIR = $(FEMDIR)/bin
 SUBDIRS = external utils contrib shyfem tools 
 
+MAKEFLAGS += --no-print-directory
+
 #------------------------------------------------------------------------
 
 default: shyfem
